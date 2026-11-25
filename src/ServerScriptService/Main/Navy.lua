@@ -21,6 +21,9 @@ function Navy.init(G)
   local ships = {}
   G.ships = ships
   G.ShipDefs = SD   -- 测试、别的模块查型号用
+  -- 没有海的图（沙海 LANDONLY）：不建码头、不出舰艇（G.ships 留个空表给别的模块查）。
+  --   地图是开服以后投票定的，初始化时 Map 还是岛：不能在这里直接 return，下面每个入口按现在这张图判断
+  local function noSea() return Map.LANDONLY == true end
   local pending = { atk = {}, def = {} }   -- 被击沉的占着名额：冷却到什么时候
   local homes = {}                         -- 补给点（码头）：{ team, p, r }
   local aiNext = { atk = 0, def = 0 }      -- AI 舰艇下次能出来的时间
@@ -44,6 +47,7 @@ function Navy.init(G)
   local vehAvail0, vehModels0 = G.vehAvail, G.vehModels
   function G.vehAvail(team)
     local out = vehAvail0 and vehAvail0(team) or {}
+    if noSea() then return out end
     local cap = Config.VehicleCap("ship", G.teamCount(team))
     local u = used(team)
     local cd = 0
@@ -57,6 +61,7 @@ function Navy.init(G)
   end
   function G.vehModels(team)
     local out = vehModels0 and vehModels0(team) or {}
+    if noSea() then return out end
     for _, id in ipairs(Config.Vehicles[team].ship or {}) do if SD.get(id) then table.insert(out, id) end end
     return out
   end
@@ -153,7 +158,7 @@ function Navy.init(G)
 
   local built = false
   local function buildPiers()
-    if built then return end
+    if built or Map.LANDONLY then return end   -- 沙漠（沙海）没有海、没有码头
     built = true
     local root = workspace:FindFirstChild("Map") or workspace
     local f = Instance.new("Folder")
@@ -214,12 +219,13 @@ function Navy.init(G)
     local P = Map.PORT
     local zs = Map.coastS(P.x) or P.z
     local d = SD.get("pbr")
-    if d and hasPbr then pad("def", "pbr", berth(V(P.x - 70 + 9 + d.W / 2, 0, zs + 80), SOUTH, d.L), V(P.x - 70 + 3, 0, zs + 78), 2, "C") end   -- 码头里头水浅：停在外头那段
+    if d and hasPbr then pad("def", "pbr", berth(V(P.x - 70 + 9 + d.W / 2, 0, zs + 80), SOUTH, d.L), V(P.x - 70 + 3, 0, zs + 78), (Map.HARBOR and Map.HARBOR.deck) or 2, "C") end   -- 码头里头水浅：停在外头那段；终端柱站在木码头面上
     f.Parent = root
   end
   local depotsBuild0 = G.depotsBuild
   function G.depotsBuild()
     if depotsBuild0 then depotsBuild0() end
+    if noSea() then return end
     G.try("码头", buildPiers)
   end
 
@@ -351,7 +357,10 @@ function Navy.init(G)
     if not e then return nil end
     e.emptyAt = now()
     e.resP, e.resUntil = P, now() + 30
-    if P and P.alive and P.char and not P.vehicle and P.team == team then seat(P, e) end
+    if P and P.alive and P.char and not P.vehicle and P.team == team then
+      if G.streamAround then G.streamAround(P.pl, e.root.CFrame.Position, 2) end   -- 开了 streaming：船停在远处海上，先把那一片送过去再上舰桥
+      if P.alive and P.char and not P.vehicle and e.alive then seat(P, e) end
+    end
     return e
   end
 
@@ -478,10 +487,13 @@ function Navy.init(G)
     e.msl -= 1
     e.mslAt = t + 1.2
     e.model:SetAttribute("Msl", e.msl)
-    local pos = (cfOf(e) * CF(d.missiles.pos)).Position + V(0, 2, 0)
-    G.launch({ kind = "missile", pos = pos, vel = V(0, 60, 0), w = w, src = srcOf(e), ignore = ignoreOf(e), life = w.range / w.speed + 6,
+    -- 从哪出来（ShipDefs.launch）：有斜置的发射箱从箱口顺着箱子的方向冲出去，没有就从垂发的一个格子竖直窜出来（客户端掀开那一格的舱盖）
+    e.launchN = (e.launchN or 0) + 1
+    local pos, dir, at = SD.launch(d, cfOf(e), "asm", e.launchN)
+    local v0 = at.can and dir * 90 or dir * 60
+    G.launch({ kind = "missile", pos = pos, vel = v0, w = w, src = srcOf(e), ignore = ignoreOf(e), life = w.range / w.speed + 6,
       step = guideASM, age = 0, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = aimPt, byEnt = e.id })
-    G.fx({ k = "vls", p = pos, id = e.id })
+    G.fx({ k = "vls", p = pos, id = e.id, b = at.b, c = at.c, can = at.can, tube = at.tube })
     if tgt and tgt.driver and tgt.driver.pl then G.R.Drive:FireClient(tgt.driver.pl, { op = "rwr", w = "asm" }) end
     return true
   end
@@ -565,10 +577,11 @@ function Navy.init(G)
         e.samN -= 1
         e.samAt = t + SD.W.sam.rate
         e.model:SetAttribute("Sam", e.samN)
-        local pos = (cfOf(e) * CF(d.sam.pos)).Position + V(0, 2, 0)
-        G.launch({ kind = "missile", pos = pos, vel = V(0, 140, 0), w = SAM_W, src = srcOf(e), ignore = ignoreOf(e), life = SAM_W.range / SAM_W.speed + 3,
+        e.launchN = (e.launchN or 0) + 1
+        local pos, dir, at = SD.launch(d, cfOf(e), "sam", e.launchN)
+        G.launch({ kind = "missile", pos = pos, vel = dir * 140, w = SAM_W, src = srcOf(e), ignore = ignoreOf(e), life = SAM_W.range / SAM_W.speed + 3,
           step = guideSAM, age = 0, tgt = best, tgId = best.id, byEnt = e.id })
-        G.fx({ k = "vls", p = pos, id = e.id, sam = true })
+        G.fx({ k = "vls", p = pos, id = e.id, sam = true, b = at.b, c = at.c })
         if best.driver and best.driver.pl then G.R.Drive:FireClient(best.driver.pl, { op = "rwr", w = "sam" }) end
       end
     end
@@ -577,6 +590,7 @@ function Navy.init(G)
     e.ciwsT += dt
     if e.ciwsT < CW.rate then return end
     e.ciwsT = 0
+    e.ciwsFx = (type(e.ciwsFx) == "table") and e.ciwsFx or {}
     local cf = cfOf(e)
     for mi, mp in ipairs(d.ciws) do
       local m = (cf * CF(mp)).Position
@@ -591,9 +605,10 @@ function Navy.init(G)
             en = { t0 = t, kill = math.random() < CW.kill }
             s.ciws[key] = en
           end
-          if (e.ciwsFx or 0) <= t then
-            e.ciwsFx = t + 0.2
-            G.fx({ k = "gun", w = "ciws", a = m, b = s.pos + V(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 8 })
+          if (e.ciwsFx[mi] or 0) <= t then   -- 每座各自 0.2 秒一串曳光：从这一座的炮口出去，客户端把这一座转过去（id、mi）
+            e.ciwsFx[mi] = t + 0.2
+            local b = s.pos + V(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 8
+            G.fx({ k = "gun", w = "ciws", a = SD.ciwsMuzzle(d, cf, mi, b) or m, b = b, id = e.id, mi = mi })
           end
           if en.kill and t - en.t0 > 0.8 then
             table.remove(G.shots, i)
@@ -609,9 +624,10 @@ function Navy.init(G)
           if x.alive and x.team ~= e.team and not x.onGround then
             local p = x.root.CFrame.Position
             if (p - m).Magnitude < CW.range * 0.8 then
-              if (e.ciwsFx or 0) <= t then
-                e.ciwsFx = t + 0.2
-                G.fx({ k = "gun", w = "ciws", a = m, b = p + V(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 10 })
+              if (e.ciwsFx[mi] or 0) <= t then
+                e.ciwsFx[mi] = t + 0.2
+                local b = p + V(math.random() - 0.5, math.random() - 0.5, math.random() - 0.5) * 10
+                G.fx({ k = "gun", w = "ciws", a = SD.ciwsMuzzle(d, cf, mi, b) or m, b = b, id = e.id, mi = mi })
               end
               if math.random() < 0.35 then G.damageEnt(x, CW.dmg * (CW.vs.air or 1), srcOf(e)) end
               break
@@ -888,6 +904,7 @@ function Navy.init(G)
 
   local acc, aiT = 0, 0
   G.onFrame(function(dt)
+    if noSea() then return end
     acc += dt
     aiT += dt
     local t = now()
@@ -942,7 +959,7 @@ function Navy.init(G)
     -- AI 舰艇：开战后没有就出来一艘（被击沉 150 秒后再来）
     if aiT >= 1 then
       aiT = 0
-      if G.round and G.round.phase == "battle" and not G.navyNoAI then
+      if G.round and G.round.phase == "battle" and not G.navyNoAI and not Map.LANDONLY then   -- 沙漠没有海：不出 AI 舰艇
         for _, team in ipairs({ "atk", "def" }) do
           local have = false
           for _, e in ipairs(ships) do if e.alive and e.ai and e.team == team then have = true end end

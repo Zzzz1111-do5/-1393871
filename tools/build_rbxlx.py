@@ -95,14 +95,23 @@ for svc in sorted(os.listdir(SRC)):
     build(os.path.join(SRC, svc), it)
     services.append(it)
 by = {s.name: s for s in services}
-# 不是脚本的东西：放导入模型的文件夹、关掉流式加载、光照（Future 只能写进地图文件）
+# 不是脚本的东西：放导入模型的文件夹、流式加载、光照（Future 只能写进地图文件）
 rs = by.setdefault('ReplicatedStorage', Item('ReplicatedStorage', 'ReplicatedStorage'))
 if rs not in services:
     services.append(rs)
 for f in ('UnitModels',):
     if not rs.find(f):
         rs.kids.append(Item('Folder', f))
-services.append(Item('Workspace', 'Workspace', props=[('bool', 'StreamingEnabled', 'false')]))
+# 流式加载（用户 11-24 晚「streaming 优化」）：客户端只收身边一片的地图零件和地形（远处的地形照样画得出来，低细节）——大地图进服快、省内存。
+#   这几个 Workspace 属性脚本改不了，只能写进地点文件；同 tools/build.luau。客户端的配套见 Client/Stream.lua（远处的射线按地形高度算），
+#   服务器把实体代理、玩家角色、舰队、据点设成 Persistent（Ents.lua、Round.lua、World.lua），出生到远处先预加载（RequestStreamAroundAsync）。
+#   最小半径 512 格（约 180 米：脚下一定在）、目标半径 4096 格（约 1.5 公里：坦克的瞄准射线、步兵视野都在里面）；
+#   ModelStreamingBehavior = Improved（2）；StreamOutBehavior = LowMemory（1）：只在内存紧的时候才把最小半径外的卸掉——
+#     电脑上看过的房子一直留着（用户 11-22 要视野无限远；Opportunistic 内存够也会把目标半径外的卸掉，远处的房子一转头就没了），手机内存紧了才卸；
+#   StreamingIntegrityMode = Disabled（1）：不暂停等加载——飞机一秒飞上千格，暂停会一直卡住；车、飞机贴地按 Map.height 算，不靠加载进来的地形
+services.append(Item('Workspace', 'Workspace', props=[('bool', 'StreamingEnabled', 'true'), ('int', 'StreamingMinRadius', '512'),
+                                                      ('int', 'StreamingTargetRadius', '4096'), ('token', 'ModelStreamingBehavior', '2'),
+                                                      ('token', 'StreamOutBehavior', '1'), ('token', 'StreamingIntegrityMode', '1')]))
 # 同 tools/build.luau：夜战（开服时 World.lighting 还会再设一遍）
 services.append(Item('Lighting', 'Lighting', props=[('float', 'Brightness', '2.2'), ('float', 'ClockTime', '2.3'), ('float', 'EnvironmentDiffuseScale', '1'),
                                                     ('float', 'EnvironmentSpecularScale', '1'), ('bool', 'GlobalShadows', 'true'), ('token', 'Technology', '4')]))
@@ -114,3 +123,23 @@ body = '\n'.join(s.xml(1) for s in services)
 with open(out, 'w', encoding='utf-8', newline='\n') as f:
     f.write('<roblox version="4">\n' + body + '\n</roblox>\n')
 print(f"写好了 {os.path.relpath(out, ROOT)}：Script {count['Script']}、LocalScript {count['LocalScript']}、ModuleScript {count['ModuleScript']}、Folder {count['Folder']}")
+
+# 只换脚本的更新包（同 tools/build.luau）：ScriptsUpdate.rbxmx，一个 ScriptsUpdate 文件夹，里面按服务分好
+#   ReplicatedStorage / ServerScriptService / StarterPlayerScripts 三个子文件夹，装着 src/ 里全部脚本；用户在自己导入过模型的地点里
+#   「从文件插入」它，再在命令栏粘一行（docs/import_guide.txt「三、只换脚本」）：同名的旧脚本删掉、新的放进去，模型和地图不动
+count0 = dict(count)
+ref[0] = -1
+pack = Item('Folder', 'ScriptsUpdate')
+for svc in sorted(os.listdir(SRC)):
+    if svc == 'StarterPlayer':
+        f = Item('Folder', 'StarterPlayerScripts')
+        build(os.path.join(SRC, 'StarterPlayer', 'StarterPlayerScripts'), f)
+    else:
+        f = Item('Folder', svc)
+        build(os.path.join(SRC, svc), f)
+    pack.kids.append(f)
+count = count0
+pack_out = os.path.join(os.path.dirname(os.path.abspath(out)), 'ScriptsUpdate.rbxmx')
+with open(pack_out, 'w', encoding='utf-8', newline='\n') as f:
+    f.write('<roblox version="4">\n' + pack.xml(1) + '\n</roblox>\n')
+print(f"写好了 {os.path.relpath(pack_out, ROOT)}（只换脚本的更新包）")

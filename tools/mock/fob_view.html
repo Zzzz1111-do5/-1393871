@@ -1,0 +1,99 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:#000;overflow:hidden}</style></head>
+<body>
+<script type="importmap">{ "imports": { "three": "/three/build/three.module.js" } }</script>
+<script type="module">
+// 主基地预览（tools/mock/fob_view.cjs 用）：/data.json 是 fob_dump.lua 写的零件；镜头坐标都在基地自己的坐标里（lx 横向、lz 纵向、−lz 朝战场）
+import * as THREE from 'three';
+const P = new URLSearchParams(location.search);
+const W = +(P.get('w') || 1600), H = +(P.get('h') || 900);
+const NIGHT = P.get('night') === '1';
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = NIGHT ? 1.6 : 1.0;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(NIGHT ? 0x0a0f1a : 0xb8c4cc);
+scene.fog = new THREE.Fog(scene.background, 2500, 9000);
+const cam = new THREE.PerspectiveCamera(60, W / H, 1, 20000);
+const hemi = new THREE.HemisphereLight(NIGHT ? 0x34445a : 0xdde6ee, NIGHT ? 0x14100c : 0x8a7454, NIGHT ? 0.5 : 1.1);
+scene.add(hemi);
+const sun = new THREE.DirectionalLight(NIGHT ? 0x8fa6d8 : 0xfff1dc, NIGHT ? 0.5 : 2.3);
+sun.castShadow = true;
+sun.shadow.mapSize.set(4096, 4096);
+sun.shadow.bias = -0.0004;
+scene.add(sun);
+scene.add(sun.target);
+// 地：沙色的平面
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(30000, 30000), new THREE.MeshStandardMaterial({ color: NIGHT ? 0x4a3d2c : 0xd2b88a, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.25;   // 比地面上的薄板低一点，免得打架
+ground.receiveShadow = true;
+scene.add(ground);
+// 楔子：Roblox 的 WedgePart（高的一边在 +Z，斜面朝 −Z 上方）
+function wedgeGeo() {
+  const g = new THREE.BufferGeometry();
+  const v = [];
+  const A = [-0.5, -0.5, -0.5], B = [-0.5, -0.5, 0.5], C = [-0.5, 0.5, 0.5];
+  const A2 = [0.5, -0.5, -0.5], B2 = [0.5, -0.5, 0.5], C2 = [0.5, 0.5, 0.5];
+  const tri = (a, b, c) => v.push(...a, ...b, ...c);
+  tri(A, C, B); tri(A2, B2, C2);            // 两头的三角
+  tri(A, B, B2); tri(A, B2, A2);            // 底
+  tri(B, C, C2); tri(B, C2, B2);            // 背（+Z）
+  tri(A, A2, C2); tri(A, C2, C);            // 斜面
+  g.setAttribute('position', new THREE.Float32BufferAttribute(v, 3));
+  g.computeVertexNormals();
+  return g;
+}
+const GEO = { Block: new THREE.BoxGeometry(1, 1, 1), Wedge: wedgeGeo(), Ball: new THREE.SphereGeometry(0.5, 24, 16),
+  Cylinder: new THREE.CylinderGeometry(0.5, 0.5, 1, 28).rotateZ(-Math.PI / 2) };
+const mats = new Map();
+function mat(k, m, t, g) {
+  const key = k.join(',') + m + t + g;
+  if (mats.has(key)) return mats.get(key);
+  const col = new THREE.Color(k[0] / 255, k[1] / 255, k[2] / 255);
+  let mm;
+  if (g) mm = new THREE.MeshBasicMaterial({ color: col });
+  else mm = new THREE.MeshStandardMaterial({ color: col, roughness: (m === 'Metal' || m === 'DiamondPlate') ? 0.55 : (m === 'Glass' ? 0.1 : 0.9),
+    metalness: (m === 'Metal' || m === 'DiamondPlate' || m === 'CorrodedMetal') ? 0.35 : 0 });
+  if (t > 0.01) { mm.transparent = true; mm.opacity = 1 - t; mm.depthWrite = false; }
+  mats.set(key, mm);
+  return mm;
+}
+fetch('/data.json').then(r => r.json()).then(D => {
+  for (const p of D.parts) {
+    const geo = GEO[p.s] || GEO.Block;
+    const mesh = new THREE.Mesh(geo, mat(p.k, p.m, p.t, p.g));
+    const c = p.c;
+    const M = new THREE.Matrix4().set(c[3], c[4], c[5], c[0], c[6], c[7], c[8], c[1], c[9], c[10], c[11], c[2], 0, 0, 0, 1);
+    let s = p.z;
+    if (p.s === 'Ball') { const d = Math.min(s[0], s[1], s[2]); s = [d, d, d]; }
+    if (p.s === 'Cylinder') { const d = Math.min(s[1], s[2]); s = [s[0], d, d]; }
+    M.multiply(new THREE.Matrix4().makeScale(s[0], s[1], s[2]));
+    mesh.matrixAutoUpdate = false;
+    mesh.matrix.copy(M);
+    mesh.castShadow = !(p.t > 0.3) && !p.g;
+    mesh.receiveShadow = true;
+    scene.add(mesh);
+  }
+  window.yaw = D.yaw;
+  window.ready = true;
+});
+// 镜头：基地坐标（lx, y, lz）→ 世界（减过基地中心的）坐标
+function toW(l) { const y = window.yaw || 0; const c = Math.cos(y), s = Math.sin(y); return new THREE.Vector3(l[0] * c + l[2] * s, l[1], -l[0] * s + l[2] * c); }
+window.shot = (o) => {
+  cam.fov = o.fov || 60; cam.updateProjectionMatrix();
+  const pos = toW(o.pos), look = toW(o.look);
+  cam.position.copy(pos); cam.lookAt(look);
+  const span = o.span || 1500;
+  sun.position.copy(look).add(new THREE.Vector3(-0.45, 1, -0.3).multiplyScalar(2500));
+  sun.target.position.copy(look);
+  sun.shadow.camera.left = -span; sun.shadow.camera.right = span; sun.shadow.camera.top = span; sun.shadow.camera.bottom = -span;
+  sun.shadow.camera.near = 10; sun.shadow.camera.far = 8000;
+  sun.shadow.camera.updateProjectionMatrix();
+  renderer.render(scene, cam);
+};
+</script></body></html>

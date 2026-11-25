@@ -16,10 +16,12 @@ local dumpDir = TEST_ARGS:match("dump=(%S+)")
 local client = R.services.StarterPlayer:FindFirstChild("StarterPlayerScripts"):FindFirstChild("Client")
 local ms = client:FindFirstChild("Soldier")
 local G = {
-  Config = { Teams = { atk = { color = R.Color3.fromRGB(220, 70, 55) }, def = { color = R.Color3.fromRGB(60, 120, 230) } } },
+  Config = { Teams = { atk = { color = R.Color3.fromRGB(220, 70, 55) }, def = { color = R.Color3.fromRGB(64, 186, 92) } } },
   perfK = 1,
 }
 local errs = 0
+-- 各模块的逐帧回调（init.client.lua 的 G.frameConn：带性能计时，这里直接连 RenderStepped）
+function G.frameConn(_, f) return R.RenderStepped:Connect(f) end
 function G.try_(f, ...)
   local ok, e = pcall(f, ...)
   if not ok then errs = errs + 1 print("  出错：" .. tostring(e)) end

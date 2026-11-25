@@ -1,7 +1,7 @@
 --!nocheck
 -- 飞机原模型测试：假装在 Studio 里导入了 models/air/ 的歼-15、阿帕奇、歼-20（按 ImportedAir 摆同名的 MeshPart 放在 Workspace）→
 --   开服收进 ReplicatedStorage.Imported.Air → 客户端拼的飞机用原模型的块（蒙皮去掉，挂架和弹、灯、加力火焰留着）→
---   挂架挂在原模型的机翼下表面、弹挂在下面 → 起落架收放（原模型自带的藏起来；没带的歼-20 用零件拼的）→
+--   挂架挂在原模型的机翼下表面、弹挂在下面 → 起落架收放（原模型自带的藏起来；歼-20 v4 的起落架是 j20_gear.py 补的网格，往前收、舱门跟着开关）→
 --   歼-15 折翼（外翼、挂的弹、翼尖灯一起绕原模型的铰链转）→ 加力火焰从原模型的尾喷口喷 → 阿帕奇旋翼转 → 所有型号都能拼、摆姿态
 --   → 直-10 原模型自带的「转起来的桨盘」停着不显示、转快了才出现 → 在航母上按 E 弹出挂载编辑器，里面的歼-15T 也是原模型
 -- 用法（仓库根目录）：lune run tools/test/ia_import_air.luau <rbxlx>
@@ -15,7 +15,7 @@ local Enum = roblox.Enum
 H.quietWarn = process.args[2] ~= "v"
 
 local IA = luau.load(fs.readFile("src/ReplicatedStorage/ImportedAir.lua"), { debugName = "ImportedAir" })()
-local KEYS = { "j15t", "ah64", "j20_v3", "z10w", "a10_v3", "tvc", "f22a", "j16_v3", "h6k_v3" }
+local KEYS = { "j15t", "ah64_v2", "j20_v4", "z10w_v2", "a10_v3", "tvc", "f22a", "j16_v3", "h6k_v3" }
 local function count(t) local n = 0 for _ in pairs(t) do n += 1 end return n end
 
 H.boot(process.args[1], { ds = "mock", before = function(game)
@@ -194,7 +194,7 @@ print("③ 阿帕奇：旋翼、尾桨转；挂的弹在原模型短翼下面")
 local dh = AD.get("ah64e")
 local lh = AD.presetLoad(dh, "at")
 local MH = AM.build(dh, "def", lh)
-check(MH.imported == "ah64", "用的是原模型")
+check(MH.imported == "ah64_v2", "用的是原模型（拆出了机炮的 v2）")
 local rotor, trotor
 for _, it in ipairs(MH.items) do
 	if it.p:IsA("MeshPart") and string.find(it.p.Name, "__Rotor_") and not rotor then rotor = it end
@@ -209,9 +209,27 @@ local dist0, dist1 = (V3.new(r0.Position.X, 0, r0.Position.Z) - V3.new(hub.X, 0,
 local turned = select(2, r0:ToObjectSpace(r1):ToAxisAngle())
 check(math.abs(turned - 1.0) < 0.02 and math.abs(dist0 - dist1) < 0.01, string.format("主旋翼绕桨毂转了 %.2f 弧度", turned))
 check((t0.Position - t1.Position).Magnitude > 0.001 or select(2, t0:ToObjectSpace(t1):ToAxisAngle()) > 0.5, "尾桨转了")
+-- 机头炮塔（用户 11-21：直升机炮管不会转动）：原模型拆出来的炮跟着方位、俯仰转，炮塔座只转方位
+local gunIt, gunY
+for _, it in ipairs(MH.items) do
+	if string.find(it.p.Name, "__Gun_") then gunIt = it end
+	if string.find(it.p.Name, "__GunY_") then gunY = it end
+end
+check(gunIt ~= nil and gunIt.kind == "t" and gunY ~= nil and gunY.yawOnly, "机炮、炮塔座是单独的炮塔件")
+if gunIt and gunY then
+	pose(MH, { gear = 1, ty = 0, gp = 0 })
+	local g0, y0 = rel(gunIt.p), rel(gunY.p)
+	pose(MH, { gear = 1, ty = 60, gp = -20 })
+	local g1, y1 = rel(gunIt.p), rel(gunY.p)
+	local _, ga = g0:ToObjectSpace(g1):ToAxisAngle()
+	check(ga > math.rad(50), string.format("方位 60°、俯仰 −20°：炮转了 %.0f°", math.deg(ga)))
+	check(g1.Position.X > g0.Position.X + 0.5, "炮口转到右边")
+	local yl = y0:ToObjectSpace(y1).LookVector
+	check(math.abs(yl.Y) < 0.01, "炮塔座不跟着俯仰")
+end
 local lowOk, lowN = true, 0
 for i, list in pairs(MH.stores) do
-	local adj = IA.m.ah64.pyl.ah64e and IA.m.ah64.pyl.ah64e[i]
+	local adj = IA.m.ah64_v2.pyl.ah64e and IA.m.ah64_v2.pyl.ah64e[i]
 	if #list > 0 and dh.st[i].name ~= "tip" then   -- 翼尖的毒刺挂在翼尖导轨上（不在翼下）
 		lowN += 1
 		local y = 0
@@ -237,21 +255,21 @@ do
 	local d0, b0 = tr(discs), tr(blades)
 	pose(MZ, { gear = 1, spin1 = 2, spinT = 3, rpm = 100 })
 	local d1, b1 = tr(discs), tr(blades)
-	check(MZ.imported == "z10w" and #discs == 2 and #blades == 2, string.format("原模型：桨盘 %d 块、桨叶 %d 块", #discs, #blades))
+	check(MZ.imported == "z10w_v2" and #discs == 2 and #blades == 2, string.format("原模型：桨盘 %d 块、桨叶 %d 块", #discs, #blades))
 	check(#discs == 2 and d0[1] == 1 and d0[2] == 1 and b0[1] == 0 and b0[2] == 0, string.format("停着：桨盘藏起来（%s），桨叶实心（%s）", table.concat(d0, " / "), table.concat(b0, " / ")))
 	check(#discs == 2 and d1[1] < 1 and d1[2] < 1 and b1[1] > 0, string.format("转快了：桨盘出现（透明 %s），桨叶变虚（%s）", table.concat(d1, " / "), table.concat(b1, " / ")))
 	MZ.model:Destroy()
 end
 
-print("④ 歼-20：原模型没放起落架，用零件拼的起落架（会收放）")
+print("④ 歼-20（j20_v4）：原模型不减面；起落架是 tools/models/j20_gear.py 补的网格（关键帧往前收），起落架舱门跟着开关；零件拼的起落架不画了")
 local dj = AD.get("j20")
 local MJ = AM.build(dj, "atk", AD.presetLoad(dj, "aa"))
 local gearN = 0
 for _, it in ipairs(MJ.items) do if it.tag == "gear" then gearN += 1 end end
-check(MJ.imported == "j20_v3" and gearN > 0, string.format("原模型 + 零件拼的起落架 %d 个零件", gearN))
--- 绿色编队灯带（用户 11-18：歼-20 改得跟现实的一样，包括绿色光条）：元数据 glow 的那几块是 Neon、绿色，不带贴图
+check(MJ.imported == "j20_v4" and gearN == 0, string.format("用的是 %s，零件拼的起落架 %d 个零件（应该没有）", tostring(MJ.imported), gearN))
+-- 绿色编队灯带（用户 11-18：歼-20 改得跟现实的一样，包括绿色光条；v4 也照 airpaint.py 重涂过）：元数据 glow 的那几块是 Neon、绿色，不带贴图
 do
-	local gl = IA.m.j20_v3.glow or {}
+	local gl = IA.m.j20_v4.glow or {}
 	local want, ok = count(gl), 0
 	for _, it in ipairs(MJ.items) do
 		local nm = it.p and it.p:IsA("MeshPart") and string.match(it.p.Name, "__(.+)$")
@@ -259,13 +277,48 @@ do
 	end
 	check(want >= 4 and ok == want, string.format("绿色灯带 %d / %d 块发光（Neon）", ok, want))
 end
+-- 侧弹舱、起落架舱（用户：侧弹仓打开为什么能看穿飞机）：tools/models/doorbay.py 做的舱 Well_1…5 画出来、深灰色
+do
+	local n, dark, nd = 0, 0, 0
+	for _, it in ipairs(MJ.items) do
+		local nm = it.p and string.match(it.p.Name, "^A_j20_v4__(Well_%d+)$")
+		if nm then
+			n += 1
+			if it.p.Color.R < 0.3 and it.p.Color.G < 0.3 then dark += 1 end
+		end
+		local dn = it.p and string.match(it.p.Name, "^A_j20_v4__(Duct_%d+)$")
+		if dn and it.p.Color.R < 0.2 then nd += 1 end
+	end
+	check(n == 5 and dark == 5, string.format("舱门里封好的舱 %d 个（深灰 %d 个，应该 5 个）", n, dark))
+	-- 进气道（用户：从前下方能从进气道口看穿）：唇口后面补的深色管道，两边各一个
+	check(nd == 2, string.format("进气道里深色的管道 %d 个（应该 2 个）", nd))
+end
+local function partsOf(g)
+	local list = {}
+	for _, it in ipairs(MJ.items) do
+		local nm = it.p and string.match(it.p.Name, "^A_j20_v4__(.+)$")
+		local p = nm and IA.m.j20_v4.parts[nm]
+		if p and p.g == g then table.insert(list, it) end
+	end
+	return list
+end
+local function center(list)
+	if #list == 0 then return nil end
+	local s = V3.new(0, 0, 0)
+	for _, it in ipairs(list) do s += rel(it.p).Position end
+	return s / #list
+end
+local GL, DN = partsOf("GearL"), partsOf("GDoorN1")
 pose(MJ, { gear = 1 })
-local g1
-for _, it in ipairs(MJ.items) do if it.tag == "gear" then g1 = rel(it.p) break end end
+local c1, dn1 = center(GL), center(DN)
+pose(MJ, { gear = 0.25 })
+local cq = center(GL)
 pose(MJ, { gear = 0 })
-local g0
-for _, it in ipairs(MJ.items) do if it.tag == "gear" then g0 = rel(it.p) break end end
-check(g1 and g0 and (g1.Position - g0.Position).Magnitude > 0.5, "收起落架时零件拼的起落架收进去了")
+local c0, dn0 = center(GL), center(DN)
+check(c1 and c0 and c0.Y - c1.Y > 2 and c0.Z < c1.Z - 2,
+	string.format("收起落架：左主起落架往前 %.1f 格、往上 %.1f 格收进机身（%d 块）", c1 and c0 and (c1.Z - c0.Z) or 0, c1 and c0 and (c0.Y - c1.Y) or 0, #GL))
+check(cq and c0 and (cq - c0).Magnitude < 0.05, "操纵量 0.25 时支柱已经收到底（之后舱门才关）")
+check(dn1 and dn0 and dn1.Y < dn0.Y - 0.3, string.format("前起落架舱门：放下时往下开（%.2f 格），收起时关上", dn1 and dn0 and (dn1.Y - dn0.Y) or 0))
 
 print("④b A-10：原模型是收起起落架的样子（「起落架」那几块其实是蒙皮）→ 当蒙皮一直画、整架抬高、用零件拼的起落架（用户：部分飞机没有起落架）")
 do

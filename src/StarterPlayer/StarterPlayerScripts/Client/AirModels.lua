@@ -45,11 +45,19 @@ local BLUR = { z10w = { Rotor_2 = true, TRotor_2 = true } }
 -- 原模型上切出来的活动部件（ImportedAir 的 surf）：按动法算转角。sg 已经把正方向统一成：舵面后缘往下、方向舵 / 全动垂尾后缘往右、
 --   舱门和座舱盖打开、起落架收起；s 是哪一侧（1 右、−1 左）。操纵量 pit / rol / yaw 是 −1～1（抬头、右滚、右偏为正），flap 0～1
 --   减速板（c.brk，B 键）：这些机型没有单独的减速板，照真飞机用舵面减速——副翼两边一起上翘、襟副翼往下、双垂尾的方向舵 / 全动垂尾往外撇
+-- 歼-20 侧弹舱（照真机：挂架把霹雳-10 连发射轨转出舱外，舱门随即关上，近距格斗时保持隐身外形）：一个操纵量 bayS 走完三段——
+--   0～0.3 开门、0.25～0.75 挂架转出、0.7～1 关门；收回时倒着走一遍（开门、转回、关门）
+local function sstep(x) x = math.clamp(x, 0, 1) return x * x * (3 - 2 * x) end
+local function bayDoorC(u) return sstep(u / 0.3) * (1 - sstep((u - 0.7) / 0.3)) end
+local function bayArmK(u) return sstep((u - 0.25) / 0.5) end
+AM.bayDoorC, AM.bayArmK = bayDoorC, bayArmK
 local SURF_F = {
   ail = function(c, s) return -s * (c.rol or 0) * rad(20) - (c.brk or 0) * rad(28) end,          -- 副翼：右滚时右边后缘往上；减速时两边一起往上
   flap = function(c) return (c.flap or 0) * rad(30) end,
   flaperon = function(c, s) return (c.flap or 0) * rad(20) - s * (c.rol or 0) * rad(15) + (c.brk or 0) * rad(22) end,   -- 襟副翼：放襟翼 + 差动滚转；减速时往下
   elevon = function(c, s) return math.clamp(-(c.pit or 0) * rad(15) - s * (c.rol or 0) * rad(15), -rad(25), rad(25)) end,   -- 升降副翼：抬头时后缘往上
+  -- 无尾机最外一段（歼-36）：升降副翼兼管偏航——右偏时右边后缘往上、左边往下（差动阻力）；减速时两边一起往上
+  elvy = function(c, s) return math.clamp(-(c.pit or 0) * rad(12) - s * (c.rol or 0) * rad(15) - s * (c.yaw or 0) * rad(16) - (c.brk or 0) * rad(20), -rad(30), rad(30)) end,
   stab = function(c, s) return -(c.pit or 0) * rad(18) - s * (c.rol or 0) * rad(6) end,          -- 全动平尾：带一点差动帮滚转
   elev = function(c) return -(c.pit or 0) * rad(20) end,
   can = function(c) return (c.pit or 0) * rad(16) end,                                          -- 鸭翼：抬头时前缘往上（后缘往下）
@@ -58,8 +66,12 @@ local SURF_F = {
   rv = function(c, s) return -(c.pit or 0) * rad(18) + s * (c.yaw or 0) * rad(15) end,          -- V 尾：抬头两边一起往上，偏航两边反着
   bay = function(c, _, A) return (c.bay or 0) * A end,
   bayS = function(c, _, A) return (c.bayS or 0) * A end,
+  bayC = function(c, _, A) return bayDoorC(c.bayS or 0) * A end,   -- 侧弹舱「闭门」：开门、挂架转出、关门（歼-20）
   canopy = function(c, _, A) return (c.can or 0) * A end,
   gear = function(c, _, A) return (1 - (c.gear or 1)) * A end,
+  -- 起落架舱门（原模型蒙皮上切出来的，歼-20 j20_v4）：放起落架的前 1/4 先开门（之后支柱才放下，kf 关键帧照同一个节奏），收起的最后 1/4 才关上
+  gdh = function(c, _, A) return math.clamp((c.gear or 1) * 4, 0, 1) * A end,
+  abrk = function(c, _, A) return (c.brk or 0) * A end,   -- 减速板（歼-11 背上那块大的）：按减速量掀开
 }
 -- 推力矢量喷口（用户给的「F-15 SE Thrust Vector Nozzle」，models/air/tvc.glb，元数据 ImportedAir.m.tvc；用户：给飞机都用上这个推力矢量推嘴的动画）：
 --   圆喷口的战斗机每个尾喷口装一只——外罩贴着原模型的喷口出口往后接，15 片调节片绕喉道处的铰链开合（慢车微张、军推收拢、加力张到最大，
@@ -119,6 +131,22 @@ end
 --   那几块当蒙皮一直画，整架抬高 lift 格（放下起落架时机身离地的高度，真机全高减模型高），用零件拼的起落架（用户：部分飞机没有起落架）
 local NOGEAR = { a10 = 2.5, a10_v2 = 2.5, a10_v3 = 2.5, b2 = 4.8, b2_v2 = 4.8, b2_v3 = 4.8 }
 AM.NOGEAR = NOGEAR
+-- 原模型没有飞行员眼位（ImportedAir 的 pit 是 tools/models/air_anim.py 的 PIT 表生成的，这几个没量）：照原模型量的（用户 11-24：飞机座舱眼位修好）。
+--   没有 pit 时座舱退回猜的眼位 V(0, H*0.35, -L*0.3)，UH-60 那个点在机舱顶上、旋翼旁边，AH-64 比座舱盖还高，轰-6K 在机身中段——
+--   内饰拼在那里，屏幕被机身盖住（B 11-22 把挡屏幕的零件收起来了，但人其实坐在机舱外面）。
+--   模型坐标（加 O 之前，同 ImportedAir 的 c），一个座位一个：并列座 1 左 2 右，串列座 1 前 2 后（Interior 的 spec.seat 挑）；
+--   量法：沿座位那条线往下、往上打射线量座舱盖 / 舱顶和地板，眼睛在舱顶下 0.3～0.4 米；tools/mock/interior_view.cjs（GLBOP=1 GLBOFF=−眼位）看内饰装不装得下
+local PIT_FIX = {
+  a10_v3 = { { 0, 6.7, -14.5 } },                                -- 座舱盖（Body_3）顶 7.7、前风挡在 z −17.5
+  ah64_v2 = { { 0, 6.10, -16.26 }, { 0, 7.36, -11.5 } },          -- 前座炮手、后座飞行员（后座高 0.45 米、靠后 1.7 米：同 InteriorDefs 串列座）
+  z10w_v2 = { { 0, 4.6, -10.4 }, { 0, 6.6, -6.2 } },              -- 前座比后座低得多（模型的前座盖顶 5.4、后座 7.2）
+  uh60 = { { -1.4, 6.0, -16.0 }, { 1.4, 6.0, -16.0 } },           -- 驾驶舱顶棚 7.0、风挡上沿 z −17.5（直-20 借这个模型，坐左座）
+  ch47 = { { -1.68, 7.4, -16.0 }, { 1.68, 7.4, -16.0 } },         -- 风挡 z −18～−17、地板 4.2
+  h6k_v3 = { { -1.54, 10.6, -38.2 }, { 1.54, 10.6, -38.2 } },     -- 领航员的玻璃机头后面那一级台阶上；地板 7.8
+  b2_v3 = { { -1.74, 6.9, -19.0 }, { 1.74, 6.9, -19.0 } },        -- 模型座舱里有一层 7.2～7.5 的板：眼睛放在它下面（不然从上面看它盖住仪表板）
+}
+AM.PIT_FIX = PIT_FIX
+
 function AM.importedFor(d)
   local imp = RS:FindFirstChild("Imported")
   local air = imp and imp:FindFirstChild("Air")
@@ -132,6 +160,7 @@ function AM.importedFor(d)
     local plain = string.sub(k, -1) == "~"
     local key = plain and string.sub(k, 1, -2) or k
     local info = IA.m and IA.m[key]
+    if info and not info.pit and PIT_FIX[key] then info.pit = PIT_FIX[key] end   -- 没量眼位的补上（座舱内饰、外模型里的飞行员都按它摆）
     local f = air:FindFirstChild(key)
     if usable(info, f, key) then
       local lift = NOGEAR[key]
@@ -367,11 +396,19 @@ function AM.build(d, team, load)
           end
         end
         local count = (w.kind == "rkt") and 1 or n
+        local arm = (s.bay and s.bay ~= "main") and d.sideArm or nil
         for k = 1, count do
           local off = layout((w.kind == "rkt") and 1 or n, k, S, s.bay ~= nil)
           local cf = CF(pos + off)
           local kind, extra = "b", nil
-          if s.bay and s.bay ~= "main" then   -- 侧弹舱：挂架连弹推出舱外
+          if arm then   -- 侧弹舱转臂（歼-20）：弹收在舱里时发射轨朝着转轴；挂架绕转轴把弹转出舱外（舱门之后关上，见 bayDoorC）
+            kind = "m"
+            local sd = (pos.X >= 0) and 1 or -1
+            local P = V(sd * arm.p.X, arm.p.Y, pos.Z)
+            local dir = V(P.X - pos.X, P.Y - pos.Y, 0).Unit
+            cf = CF(pos) * CFrame.Angles(0, 0, math.atan2(-dir.X, dir.Y))   -- 弹的 +Y（挂轨那面）朝转轴
+            extra = { f = function(c) return CF(P) * CFrame.Angles(0, 0, -sd * arm.A * bayArmK(c.bayS or 0)) * CF(-P) end }
+          elseif s.bay and s.bay ~= "main" then   -- 侧弹舱：挂架连弹推出舱外
             kind = "m"
             local out = (pos.X >= 0) and 1 or -1
             extra = { f = function(c) local k2 = c.bayS or 0 return CF(out * 1.1 * k2, -1.5 * k2, 0) end }
@@ -384,6 +421,27 @@ function AM.build(d, team, load)
             it.bayK = bayK
             table.insert(M.stores[i], it)
           end
+        end
+      end
+    end
+    -- 侧弹舱的挂架（歼-20）：发射轨贴着弹背、两根转臂接到转轴，跟着弹一起转出去（弹打掉了挂架还在）
+    local arm = d.sideArm
+    for i2, s in ipairs(arm and d.st or {}) do
+      if s.bay and s.bay ~= "main" then
+        local wid = load and load[i2]
+        local S = (wid and AD.W[wid] and AD.W[wid].shape) or { L = 8.2, d = 0.45 }
+        local pos = s.pos
+        local sd = (pos.X >= 0) and 1 or -1
+        local P = V(sd * arm.p.X, arm.p.Y, pos.Z)
+        local R = (V(P.X, P.Y, 0) - V(pos.X, pos.Y, 0)).Magnitude
+        local dir = V(P.X - pos.X, P.Y - pos.Y, 0).Unit
+        local cf0 = CF(pos) * CFrame.Angles(0, 0, math.atan2(-dir.X, dir.Y))   -- 同弹：+Y 朝转轴
+        local f = function(c) return CF(P) * CFrame.Angles(0, 0, -sd * arm.A * bayArmK(c.bayS or 0)) * CF(-P) end
+        local r0 = S.d / 2 + 0.06
+        box(V(0.12, 0.1, S.L * 0.55), cf0 * CF(0, r0, 0), DARK, MAT.Metal, "m", { f = f })   -- 发射轨
+        local len = R - r0 - 0.05
+        for _, dz in ipairs({ -S.L * 0.2, S.L * 0.2 }) do
+          box(V(0.09, len, 0.26), cf0 * CF(0, r0 + 0.05 + len / 2, dz), STEEL, MAT.Metal, "m", { f = f })   -- 转臂
         end
       end
     end
@@ -579,8 +637,11 @@ function AM.build(d, team, load)
       local ex = { hp = hinge, ax = V(1, 0, 0), f = canF, canopy = true }   -- canopy：弹射时抛掉
       ball(V(Cn.w, Cn.h * 1.7, Cn.len), CF(0, Cn.y, Cn.z), glass, MAT.Glass, "h", table.clone(ex), 0.35)
       box(V(Cn.w * 0.9, 0.18, 0.35), CF(0, Cn.y + Cn.h * 0.62, Cn.z + Cn.len * 0.1), skinD, MAT.Metal, "h", table.clone(ex))   -- 盖框
-      pilot(CF(0, Cn.y - 0.2, Cn.z + Cn.len * 0.05), (team == "atk") and RGB(235, 235, 228) or RGB(110, 116, 96))
-      if d.twoSeat then pilot(CF(0, Cn.y - 0.05, Cn.z + Cn.len * 0.38), (team == "atk") and RGB(235, 235, 228) or RGB(110, 116, 96)) end
+      -- 双座（歼-16）：前座飞行员在座舱盖中点往前 17%（用户 11-22：「j16 驾驶位第一人称不能坐在后座」——原来前座摆在盖子正中，
+      --   两个座位中间，第一人称眼位跟着它，看着像坐在后座）；后座武器官在中点往后 20%
+      local fz = d.twoSeat and (Cn.z - Cn.len * 0.17) or (Cn.z + Cn.len * 0.05)
+      pilot(CF(0, Cn.y - 0.2, fz), (team == "atk") and RGB(235, 235, 228) or RGB(110, 116, 96))
+      if d.twoSeat then pilot(CF(0, Cn.y - 0.05, Cn.z + Cn.len * 0.2), (team == "atk") and RGB(235, 235, 228) or RGB(110, 116, 96)) end
       box(V(Cn.w * 0.6, 0.6, 1.2), CF(0, Cn.y - 0.3, Cn.z - Cn.len * 0.42), DARK, MAT.SmoothPlastic)   -- 平显
     end
     if d.drone and d.sat then ball(V(w * 1.05, h * 0.9, 7), CF(0, y0 + h * 0.3, noseZ + 5), skinL) end   -- 卫星通信天线的鼓包
@@ -707,39 +768,50 @@ function AM.build(d, team, load)
         core.p.Transparency = 1
         table.insert(M.flames, core)
         if d.ab and not E.cold then
+          -- 加力尾焰（用户 11-24 夜：「尾喷也要重做」，给了战雷里米格-29 开加力的截图；11-23 那版照歼-20 截图做的紫色焰身、蓝边管子、
+          --   一节一节的马赫环不要了）：照新截图——
+          --   ① 喷口里：开加力烧得发橙粉色（热芯，下面每帧那段），军推以下照旧暗红 → 橙
+          --   ② 焰身：一条长长的、半透明的橙色光柱（Beam，正对镜头），跟喷口差不多粗、往后慢慢细一点，橙 → 橘红、越往后越淡；
+          --      长短跟着加力（满加力约七个喷口直径），每帧长短轻轻抖一点（火在跳）
+          --   ③ 焰芯：喷口后面短短一截更亮的粉白（离喷口近的地方最热），也是 Beam
+          local r = E.r
+          local flat = E.flat
           local src = newPart(m, V(0.2, 0.2, 0.2), RGB(255, 255, 255), MAT.SmoothPlastic, nil, 1)
           src.Name = "Plume"
           src.CastShadow = false
           local it = add(src, base, "ab", hotItem({ plume = true }))
-          local a0 = Instance.new("Attachment")
-          a0.Name = "P0"
-          a0.Parent = src
-          local function beam(name, col, tr, w0, w1)
-            local a1 = Instance.new("Attachment")
-            a1.Name = name .. "End"
-            a1.Position = V(0, 0, 1)
-            a1.Parent = src
+          local function att(name, z)
+            local a = Instance.new("Attachment")
+            a.Name = name
+            a.Position = V(0, 0, z)
+            a.Parent = src
+            return a
+          end
+          local function beam(name, a0, a1, col, tr, w0, w1, emit)
             local bm = Instance.new("Beam")
             bm.Name = name
             bm.Attachment0, bm.Attachment1 = a0, a1
             bm.FaceCamera = true
-            bm.Segments = 1
-            bm.LightEmission, bm.LightInfluence = 1, 0
+            bm.Segments = 8
+            bm.LightEmission, bm.LightInfluence = emit or 1, 0
             bm.Color, bm.Transparency = col, tr
             bm.Width0, bm.Width1 = w0, w1
             bm.Enabled = false
             bm.Parent = src
-            return bm, a1
+            return bm
           end
-          local r = E.r
-          it.outer, it.outerEnd = beam("AbFlame",
-            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 226, 170)), ColorSequenceKeypoint.new(0.35, RGB(255, 150, 70)), ColorSequenceKeypoint.new(1, RGB(255, 80, 30)) }),
-            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.15), NumberSequenceKeypoint.new(0.45, 0.45), NumberSequenceKeypoint.new(1, 1) }),
-            r * 1.8, r * 0.5)
-          it.inner, it.innerEnd = beam("AbCore",
-            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(214, 228, 255)), ColorSequenceKeypoint.new(0.5, RGB(255, 244, 226)), ColorSequenceKeypoint.new(1, RGB(255, 210, 150)) }),
-            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(0.6, 0.4), NumberSequenceKeypoint.new(1, 1) }),
-            r * 1.1, r * 0.2)
+          local p0 = att("P0", 0)
+          it.fillEnd = att("FillEnd", 1)
+          it.fill = beam("AbFill", p0, it.fillEnd,
+            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 176, 120)), ColorSequenceKeypoint.new(0.45, RGB(255, 132, 76)), ColorSequenceKeypoint.new(1, RGB(236, 86, 52)) }),
+            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(0.35, 0.48), NumberSequenceKeypoint.new(0.75, 0.74), NumberSequenceKeypoint.new(1, 1) }),
+            r * (flat and 1.2 or 1.9), r * (flat and 0.9 or 1.4), 0.8)
+          it.coreEnd = att("CoreEnd", 1)
+          it.coreB = beam("AbCore", p0, it.coreEnd,
+            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 232, 214)), ColorSequenceKeypoint.new(1, RGB(255, 150, 120)) }),
+            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.12), NumberSequenceKeypoint.new(0.6, 0.55), NumberSequenceKeypoint.new(1, 1) }),
+            r * (flat and 0.9 or 1.45), r * (flat and 0.4 or 0.7), 1)
+          it.dia = {}   -- 原来的马赫环菱形光：这版不画（截图里看不到）
           table.insert(M.flames, it)
         end
         -- 热浪不画了（用户 11-18：飞机喷口有怪异的泡泡——气流粒子是一团团烟雾贴图，从后面看就是一串半透明的圆泡；
@@ -921,7 +993,7 @@ function AM.build(d, team, load)
         local zc = (bs.z0 + bs.z1) / 2
         local hp = V(s * (bs.x + bs.w / 2), y0 - h * 0.3, zc)
         box(V(bs.w, 0.15, len), CF(s * bs.x, y0 - h * 0.34, zc), skin, MAT.Metal, "h",
-          { hp = hp, ax = V(0, 0, 1), f = function(c) return s * (c.bayS or 0) * rad(105) end })
+          { hp = hp, ax = V(0, 0, 1), f = function(c) return s * (d.sideArm and bayDoorC(c.bayS or 0) or (c.bayS or 0)) * rad(105) end })
       end
     end
     if d.gunPos then   -- 炮口
@@ -1182,15 +1254,23 @@ function AM.build(d, team, load)
           local dir = R0 and R0.dir or 1
           local tilt = (g ~= "TRotor") and function(cc) return CFrame.Angles(-(cc.pit or 0) * 0.07, 0, -(cc.rol or 0) * 0.07) end or nil
           local it = add(mp, hub:Inverse() * cc0, "r", { hub = hub, f = function(cc) return (cc[spinKey] or 0) * dir end, tilt = tilt })
-          if BLUR[imp.key] and BLUR[imp.key][name] then
+          local bl = BLUR[string.gsub(imp.key, "_v%d+$", "")]   -- 按不带版本号的键查（z10w、z10w_v2 都是这几块）
+          if bl and bl[name] then
             mp.CastShadow = false
             mp.Transparency = 1
             table.insert(M.discs, it)
           else
             table.insert(M.blades, it)
           end
+        elseif g == "Gun" or g == "GunY" then   -- 机头炮塔（阿帕奇、直-10：tools/models/air2glb.py 从原模型里拆出来的）：跟着瞄准转——炮绕耳轴方位 + 俯仰，炮塔座只转方位
+          local G0 = I[string.lower(g)] or I.gun
+          local piv = G0 and (V(G0.p[1], G0.p[2], G0.p[3]) + O) or c
+          add(mp, cc0, "t", { piv = piv, yawOnly = g == "GunY" })
+          if g == "Gun" then M.gunPiv = piv end   -- Fly.lua 按原模型的耳轴位置算炮塔的方位、俯仰（AirDefs 的 gunPos 是零件拼的模型的）
         elseif g == "FoldR" or g == "FoldL" then   -- 舰载机折叠的外翼：绕原模型的铰链（M.foldH）
           add(mp, cc0, "f", { fold = (g == "FoldR") and 1 or -1 })
+        elseif g == "Pit" or g == "PitHud" then   -- 原模型自带的座舱（F-16）、原模型的平显：跟着机身；座舱视角里 Interior 按 pit 认（座舱不藏，平显换成会动的）
+          add(mp, cc0, "b", { pit = g })
         elseif g == "TipR" or g == "TipL" then   -- 平尾外段：自己的铰链
           local F = I.fold and I.fold.Tip
           add(mp, cc0, "f", { fold = (g == "TipR") and 1 or -1, fh = F and { x = F.x, y = F.y + O.Y, A = F.A } or nil })
@@ -1311,22 +1391,61 @@ function AM.pose(M, cf, c, now, world)
           local col = RGB(110, 36, 18):Lerp(RGB(196, 84, 36), math.clamp(t / 100, 0, 1))
           if it.p.Color ~= col then it.p.Color = col end
         elseif not it.cold then
+          -- 军推以下暗红 → 橙；开加力烧得发橙粉色（用户 11-24 夜给的战雷米格-29 截图：从后面看喷口里是亮的橙粉色）
           tr = (ab > 0) and (0.04 + (1 - ab) * 0.18) or math.clamp(0.95 - t / 100 * 0.55, 0.4, 0.95)
-          local col = (ab > 0) and RGB(255, 190, 110):Lerp(RGB(255, 242, 214), ab) or RGB(150, 40, 20):Lerp(RGB(255, 118, 42), math.clamp(t / 100, 0, 1))
+          local col = (ab > 0) and RGB(255, 150, 84):Lerp(RGB(255, 184, 160), math.min(1, ab * 1.4)) or RGB(150, 40, 20):Lerp(RGB(255, 118, 42), math.clamp(t / 100, 0, 1))
           if it.p.Color ~= col then it.p.Color = col end
         end
-      elseif it.plume then   -- 加力火焰的光带：长短、粗细跟着加力，每帧轻轻抖一点
+      elseif it.tube then   -- 焰身的蓝边管子：长短跟着加力（尺寸只在加力变了时改，抖动交给里面的光）
+        local L = r * 2 * (1.4 + 2.4 * ab)
+        local a0, a1 = (it.tube == 1) and 0 or 0.55, (it.tube == 1) and 0.55 or 1
+        local len = math.max(0.1, L * (a1 - a0))
+        out = cf * b0 * CF(0, 0, 0.15 + L * (a0 + a1) / 2) * ALONG_Z
+        if math.abs((it.len or 0) - len) > 0.05 then
+          it.len = len
+          local sz = it.p.Size
+          local k = (it.tube == 1) and 1 or 0.82   -- 后段细一点
+          it.sz0 = it.sz0 or sz
+          it.p.Size = V(len, it.sz0.Y * k, it.sz0.Z * k)
+        end
+        tr = (ab > 0.02) and (((it.tube == 1) and 0.05 or 0.45) + (1 - ab) * 0.45) or 1
+      elseif it.ring then   -- 马赫环：一节一节往后排，加力越大出来的越多；越往后越淡
+        local i = it.ring
+        local th0 = 0.2 + 0.15 * (i - 1)
+        local z = 0.15 + r * 2 * (0.62 + 0.86 * (i - 1)) * (0.9 + 0.1 * ab)
+        out = cf * b0 * CF(0, 0, z) * ALONG_Z
+        if ab > th0 then
+          local k = math.clamp((ab - th0) / 0.2, 0, 1)
+          tr = math.clamp(0.12 + 0.16 * (i - 1) + (1 - k) * 0.8 + 0.05 * math.sin((now or 0) * 23 + i * 1.9), 0, 1)
+        end
+      elseif it.plume then   -- 焰身里那层淡紫的光、马赫环外面的菱形光：位置、长短跟着加力，每帧轻轻抖一点
         out = cf * b0 * CF(0, 0, 0.1)
         local on = ab > 0.02
         if on ~= it.on then
           it.on = on
-          it.outer.Enabled, it.inner.Enabled = on, on
+          it.fill.Enabled = on
+          if it.coreB then it.coreB.Enabled = on end
         end
-        if on then
-          local fl = 1 + 0.06 * math.sin((now or 0) * 37 + r) + 0.04 * math.sin((now or 0) * 61)
-          it.outerEnd.Position = V(0, 0, r * (3.2 + 4.5 * ab) * fl)
-          it.innerEnd.Position = V(0, 0, r * (1.6 + 1.6 * ab) * (2 - fl))
-          it.outer.Width0 = r * (1.55 + 0.25 * ab) * fl
+        if on then   -- 光柱：满加力约七个喷口直径长；焰芯一个半
+          local fl = 1 + 0.05 * math.sin((now or 0) * 37 + r) + 0.03 * math.sin((now or 0) * 61)
+          it.fillEnd.Position = V(0, 0, r * 2 * (2.2 + 4.8 * ab) * fl)
+          if it.coreEnd then it.coreEnd.Position = V(0, 0, r * 2 * (0.6 + 0.9 * ab) * (2 - fl)) end
+        end
+        for i, dm in ipairs(it.dia) do
+          local th0 = 0.2 + 0.15 * (i - 1)
+          local vis = on and ab > th0
+          if vis ~= dm.on then
+            dm.on = vis
+            dm.b1.Enabled, dm.b2.Enabled = vis, vis
+          end
+          if vis then
+            local k = math.clamp((ab - th0) / 0.2, 0, 1)
+            local z = r * 2 * (0.62 + 0.86 * (i - 1)) * (0.9 + 0.1 * ab)
+            local half = r * (0.62 - 0.05 * (i - 1))
+            local w = r * (1.25 - 0.14 * (i - 1)) * k * (0.96 + 0.06 * math.sin((now or 0) * 29 + i * 1.7))
+            dm.a.Position, dm.b.Position, dm.c.Position = V(0, 0, z - half), V(0, 0, z), V(0, 0, z + half)
+            dm.b1.Width1, dm.b2.Width0 = w, w
+          end
         end
       end
       if math.abs(it.p.Transparency - tr) > 0.01 then it.p.Transparency = tr end

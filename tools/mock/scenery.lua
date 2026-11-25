@@ -114,7 +114,7 @@ local t0 = os.clock()
 for _ = 1, 40 do R.as("client", function() C.sceneryUpdate(1000) end) end
 local dt = os.clock() - t0
 local st = C.sceneryStats
--- 用户：花草树木删掉，用 Roblox 自带的草——林子那块地方不再摆树、灌木、草丛、花丛（只留石头），草地上是地形自带的草（Terrain.Decoration）
+-- 用户：花草树木删掉，用 Roblox 自带的草——林子那块地方不再摆树、灌木、草丛、花丛（只留石头），地形草叶后来也去掉了（地形不写 Grass 材质）
 local veg = {}
 for dz = -3, 3 do
   for dx = -3, 3 do
@@ -127,8 +127,10 @@ end
 local vegN = 0
 for k, v in pairs(st.byKey) do if veg[k] then vegN = vegN + v end end
 check(vegN == 0, string.format("原来的林子里（x %.0f z %.0f，一格 %d 棵）不再摆树、灌木、草丛、花丛：%d 株（石头 %d 株，模拟器里 %.1f 秒）", bx, bz, best, vegN, st.live, dt))
+-- 地形草叶：Decoration 脚本改不了（模拟器里一碰就报错，同 Roblox）——草叶长不长看写不写 Grass 材质（veh.lua 查写出来的体素：海岛图写，用户 11-24），
+--   开关和草长写在地点文件的 Terrain 上（tools/build.luau）
 local terr = R.services.Workspace:FindFirstChildOfClass("Terrain") or R.services.Workspace.Terrain
-check(terr ~= nil and terr.Decoration == true, "地形自带的草开着（Terrain.Decoration）")
+check(terr ~= nil and not pcall(function() return terr.Decoration end), "Terrain.Decoration 脚本读不了（同 Roblox：开关写在地点文件里）")
 local folder = R.services.Workspace:FindFirstChild("Scenery")
 local collide, query = 0, 0
 for _, p in ipairs(folder:GetChildren()) do

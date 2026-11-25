@@ -28,11 +28,14 @@ local GLASS = RGB(60, 80, 96)
 -- 型号的外形描述（比例都按弹长 L、弹径 d）
 local D = {
   -- 空空导弹
-  pl10 = { nose = "ir", col = LGREY, bands = { { 0.22, 0.03, YELLOW } }, tail = { at = 0.9, c = 0.11, s = 2.2 }, mid = { at = 0.28, c = 0.05, s = 0.9, strake = 0.5 } },
+  -- 霹雳-10 / 霹雳-15 的尾翼照真弹的比例（用户 11-23 核对歼-20 弹舱：原来的尾翼翼展快一米，四枚霹雳-15 塞不进主弹舱、霹雳-10 收不进侧弹舱）：
+  --   霹雳-15 歼-20 用的是切短的尾翼，尾翼尖离弹轴约 0.18 米；霹雳-10 的舵面大一点，约 0.2 米
+  pl10 = { nose = "ir", col = LGREY, bands = { { 0.22, 0.03, YELLOW } }, tail = { at = 0.9, c = 0.11, s = 0.75 }, mid = { at = 0.28, c = 0.05, s = 0.9, strake = 0.5 } },
   aim9x = { nose = "ir", col = GREY, bands = { { 0.2, 0.025, YELLOW }, { 0.3, 0.025, BROWN } }, tail = { at = 0.93, c = 0.09, s = 2.4 }, mid = { at = 0.24, c = 0.035, s = 1.2 } },
-  pl15 = { nose = "radar", col = WHITE, bands = { { 0.25, 0.025, YELLOW } }, tail = { at = 0.92, c = 0.08, s = 1.9 }, mid = { at = 0.5, c = 0.32, s = 0.55, strake = 1 } },
+  pl15 = { nose = "radar", col = WHITE, bands = { { 0.25, 0.025, YELLOW } }, tail = { at = 0.92, c = 0.08, s = 0.6 }, mid = { at = 0.5, c = 0.32, s = 0.55, strake = 1 } },
   pl12 = { nose = "radar", col = WHITE, bands = { { 0.24, 0.025, YELLOW } }, tail = { at = 0.93, c = 0.08, s = 2.0 }, mid = { at = 0.42, c = 0.12, s = 1.6 } },
   aim120 = { nose = "radar", col = WHITE, bands = { { 0.22, 0.025, YELLOW }, { 0.34, 0.025, BROWN } }, tail = { at = 0.94, c = 0.075, s = 2.1 }, mid = { at = 0.4, c = 0.1, s = 1.5 } },
+  aim54 = { nose = "radar", col = WHITE, bands = { { 0.2, 0.02, YELLOW }, { 0.3, 0.02, BROWN } }, tail = { at = 0.9, c = 0.11, s = 1.5 }, mid = { at = 0.42, c = 0.22, s = 1.2 } },   -- 不死鸟：粗、四片长弦弹翼
   ty90 = { nose = "ir", col = LGREY, bands = { { 0.2, 0.03, YELLOW } }, tail = { at = 0.9, c = 0.1, s = 2.6 }, can = { at = 0.14, c = 0.06, s = 1.4 } },
   aim92 = { nose = "ir", col = GREY, bands = { { 0.2, 0.03, YELLOW }, { 0.3, 0.03, BROWN } }, tail = { at = 0.93, c = 0.08, s = 2.6 }, can = { at = 0.12, c = 0.05, s = 1.5 } },
   -- 空地导弹
@@ -43,6 +46,8 @@ local D = {
   yj83k = { nose = "radar", col = LGREY, bands = { { 0.22, 0.025, YELLOW } }, tail = { at = 0.92, c = 0.07, s = 1.5 }, wing = { at = 0.42, c = 0.11, span = 3.4 } },   -- 鹰击-83K：十字形弹翼在中段、尾翼在最后
   yj91 = { nose = "arm", col = GREY, bands = { { 0.26, 0.025, YELLOW } }, tail = { at = 0.92, c = 0.09, s = 1.6 }, mid = { at = 0.45, c = 0.14, s = 1.4 }, can = { at = 0.18, c = 0.06, s = 1.2 } },
   agm88 = { nose = "arm", col = WHITE, bands = { { 0.24, 0.025, YELLOW }, { 0.55, 0.025, BROWN } }, tail = { at = 0.94, c = 0.08, s = 1.8 }, mid = { at = 0.38, c = 0.18, s = 2.0 } },
+  -- 惊雷-1 高超音速战术核导弹（虚构）：白色弹体、深色烧蚀弹头、红黄两道警示带、尾部四片小舵（空射弹道导弹的样子）
+  hn1 = { nose = "arm", col = WHITE, bands = { { 0.24, 0.018, RED }, { 0.285, 0.018, YELLOW }, { 0.72, 0.012, DARK } }, tail = { at = 0.93, c = 0.1, s = 1.25 } },
   -- 炸弹
   mk82 = { nose = "bomb", col = OLIVE, bands = { { 0.18, 0.025, YELLOW } }, kit = "mk" },
   b250 = { nose = "bomb", col = DGREEN, bands = { { 0.2, 0.025, YELLOW } }, kit = "mk" },

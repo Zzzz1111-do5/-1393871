@@ -2,7 +2,7 @@
 --   用法（仓库根目录）：python3 tools/mock/run.py tools/map/roads.lua [预览图目录]
 --   按坡度找路（A*，12 格一格，八方向）：代价 = 距离 ×（1 + 坡度惩罚），坡太陡、海里、海滩沙地不走；绕开工事；后面的路走到已有的路上便宜一半（自然并到一起）
 --   路线先抽稀（道格拉斯—普克）再倒角平滑（Chaikin 两遍），最后每 ≤ 20 格一个点
---   连接：营地—指挥所（翻过中央山脊的山口）、指挥所—港口镇、指挥所—机场、南岸沿海公路（红滩—港口镇—白滩—蓝滩—金滩—机场）、营地—东北侧翼滩、营地往西沿北岸一段
+--   连接：营地—指挥所（翻过中央山脊的山口）、指挥所—港口镇、指挥所—机场、南岸沿海公路（红滩—港口镇—白滩—绿滩—金滩—机场）、营地—东北侧翼滩、营地往西沿北岸一段
 local SRC = SRC_DIR
 local R = dofile(MOCK_DIR .. "/rbx.lua")
 dofile(MOCK_DIR .. "/load.lua")(R, SRC)
@@ -218,8 +218,8 @@ local LINKS = {
   { "指挥所—机场", cmd, afd, 11 },
   { "红滩—港口镇", beachExit("red"), port, 10 },
   { "港口镇—白滩", port, beachExit("white"), 10 },
-  { "白滩—蓝滩", beachExit("white"), beachExit("blue"), 10 },
-  { "蓝滩—金滩", beachExit("blue"), beachExit("gold"), 10 },
+  { "白滩—绿滩", beachExit("white"), beachExit("blue"), 10 },
+  { "绿滩—金滩", beachExit("blue"), beachExit("gold"), 10 },
   { "金滩—机场", beachExit("gold"), { D.x + D.len / 2 + 30, D.z - 70 }, 10 },
   { "营地—侧翼滩", camp, beachExit("flank"), 10 },
   { "营地往西", { C.x - 220, C.z + 20 }, { -900, (Map.coastN(-900) or C.z) + 150 }, 9 },

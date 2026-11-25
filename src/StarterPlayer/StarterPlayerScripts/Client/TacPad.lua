@@ -708,7 +708,7 @@ function TacPad.init(G)
     if not open then return end
     open, sending, dragging = false, nil, false
     local root = G.mapRoot
-    if root and root.Parent == holder and G.hudParts and G.hudParts.miniBox then G.mapMount(G.hudParts.miniBox, UDs(1, 1)) end
+    if root and root.Parent == holder and G.hudParts and G.hudParts.miniBox then G.mapMount(G.hudParts.miniClip or G.hudParts.miniBox, UDs(1, 1)) end
     pcall(function() G.R.Act:FireServer("tacPad", false) end)
     local ch = me.Character
     local hum = ch and ch:FindFirstChildOfClass("Humanoid")
@@ -776,18 +776,8 @@ function TacPad.init(G)
       redraw()
     end
   end)
-  if mob then   -- 手机：右边一个小按钮（夜视按钮下面）
-    task.spawn(function()
-      local hud = G.gui and G.gui:WaitForChild("Hud", 20)
-      local b = hud and G.ui and G.ui.button and G.ui.button(hud, "", UDim2.fromOffset(52, 40), UDim2.new(1, -78, 0, 186), RGB(24, 28, 30))
-      if b then
-        b.Name = "TacPadBtn"
-        b.Text = T("tac.key")
-        b.BackgroundTransparency = 0.35
-        b.TextSize = 13
-        b.Activated:Connect(function() if open then closePad() else openPad() end end)
-      end
-    end)
+  if mob then   -- 开启入口由步兵触控区排版。收起按钮留在平板上。
+    function G.tacToggle() if open then closePad() else openPad() end end
     local closeBtn = Instance.new("TextButton")   -- 平板右上角的「收起」
     closeBtn.Name = "Close"
     closeBtn.Size = UDo(70, TOP - 4)

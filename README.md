@@ -25,6 +25,9 @@
 
 开载具：部署界面左上角切到「载具」页签，选型号和出生点（攻方：海滩、拿下的据点；守方：营地、还在手里的据点）。
 WASD 驾驶，鼠标瞄准（炮塔跟着转，有回转速度），左键开火，1 / 2 换武器，X 烟幕弹，右键 / V 炮长瞄准镜（滚轮 / Z 换倍率），N 切换昼光 / 夜视 / 热成像白热 / 黑热，F 下车，E 上车。
+坦克炮是真实弹道和火控（`src/ReplicatedStorage/Ballistics.lua`）：真实初速（M829A3 1555、M830 破甲 1140、99A 的 125 毫米穿甲 1740 米 / 秒……）、真实重力和空气阻力，带曳光；瞄准镜里分划中心是瞄准线，**R 激光测距**（镜下沿显示距离；没测是 BS 战斗瞄准距离 1200 / 900 米，打更远的会打低），**Q 换弹种**（M1A2 SEPv2：穿甲 / 破甲 / 多用途 / 霰弹，换了要重新装填）；火控按测的距离抬超高角、炮对准瞄准线上那一点（M1 的主瞄准镜在炮右边：曳光弹在镜里从左上方落到分划中心，99A 从右上方），测距时在跟踪就加提前量。车外第三人称是自动测距。
+
+M1A2 SEPv2 的车长位（F4）照钢铁猛兽的车长位做：车长显示单元上屏是 CITV 热像（绿色、3X / 13X、弹种字母和距离），两屏之间那排蓝键管它；下屏是白底指挥地图，右边橙色键盘打 4～10 位坐标按 ENT 设目标点（LTR 切字母、ENT 发消息），左下方向键挪地图。键都是小点对准、左键按（详见 `docs/interior.md`）。
 
 ## 发布到 Roblox
 
@@ -69,6 +72,19 @@ Studio 里的「设备模拟」只换屏幕大小，量不出手机的内存和�
 重新转换（要网页版仓库）：`python3 -I tools/models/mdl2glb.py <网页版仓库目录> [--sf <Sketchfab 下载目录>]`（ZTQ-15 要 `--sf`，见 `tools/models/sfveh.py`；不给就照旧）；飞机先 `lune run tools/models/airdefs.luau > airdefs.json`，
 再 `python3 -I tools/models/air2glb.py <网页版仓库目录> airdefs.json`；舰艇先 `lune run tools/models/shipdefs.luau > shipdefs.json`，再 `python3 -I tools/models/ship2glb.py <网页版仓库目录> shipdefs.json`。
 模型都是 CC-BY，署名在 `models/veh/credits.txt`、`models/air/credits.txt`、`models/ship/credits.txt`（发布时放进游戏简介或游戏里的致谢）。
+
+## 改枪（对标三角洲行动）
+
+部署界面选主武器（M4 / 狙击枪）那格，下面有「改枪」按钮：3D 的枪上点改装位（枪口、瞄具、前握把、弹匣、战术），底下的卡片换配件，
+右边看性能变化；左边推荐改装和三个「我的方案」；顶上的改枪码能复制给别人、粘贴别人的。点「完成」存档，下次出击生效。
+
+- 配件是 Sketchfab 上 CC-BY 的原模型（署名在 `models/credits.txt`）。不导入也行：客户端开局用 EditableMesh 现生成（要在「游戏设置 → 安全」里打开 Mesh / Image API）；
+  想要原贴图就把 `models/optics/` 里新的 17 个 GLB（`sup_*`、`muz_*`、`opt_*`、`grip_*`、`mag_*`、`tac_*`）也导入（同上面的步骤）。
+- 瞄准镜照使命召唤做（11-21）：开镜时镜身、正圆的目镜圈一直看得见，从目镜的洞里看放大的画面。`models/optics/` 里的 `acog.glb`、`opt_acog6.glb`、`atacr.glb`、`qbu88.glb` 改过（补了正圆目镜圈、拆出镜筒里面的块），导入过的话**删掉旧的重新导入**这 4 个；没重导会自动退回现生成的（不贴原贴图）。
+- 镜内单独放大（11-21）：开镜时镜外只是普通开镜（1.25 倍），镜片里是放大的画面（画中画）。要在「游戏设置 → 安全」里打开 Mesh / Image API（改枪的配件现生成也要它）；没开的话自动退回整屏放大。
+- 枪械等级：用这把枪打死人加经验，升级解锁配件。`Config.GunMods`：`killXp` / `botXp` 每次加多少，`unlockAll = true` 全部解锁，
+  `studioAll`（默认开）在 Studio 里测试时全部解锁，发布到线上按等级。
+- 配件的数值、能装哪些、几级解锁、推荐改装都在 `src/ReplicatedStorage/GunMods.lua`。
 
 ## 地图上的草和石头（`models/scenery/scenery.glb`）
 

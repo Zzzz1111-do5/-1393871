@@ -29,7 +29,7 @@ function Depots.init(G)
   local function defOf(id) return VD.get(id) or AD.get(id) or SD.get(id) end
   local function models(team, cat)
     local out = {}
-    for _, id in ipairs(Config.Vehicles[team][cat] or {}) do
+    for _, id in ipairs(Config.TeamVehicles(team, cat)) do   -- 两边的型号都有（Config.CrossVehicles；舰艇还是各用各的）
       local d = defOf(id)
       if d and not d.needsAir then table.insert(out, id) end
     end
@@ -72,11 +72,12 @@ function Depots.init(G)
   local GROUND_PADS = 8   -- 每边几个地面车位（原来一型一个，现在哪个位都能召唤任何一型）
 
   local function layout()
+    local skipCamp = Map.BASES ~= nil   -- 沙海：两边主基地在下面 runwayPads 后面一起摆
     -- 守方营地：南面一排地面车位（车头朝南，背后是通道，终端柱在车尾），北面直升机停机坪
     local C = Map.CAMP
     local list = groundIds("def")
     local gL, gW = biggest(list)
-    local n = math.min(GROUND_PADS, #list)
+    local n = skipCamp and 0 or math.min(GROUND_PADS, #list)
     local gap = math.max(22, gW + 10)
     local x0 = C.x - (n - 1) * gap / 2
     for i = 1, n do
@@ -87,7 +88,7 @@ function Depots.init(G)
     local hx = { C.x - 140, C.x + 120, C.x + 172 }
     local dh = models("def", "heli")
     for i = 1, math.min(3, math.max(1, #dh)) do
-      if #dh == 0 then break end
+      if #dh == 0 or skipCamp then break end
       local x, z = hx[i], C.z - 32
       addPad({ team = "def", vid = dh[1], vids = dh, summon = true, kind = "air", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + SOUTH),
         term = V(x - 24, 0, z + 4), r = 24, size = V(30, 0, 30), heli = true })
@@ -96,8 +97,9 @@ function Depots.init(G)
     --   从跑道中间偏西开始排，前面还有两千多格跑道；终端柱在跑道北边（用户：机场太小、跑道非常短——
     --   原来停在跑道北边的停机坪上、机头朝南，一推油门就横穿过几十格宽的跑道冲出去了）
     local EAST = V(1, 0, 0)   -- 召唤位按这个基地最大的机型留地方（biggest）
-    local function runwayPads(A, team, ids, need)
+    local function runwayPads(A, team, ids, need, ts)
       if #ids == 0 then return end
+      ts = ts or -1   -- 终端柱在跑道哪一边（−1 北边）
       local L, W = biggest(ids)
       local x = A.x - 420
       for i = 1, 4 do   -- 四个召唤位，一个接一个顺着跑道往东排、左右错开
@@ -105,25 +107,59 @@ function Depots.init(G)
         local z = A.z + ((i % 2 == 0) and 1 or -1) * A.wid * 0.2
         local pos = V(x, surface(x, z), z)
         addPad({ team = team, vid = ids[1], vids = ids, summon = true, kind = "air", need = need, base = CFrame.lookAt(pos, pos + EAST),
-          term = V(x, 0, A.z - A.wid / 2 - 10), r = math.max(L, W) * 0.45, size = V(W + 4, 0, L + 4) })
+          term = V(x, 0, A.z + ts * (A.wid / 2 + 10)), r = math.max(L, W) * 0.45, size = V(W + 4, 0, L + 4) })
         x += L / 2 + 30
       end
+    end
+    -- 沙海（用户 11-24：「军事基地应该在一起」「固定两边都在双方各自固定位置出生」）：两边主基地一样——车场一排地面车位（基地坐标横着排、
+    --   车头朝战场、终端柱在车尾）、三个直升机坪、自己跑道上四个飞机召唤位（终端柱在跑道靠营区那边）；据点 D 的空军基地不再出飞机
+    if Map.BASES then
+      local F = Map.FOB
+      for _, team in ipairs({ "atk", "def" }) do
+        local HB = Map.BASES[team]
+        local fwd = V(0, 0, HB.face)
+        local gl = groundIds(team)
+        local L2, W2 = biggest(gl)
+        local n2 = math.min(GROUND_PADS, #gl)
+        local gap2 = math.max(22, W2 + 10)
+        for i = 1, n2 do
+          local lx = F.motor.lx + (i - (n2 + 1) / 2) * gap2
+          local x, z = Map.baseW(HB, lx, F.motor.lz)
+          local tx, tz = Map.baseW(HB, lx - 4, F.motor.lz + L2 / 2 + 4)
+          local pos = V(x, surface(x, z), z)
+          addPad({ team = team, vid = gl[1], vids = gl, summon = true, kind = "veh", base = CFrame.lookAt(pos, pos + fwd),
+            term = V(tx, 0, tz), r = 12, size = V(W2 + 2, 0, L2 + 2) })
+        end
+        local hh = models(team, "heli")
+        for k = -1, 1 do
+          if #hh == 0 then break end
+          local x, z = Map.baseW(HB, F.heli.lx + k * 90, F.heli.lz)
+          local tx, tz = Map.baseW(HB, F.heli.lx + k * 90 - 26, F.heli.lz + 14)
+          local pos = V(x, surface(x, z), z)
+          addPad({ team = team, vid = hh[1], vids = hh, summon = true, kind = "air", base = CFrame.lookAt(pos, pos + fwd),
+            term = V(tx, 0, tz), r = 24, size = V(30, 0, 30), heli = true })
+        end
+        local A2 = HB.airfield
+        runwayPads(A2, team, models(team, "jet"), nil, (HB.camp.z < A2.z) and -1 or 1)
+      end
+      return
     end
     -- 守方机场（据点 D 丢了就用不了）
     local A = Map.AIRFIELD
     runwayPads(A, "def", models("def", "jet"), "D")
 
-    -- 攻方航母：右舷后部停机位（舰岛后面），机头朝舰艏，自己滑到弹射器
+    -- 攻方航母（福建舰）：右舷舰岛后面一列三个停机位（后面那部升降机上也停一个），机头朝舰艏，自己滑到弹射器；
+    --   离着舰区右边那条红线至少 6 格、不压舰岛（舰岛到 z 134），终端柱在右舷甲板边上
     local cv = deckOf("carrier")
     if cv then
       local ids = {}
       for _, id in ipairs(models("atk", "jet")) do if defOf(id).carrier then table.insert(ids, id) end end
       local L, W = biggest(ids)
-      for _, zl in ipairs({ 90, 174, 252 }) do
+      for _, zl in ipairs({ 160, 200, 240 }) do
         if #ids == 0 then break end
-        local p = (cv.cf * CF(26, 0, zl)).Position
+        local p = (cv.cf * CF(53, 0, zl)).Position
         local base = CFrame.lookAt(V(p.X, surface(p.X, p.Z), p.Z), V(p.X, surface(p.X, p.Z), p.Z) + NORTH)
-        addPad({ team = "atk", vid = ids[1], vids = ids, summon = true, kind = "air", base = base, term = (cv.cf * CF(50, 0, zl + 12)).Position,
+        addPad({ team = "atk", vid = ids[1], vids = ids, summon = true, kind = "air", base = base, term = (cv.cf * CF(76, 0, zl + 10)).Position,
           r = math.max(L, W) * 0.45, size = V(W + 2, 0, L + 2) })
       end
     end
@@ -141,10 +177,31 @@ function Depots.init(G)
     end
     -- 攻方机场岛：陆基飞机（同守方机场，停在跑道上顺着跑道）
     local land = {}
-    for _, id in ipairs(models("atk", "jet")) do if not defOf(id).carrier then table.insert(land, id) end end
+    for _, id in ipairs(models("atk", "jet")) do if Map.LANDONLY or not defOf(id).carrier then table.insert(land, id) end end   -- 沙漠图没有航母：舰载机也从前进机场起飞
     runwayPads(Map.AFIELD2, "atk", land, nil)
+    -- 沙漠图：红方前进基地（Map.REDBASE）——北面一排地面车位（车头朝北、朝着战线，终端柱在车尾），东边三个直升机停机坪
+    local RB = Map.REDBASE
+    if RB then
+      list = groundIds("atk")
+      local gL, gW = biggest(list)
+      local n = math.min(GROUND_PADS, #list)
+      local gap = math.max(22, gW + 10)
+      local x0 = RB.x - (n - 1) * gap / 2
+      for i = 1, n do
+        local x, z = x0 + (i - 1) * gap, RB.z - 90
+        addPad({ team = "atk", vid = list[1], vids = list, summon = true, kind = "veh", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + NORTH),
+          term = V(x - 4, 0, z + gL / 2 + 4), r = 12, size = V(gW + 2, 0, gL + 2) })
+      end
+      local ah = models("atk", "heli")
+      for i = 1, math.min(3, #ah) do
+        local x, z = RB.x + 260 + (i - 1) * 70, RB.z + 40
+        addPad({ team = "atk", vid = ah[1], vids = ah, summon = true, kind = "air", base = CFrame.lookAt(V(x, surface(x, z), z), V(x, surface(x, z), z) + NORTH),
+          term = V(x - 24, 0, z + 4), r = 24, size = V(30, 0, 30), heli = true })
+      end
+    end
     -- 攻方登陆平台：两侧水面一格一个地面车位（车头朝北，朝着岛；车站在气垫艇上），终端柱在平台边上；哪个位都能召唤任何一型
     local B = Map.BARGE
+    if not B then return end   -- 沙漠图没有登陆平台
     list = groundIds("atk")
     local n2 = math.min(GROUND_PADS, #list)
     local half = math.ceil(n2 / 2)
@@ -180,6 +237,7 @@ function Depots.init(G)
   -- 登陆平台：浮在海上的一大块钢平台（四周护栏、几盏灯、两侧画出每个生成格）
   local function buildBarge(f)
     local B = Map.BARGE
+    if not B then return end
     local m = Instance.new("Model")
     m.Name = "Barge"
     local deckY = B.top - 0.75
@@ -256,10 +314,10 @@ function Depots.init(G)
     local head = CFrame.lookAt(V(p.term.X, ty + 4.6, p.term.Z), V(p.term.X, ty + 4.6, p.term.Z) - face.Unit) * CFrame.Angles(math.rad(-25), 0, 0)
     local scr = part(m, V(2.6, 1.6, 0.25), head, RGB(20, 22, 24), MAT.SmoothPlastic, true)
     scr.Name = "Screen"
-    local lamp = part(m, V(0.35, 0.35, 0.35), CF(p.term.X, ty + 5.7, p.term.Z), RGB(120, 200, 255), MAT.Neon)
+    local lamp = part(m, V(0.35, 0.35, 0.35), CF(p.term.X, ty + 5.7, p.term.Z), RGB(120, 240, 150), MAT.Neon)   -- 终端灯：绿（原来蓝，用户 11-21）
     lamp.Name = "Lamp"
     local pl = Instance.new("PointLight")
-    pl.Range, pl.Brightness, pl.Color = 7, 0.8, RGB(140, 200, 255)
+    pl.Range, pl.Brightness, pl.Color = 7, 0.8, RGB(140, 240, 160)
     pl.Parent = lamp
     local pr = Instance.new("ProximityPrompt")
     pr.Name = "Spawn"
@@ -356,17 +414,24 @@ function Depots.init(G)
     return true, d
   end
 
-  local function spawnAt(P, p, load, vid, fuel)
+  local function spawnAt(P, p, load, vid, fuel, mods)
     -- R 币解锁的机型（B-2 199 R 币；Config.Passes）：没买的不给生成（客户端列表里画着锁、点了是购买框）
     local want = vid or p.vid
     if want and G.passOkFor and not G.passOkFor(P, want) then
       G.msg(P.pl, "bad", "pass.locked", { k = "veh." .. want })
       return
     end
+    -- 金币解锁（Economy.lua，用户 11-23）：没买的型号不给生成（客户端卡片上画着锁和价钱，点两下买）
+    if want and G.vehUnlocked and not G.vehUnlocked(P, want) then
+      G.msg(P.pl, "bad", "eco.needVeh", Config.VehPrice(want) or 0)
+      return
+    end
     vid = vid or p.vid
     local ok, d = check(P, p, vid)
     if not ok then return nil end
     if now() < (P.padT or 0) then return nil end
+    local wk = (p.kind == "air" or p.kind == "ship") and p.kind or "veh"
+    if G.wtSpawnOk and not G.wtSpawnOk(P, vid, wk) then return nil end   -- 战雷式（WtMatch.lua）：SP 够不够、出击阵容满没满、备用用完没有
     P.padT = now() + 2
     local e
     if p.kind == "air" then
@@ -376,10 +441,11 @@ function Depots.init(G)
     elseif p.kind == "ship" then
       e = G.spawnShip and G.spawnShip(P.team, p.vid, p.base, P)
     else
-      e = G.spawnGroundVeh and G.spawnGroundVeh(P.team, vid, p.base, p.sea, P)
+      e = G.spawnGroundVeh and G.spawnGroundVeh(P.team, vid, p.base, p.sea, P, mods)   -- mods：坦克的改装（客户端改装界面选的，Armor 里按 TankMods 校验）
     end
     if e then
       e.padId = p.id
+      if G.wtSpawned then G.try("战雷出车", G.wtSpawned, P, vid, wk, e) end   -- 花 SP、记进出击阵容
       G.fx({ k = "padSpawn", p = e.root.CFrame.Position })
     end
     return e
@@ -414,7 +480,11 @@ function Depots.init(G)
   function G.ACT.padSpawn(P, padId, load, vid, fuel)
     local p = type(padId) == "string" and byId[padId] or nil
     if not p or not (p.kind == "air" or (p.kind == "veh" and p.summon)) then return end
-    if p.kind == "veh" then load, fuel = nil, nil end
+    local mods = nil
+    if p.kind == "veh" then   -- 地面车：挂载那一格放的是坦克的改装（{ aps = "hk", roof = "gau8" }）
+      mods = (type(load) == "table") and load or nil
+      load, fuel = nil, nil
+    end
     if p.summon then
       vid = vid or p.vid   -- 没说型号（老客户端、老的一型一位）：这个召唤位的第一型
       local okId = false
@@ -423,7 +493,7 @@ function Depots.init(G)
     else
       vid = nil
     end
-    spawnAt(P, p, (type(load) == "table") and load or nil, vid, (type(fuel) == "number") and fuel or nil)
+    spawnAt(P, p, (type(load) == "table") and load or nil, vid, (type(fuel) == "number") and fuel or nil, mods)
   end
 end
 

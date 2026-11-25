@@ -71,6 +71,7 @@ function Forts.init(G)
     local board = part(f, V(3.2, 2.2, 0.2), base * CF(0, 3.6, 0.25), RGB(196, 40, 36), MAT.SmoothPlastic, false)
     local sg = Instance.new("SurfaceGui")
     sg.Face = Enum.NormalId.Back
+    sg.CanvasSize = Vector2.new(64, 44)   -- 只画一个骷髅：原来没设，按默认 800 × 600 画（八块牌子占三百多万像素，挤掉车里、座舱屏幕的分辨率）
     sg.Parent = board
     local t = Instance.new("TextLabel")
     t.Size = UDim2.fromScale(1, 1)
@@ -206,7 +207,33 @@ function Forts.init(G)
     if not m.alive then return end
     m.alive = false
     local w = m.at and FD.MINE.at or FD.MINE.ap
-    G.explode(V(m.x, m.y + 0.5, m.z), w, MINE_SRC, m.at and 1.2 or 0.8)
+    local p = V(m.x, m.y + 0.5, m.z)
+    -- 车底防雷板（坦克改装，Kit.lua）：压上雷的车挨的减半
+    local bk = G.kitMineK and G.kitMineK(p)
+    local own = false
+    if bk and not G.dmgK then G.dmgK, own = bk, true end
+    G.explode(p, w, MINE_SRC, m.at and 1.2 or 0.8)
+    if own then G.dmgK = nil end
+  end
+  -- 扫雷犁（Kit.lua）用：(x, z) 附近 r 格里还在的雷；把一颗雷翻到一边（不炸）
+  function G.minesNear(x, z, r)
+    local out = {}
+    for _, F in pairs(fields) do
+      if x > F.x0 - r - 12 and x < F.x1 + r + 12 and z > F.z0 - r - 12 and z < F.z1 + r + 12 then
+        for _, m in ipairs(F.list) do
+          if m.alive and not m.arming then
+            local dx, dz = m.x - x, m.z - z
+            if dx * dx + dz * dz < r * r then table.insert(out, m) end
+          end
+        end
+      end
+    end
+    return out
+  end
+  function G.mineClear(m, how)
+    if not m.alive then return end
+    m.alive = false
+    G.fx({ k = (how == "plow") and "plowMine" or "defuse", p = V(m.x, m.y, m.z) })
   end
 
   -- 爆炸：炸断附近的铁丝网、引爆附近的雷（隔一小会儿，一串一串地炸）
@@ -238,7 +265,7 @@ function Forts.init(G)
     -- 先收集一遍攻方在地上的人和车（每步一次），再按雷区的范围粗筛
     local units = {}
     for _, P in pairs(G.P) do
-      if P.team == "atk" and P.alive and P.char and not G.inVeh(P) then
+      if P.team == "atk" and P.alive and P.char and not G.inVeh(P) and not P.downed then
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         if hrp then table.insert(units, { x = hrp.Position.X, z = hrp.Position.Z, veh = false, r = 0 }) end
       end
@@ -512,7 +539,7 @@ function Forts.init(G)
     end
     if Tg.inf then
       for _, P in pairs(G.P) do
-        if P.team == foe and P.alive and P.char and not G.inVeh(P) then
+        if P.team == foe and P.alive and P.char and not G.inVeh(P) and not P.downed then
           local hrp = P.char:FindFirstChild("HumanoidRootPart")
           local hum = P.char:FindFirstChildOfClass("Humanoid")
           if hrp and hum and hum.Health > 0 then consider(nil, P, hrp.Position, 1) end
@@ -629,7 +656,7 @@ function Forts.init(G)
     local w = e.w
     local units = {}
     for _, P in pairs(G.P) do
-      if P.team == foe and P.alive and P.char and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then
+      if P.team == foe and P.alive and P.char and not P.downed and not (G.inVeh(P) and (P.vehicle.air or P.vehicle.sea)) then
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         if hrp then table.insert(units, hrp.Position) end
       end
@@ -900,8 +927,9 @@ function Forts.init(G)
 
   local function newFort(L)
     local d = FD.D[L.kind]
-    local e = G.newEnt({ kind = "fort", team = "def", cat = "fort", hp = d.hp, size = d.size, cf = L.cf * CF(0, d.size.Y / 2, 0), solid = true,
-      extra = { fort = true, fkind = L.kind, fd = d, w = FD.W[d.weapon], base = L.cf, pt = L.pt, tag = L.tag, ty = 0, gp = 0, home = "def" } })
+    local team = (L.home == "atk" or L.home == "def") and L.home or "def"   -- 沙漠：两边基地各有自己的工事（FortDefs.layout 的 home）
+    local e = G.newEnt({ kind = "fort", team = team, cat = "fort", hp = d.hp, size = d.size, cf = L.cf * CF(0, d.size.Y / 2, 0), solid = true,
+      extra = { fort = true, fkind = L.kind, fd = d, w = FD.W[d.weapon], base = L.cf, pt = L.pt, tag = L.tag, ty = 0, gp = 0, home = team } })
     e.model:SetAttribute("Model", L.kind)
     e.model:SetAttribute("Ty", 0)
     e.model:SetAttribute("Gp", 0)
@@ -1096,6 +1124,7 @@ function Forts.init(G)
 
   local enter0 = G.ACT.enterVeh
   G.ACT.enterVeh = function(P, entId)
+    if P.downed then return end   -- 倒地的不能上车、操作工事（Revive.lua）
     local e = (type(entId) == "string") and G.entById[entId] or nil
     if e and e.fort then
       if man(P, e) then G.msg(P.pl, "info", "ui.manned", { k = "fort." .. e.fkind }) end

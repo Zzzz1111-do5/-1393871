@@ -87,7 +87,7 @@ local function visible(g)
     local cls = o.ClassName
     if cls == "ScreenGui" then return o.Enabled ~= false end
     if cls == "PlayerGui" then return true end
-    if (cls == "Frame" or cls == "TextButton" or cls == "TextLabel" or cls == "ImageButton" or cls == "ImageLabel" or cls == "ScrollingFrame" or cls == "CanvasGroup") and o.Visible == false then return false end
+    if (cls == "Frame" or cls == "TextButton" or cls == "TextLabel" or cls == "TextBox" or cls == "ImageButton" or cls == "ImageLabel" or cls == "ScrollingFrame" or cls == "CanvasGroup" or cls == "ViewportFrame") and o.Visible == false then return false end
     o = o.Parent
   end
   return true
@@ -149,16 +149,30 @@ function T.actAsRemote(pl, ...) T.remoteAs(pl, "Act", ...) end
 
 -- 地图里的载具生成点（Depots.lua）：找某个型号的生成点；走到终端柱旁边按 E；返回生成出来的那一辆
 --   召唤位（飞机、直升机、地面载具都是：一个位上好几型，Depots.lua 的 summon、vids）：记下要的型号，usePad 时在弹出的卡片里点这一型
+--   两边都能用对方的载具（Config.CrossVehicles）以后，对面的召唤位上也有这一型：先找本来就是这一边的型号的那边的召唤位（同以前），没有再随便哪个
 T.padVid = {}
-function T.pad(vid)
+local function nativeOf(team, vid)
+  for _, list in pairs((T.G.Config.Vehicles or {})[team] or {}) do
+    if type(list) == "table" then
+      for _, id in ipairs(list) do if id == vid then return true end end
+    end
+  end
+  return false
+end
+function T.pad(vid, team)
   for _, p in ipairs(T.G.pads or {}) do
     if p.vid == vid and not p.summon then return p end
   end
-  for _, p in ipairs(T.G.pads or {}) do
-    for _, id in ipairs(p.vids or {}) do
-      if id == vid then
-        T.padVid[p] = vid
-        return p
+  for pass = 1, 2 do
+    for _, p in ipairs(T.G.pads or {}) do
+      local ok = (pass == 2) or (team and p.team == team) or (not team and nativeOf(p.team, vid))
+      if ok then
+        for _, id in ipairs(p.vids or {}) do
+          if id == vid then
+            T.padVid[p] = vid
+            return p
+          end
+        end
       end
     end
   end
@@ -184,6 +198,12 @@ function T.usePad(pl, p)
     local card = (pl == R.localPlayer) and T.findNamed("Pick_" .. vid, pl)
     if card then T.press(card) else T.actAsRemote(pl, "padSpawn", p.id, false, vid) end
     R.run(0.6)
+    -- 坦克选了以后先进改装界面（Garage.lua，用户 11-19）：照默认改装直接点「出车」
+    local C = (pl == R.localPlayer) and T.C or nil
+    if C and C.garageOpen and C.garageOpen() then
+      local go = T.findNamed("GarageGo", pl)
+      if go then T.press(go) R.run(0.6) end
+    end
   end
   for _, list in ipairs({ G.vehicles or {}, G.aircraft or {}, G.ships or {} }) do
     for _, e in ipairs(list) do
@@ -191,6 +211,37 @@ function T.usePad(pl, p)
     end
   end
   return nil
+end
+
+-- 假装 Studio 里导入了某个原模型（照 ImportedMeta 在 ReplicatedStorage.Imported.Veh.<key> 摆一套同名、同尺寸的 MeshPart；被新块顶替的旧块不摆）
+function T.fakeImport(key)
+  local RS = R.services.ReplicatedStorage
+  local IM = R.require(RS:FindFirstChild("ImportedMeta"))
+  local info = IM.m[key]
+  if not info then return 0 end
+  local imp = RS:FindFirstChild("Imported") or R.Instance.new("Folder")
+  imp.Name = "Imported"
+  imp.Parent = RS
+  local vf = imp:FindFirstChild("Veh") or R.Instance.new("Folder")
+  vf.Name = "Veh"
+  vf.Parent = imp
+  local f = R.Instance.new("Folder")
+  f.Name = key
+  local gone = {}
+  for _, p in pairs(info.parts) do for _, o in ipairs(p.rep or {}) do gone[o] = true end end
+  local n = 0
+  for name, p in pairs(info.parts) do
+    if not gone[name] then
+      local b = R.Instance.new("MeshPart")
+      b.Name = "V_" .. key .. "__" .. name
+      b.Size = T.V3(p.s[1], p.s[2], p.s[3])
+      b.Parent = f
+      n = n + 1
+    end
+  end
+  f:SetAttribute("N", n)
+  f.Parent = vf
+  return n
 end
 
 function T.summary()

@@ -64,7 +64,7 @@ export async function setupShot(S, env) {
 }
 
 // —— 小工具 ——
-function cam(env, pos, look, fov) {
+export function cam(env, pos, look, fov) {
   const c = env.camera;
   c.position.copy(pos);
   c.up.set(0, 1, 0);
@@ -72,7 +72,7 @@ function cam(env, pos, look, fov) {
   if (fov) { c.fov = fov; c.updateProjectionMatrix(); }
 }
 // 船跟着浪：位置、航向（0 = 朝北 −Z），返回海面高度
-function onWaves(obj, x, z, heading, t, lift = 0, k = 1) {
+export function onWaves(obj, x, z, heading, t, lift = 0, k = 1) {
   const y = seaY(x, z, t) * k + lift;
   const n = seaNormal(x, z, t);
   obj.position.set(x, y, z);
@@ -81,7 +81,7 @@ function onWaves(obj, x, z, heading, t, lift = 0, k = 1) {
   obj.updateMatrixWorld(true);
   return y;
 }
-function onGround(env, obj, x, z, heading, lift = 0) {
+export function onGround(env, obj, x, z, heading, lift = 0) {
   const gy = env.groundY(x, z);
   const a = env.groundY(x, z - 4), b = env.groundY(x, z + 4), l = env.groundY(x - 4, z), r = env.groundY(x + 4, z);
   obj.position.set(x, gy + lift, z);
@@ -92,9 +92,9 @@ function onGround(env, obj, x, z, heading, lift = 0) {
   obj.updateMatrixWorld(true);
   return gy;
 }
-const headingTo = (from, to) => Math.atan2(-(to.x - from.x), -(to.z - from.z));   // 0 = 朝 −Z
+export const headingTo = (from, to) => Math.atan2(-(to.x - from.x), -(to.z - from.z));   // 0 = 朝 −Z
 async function rifle(env) { return loadGLB(`${env.REPO}/models/fps_m4.glb`); }
-async function squad(env, team, n, seed, opt = {}) {
+export async function squad(env, team, n, seed, opt = {}) {
   const R = rng(seed), g = await rifle(env);
   const out = [];
   for (let i = 0; i < n; i++) out.push(soldier(team, { rifle: opt.noRifle ? null : g, skin: Math.floor(R() * 5), nvg: opt.nvg ?? 1, nvgGlow: opt.glow ?? 0, fabric: env.T.grime }));
@@ -108,7 +108,7 @@ function lighthouseBeam(add) {
   return t => { b.rotation.set(0, t * 0.55 + 1.2, 0); b.rotateX(-2.5 * DEG); };
 }
 // 船的航行灯（055 等）：舷灯左红右绿、桅顶白——登记成特效（每帧画完模型、矩阵更新了才算位置）
-function navLights(fx, S) {
+export function navLights(fx, S) {
   const M = S.M, k = S.k, root = S.root;
   const side = M.side ? V3(...M.side).multiplyScalar(k) : V3(10, 20, -30), top = M.top ? V3(...M.top).multiplyScalar(k) : V3(0, 60, -20);
   fx.add((t, f) => {
@@ -121,7 +121,7 @@ function navLights(fx, S) {
   });
 }
 // 喷气机的加力尾焰（挂在模型上）：发光的锥 + 喷口里的亮光 + 照亮周围的灯；kf() 给这一刻的加力程度，lk 照亮周围的灯另乘（镜头贴在机尾时调暗，不然机背一片白）
-function afterburners(A, fx, kf, lk = 1) {
+export function afterburners(A, fx, kf, lk = 1) {
   const fl = [];
   for (const n of A.noz) {
     const m = flameMesh(n.r * 0.9, n.r * 6.5);
@@ -140,13 +140,13 @@ function afterburners(A, fx, kf, lk = 1) {
     }
   });
 }
-function spot(add, pos, target, color, intensity, angle = 50, dist = 400) {
+export function spot(add, pos, target, color, intensity, angle = 50, dist = 400) {
   const s = new THREE.SpotLight(color, intensity, dist, angle * DEG, 0.6, 2);
   s.position.copy(pos); s.target.position.copy(target);
   add(s); add(s.target);
   return s;
 }
-function point(add, pos, color, intensity, dist = 100) {
+export function point(add, pos, color, intensity, dist = 100) {
   const l = new THREE.PointLight(color, intensity, dist, 2);
   l.position.copy(pos);
   add(l);
@@ -738,8 +738,8 @@ function lockBoxAt(env, p) {
 // S15 锁定：歼-20 后上方，前面的 F-22 被框住，绿框搜索 → 红框锁定
 async function shotAir(env, add) {
   const { fx } = env;
-  const J = await aircraft('j20', env.REPO); add(J.root);
-  const F = await aircraft('f22', env.REPO); add(F.root);
+  const J = await aircraft('j20', env.REPO); add(J.root); J.gearDown(false);
+  const F = await aircraft('f22', env.REPO); add(F.root); F.gearDown(false);
   const X = j20Extras(J); X.heat(0.3);
   afterburners(J, fx, () => 0.3, 0.15); afterburners(F, fx, () => 0.8);
   j20Glow(fx, J, X);
@@ -771,7 +771,7 @@ async function shotAir(env, add) {
 async function shotBay(env, add) {
   const { fx } = env;
   const T0 = 2.8;
-  const J = await aircraft('j20', env.REPO); add(J.root);
+  const J = await aircraft('j20', env.REPO); add(J.root); J.gearDown(false);
   const X = j20Extras(J); X.heat(0.3);
   afterburners(J, fx, () => 0.3, 0.3);
   j20Glow(fx, J, X);
@@ -818,7 +818,7 @@ async function shotBay(env, add) {
 async function shotKill(env, add) {
   const { fx } = env;
   const T0 = 5.7, hitL = AIR.T_HIT - T0;
-  const F = await aircraft('f22', env.REPO); add(F.root);
+  const F = await aircraft('f22', env.REPO); add(F.root); F.gearDown(false);
   afterburners(F, fx, t => (T0 + t < AIR.T_HIT ? 0.9 : 0));
   const M = pl10(); add(M);
   const ML = M.userData.len;
@@ -1018,13 +1018,13 @@ async function shotDawn(env, add) {
     }
   });
   // 天亮：山脊后面透出来的光。先量出这个方向上山脊的仰角，把光团摆在脊线再往上一点，镜头升起来的时候正好露出来
-  const camP0 = V3(304, 34, -598);   // 镜头起点（下面 update 里的 cp 起点）：按它量山脊的仰角
+  const camP0 = gp(318, -676, 3.2);
   let ang = -1;
   for (let d = 600; d < 9000; d += 150) {
     const x = camP0.x + SUN.x * d, z = camP0.z + SUN.z * d;
     ang = Math.max(ang, (env.groundY(x, z) - camP0.y) / d);
   }
-  const sunAt = V3(camP0.x + SUN.x * 9000, camP0.y + ang * 9000 + 430, camP0.z + SUN.z * 9000);   // 脊线再往上一点：镜头抬起来也看得见
+  const sunAt = V3(camP0.x + SUN.x * 9000, camP0.y + ang * 9000 + 110, camP0.z + SUN.z * 9000);
   fx.add((t, f) => {
     const k = smooth(0.6, 6.5, t);
     f.addGlow(sunAt, 900, new THREE.Color(1, 0.66, 0.34), 2.5 + 10 * k, 1, 0);        // 日头本身
@@ -1041,19 +1041,19 @@ async function shotDawn(env, add) {
       }
       // 镜头：低低地架在队伍侧后方，兵斜着穿过画面往山脊那边走（逆光剪影），镜头慢慢升一点、往远处推
       const e = easeIO(u);
-      // 收尾的大全景：镜头从水边抬起来、往后拉，把整个滩头亮出来——烧着的残骸、沙滩上的车和人、晨雾，
-      //   远处山脊后面日头刚出来（贴着地面架机位时近处的坡会堵住大半个画面，抬起来才看得全）
-      const cp = V3(lerp(304, 288, e), lerp(34, 112, e), lerp(-598, -512, e));
-      const look = V3(lerp(352, 376, e), lerp(46, 96, e), lerp(-800, -920, e));   // 往上看一点：地平线压到下半幅，日头和霞光占住上面
-      cam(env, cp, look, lerp(36, 43, e));
+      // 机位压在沙面上、顺着滩头往东北看：天占着上半幅（云、最后几颗星），碉堡、围栏、兵都是逆光剪影（用户：日初用这版）
+      const g1 = groundY(246, -700);
+      const cp = V3(lerp(246, 258, e), g1 + lerp(4.2, 13, e), lerp(-700, -706, e));
+      const look = V3(lerp(500, 512, e), g1 + lerp(16, 34, e), lerp(-790, -830, e));
+      cam(env, cp, look, lerp(34, 39, e));
       env.camera.rotateZ(Math.sin(t * 0.4) * 0.35 * DEG);
       shake(env.camera, t, 0.12, 1.2, 61);
       const dawn = lerp(0.3, 0.95, smooth(0, 7, t));
-      return { exposure: lerp(1.3, 1.12, u), dawn, sunDir: SUN, moonVis: Math.max(0, 1 - dawn * 1.3),
+      return { exposure: lerp(1.08, 0.95, u), dawn, sunDir: SUN, moonVis: Math.max(0, 1 - dawn * 1.3),
         // 雾浓一点：远处的山脊退成一层层的剪影（地形的粗糙就看不出来了）
         fogColor: new THREE.Color().setRGB(lerp(0.05, 0.19, dawn), lerp(0.05, 0.135, dawn), lerp(0.07, 0.125, dawn)), fogDensity: lerp(0.00075, 0.00105, u),
         moonDir: SUN, moonI: lerp(3.0, 6.0, dawn), moonC: 0xffb070, hemiI: lerp(1.1, 1.9, dawn),   // 「月光」当成贴着地平线的晨光：人、车、烟都镶一道暖边
-        shadowAt: V3(336, 10, -760), shadowR: 260, sat: 0.92, contrast: 1.1, bloom: 1.15, tint: 1.04,
+        shadowAt: V3(336, 10, -760), shadowR: 220, sat: 0.9, contrast: 1.12, bloom: 1.5, tint: 1.04,
         dof: { focus: lerp(45, 200, e), range: lerp(120, 360, e), max: 0.38 } };
     },
     titles: t => [{ text: '天亮了', x: 0.5, y: 0.8, size: 0.03, font: SERIF, weight: 700, spacing: 0.4, a: fadeIO(t, 4.6, 7.8, 1.0, 0.7), color: '#f0e2cc' }],
@@ -1090,7 +1090,7 @@ async function shotTitle(env, add) {
 async function shotFeatures(env, add) {
   env.worldVisible(false);
   const tank = await vehicle('ztz99', env.REPO); add(tank.root);   // 用户：结尾那辆坦克建模极其粗糙——ZTQ-15 换成 99A
-  const J = await aircraft('j20', env.REPO); add(J.root);
+  const J = await aircraft('j20', env.REPO); add(J.root); J.gearDown(false);
   const key = new THREE.DirectionalLight(0xffd6b0, 4.0); key.position.set(-25, 18, 35); add(key);
   const rim = new THREE.DirectionalLight(0x8fb0ff, 6.0); rim.position.set(30, 14, -90); add(rim);
   return {

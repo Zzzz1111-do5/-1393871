@@ -4,7 +4,6 @@ local Players = game:GetService("Players")
 local StarterGui = game:GetService("StarterGui")
 local UIS = game:GetService("UserInputService")
 local RS = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 
 local UI = {}
 
@@ -104,7 +103,10 @@ function UI.init(G)
   local function hpColor(k) return RGB(232, 84, 72):Lerp(TEXT, math.clamp(k, 0, 1)) end   -- 满血白、快没了红
   G.ui = { frame = frame, round = round, stroke = stroke, label = label, button = button, flatPanel = flatPanel, hpColor = hpColor }
 
-  local function teamColor(t) return Config.Teams[t or "atk"].color end
+  local function teamColor(t)   -- 征服模式的中立据点（owner = "none"）：灰
+    local T0 = Config.Teams[t or "atk"]
+    return T0 and T0.color or RGB(200, 200, 200)
+  end
   local function fmtTime(s)
     s = math.max(0, math.floor(s or 0))
     return string.format("%d:%02d", s // 60, s % 60)
@@ -138,13 +140,13 @@ function UI.init(G)
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled   -- G.mobile 要到 Play.lua 才有：这里自己判断
   local M0 = mobile and 18 or 48   -- 左右边距
   local WHITE, DIM, FAINT = Color3.new(1, 1, 1), RGB(150, 156, 160), RGB(96, 102, 106)
-  local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.12)
+  local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.08)
   deploy.Name = "Deploy"
   deploy.Visible = false
   deploy.ZIndex = 10
-  do   -- 左边、下边压暗，右上透出一点战场
+  do   -- 保留远景，限制夜视和照明弹在部署页背后的亮斑
     local g = Instance.new("UIGradient")
-    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.3), NumberSequenceKeypoint.new(1, 0.5) })
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0), NumberSequenceKeypoint.new(0.5, 0.13), NumberSequenceKeypoint.new(1, 0.24) })
     g.Rotation = -20
     g.Parent = deploy
   end
@@ -221,6 +223,7 @@ function UI.init(G)
   local langBtn = link(deploy, "", UDim2.fromOffset(110, 26), UDim2.new(1, -M0, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
   local sideBtn = link(deploy, "", UDim2.fromOffset(110, 26), UDim2.new(1, -M0 - 118, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
   sideBtn.Activated:Connect(function() if G.showFaction then G.showFaction() end end)
+  sideBtn.Visible = false   -- 用户 11-22：「界面就不要写 switch side 了」——自动分队，不再从部署界面换阵营
   local menuBtn = link(deploy, "", UDim2.fromOffset(80, 26), UDim2.new(1, -M0 - 236, 0, topY), 12, Vector2.new(1, 0), Enum.TextXAlignment.Right)
   menuBtn.Activated:Connect(function() if G.showMenu then G.showMenu() end end)
   hair(deploy, UDim2.new(1, -M0 * 2, 0, 1), UDim2.fromOffset(M0, topY + 34), 0.9)
@@ -244,6 +247,30 @@ function UI.init(G)
     stats[k] = { a = a, bg = bg, fill = fill, v = v }
     a.Visible, bg.Visible, v.Visible = not mobile, not mobile, not mobile
   end
+  -- 改枪（用户 11-20：对标三角洲行动，Gunsmith.lua）：主武器那格下面一个「改枪」按钮，旁边一行现在装的配件
+  local GMods = require(game:GetService("ReplicatedStorage"):WaitForChild("GunMods"))
+  local gsY = infoY + (mobile and 84 or 112 + 4 * 24 + 6)
+  local gsBtn = Instance.new("TextButton")
+  gsBtn.Size, gsBtn.Position = UDim2.fromOffset(mobile and 110 or 132, mobile and 30 or 34), UDim2.fromOffset(M0, gsY)
+  gsBtn.BackgroundColor3, gsBtn.BackgroundTransparency, gsBtn.BorderSizePixel, gsBtn.AutoButtonColor = RGB(206, 255, 72), 0, 0, true
+  gsBtn.Font, gsBtn.TextSize, gsBtn.TextColor3, gsBtn.Text = Enum.Font.GothamBlack, mobile and 13 or 14, RGB(18, 22, 8), ""
+  gsBtn.Visible = false
+  gsBtn.Parent = kitPage
+  local gsLine = txt(kitPage, "", UDim2.fromOffset(mobile and 230 or 340, 16), UDim2.fromOffset(M0 + (mobile and 120 or 144), gsY + (mobile and 7 or 9)), 11, DIM, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  gsLine.Visible = false
+  local gsLv = txt(kitPage, "", UDim2.fromOffset(120, 14), UDim2.fromOffset(M0, gsY + (mobile and 34 or 40)), 10, FAINT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  gsLv.Visible = false
+
+  gsBtn.Activated:Connect(function()
+    if sel.gsId and G.openGunsmith then
+      G.openGunsmith(sel.gsId, function() if G.refreshDeploy then G.refreshDeploy() end end)
+    end
+  end)
+  -- 服务器改好了配件 / 加了枪械经验（玩家属性）：部署界面开着就刷新
+  for _, a in ipairs({ "Gun_m4", "Gun_sniper", "GunXp_m4", "GunXp_sniper" }) do
+    pcall(function() player:GetAttributeChangedSignal(a):Connect(function() if deploy.Visible and G.refreshDeploy then G.refreshDeploy() end end) end)
+  end
+
   -- 右边的大图（慢慢左右转）
   local big = Instance.new("ViewportFrame")
   big.Name = "GearBig"
@@ -300,6 +327,43 @@ function UI.init(G)
     c.slot = slot
     cards[i] = c
   end
+  -- 兵种（用户 11-24：「各种角色配备各种武器」）：装备栏上面一排，点一个整套换成这个兵种的（Config.RoleKits；之后每格照样能改）；
+  --   选格子（上面弹出可选的）时藏起来不挡
+  local roleRow = Instance.new("ScrollingFrame")
+  roleRow.Name = "RoleRow"
+  roleRow.Size = UDim2.new(1, -M0 * 2, 0, mobile and 24 or 28)
+  roleRow.Position = UDim2.new(0, M0, 1, slotY - SH - 12)
+  roleRow.AnchorPoint = Vector2.new(0, 1)
+  roleRow.BackgroundTransparency, roleRow.BorderSizePixel = 1, 0
+  roleRow.ScrollBarThickness = 0
+  roleRow.ScrollingDirection = Enum.ScrollingDirection.X
+  roleRow.AutomaticCanvasSize = Enum.AutomaticSize.X
+  roleRow.CanvasSize = UDim2.new()
+  roleRow.Parent = kitPage
+  local roleLay = Instance.new("UIListLayout")
+  roleLay.FillDirection = Enum.FillDirection.Horizontal
+  roleLay.Padding = UDim.new(0, mobile and 10 or 16)
+  roleLay.SortOrder = Enum.SortOrder.LayoutOrder
+  roleLay.VerticalAlignment = Enum.VerticalAlignment.Center
+  roleLay.Parent = roleRow
+  local roleHead = txt(roleRow, "", UDim2.fromOffset(mobile and 34 or 44, 16), nil, 11, FAINT, Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  roleHead.LayoutOrder = 0
+  local roleBtns = {}
+  for i, r in ipairs(Config.RoleKits or {}) do
+    local b = link(roleRow, "", UDim2.fromOffset(mobile and 52 or 66, mobile and 22 or 26), UDim2.new(), mobile and 11 or 13, nil, Enum.TextXAlignment.Center)
+    b.Name = "Role_" .. r.id
+    b.LayoutOrder = i
+    local u = hair(b, UDim2.new(0, 18, 0, 2), UDim2.new(0.5, -9, 1, -2), 1)
+    b.Activated:Connect(function()
+      local k = Config.roleKit and Config.roleKit(r.id, (G.S and G.S.team) or "atk")
+      if not k then return end
+      sel.kit = k
+      sel.kitRole = r.id
+      sel.slot = nil
+      G.refreshDeploy()
+    end)
+    roleBtns[r.id] = { b = b, u = u }
+  end
   -- 主按钮：选择生成点
   local CW, CH = mobile and 200 or 270, mobile and 48 or 62
   local goSpawn, goSpawnT, goSpawnK = mainButton(kitPage, UDim2.fromOffset(CW, CH), UDim2.new(1, -M0, 1, slotY), Vector2.new(1, 1))
@@ -313,7 +377,7 @@ function UI.init(G)
   end
   -- 数据条：枪看伤害 / 射速 / 射程 / 精度；炸的看伤害 / 杀伤半径 / 射程 / 弹药；工具不显示
   local function statRows(id)
-    local w = Config.Weapons[id]
+    local w = (G.W and G.W[id]) or Config.Weapons[id]   -- 枪按装的配件算（改枪；GunKit.lua）
     if not w then return {} end
     local m = function(studs) return math.floor((studs or 0) / 2.8 + 0.5) end
     if w.kind == "gun" then
@@ -338,14 +402,29 @@ function UI.init(G)
 
   local focus = 1   -- 大图、标题看的是哪一格
   local bigItem, bigWait = nil, false
-  local function itemName(id) return id and T("weapon." .. id) or T("deploy.none") end
+  -- 各兵种的枪两边是不同的制式（GearDefs.BY）：有「weapon.<枪>.<阵营>」的按自己这边的写（机枪：QJY-88 / M249）
+  local function itemName(id)
+    if not id then return T("deploy.none") end
+    local team = (G.S and G.S.team) or "atk"
+    local k2 = "weapon." .. id .. "." .. team
+    local v = T(k2)
+    if v ~= k2 then return v end
+    return T("weapon." .. id)
+  end
   local function setModel(vp, id, team)
     if not G.gearModel or not G.viewFit then return id ~= nil end   -- GearView 还没起来：等一会儿再画
     if not id then
       G.viewFit(vp, nil)
       return false
     end
-    local m, wait, real = G.gearModel(id, team)
+    local m, wait, real
+    if G.gunModel and GMods.has(id) and G.myBuild then   -- 改枪：装着现在这一套配件的枪
+      m, wait = G.gunModel(id, team, G.myBuild(id))
+      real = m ~= nil
+      if not m then m, wait, real = G.gearModel(id, team) end
+    else
+      m, wait, real = G.gearModel(id, team)
+    end
     if m and not real then   -- 零件拼的方块不放（粗糙）：等真模型
       m:Destroy()
       m = nil
@@ -396,6 +475,8 @@ function UI.init(G)
   function G.menuOpen()
     return (G.hangarOpen ~= nil and G.hangarOpen()) or (G.pickerOpen ~= nil and G.pickerOpen()) or deploy.Visible
       or (G.tacOpen ~= nil and G.tacOpen())   -- 战术平板开着：鼠标放出来点地图、不开枪
+      or (G.gunsmithOpen ~= nil and G.gunsmithOpen())   -- 改枪界面
+      or (G.garageOpen ~= nil and G.garageOpen())   -- 坦克改装界面（用户 11-21：鼠标不显示——没算进来，步行第一人称时 stepUI 把鼠标图标藏了）
   end
 
   local function doDeploy()
@@ -431,11 +512,15 @@ function UI.init(G)
     if s.kind == "rally" then return T("spawn.rally", T("point." .. s.point)) end   -- 守方前线集结点（据点后方）
     if s.kind == "staging" then return T("spawn.staging", T("point." .. s.point)) end   -- 攻方攻击出发阵地（据点前面）
     if s.kind == "camp" then return T("spawn.camp") end
+    if s.kind == "afield" then return T("spawn.afield") end
     if s.kind == "fleet" then return T("spawn.fleet") end
     if s.kind == "para" then return T("spawn.para") end
     if s.kind == "cv" then return T("spawn.cv") end
     if s.kind == "barge" then return T("spawn.barge") end
     if s.kind == "af2" then return T("spawn.af2") end
+    if s.kind == "af3" then return T("spawn.af3") end   -- 沙海：守方主基地的机场
+    if s.kind == "redbase" then return T("spawn.redbase") end   -- 沙漠图：红方前进基地
+    if s.kind == "squad" then return T("spawn.squad", s.name or "?") end   -- 小队队友身边（Squads.lua）
     return s.id
   end
 
@@ -618,6 +703,24 @@ function UI.init(G)
       end
     end
     picker.Visible = sel.slot ~= nil
+    -- 兵种那一排：现在这一套正好是哪个兵种的就点亮它（自己改了哪格就都不亮）
+    roleRow.Visible = sel.slot == nil
+    roleHead.Text = T("deploy.roles")
+    local cur = nil
+    for _, r in ipairs(Config.RoleKits or {}) do
+      local k = Config.roleKit(r.id, team)
+      local same = true
+      for _, slot in ipairs(SLOTS) do
+        if (k[slot.id] or false) ~= (sel.kit[slot.id] or false) then same = false break end
+      end
+      if same and (cur == nil or sel.kitRole == r.id) then cur = r.id end
+    end
+    for id, rb in pairs(roleBtns) do
+      rb.b.Text = T("kitrole." .. id)
+      rb.b.TextColor3 = (id == cur) and WHITE or DIM
+      rb.b.Font = (id == cur) and Enum.Font.GothamBold or Enum.Font.GothamMedium
+      rb.u.BackgroundTransparency = (id == cur) and 0 or 1
+    end
     -- 标题、说明、数据、大图：看的那一格
     local fs = SLOTS[focus] or SLOTS[1]
     local fid = sel.kit[fs.id]
@@ -634,9 +737,26 @@ function UI.init(G)
         r.v.Text = d[3]
       end
     end
-    if bigItem ~= (fid or false) then
-      bigItem = fid or false
+    local bkey = fid and (fid .. ((GMods.has(fid) and player:GetAttribute("Gun_" .. fid)) or "")) or false   -- 换了配件也重画大图
+    if bigItem ~= bkey then
+      bigItem = bkey
       bigWait = setModel(big, fid, team)
+    end
+    -- 改枪按钮：看的是装得了配件的枪
+    local canMod = fid ~= nil and GMods.has(fid) and G.openGunsmith ~= nil
+    sel.gsId = canMod and fid or nil
+    gsBtn.Visible, gsLine.Visible, gsLv.Visible = canMod, canMod and not mobile, canMod
+    if canMod then
+      gsBtn.Text = T("gm.open")
+      local b = G.myBuild and G.myBuild(fid) or GMods.default(fid)
+      local names = {}
+      for _, slot in ipairs(GMods.SLOTS) do
+        local it = b[slot] and GMods.ITEM[b[slot]]
+        if it and it.model then table.insert(names, T("gm.item." .. b[slot])) end
+      end
+      gsLine.Text = (#names > 0) and table.concat(names, " · ") or T("gm.stock")
+      local lv, a, nx = GMods.level(fid, player:GetAttribute("GunXp_" .. fid) or 0)
+      gsLv.Text = T("gm.lv", lv) .. (nx and "" or ("  " .. T("gm.max")))
     end
     -- 主按钮
     goSpawnT.Text = T("deploy.pickSpawn")
@@ -677,7 +797,7 @@ function UI.init(G)
     end
   end)
   -- 大图慢慢左右转（绕模型中心：G.viewFit 记在属性 C 里）
-  RunService.RenderStepped:Connect(function()
+  G.frameConn("UI2", function()
     if not deploy.Visible or not kitPage.Visible then return end
     local m = big:FindFirstChildOfClass("Model")
     local c = m and m:GetAttribute("C")
@@ -720,15 +840,23 @@ function UI.init(G)
   local help = label(hud, "", UDim2.new(0.6, 0, 0, 16), UDim2.new(0.5, 0, 1, -18), 12, MUTE, Enum.Font.Gotham, Vector2.new(0.5, 0))
   help.TextStrokeTransparency = 0.6
 
-  -- 小地图容器（右下）
-  -- 圆形雷达（Hud.lua 摆、画）：CanvasGroup 才能把里面的地图、亮点按圆角裁成圆
+  -- 小地图容器（Hud.lua 摆到右上、画成方形雷达小地图）：CanvasGroup 才能把里面的地图、亮点按框裁掉
   local miniBox = Instance.new("CanvasGroup")
   miniBox.Name = "Radar"
   miniBox.Size, miniBox.Position, miniBox.AnchorPoint = UDim2.fromOffset(230, 230), UDim2.new(1, -16, 1, -16), Vector2.new(1, 1)
   miniBox.BackgroundColor3, miniBox.BackgroundTransparency, miniBox.BorderSizePixel = PANEL, 1, 0
   miniBox.Parent = hud
+  -- 地图真正挂在框里这一层（ClipsDescendants 的普通 Frame）：CanvasGroup 的裁边有时不起作用（用户 11-24 截图：开坦克瞄准镜、
+  --   小地图挪到 RadarTop 那层以后，2000 多像素的整张图没裁、深蓝的海盖住半个镜子）——这一层再按方框裁一次，怎么都不会漏出来
+  local miniClip = Instance.new("Frame")
+  miniClip.Name = "MapClip"
+  miniClip.Size = UDim2.fromScale(1, 1)
+  miniClip.BackgroundTransparency = 1
+  miniClip.BorderSizePixel = 0
+  miniClip.ClipsDescendants = true
+  miniClip.Parent = miniBox
   -- 战斗中的界面换成《坠落》那种风格（Hud.lua）：旧的顶栏、血条、兵种字交给它收起来，小地图框挪到左下
-  G.hudParts = { hud = hud, topBar = topBar, counts = counts, hpBg = hpBg, roleText = roleText, miniBox = miniBox, help = help }
+  G.hudParts = { hud = hud, topBar = topBar, counts = counts, hpBg = hpBg, roleText = roleText, miniBox = miniBox, miniClip = miniClip, help = help }
 
   ---------------------------------------------------------------- 消息
 
@@ -737,6 +865,7 @@ function UI.init(G)
   center.ZIndex = 30
   local centerT = 0
   local feed = frame(gui, UDim2.fromOffset(340, 160), UDim2.new(1, -16, 0, 120), PANEL, 1, Vector2.new(1, 0))
+  G.hudParts.feed = feed   -- 击杀信息：Hud.lua 把小地图放到右上后挪到它下面
   local feedList = Instance.new("UIListLayout")
   feedList.HorizontalAlignment = Enum.HorizontalAlignment.Right
   feedList.SortOrder = Enum.SortOrder.LayoutOrder
@@ -788,6 +917,10 @@ function UI.init(G)
       return
     end
     if key == "ui.capturedYou" and G.juiceScore then G.juiceScore(G.Config.Score.capture, T("juice.cap")) end
+    if kind == "ric" then   -- 跳弹（服务器 Ents.lua）：准星下面弹一行黄字（打出去的跳了 / 打过来的被弹开）
+      if G.pop then G.pop(T(key, ...), key == "hit.ricIn" and "ricIn" or "ric") end
+      return
+    end
     if kind == "refill" then   -- 战术平板的补给箱：本地弹药也补满（Play.lua）
       if G.refillAmmo then G.refillAmmo() end
       return
@@ -921,6 +1054,7 @@ function UI.init(G)
   function G.refresh()
     local S = G.S
     if not S then return end
+    if G.refreshMapPick then G.refreshMapPick(S) end   -- 选地图界面（MapPick.lua）：生成地图时也要刷进度、生成好了快速加入
     if (S.progress or 1) < 1 then
       loading.Visible = true
       loadText.Text = T("ui.serverStarting", math.floor((S.progress or 0) * 100))
@@ -929,13 +1063,15 @@ function UI.init(G)
     loading.Visible = false
     if G.refreshMenu then G.refreshMenu(S) end         -- 主菜单（Menu.lua）：进服先到这里
     if G.refreshFaction then G.refreshFaction(S) end   -- 选阵营界面（Faction.lua）：主菜单点了「进入战斗」还没选、或者点了「换阵营」
-    local showDeploy = not S.alive and S.phase ~= "end"
+    -- 阵亡效果（DeathFx.lua，用户 11-23：死亡不要瞬间切到部署画面）放着的时候部署界面、平显都先不出来
+    local dying = G.deathFxOn ~= nil and G.deathFxOn() == true
+    local showDeploy = not S.alive and S.phase ~= "end" and not dying
     if S.alive then sel.pageUser, sel.slot = nil, nil end   -- 下次阵亡：上次出击过就先给生成点页
     deploy.Visible = showDeploy and not (G.menuShown and G.menuShown())   -- 主菜单开着（背景是透明的 3D 场景）：部署界面先不画
-    hud.Visible = not showDeploy
-    results.Visible = S.phase == "end"
+    hud.Visible = not showDeploy and not dying
+    results.Visible = S.phase == "end" and not (G.wtResultsOn and G.wtResultsOn())   -- 战雷式结算页（WtBattle.lua）开着就不画这张
     -- 地图放在部署界面或小地图里
-    local want = showDeploy and mapHolder or miniBox
+    local want = showDeploy and mapHolder or miniClip
     if mapMountedIn ~= want then
       mapMountedIn = want
       local _, marks = G.mapMount(want, UDim2.fromScale(1, 1))

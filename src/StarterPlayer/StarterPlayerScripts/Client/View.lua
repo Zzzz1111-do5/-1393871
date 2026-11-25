@@ -13,6 +13,7 @@ local View = {}
 function View.init(G)
   local Config = G.Config
   local Map = require(RS:WaitForChild("Map"))
+  local Debris = game:GetService("Debris")
   local VD = require(RS:WaitForChild("VehDefs"))
   local VM = require(script.Parent:WaitForChild("VehModels"))
   local V = Vector3.new
@@ -125,8 +126,9 @@ function View.init(G)
     if kind == "veh" then
       local d = VD.get(em:GetAttribute("Model") or "")
       if not d then return end
-      local M = VM.build(d, team)
+      local M = VM.build(d, team, em:GetAttribute("Mods"))   -- 坦克改装：发射器、雷达板、加特林、补贴的爆反块（TankMods）
       M.model.Parent = VF
+      v.modsAttr = em:GetAttribute("Mods")
       v.M, v.def, v.model = M, d, M.model
       v.ty, v.gp, v.recoil = em:GetAttribute("Ty") or 0, em:GetAttribute("Gp") or 0, 0
       v.bob, v.bobV, v.pitch, v.pitchV, v.roll, v.rollV = 0, 0, 0, 0, 0, 0
@@ -163,11 +165,18 @@ function View.init(G)
 
   -- 实体没了：被打死的步兵倒地几秒、被打沉的艇往下沉，其余直接删
   local dying = {}
+  local function engSndOff(v)   -- 别人的车的发动机、履带声（stepVeh 里挂的）
+    if v.engS then
+      for _, s in pairs(v.engS) do s:Destroy() end
+      v.engS = nil
+    end
+  end
   local function remove(em)
     local v = views[em]
     if not v then return end
     views[em] = nil
     if v.id then byId[v.id] = nil end
+    engSndOff(v)
     local hp = em:GetAttribute("Hp") or 1
     if v.ext and v.ext.remove then
       local ok, keep = pcall(v.ext.remove, v)
@@ -203,12 +212,219 @@ function View.init(G)
     end
   end
 
-  -- 开炮：这辆车的炮往后坐一下
+  -- 开炮：这辆车的炮往后坐一下；坦克、自行火炮的车体还被后坐力推得一晃（炮朝前开就抬头、朝侧面开就往另一边歪，弹簧摆两下才停——战雷那样）
+  -- 炮的后坐曲线（用户 11-22：「坦克开炮，第一人称的时候那个炮管会瞬间往后」——原来开炮那一帧整段后坐一下子到位，再直线滑回去）：
+  --   大炮 0.08 秒往后坐到底（先快后慢），顶住一下，到 0.62 秒复进完（两头慢中间快）；机关炮短：0.02 秒坐到底、0.14 秒回来。返回 0～1
+  local function recoilCurve(t, big)
+    if not t or t < 0 then return 0 end
+    local a, h, e = 0.08, 0.11, 0.62
+    if not big then a, h, e = 0.02, 0.025, 0.14 end
+    if t < a then local u = t / a return 1 - (1 - u) * (1 - u) end
+    if t < h then return 1 end
+    if t < e then local u = (t - h) / (e - h) return 1 - u * u * (3 - 2 * u) end
+    return 0
+  end
+  G.recoilCurve = recoilCurve
   function G.vehRecoil(id, g)   -- g：第几门炮（舰艇有前后两门的）
     local v = byId[id]
-    if v and v.kind == "veh" then v.recoil = (v.def.cat == "tank" or v.def.cat == "arty") and 1.2 or 0.35
+    if v and v.kind == "veh" then
+      local big = v.def.cat == "tank" or v.def.cat == "arty"
+      v.recoilA, v.recoilT, v.recoilBig = big and 1.7 or 0.35, 0, big
+      v.shots = (v.shots or 0) + 1   -- 开了第几炮（Interior 按这个数接着放炮闩、装填手的动作）
+      v.recoil = v.recoilA * recoilCurve(0.25 / 60, big)
+      if big and not v.wrecked then
+        local a = math.rad(v.ty or 0)
+        local k = (v.def.cat == "arty") and 0.95 or 0.8
+        v.pitchV = (v.pitchV or 0) + k * math.cos(a)
+        v.rollV = (v.rollV or 0) + k * math.sin(a)
+        v.bobV = (v.bobV or 0) - 2.5
+      end
     elseif v and v.ext and v.ext.recoil then v.ext.recoil(v, g) end
   end
+
+  ---------------------------------------------------------------- 弹药殉爆：炮塔连炮整个掀飞（用户：坦克被打爆盖子可以飞起来，动画逼真一点）
+  -- 被毁的那一下，座圈里先喷一柱火，炮塔带着炮转着往上飞一两层楼高，落地砸起土、迸火星，弹一两下歪着停住；车体接着烧、殉爆的小炸响几声。
+  -- 随机数按车的编号定：每个人看到的是同一个样子
+  local TOSS_G = 9.81 * 2.8 * 1.25   -- 重力（格/秒²，略重一点，落得干脆）
+  local trackMark   -- 履带印（下面定义）
+  local function tossFx(p, big)
+    if not G.fxPart then return end
+    local part = G.fxPart
+    -- 一柱火：从座圈直冲上去
+    local h = part(nil, V(0.4, 0.4, 0.4), CFrame.lookAt(p, p + V(0, 1, 0)), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+    local fire = Instance.new("ParticleEmitter")
+    fire.Texture = "rbxasset://textures/particles/fire_main.dds"
+    fire.Rate = 0
+    fire.Lifetime = NumberRange.new(0.35, 0.8)
+    fire.Speed = NumberRange.new(28, 60)
+    fire.SpreadAngle = Vector2.new(14, 14)
+    fire.Drag = 1.5
+    fire.LightEmission = 1
+    fire.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3.5), NumberSequenceKeypoint.new(0.5, 7), NumberSequenceKeypoint.new(1, 2) })
+    fire.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(1, 1) })
+    fire.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 246, 200)), ColorSequenceKeypoint.new(0.4, RGB(255, 160, 60)), ColorSequenceKeypoint.new(1, RGB(120, 40, 20)) })
+    fire.EmissionDirection = Enum.NormalId.Front
+    fire.Parent = h
+    fire:Emit(big and 70 or 40)
+    -- 火星：往四周上方撒，带重力落下来
+    local sp = Instance.new("ParticleEmitter")
+    sp.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    sp.Rate = 0
+    sp.Lifetime = NumberRange.new(0.8, 1.8)
+    sp.Speed = NumberRange.new(30, 70)
+    sp.SpreadAngle = Vector2.new(60, 60)
+    sp.Acceleration = V(0, -60, 0)
+    sp.LightEmission = 1
+    sp.Size = NumberSequence.new(0.35)
+    sp.Color = ColorSequence.new(RGB(255, 210, 120))
+    sp.EmissionDirection = Enum.NormalId.Front
+    sp.Parent = h
+    sp:Emit(big and 90 or 50)
+    -- 黑烟蘑菇云
+    local sm = Instance.new("ParticleEmitter")
+    sm.Texture = "rbxasset://textures/particles/smoke_main.dds"
+    sm.Rate = 0
+    sm.Lifetime = NumberRange.new(2.5, 4.5)
+    sm.Speed = NumberRange.new(14, 30)
+    sm.SpreadAngle = Vector2.new(30, 30)
+    sm.Drag = 1.2
+    sm.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 5), NumberSequenceKeypoint.new(1, 20) })
+    sm.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
+    sm.Color = ColorSequence.new(RGB(34, 30, 28))
+    sm.EmissionDirection = Enum.NormalId.Front
+    sm.Parent = h
+    sm:Emit(big and 26 or 14)
+    Debris:AddItem(h, 6)
+    if G.flash then G.flash(p + V(0, 6, 0), RGB(255, 170, 80), 70, 14, 0.9) end
+    if G.playSound then
+      G.playSound("boom", p, 0.5)
+      for i = 1, 4 do   -- 车里的炮弹接着一发发殉爆：闷闷的几声
+        task.delay(0.5 + i * 0.45 + math.random() * 0.3, function()
+          G.playSound("mortar", p, 0.7 + math.random() * 0.3)
+          if G.flash then G.flash(p + V(0, 2, 0), RGB(255, 150, 70), 30, 5, 0.25) end
+        end)
+      end
+    end
+    if G.shake then
+      local cam = workspace.CurrentCamera
+      local dd = cam and (cam.CFrame.Position - p).Magnitude or 999
+      if dd < 220 then G.shake(0.5 * (1 - dd / 220)) end
+    end
+  end
+  local function landFx(p)
+    if not G.fxPart then return end
+    local part, tween = G.fxPart, G.tween
+    local ring = part(Enum.PartType.Cylinder, V(0.5, 6, 6), CFrame.new(p) * CFrame.Angles(0, 0, math.pi / 2), RGB(120, 106, 84), Enum.Material.SmoothPlastic, 0.35)
+    tween(ring, 0.6, { Size = V(0.5, 26, 26), Transparency = 1 })
+    Debris:AddItem(ring, 0.65)
+    local h = part(nil, V(0.4, 0.4, 0.4), CFrame.lookAt(p, p + V(0, 1, 0)), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+    local du = Instance.new("ParticleEmitter")
+    du.Texture = "rbxasset://textures/particles/smoke_main.dds"
+    du.Rate = 0
+    du.Lifetime = NumberRange.new(1, 2.2)
+    du.Speed = NumberRange.new(8, 22)
+    du.SpreadAngle = Vector2.new(75, 75)
+    du.Drag = 2.5
+    du.Acceleration = V(0, -4, 0)
+    du.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3), NumberSequenceKeypoint.new(1, 11) })
+    du.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
+    du.Color = ColorSequence.new(RGB(140, 124, 98))
+    du.EmissionDirection = Enum.NormalId.Front
+    du.Parent = h
+    du:Emit(22)
+    local sp = Instance.new("ParticleEmitter")
+    sp.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+    sp.Rate = 0
+    sp.Lifetime = NumberRange.new(0.3, 0.7)
+    sp.Speed = NumberRange.new(20, 40)
+    sp.SpreadAngle = Vector2.new(80, 80)
+    sp.Acceleration = V(0, -70, 0)
+    sp.LightEmission = 1
+    sp.Size = NumberSequence.new(0.3)
+    sp.Color = ColorSequence.new(RGB(255, 200, 120))
+    sp.EmissionDirection = Enum.NormalId.Front
+    sp.Parent = h
+    sp:Emit(24)
+    Debris:AddItem(h, 3)
+    if G.playSound then G.playSound("splash", p, 0.35) G.playSound("boom", p, 1.6) end
+  end
+  G.tossCount = 0   -- 测试用
+  local function startToss(v)
+    local tF = v.tF
+    if not tF then return end
+    local seed = tonumber(v.id) or 0
+    if seed == 0 then for c in tostring(v.id):gmatch(".") do seed += string.byte(c) end end
+    local rng = Random.new(seed * 7919 + 17)
+    -- 照宣传片里调好的样子（用户 11-22 看片子：掀盖有点尴尬——原来往上 36～54 格 / 秒、乱转，飞七到十五米高像气球）：
+    --   往上 20～27 格 / 秒（顶起三米上下）、往旁边 3～6 格 / 秒，绕一根横着的轴慢慢翻（每秒 1～1.6 弧度），落在车旁边歪着停住
+    local ang = rng:NextNumber() * 2 * math.pi
+    local side = V(math.cos(ang), 0, math.sin(ang))
+    local hv = side * (3 + rng:NextNumber() * 3)
+    local axis = V(-side.Z, (rng:NextNumber() - 0.5) * 0.4, side.X).Unit   -- 横轴：往哪边飞就朝哪边翻下去
+    v.toss = {
+      cf = tF, vel = V(hv.X, 20 + rng:NextNumber() * 7, hv.Z),
+      w = axis * (1 + rng:NextNumber() * 0.6),   -- 角速度（弧度/秒，世界坐标）
+      bounce = 0, rest = false,
+      restTilt = CFrame.Angles((rng:NextNumber() - 0.5) * 0.5, 0, (rng:NextNumber() - 0.5) * 0.6),
+    }
+    G.tossCount += 1
+    tossFx(tF.Position, v.def.cat == "tank")
+  end
+  local function stepToss(v, dt)
+    local T = v.toss
+    if not T or T.rest then return end
+    dt = math.min(dt, 1 / 20)
+    T.vel += V(0, -TOSS_G, 0) * dt
+    local p = T.cf.Position + T.vel * dt
+    local wm = T.w.Magnitude
+    local rot = (wm > 1e-4) and CFrame.fromAxisAngle(T.w.Unit, wm * dt) or CFrame.new()
+    local gy = math.max(Map.height(p.X, p.Z), -0.5)
+    if p.Y < gy + 0.4 and T.vel.Y < 0 then   -- 砸到地上：弹一下（越弹越低），转得慢下来
+      p = V(p.X, gy + 0.4, p.Z)
+      T.bounce += 1
+      landFx(p)
+      if T.bounce >= 2 or math.abs(T.vel.Y) < 14 then   -- 砸下来顶多再颠一下就停住（原来弹三下）
+        T.rest = true
+        -- 停住：保留水平朝向，歪一点躺着（随机的倾角）
+        local look = T.cf.LookVector
+        local flat = V(look.X, 0, look.Z)
+        flat = flat.Magnitude > 0.05 and flat.Unit or V(0, 0, -1)
+        T.cf = CFrame.lookAt(p, p + flat) * T.restTilt
+        return
+      end
+      T.vel = V(T.vel.X * 0.45, -T.vel.Y * 0.32, T.vel.Z * 0.45)
+      T.w = T.w * 0.5
+    end
+    T.cf = CFrame.new(p) * rot * (T.cf - T.cf.Position)
+  end
+  G.stepToss = stepToss
+
+  -- 履带印：薄薄一片深色的方块贴在地上，淡出后回收（对象池，最多 MAX_MARK 段）
+  local MAX_MARK = 360
+  local marks, markI = {}, 0
+  local markFolder = Instance.new("Folder")
+  markFolder.Name = "TrackMarks"
+  markFolder.Parent = workspace
+  local TweenService = game:GetService("TweenService")
+  local markInfo = TweenInfo.new(14, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+  function trackMark(cf, w, len)
+    markI = markI % MAX_MARK + 1
+    local m = marks[markI]
+    if not m then
+      m = Instance.new("Part")
+      m.Anchored, m.CanCollide, m.CanQuery, m.CanTouch, m.CastShadow = true, false, false, false, false
+      m.Material = Enum.Material.Ground
+      m.Color = Color3.fromRGB(46, 40, 32)
+      m.Parent = markFolder
+      marks[markI] = m
+    end
+    if m:GetAttribute("Tw") then m:SetAttribute("Tw", nil) end
+    m.Size = V(w, 0.1, len)
+    m.CFrame = cf
+    m.Transparency = 0.35
+    TweenService:Create(m, markInfo, { Transparency = 1 }):Play()
+  end
+  G.trackMarkCount = function() return #marks end   -- 测试用
 
   ---------------------------------------------------------------- 载具：悬架
 
@@ -217,6 +433,27 @@ function View.init(G)
     return 0.22 * math.noise(x / 5.3, z / 5.3, 0.37) + 0.12 * math.noise(x / 2.1, z / 2.1, 4.1)
   end
   local function angDiff(a, b) return (b - a + 180) % 360 - 180 end
+  -- 两个 CFrame 差不多一样（位置差不到 0.0005 格、朝向差不到约 0.04°）；有一个是 nil 时两个都得是 nil
+  local function sameCF(a, b)
+    if a == nil or b == nil then return a == b end
+    local dp = a.Position - b.Position
+    if dp:Dot(dp) > 2.5e-7 then return false end
+    return a.LookVector:Dot(b.LookVector) > 0.9999998 and a.UpVector:Dot(b.UpVector) > 0.9999998
+  end
+
+  -- 弹簧阻尼（负重轮、车体上下 / 俯仰 / 侧倾）：拆成不超过 1/120 秒的小步算（同 VehCam），一帧最多按 0.12 秒算——
+  --   用户 11-25：「然后现在特别卡」「坦克一直在抽搐」：原来一帧一步 v += a·dt，负重轮（k 420、c 26）一帧超过 54 毫秒（不到 18 帧）
+  --   就停不下来、在上下两个极限之间来回打，车体跟着轮子抽；车体（k 160）不到 10 帧直接算飞。游戏一卡，坦克就抽
+  local function spring(x, vel, tgt, k, c, dt)
+    dt = math.min(dt, 0.12)
+    local n = math.max(1, math.ceil(dt * 120 - 1e-6))
+    local h = dt / n
+    for _ = 1, n do
+      vel += ((tgt - x) * k - vel * c) * h
+      x += vel * h
+    end
+    return x, vel
+  end
 
   local function stepVeh(v, dt, camPos)
     local em, d, M = v.em, v.def, v.M
@@ -227,6 +464,14 @@ function View.init(G)
       for _, p in ipairs(M.lamps) do
         p.Transparency = lit and 0 or 0.75
         for _, L in ipairs(p:GetChildren()) do if L:IsA("Light") then L.Enabled = lit end end
+      end
+    end
+    -- 大灯投影子很费（每盏灯每帧画一遍阴影图）：只有自己开的这辆的大灯投影子，别人的照样亮、不投影子
+    local mineV = G.myVeh ~= nil and G.myVeh.em == em
+    if v.lampShadow ~= mineV and M.lamps then
+      v.lampShadow = mineV
+      for _, p in ipairs(M.lamps) do
+        for _, L in ipairs(p:GetChildren()) do if L:IsA("SpotLight") then L.Shadows = mineV end end
       end
     end
     local own = G.myVeh and G.myVeh.em == em and G.myVeh
@@ -256,7 +501,13 @@ function View.init(G)
       v.ty = v.ty + angDiff(v.ty, ty) * math.min(1, dt * 10)
       v.gp = v.gp + (gp - v.gp) * math.min(1, dt * 10)
     end
-    v.recoil = math.max(0, v.recoil - dt * 2.6)
+    if v.recoilT then
+      v.recoilT += dt
+      v.recoil = (v.recoilA or 0) * recoilCurve(v.recoilT, v.recoilBig)
+      if v.recoilT > 0.7 then v.recoilT, v.recoil = nil, 0 end
+    else
+      v.recoil = 0
+    end
     -- 遥控武器站：自己开的用本地算的转角，别人的读属性再平滑跟（用户：机枪也要能转动）
     if M.rpiv then
       local my, mp = em:GetAttribute("My") or 0, em:GetAttribute("Mp") or 0
@@ -270,18 +521,33 @@ function View.init(G)
     local W = M.wheels
     local rough = 1
     local onWater = Map.height(pos.X, pos.Z) < -1.5
+    -- 真地形（用户 11-22：坦克半截身子卡在地里）：别人的车（服务器按 Map.height 放的）0.2 秒左右量一次车底的真地面（Drive.lua 的 terrainLift），
+    --   平滑着抬高 / 放低；自己开的车 Drive 已经算进去了。轮子、履带印也按同一个地面
+    local lift = 0
+    if own then lift = own.tLift or 0
+    elseif not v.wrecked then
+      v.tpT = (v.tpT or 0) - dt
+      if v.tpT <= 0 then
+        v.tpT = 0.18 + ((tonumber(v.id) or 0) % 7) * 0.01
+        local _, yawB = base:ToEulerAnglesYXZ()
+        v.tLiftT = (not far and not onWater and G.terrainLift) and (G.terrainLift(d, pos, yawB) or 0) or 0
+      end
+      v.tLift = (v.tLift or 0) + ((v.tLiftT or 0) - (v.tLift or 0)) * math.min(1, dt * 5)
+      lift = v.tLift
+      if math.abs(lift) > 1e-3 then base = base + V(0, lift, 0) end
+    end
     local sF, nF, sB, nB, sL, nL, sR, nR, sum = 0, 0, 0, 0, 0, 0, 0, 0, 0
     if not far then
       for _, w in ipairs(W) do
         local wp = (base * CF(w.x, 0, w.z)).Position
-        local gy = Map.height(wp.X, wp.Z)
+        local gy = Map.height(wp.X, wp.Z) + lift
         local tgt
         local trv = M.travel or d.travel   -- 原模型的履带车：履带是死的，负重轮只能动一点
         if gy < -0.5 and onWater then tgt = -trv   -- 在水里：轮子垂下去
         else tgt = math.clamp(math.max(gy, -0.5) + bump(wp.X, wp.Z) * rough - wp.Y, -trv, trv) end
-        local a = (tgt - w.dy) * 420 - w.vy * 26
-        w.vy += a * dt
-        w.dy = math.clamp(w.dy + w.vy * dt, -trv * 1.2, trv * 1.2)
+        local dy
+        dy, w.vy = spring(w.dy, w.vy, tgt, 420, 26, dt)
+        w.dy = math.clamp(dy, -trv * 1.2, trv * 1.2)
         w.spin -= v.speed * dt / (w.rad or w.r)
         sum += w.dy
         if w.z < 0 then sF += w.dy nF += 1 else sB += w.dy nB += 1 end
@@ -293,47 +559,94 @@ function View.init(G)
     local trk = math.max(3, d.W * 0.8)
     -- 车体：跟着轮子上下、俯仰、侧倾（弹簧）；起步抬头、刹车点头
     local tBob = sum / n * 0.55
-    local tPitch = ((nF > 0 and sF / nF or 0) - (nB > 0 and sB / nB or 0)) / wb * 0.7 + math.clamp((v.accel or 0) * 0.0016, -0.035, 0.035)
+    -- 起步抬头、刹车点头（战雷那样明显一点）
+    local tPitch = ((nF > 0 and sF / nF or 0) - (nB > 0 and sB / nB or 0)) / wb * 0.7 + math.clamp((v.accel or 0) * 0.0022, -0.06, 0.06)
     local tRoll = ((nR > 0 and sR / nR or 0) - (nL > 0 and sL / nL or 0)) / trk * 0.7 + math.clamp(v.steer * v.speed * 0.0006, -0.04, 0.04)
-    v.bobV += ((tBob - v.bob) * 160 - v.bobV * 14) * dt
-    v.bob += v.bobV * dt
-    v.pitchV += ((tPitch - v.pitch) * 120 - v.pitchV * 12) * dt
-    v.pitch += v.pitchV * dt
-    v.rollV += ((tRoll - v.roll) * 120 - v.rollV * 12) * dt
-    v.roll += v.rollV * dt
+    v.bob, v.bobV = spring(v.bob, v.bobV, tBob, 160, 14, dt)
+    v.pitch, v.pitchV = spring(v.pitch, v.pitchV, tPitch, 120, 12, dt)
+    v.roll, v.rollV = spring(v.roll, v.rollV, tRoll, 120, 12, dt)
     local hh = d.hullH
     local hullF = base * CF(0, v.bob, 0) * CF(0, hh / 2, 0) * CFrame.Angles(v.pitch, 0, v.roll) * CF(0, -hh / 2, 0)
     local tF = hullF * CF(M.tpiv or d.turret.pivot) * CFrame.Angles(0, -math.rad(v.ty), 0)
+    if v.toss then   -- 掀飞了的炮塔自己飞（炮、机枪塔跟着它）
+      stepToss(v, dt)
+      tF = v.toss.cf
+    end
     local gF = tF * CF(M.gpiv or d.gun.pivot) * CFrame.Angles(math.rad(v.gp), 0, 0) * CF(0, 0, v.recoil)
     local rF = M.rpiv and (tF * CF(M.rpiv) * CFrame.Angles(0, -math.rad(v.my or 0), 0)) or nil
     local rgF = (rF and M.rgpiv) and (rF * CF(M.rgpiv) * CFrame.Angles(math.rad(v.mp or 0), 0, 0)) or nil
     v.hullF, v.tF, v.gF, v.rF, v.rgF = hullF, tF, gF, rF, rgF
     local steerA = math.rad(28) * math.clamp(v.steer, -1, 1)
     local now = os.clock()
-    local plist, clist = v.plist, v.clist
-    for i, it in ipairs(M.parts) do
-      local grp, off = it[2], it[3]
-      local cf
-      if grp == "hull" then cf = hullF * off
-      elseif grp == "turret" then
-        cf = tF * off
-        if it[1]:GetAttribute("Radar") then cf = cf * CFrame.Angles(0, now * 3, 0) end
-      elseif grp == "gun" then cf = gF * off
-      elseif grp == "rws" then cf = (rF or tF) * off
-      elseif grp == "rwg" then cf = (rgF or rF or tF) * off
-      elseif grp == "wheel" then
-        local w = W[it[4]]
-        local wcf = base * CF(w.x, w.r + w.dy, w.z)
-        if w.steer then wcf = wcf * CFrame.Angles(0, -steerA, 0) end
-        cf = wcf * CFrame.Angles(w.spin, 0, 0) * off
-      elseif grp == "seg" then
-        local w = W[it[4]]
-        cf = base * CF(0, w.dy, 0) * off
-      else cf = hullF * off end
-      clist[i] = cf
+    -- 爆反块被炸掉（服务器写 EraX："3,7,12"）：那一块换成焦黑的空位（VehModels.eraBlown 新加的零件接到零件表后面）
+    local ex = em:GetAttribute("EraX")
+    if ex ~= v.eraX then
+      v.eraX = ex
+      v.putH = nil   -- 新接了零件：这一帧一定要摆
+      for i in string.gmatch(ex or "", "%d+") do
+        for _, it in ipairs(VM.eraBlown(M, tonumber(i))) do
+          table.insert(M.parts, it)
+          v.plist[#v.plist + 1] = it[1]
+        end
+      end
     end
-    workspace:BulkMoveTo(plist, clist, Enum.BulkMoveMode.FireCFrameChanged)
-    v.anchor.CFrame = hullF * CF(0, d.H + 1, 0)
+    -- 省事（用户 11-19：游戏非常卡顿）：一辆车一两百个零件，原来每帧全部重摆。停着没动的（停车场、残骸、没人开的、
+    --   自己停着没转炮塔）摆好一次就不再挪；420 格外的三帧挪一次（远处看不出来）
+    if v.radar == nil then
+      v.radar = {}
+      for _, it in ipairs(M.parts) do if it[1]:GetAttribute("Radar") then v.radar[it[1]] = true end end
+      v.hasRadar = next(v.radar) ~= nil
+    end
+    -- 扫雷犁（坦克改装，Kit.lua）：模型属性 Plow 1 放下、0.5 正在升、0 收好——放下是 0°，收好往上抬 14°（升起要 11 秒，这里按它慢慢抬）
+    local plowMoving = false
+    if M.plowPiv then
+      local pa = em:GetAttribute("Plow")
+      local want = (pa == 1) and 0 or math.rad(14)
+      local cur = v.plowA or want
+      local step = math.rad(14) / ((pa == 0.5) and 11 or 2.5) * dt
+      if math.abs(want - cur) > 1e-4 then
+        cur = cur + math.clamp(want - cur, -step, step)
+        plowMoving = true
+      end
+      v.plowA = cur
+    end
+    local still = not plowMoving and not v.hasRadar and not (v.toss and not v.toss.rest) and v.recoil <= 0 and math.abs(v.speed) < 0.01
+      and math.abs(v.steer - (v.putSteer or 1e9)) < 1e-4
+      and sameCF(hullF, v.putH) and sameCF(tF, v.putT) and sameCF(gF, v.putG) and sameCF(rF, v.putR) and sameCF(rgF, v.putRG)
+    if still then
+      for _, w in ipairs(W) do if math.abs(w.vy) > 0.003 then still = false break end end
+    end
+    v.farN = (v.farN or 0) + 1
+    if not still and (not far or own or v.farN % 3 == 0) then
+      v.putH, v.putT, v.putG, v.putR, v.putRG, v.putSteer = hullF, tF, gF, rF, rgF, v.steer
+      local plist, clist = v.plist, v.clist
+      for i, it in ipairs(M.parts) do
+        local grp, off = it[2], it[3]
+        local cf
+        if grp == "hull" then cf = hullF * off
+        elseif grp == "turret" then
+          cf = tF * off
+          if v.radar[it[1]] then cf = cf * CFrame.Angles(0, now * 3, 0) end
+        elseif grp == "gun" then cf = gF * off
+        elseif grp == "rws" then cf = (rF or tF) * off
+        elseif grp == "rwg" then cf = (rgF or rF or tF) * off
+        elseif grp == "kit" then cf = (M.kpiv and (tF * CF(M.kpiv) * CFrame.Angles(math.rad(v.gp), 0, 0)) or tF) * off   -- 车顶加特林：跟着炮俯仰
+        elseif grp == "plow" then cf = hullF * CF(M.plowPiv) * CFrame.Angles(v.plowA or 0, 0, 0) * off   -- 扫雷犁：绕车头下沿的转轴抬起 / 放下
+        elseif grp == "wheel" then
+          local w = W[it[4]]
+          local wcf = base * CF(w.x, w.r + w.dy, w.z)
+          if w.steer then wcf = wcf * CFrame.Angles(0, -steerA, 0) end
+          cf = wcf * CFrame.Angles(w.spin, 0, 0) * off
+        elseif grp == "seg" then
+          local w = W[it[4]]
+          cf = base * CF(0, w.dy, 0) * off
+        else cf = hullF * off end
+        clist[i] = cf
+      end
+      workspace:BulkMoveTo(plist, clist, Enum.BulkMoveMode.FireCFrameChanged)
+      v.anchor.CFrame = hullF * CF(0, d.H + 1, 0)
+      G.viewPuts = (G.viewPuts or 0) + #plist   -- 测试、性能面板用：一共摆了多少个零件
+    end
     -- 扬尘：在陆地上开得快才有
     local land = not onWater
     if v.fireLight then v.fireLight.Brightness = 2.2 + math.random() * 1.8 end
@@ -354,14 +667,90 @@ function View.init(G)
       end
     end
     local rate = land and math.clamp((math.abs(v.speed) - 5) * 1.6, 0, 60) * (v.dustK or 0.5) or 0
+    -- 侧滑、刚落地：扬尘更浓（自己开的车 Drive 给 slipA）
+    if own and own.slipA then rate *= 1 + math.clamp(math.abs(math.sin(own.slipA)) * 4, 0, 2) end
     for _, pe in ipairs(M.dust) do if math.abs(pe.Rate - rate) > 0.5 then pe.Rate = rate end end
+    -- 排气（VehModels）：怠速淡淡一缕；往前加速（踩油门、换挡后那一下）喷浓的；远了不放
+    if M.exhaust and #M.exhaust > 0 then
+      local acc = math.max(0, (v.accel or 0) * ((v.speed or 0) >= 0 and 1 or -1))
+      local erate = far and 0 or (2 + math.clamp(acc * 0.9, 0, 26) + math.clamp(math.abs(v.speed or 0) * 0.05, 0, 3))
+      for _, pe in ipairs(M.exhaust) do if math.abs(pe.Rate - erate) > 0.4 then pe.Rate = erate end end
+    end
+    -- 别人的车的发动机、履带声（用户 11-24：坦克的发动机声音做成战雷那样）：3D 的，挂在车的根部件上；380 格以内、有人开、没被毁才响；
+    --   车速越快越尖越响、往前加速时更响（像在踩油门），履带车还有履带的哗啦声
+    if not own then
+      local dist = (pos - camPos).Magnitude
+      -- 回差（A 挑的刺）：进 360 格才挂、出 400 格才拆——车在 380 格上下来回开时别每过一次线就拆了又建两个 Sound
+      local running = lit and dist < (v.engS and 400 or 360) and v.root ~= nil and v.root.Parent ~= nil
+      if running and not v.engS and G.realLoop then
+        local tracked = d.arch == "tracked"
+        local e1 = G.realLoop(tracked and "tankDrive" or "tankEngine", v.root)
+        local e2 = tracked and G.realLoop("tankTracks", v.root) or nil
+        for i, s in ipairs({ e1 or false, e2 or false }) do
+          if s then
+            s.Volume = 0
+            s.RollOffMode = Enum.RollOffMode.InverseTapered
+            s.RollOffMinDistance, s.RollOffMaxDistance = (i == 1) and 14 or 10, (i == 1) and 380 or 220
+            pcall(function() s.TimePosition = math.random() * 2.5 end)   -- 几辆车别齐着响
+          end
+        end
+        v.engS = { e1, e2 }
+      end
+      if v.engS then
+        if not running then
+          engSndOff(v)
+        else
+          local sp = math.clamp(math.abs(v.speed or 0) / math.max(d.speed or 30, 1), 0, 1)
+          local acc = math.clamp(math.max(0, (v.accel or 0) * ((v.speed or 0) >= 0 and 1 or -1)) / 8, 0, 1)
+          local e1, e2 = v.engS[1], v.engS[2]
+          if e1 then
+            e1.PlaybackSpeed = 0.72 + 0.5 * sp + 0.08 * acc
+            e1.Volume = 0.35 + 0.5 * sp + 0.4 * acc
+          end
+          if e2 then
+            e2.PlaybackSpeed = 0.55 + 0.75 * sp
+            e2.Volume = math.clamp((sp - 0.02) * 4, 0, 1) * (0.25 + 0.5 * sp)
+          end
+        end
+      end
+    end
+    -- 履带印（用户：坦克驾驶参考战雷）：履带车在地上开过去，两条履带底下每走 3.6 格留一段深色的印子，十几秒慢慢淡掉；
+    --   离镜头 260 格以外、在水里、被毁了不留；全部车一共最多 MAX_MARK 段（旧的先收）
+    if d.arch == "tracked" and land and not v.wrecked and not far and (pos - camPos).Magnitude < 260 then
+      local lp = v.markPos
+      if not lp then v.markPos = pos
+      elseif (pos - lp).Magnitude >= 3.6 then
+        local mid = (pos + lp) / 2
+        local dir = pos - lp
+        local L = dir.Magnitude
+        local trackX = (d.rw and d.rw.x) or d.W * 0.36
+        local tw = math.max(1.2, d.W * 0.16)
+        for sgn = -1, 1, 2 do
+          local o = base.RightVector * (sgn * trackX)
+          local p = mid + o
+          local gy = Map.height(p.X, p.Z) + lift
+          trackMark(CFrame.lookAt(V(p.X, gy + 0.06, p.Z), V(p.X + dir.X, gy + 0.06, p.Z + dir.Z)), tw, L + 0.15)
+        end
+        v.markPos = pos
+      end
+    else
+      v.markPos = nil
+    end
     -- 被毁：烧
     if em:GetAttribute("Wreck") and not v.wrecked then
       v.wrecked = true
+      -- 坦克被打爆：炮塔掀飞；别的有炮塔的车四成会（按编号定，大家看到的一样）
+      if d.turret and not v.toss then
+        local seed = tonumber(v.id) or 0
+        local why = em:GetAttribute("WtWhy")   -- 战雷式伤害（服务器 Wt.lua）：只有弹药殉爆才掀炮塔，乘员打光、烧毁的车炮塔留着
+        if why ~= nil then
+          if why == "ammo" then startToss(v) end
+        elseif d.cat == "tank" or Random.new(seed * 31 + 7):NextNumber() < 0.4 then startToss(v) end
+      end
       M.fire.Rate, M.black.Rate = 30, 12
       if M.fire.Parent then   -- 夜里残骸的火光照亮周围（每帧闪一闪）
         local pl = Instance.new("PointLight")
-        pl.Color, pl.Range, pl.Brightness, pl.Shadows = Color3.fromRGB(255, 140, 60), 28, 3, true
+        pl.Color, pl.Range, pl.Brightness, pl.Shadows = Color3.fromRGB(255, 140, 60), 28, 3, false   -- 投影子的只留最近的一处（stepFireShadows）
         pl.Parent = M.fire.Parent
         v.fireLight = pl
       end
@@ -374,6 +763,7 @@ function View.init(G)
         elseif part:IsA("BasePart") then part.Color = part.Color:Lerp(Color3.new(0.05, 0.05, 0.05), 0.65) end
       end
       for _, pe in ipairs(M.dust) do pe.Enabled = false end
+      for _, pe in ipairs(M.exhaust or {}) do pe.Enabled = false end
     end
   end
 
@@ -396,6 +786,7 @@ function View.init(G)
     if not v then return end
     views[em] = nil
     if v.id then byId[v.id] = nil end
+    engSndOff(v)
     if v.ext and v.ext.remove then G.try_(v.ext.remove, v) end
     if v.model then v.model:Destroy() end
     add(em)   -- 新建的 solidOn 是空的：下一帧离得近就重新挑实心零件
@@ -408,7 +799,9 @@ function View.init(G)
     local list = {}
     for em, v in pairs(views) do
       local ok = false
-      if v.kind == "veh" then ok = v.M ~= nil and not v.M.imported and v.def ~= nil and VM.importedFor(v.def) ~= nil
+      if v.kind == "veh" then
+        ok = v.M ~= nil and not v.M.imported and v.def ~= nil and VM.importedFor(v.def) ~= nil
+        if em:GetAttribute("Mods") ~= v.modsAttr then ok = true end   -- 改装属性晚到了（或者换了）：按新的重建
       elseif v.ext and v.ext.importReady then ok = v.ext.importReady(v) == true end
       if ok and em.Parent then table.insert(list, em) end
     end
@@ -472,9 +865,34 @@ function View.init(G)
     solidSet(v, want and true or false)
   end
 
+  -- 残骸的火光（点光源）投影子很费（每盏灯每帧画一遍六面的阴影图）：只让离镜头最近、220 格内的那一处投影子，半秒挑一次
+  local fireT = 0
+  local function stepFireShadows(dt, camPos)
+    fireT += dt
+    if fireT < 0.5 then return end
+    fireT = 0
+    local best, bd = nil, 220 * 220
+    for _, v in pairs(views) do
+      local pl = v.fireLight
+      if pl and pl.Parent then
+        local dv = pl.Parent.Position - camPos
+        local dd = dv:Dot(dv)
+        if dd < bd then best, bd = pl, dd end
+      end
+    end
+    for _, v in pairs(views) do
+      local pl = v.fireLight
+      if pl then
+        local want = pl == best and (G.perfK or 1) >= 0.8
+        if pl.Shadows ~= want then pl.Shadows = want end
+      end
+    end
+  end
+
   function G.stepView(dt)
     solidBudget = 1
     stepDying()
+    G.try_(stepFireShadows, dt, cam.CFrame.Position)
     G.try_(checkImports, dt)
     local myTeam = me:GetAttribute("Side")
     local camPos = cam.CFrame.Position
@@ -489,8 +907,11 @@ function View.init(G)
         if hp ~= v.hpSeen or mx ~= v.mxSeen then
           v.hpSeen, v.mxSeen = hp, mx
           v.fill.Size = UDim2.fromScale(math.clamp(hp / math.max(1, mx), 0, 1), 1)
-          v.bb.Enabled = hp < mx and hp > 0
         end
+        -- 自己开的车、船不挂血条：右下的载具面板有车体血量；坐进瞄准镜（第一人称）时镜头前也不会飘着自己的血条
+        local mine = (G.myVeh ~= nil and G.myVeh.em == em) or (G.sail ~= nil and G.sail.em == em)
+        local bbOn = hp < mx and hp > 0 and not mine
+        if v.bb.Enabled ~= bbOn then v.bb.Enabled = bbOn end
         G.try_(stepSolid, v, here)
         if v.kind == "veh" then
           G.try_(stepVeh, v, dt, camPos)

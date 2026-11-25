@@ -6,6 +6,10 @@
 --   中央山脊（偏东一个山口）、西北主峰、东部沿海平原上的机场；网页版只有岛的南半边，这里补出北岸，改成四面环海的完整岛，尺寸按 0.5 缩
 --   另有前哨岛（据点 A）、灯塔岛（据点 B）、西礁岛（岸防炮台，没有据点）、攻方机场岛；攻方舰队在南边 Z 2000～2400
 local Map = {}
+Map.NAME = "island"
+-- 地形长 Roblox 会动的草叶（用户 11-24 发了截图：「这个 roblox 的这种草你给海岛地图加上吧」）：World.lua 写地形时草地照写 Grass（草叶只长在 Grass 上）；
+--   草叶开关 Terrain.Decoration、草长 GrassLength 脚本改不了，写在地点文件的 Terrain 上（tools/build.luau）
+Map.GRASS = true
 local exp, abs, sin, cos, sqrt, max, min, floor = math.exp, math.abs, math.sin, math.cos, math.sqrt, math.max, math.min, math.floor
 local noise = math.noise
 
@@ -78,7 +82,7 @@ function Map.coastN(x) return coastLookup(cN, x) end   -- 北岸线
 Map.BEACHES = {
   { id = "red", x0 = -980 * K, x1 = -820 * K, color = Color3.fromRGB(215, 70, 60) },
   { id = "white", x0 = -200 * K, x1 = -40 * K, color = Color3.fromRGB(235, 235, 235) },
-  { id = "blue", x0 = 250 * K, x1 = 410 * K, color = Color3.fromRGB(70, 130, 230) },
+  { id = "blue", x0 = 250 * K, x1 = 410 * K, color = Color3.fromRGB(80, 196, 100) },   -- 显示名「绿滩」（用户 11-21：蓝色全部改成绿色；编号还叫 blue，代码里按它找）
   { id = "gold", x0 = 690 * K, x1 = 850 * K, color = Color3.fromRGB(235, 190, 60) },
   { id = "flank", x0 = 820 * K, x1 = 960 * K, north = true, color = Color3.fromRGB(150, 110, 220) },
 }
@@ -325,6 +329,14 @@ Map.ROADS = ROADS
 do
   local ok, data = false, nil
   local mod = script and script.Parent and script.Parent:FindFirstChild("MapRoads")
+  -- 客户端要等它复制过来（用户 11-22：无数个 AI 修不好坦克半截身子卡在地里）：客户端一进游戏头一件事就 require Map，
+  --   这时 ReplicatedStorage 里几千块导入的网格还在往下传，MapRoads 常常还没到——原来 FindFirstChild 查一下没有就当没有路，
+  --   这个客户端的地面高度就少了路的挖填（路堤、路堑最多差 6 格），可地形是服务器按有路写的：自己开的车按客户端的高度摆，
+  --   路堤上整车矮下去半截、陷在看得见的路面里（位置再报给服务器，别人看着也陷着）。服务器开服时什么都在，等不着
+  if not mod and script and script.Parent and script.Parent.WaitForChild then
+    mod = script.Parent:WaitForChild("MapRoads", 60)
+    if not mod then warn("[地图] 等了 60 秒还没有 ReplicatedStorage.MapRoads：这边的地面高度没有路，车会和地形对不上（脚本没换全？）") end
+  end
   if mod then ok, data = pcall(require, mod) end
   if ok and type(data) == "table" then
     for _, r in ipairs(data) do
@@ -393,6 +405,51 @@ function Map.roadDist(x, z)
   return d or 1e9
 end
 
+-- 港口（用户 11-20：地图有 bug——湾底的码头在 70 多格高的直崖底下，上不去；攻方从湾口冲到码头登陆也卡在崖底）：
+--   湾底沿岸压出一条离水面 4 格的码头平地（码头根上的库房落在上面，靠山的三面是挡土墙，World.lua 贴水泥墙面），
+--   码头北边贴着挡土墙挖一条坡道：西头跟码头一样高，往东爬 350 格、28 格宽、11° 上下，到东头接回崖顶（港口镇东南角）；
+--   不往北挖：往北会把镇子东边那条路（港口镇—白滩）切出一道 30 格深的沟
+local HARBOR = (function()
+  local P = Map.PORT
+  local zs = Map.coastS(P.x) or (P.z + 210)
+  local H = { x = P.x, zs = zs, qx = 210, qd = 70, y = 4.2, rw = 14, deck = 4.6 }   -- deck：木码头面多高（比码头平地高一点）
+  H.a = { x = P.x - 170, z = zs - 84 }   -- 坡道底（码头西北角，跟码头平地一样高）
+  H.b = { x = P.x + 180, z = zs - 84 }   -- 坡道顶（东头，崖顶上）
+  return H
+end)()
+Map.HARBOR = HARBOR
+-- 坡道：离坡道中线多远、走到第几成（0 底～1 顶）
+local function harborRamp(x, z)
+  local H = HARBOR
+  local ax, az, bx, bz = H.a.x, H.a.z, H.b.x, H.b.z
+  local vx, vz = bx - ax, bz - az
+  local L2 = vx * vx + vz * vz
+  local t = ((x - ax) * vx + (z - az) * vz) / L2
+  local cx, cz = ax + vx * t, az + vz * t
+  return math.sqrt((x - cx) ^ 2 + (z - cz) ^ 2), t
+end
+Map.harborRamp = harborRamp
+-- 在不在港口码头那个坑里（码头平地、坡道；m：往外多算几格）：攻击出发阵地、AI 车的出生点别选在这里——离港口镇 70 格高的崖底，机器人的寻路绕不上来
+function Map.inHarbor(x, z, m)
+  local H = HARBOR
+  m = m or 0
+  if math.abs(x - H.x) <= H.qx + m and z >= H.zs - H.qd - 30 - m and z <= H.zs + 40 + m then return true end
+  local d, t = harborRamp(x, z)
+  return d <= H.rw + m and t >= -0.12 and t <= 1.05
+end
+local function harborCut(x, z, y)
+  local H = HARBOR
+  if math.abs(x - H.x) <= H.qx and z >= H.zs - H.qd and z <= H.zs + 40 then   -- 码头平地（只往下削，不把海填起来）
+    return math.min(y, H.y)
+  end
+  local d, t = harborRamp(x, z)
+  if d <= H.rw and t >= -0.1 and t <= 1 then   -- 坡道：挖到坡面的高度（坡顶接上镇子的高度）；西头往外多挖 35 格平的（车从码头拐进来的地方）
+    local top = H.townY or y
+    return math.min(y, H.y + (top - H.y) * math.clamp(t, 0, 1))
+  end
+  return y
+end
+
 function Map.height(x, z)
   local y, d, wf = flatHeight(x, z)
   if y <= 0.3 then return y, d end
@@ -402,6 +459,7 @@ function Map.height(x, z)
     local w = 1 - smooth(half, half + 10, rd)   -- 路面完全压平，两边 10 格慢慢接回地形
     if w > 0 then y = lerp(y, ry, w * (1 - wf) * smooth(0, 20, d)) end
   end
+  y = harborCut(x, z, y)
   return y, d
 end
 -- 这一点在压平的场地（据点、机场、营地、港口）里有多深：0 外面～1 完全压平（摆树、花草时避开）
@@ -410,6 +468,7 @@ function Map.flatW(x, z)
   return w or 0
 end
 for _, p in ipairs(Map.POINTS) do p.y = Map.ground(p.x, p.z) end
+HARBOR.townY = select(1, flatHeight(HARBOR.b.x, HARBOR.b.z))   -- 坡道顶接港口镇东北角那里的地面
 for _, k in ipairs({ "AIRFIELD", "COMMAND", "CAMP", "PORT", "AFIELD2" }) do Map[k].y = Map.ground(Map[k].x, Map[k].z) end
 
 ---------------------------------------------------------------- 材质
@@ -418,6 +477,12 @@ function Map.material(x, z, y, slope)
   if y <= 0.4 then
     return (y > -3.5) and Enum.Material.Sand or Enum.Material.Sand
   end
+  do   -- 港口的码头平地：水泥；坡道：柏油
+    local H = HARBOR
+    if math.abs(x - H.x) <= H.qx and z >= H.zs - H.qd and z <= H.zs + 40 and y <= H.y + 0.5 then return Enum.Material.Concrete end
+    local hd, ht = harborRamp(x, z)
+    if hd <= H.rw + 1 and ht >= -0.11 and ht <= 1.02 then return Enum.Material.Asphalt end
+  end
   local rd, _, rw = roadNear(x, z)
   if rd and rd < rw * 0.5 + 1.2 * noise(x / 9, z / 9, 3.3) then return Enum.Material.Ground end   -- 土路（边上毛一点）
   local zs, zn = Map.coastS(x), Map.coastN(x)
@@ -425,11 +490,12 @@ function Map.material(x, z, y, slope)
   if nearBeach or y < 2.2 then return Enum.Material.Sand end
   if slope > 1.15 * HK / K then return (y > 120 * HK) and Enum.Material.Slate or Enum.Material.Rock end
   if y > 232 * HK then return Enum.Material.Rock end
-  if slope > 0.75 * HK / K then return Enum.Material.Ground end
+  if slope > 0.92 * HK / K then return Enum.Material.Ground end   -- 陡一点的坡才露土（原来 0.75：用户 11-19 草多一点）
   local n = noise(x / (85 * K), z / (85 * K), 11.3)
-  if y < 9 and n > 0.28 then return Enum.Material.Ground end   -- 海边低处零星的土地块
-  -- 大片草地（会动的地形草只长在 Grass 上；用户 11-18：草多用 Roblox 自带的那种草），深色 LeafyGrass 只留零星几块
-  return (n > 0.45) and Enum.Material.LeafyGrass or Enum.Material.Grass
+  if y < 9 and n > 0.42 then return Enum.Material.Ground end   -- 海边低处零星的土地块（少一点）
+  -- 大片草地，深色 LeafyGrass 只留很少几块（小地图、瞄准镜画中画、开车的路面按这个分）；
+  --   Grass 上长 Roblox 会动的草叶（Map.GRASS，用户 11-24 要回来的；11-21 时嫌草叶盖住车、人的下半截，写地形时换成过 LeafyGrass）
+  return (n > 0.62) and Enum.Material.LeafyGrass or Enum.Material.Grass
 end
 
 ---------------------------------------------------------------- 有陆地的范围（开服生成地形只写这些块）
@@ -457,5 +523,95 @@ function Map.lineClear(a, b, step)
   end
   return true
 end
+
+-- 射线 o → o + v 第一次碰到地面（Map.height 的地形；有海的图还有海面 y = 0）的地方：返回落点、离 o 多远，碰不到返回 nil。
+--   用户 11-24 晚要 streaming 优化（大地图流式加载）：开了以后客户端只有身边一片地形，远处的地形没加载，激光测距、瞄准、标点的射线打空——
+--   地形本来就是按 Map.height 写的，算出来的落点和真地形一样。只在射线低于最高地形（MAXH）的那一段里一步步走，碰到了再二分 10 次
+function Map.rayGround(o, v, step)
+  local L = v.Magnitude
+  if L < 1e-6 then return nil end
+  local d = v / L
+  local inf = Map.info and Map.info[Map.id]
+  local sea = not inf or inf.sea ~= false
+  local top = (Map.MAXH or 600) + 60
+  local t0, t1 = 0, L
+  if o.Y > top then
+    if d.Y >= -1e-6 then return nil end   -- 在最高地形上面、还朝上或水平：碰不到
+    t0 = (top - o.Y) / d.Y
+  end
+  if d.Y > 1e-6 then t1 = math.min(L, (top - o.Y) / d.Y) end
+  if t0 >= t1 then return nil end
+  step = step or math.clamp((t1 - t0) / 160, 6, 60)
+  local function below(t)
+    local p = o + d * t
+    local h = (Map.height(p.X, p.Z))
+    if sea and h < 0 then h = 0 end
+    return p.Y <= h, h, p
+  end
+  if below(t0) then return o + d * t0, t0 end
+  local t = t0
+  while t < t1 do
+    local tn = math.min(t1, t + step)
+    if below(tn) then
+      local a, b = t, tn
+      for _ = 1, 10 do
+        local m = (a + b) / 2
+        if below(m) then b = m else a = m end
+      end
+      local _, h, p = below(b)
+      return Vector3.new(p.X, h, p.Z), b
+    end
+    t = tn
+  end
+  return nil
+end
+
+---------------------------------------------------------------- 几张地图（用户 11-22：「加一个沙漠地图」「进入界面点地图」）
+-- 上面算的是「岛屿突击」；沙漠「沙海」在 MapSands（同一套接口：height / ground / material / POINTS / CAMP / AIRFIELD ……，岛上才有的海滩、舰队、港口是空的）。
+--   Map.use(id)：把那张图的字段、函数就地换进 Map 表（各模块手里拿着的 Map 表不用重新 require）；服务器开服时定一张（init.server.lua 等第一个玩家选），
+--   客户端看 ReplicatedStorage 的 MapId 属性跟着换（init.client.lua）
+Map.id = "island"
+Map.ids = { "sands" }   -- 用户 11-24：「沙漠风暴删掉」「全部默认沙海地图吧，登岛那个也删了」——只剩沙海
+-- 选地图界面（MapPick.lua）用的：尺寸（公里）、模式
+Map.info = {
+  sands = { km = 27.8, mode = "assault", sea = false },   -- 「沙海」（MapSands）：海湾战争式，五个阶段一个一个打
+}
+local KEEP = { use = true, profile = true, ids = true, id = true, info = true, clamp = true, smooth = true, lerp = true, lineClear = true, rayGround = true }
+local PROFILES = { island = {} }
+for k, v in pairs(Map) do
+  if not KEEP[k] then PROFILES.island[k] = v end
+end
+function Map.profile(id)
+  if not table.find(Map.ids, id) then return nil end   -- 不在列表里的不载（删掉的岛、沙漠风暴：只换脚本的地点里 MapDesert 模块可能还在）
+  if PROFILES[id] == nil then
+    local ok, mod = pcall(function()
+      local name = "Map" .. string.upper(string.sub(id, 1, 1)) .. string.sub(id, 2)
+      -- 客户端一进游戏就 require Map（同上面 MapRoads）：ReplicatedStorage 里几千块导入的网格还在往下传，MapSands 可能还没到——等久一点
+      local mod = script.Parent:WaitForChild(name, 60)
+      if not mod then error("等了 60 秒还没有 ReplicatedStorage." .. name) end
+      return require(mod)
+    end)
+    -- 没载上不记死（下次 Map.use 还会再试：客户端照 MapId 属性再换一次时就到了）
+    if ok and type(mod) == "table" then PROFILES[id] = mod end
+    if not ok then warn("[地图] " .. tostring(id) .. " 加载不了：" .. tostring(mod)) end
+  end
+  return PROFILES[id] or nil
+end
+function Map.use(id)
+  if Map.id == id then return true end
+  local P = Map.profile(id)
+  if not P then return false end
+  for k in pairs(Map) do
+    if not KEEP[k] then Map[k] = nil end
+  end
+  for k, v in pairs(P) do
+    if not KEEP[k] then Map[k] = v end
+  end
+  Map.id = id
+  return true
+end
+
+-- 只剩沙海（用户 11-24）：一载入就换成沙海——各模块 require 到的 Map 一开始就是沙海（上面岛图的数学还在 PROFILES.island 里，不再用）
+Map.use("sands")
 
 return Map

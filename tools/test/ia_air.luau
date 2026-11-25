@@ -198,7 +198,8 @@ check(e.alive, "飞机还好好的")
 
 print("⑤ 开战后：守方在机场（据点 D）出生、生成一架 F-22 坐上去（摆到天上当靶子），攻方锁定、打霹雳-15")
 H.runUntil(function() return G.round.phase == "battle" end, 60)
-act(def, "deploy", "rifle", "point.D")
+-- 交战区（2f5175d）以后守方只能在当前阶段的据点出生，开战时是 A；机场是开飞机的出生点「afield」（据点 D 还在守方手里就能去，同 mock/air.lua）
+act(def, "deploy", "rifle", "afield")
 H.run(2)
 local fp = H.pad(G, "f22")
 check(fp ~= nil and fp.need == "D", "机场停机坪有 F-22 的生成点（据点 D 在守方手里才能用）")
@@ -328,9 +329,10 @@ H.runUntil(function() return st.spd < 2 end, 20)
 
 print("⑨ 航母拦阻索着舰")
 local base = AirDefs.carrierCF(G.Map)
-local Wd = { x = -20, z = 200 }
+local Wd0 = AirDefs.WIRES   -- 拦阻索区（福建舰：斜角甲板中线往左偏 9.4°）
+local Wd = { x = Wd0.x, z = (Wd0.z0 + Wd0.z1) / 2 }
 local td = (base * CF.new(Wd.x, 0, Wd.z)).Position + V3.new(0, e.def.gearH, 0)
-local ldir = base:VectorToWorldSpace(V3.new(-math.sin(math.rad(8)), 0, -math.cos(math.rad(8))))
+local ldir = base:VectorToWorldSpace(V3.new(-math.sin(Wd0.a), 0, -math.cos(Wd0.a)))
 local a0 = td - ldir * 140 + V3.new(0, 9, 0)
 teleport(atk, CF.lookAt(a0, a0 + ldir + V3.new(0, -0.06, 0)), e.def.stall * 1.2, false)
 st.gearWant, st.gear = 1, 1

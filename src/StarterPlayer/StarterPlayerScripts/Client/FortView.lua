@@ -184,6 +184,37 @@ function FortView.init(G)
     v.dirty = true
   end
 
+  -- 地基（用户 11-20：地图有 bug——坡上的工事一边悬空）：工事摆在占地中心的地面高度上，坡上低的那边离地好几格；
+  --   第一次摆好时看一圈占地下面的地面，最低处比底面低就往下补一块（碉堡、高炮：水泥台；岸防炮：圆的炮位基座；榴弹炮：夯土台）
+  local foundation
+  local FOOT = {
+    bunker = { V(16.4, 0, 14.4), CONC2, MAT.Concrete },
+    coastal = { V(0, 23.6, 23.6), CONC2, MAT.Concrete, true },
+    aaa = { V(15, 0, 15), CONC2, MAT.Concrete },
+    howitzer = { V(13, 0, 23), RGB(112, 98, 74), MAT.Ground },
+  }
+  foundation = function(v, base)
+    v.footed = true
+    local spec = FOOT[v.fkind]
+    if not spec or not Map or not Map.ground then return end
+    local sz = spec[4] and V(spec[1].Y, 0, spec[1].Z) or spec[1]
+    local lo = math.huge
+    for _, o in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 }, { 0, -1 }, { 0, 1 }, { -1, 0 }, { 1, 0 }, { -0.5, -0.5 }, { 0.5, 0.5 }, { -0.5, 0.5 }, { 0.5, -0.5 } }) do
+      local k = spec[4] and 0.7 or 1   -- 圆的看内接的那圈
+      local w = base:PointToWorldSpace(V(o[1] * sz.X * 0.5 * k, 0, o[2] * sz.Z * 0.5 * k))
+      local ok, g = pcall(Map.ground, w.X, w.Z)
+      if ok and g and g < lo then lo = g end
+    end
+    local drop = base.Position.Y - lo
+    if drop < 0.5 then return end
+    local h = drop + 1.4   -- 往下埋进地里 1 格，往上跟底板齐平
+    local p = newPart(v.model, spec[4] and V(h, sz.X, sz.Z) or V(sz.X, h, sz.Z), spec[2], spec[3], spec[4] and CYL or nil)
+    p.Name = "Foundation"
+    p.CFrame = base * CF(0, 0.4 - h / 2, 0) * (spec[4] and UP or CF())
+    p.CastShadow = true
+    v.foundationPart = p
+  end
+
   local function step(v, dt, camPos)
     local em = v.em
     local root = v.root
@@ -207,7 +238,13 @@ function FortView.init(G)
       v.ty = v.ty + angDiff(v.ty, ty) * k
       v.gp = v.gp + (gp - v.gp) * k
     end
-    if v.recoil > 0 then v.recoil = math.max(0, v.recoil - dt * 2.2) v.dirty = true end
+    if v.recoilT then   -- 后坐（同坦克：View 的 G.recoilCurve，先快后慢坐到底、再慢慢复进；原来开炮那一帧一下子到底）
+      v.recoilT += dt
+      local big = v.fkind == "howitzer" or v.fkind == "coastal"
+      v.recoil = G.recoilCurve and G.recoilCurve(v.recoilT, big) or math.max(0, 1 - v.recoilT * 2.2)
+      if v.recoilT > 0.7 then v.recoilT, v.recoil = nil, 0 end
+      v.dirty = true
+    end
     local moved = math.abs(angDiff(oty, v.ty)) > 0.02 or math.abs(ogp - v.gp) > 0.02
     -- 离得远、没动：不用重摆
     if not v.dirty and not moved then return end
@@ -227,11 +264,12 @@ function FortView.init(G)
       else clist[i] = base * off end
     end
     workspace:BulkMoveTo(plist, clist, Enum.BulkMoveMode.FireCFrameChanged)
+    if not v.footed then foundation(v, base) end
     v.anchor.CFrame = base * CF(0, d.size.Y + 2, 0)
     v.manA.CFrame = base * CF(FD.MAN[v.fkind])
   end
 
-  local function recoil(v) v.recoil = 1 v.dirty = true end
+  local function recoil(v) v.recoilT = 0 v.recoil = G.recoilCurve and G.recoilCurve(0.25 / 60, v.fkind == "howitzer" or v.fkind == "coastal") or 1 v.dirty = true end
   local function remove(v) views[v.id] = nil end
 
   G.viewKind = G.viewKind or {}
@@ -275,7 +313,14 @@ function FortView.init(G)
           pr.Triggered:Connect(function() G.R.Act:FireServer("enterVeh", v.id) end)
           v.prompt = pr
         end
-        local free = (em:GetAttribute("Driver") or 0) == 0 or (v.kind == "air" and v.def and v.def.transport)
+        local drv = (em:GetAttribute("Driver") or 0) ~= 0 or em:GetAttribute("AI") == true
+        local free = not drv or (v.kind == "air" and v.def and v.def.transport)
+        -- 地面车有人开（或者 AI 开着）：还有乘客座位就能坐后面（用户 11-24：运兵车、步战车要真的能载人）
+        local cap = (v.kind == "veh" and v.def) and ((v.def.seats or 1) - 1) or 0
+        local np = em:GetAttribute("Pass") or 0
+        if v.kind == "veh" and drv and cap > 0 and np < cap then free = true end
+        local act = (v.kind == "veh" and drv) and T("ui.ride", np, cap) or T("ui.board")
+        if v.prompt.ActionText ~= act then v.prompt.ActionText = act end
         v.prompt.Enabled = (ok and em:GetAttribute("Team") == side and free and not em:GetAttribute("Wreck")
           and not em:GetAttribute("Locked")) and true or false
       end

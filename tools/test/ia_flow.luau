@@ -5,6 +5,20 @@
 local process = require("@lune/process")
 local roblox = require("@lune/roblox")
 local H = require("./harness")
+-- 拿第 i 件（同 Play.lua 的 tools()：按 Slot 属性排）：已经拿着就不按——再按一次同一个数字键是收枪（11-21 起）
+local function slotTool(pl, i)
+	local list = {}
+	for _, holder in ipairs({ pl:FindFirstChildOfClass("Backpack"), pl.Character }) do
+		if holder then for _, t in ipairs(holder:GetChildren()) do if t:IsA("Tool") and t:GetAttribute("Slot") then table.insert(list, t) end end end
+	end
+	table.sort(list, function(a, b) return a:GetAttribute("Slot") < b:GetAttribute("Slot") end)
+	return list[i]
+end
+local function pressSlot(pl, i, key)
+	local t = slotTool(pl, i)
+	if t and pl.Character and t.Parent == pl.Character then return end
+	H.key(pl, key, true) H.key(pl, key, false)
+end
 local V3, CF = roblox.Vector3, roblox.CFrame
 H.quietWarn = process.args[2] ~= "v"
 local clock0 = os.clock()
@@ -35,9 +49,11 @@ end
 print("① 开服：生成地图")
 H.run(0.5)
 local G = H.Gs.server
+H.game:GetService("Workspace"):SetAttribute("DayFix", 2.3)   -- 用户 11-25 打开了昼夜更替（DayClock.lua）：这里测夜战那一套，钟点钉在半夜
 G.fortsHold = true   -- 这里测的不是工事：工事不开火（同 tools/mock/*.lua；不然岸防炮会把测试里的登陆艇打沉）
 check(G ~= nil, "服务器模块起来了")
 G.Config.Bots.minPerTeam = 0   -- 这个测试不要机器人（机器人另有 ia_bots）
+G.aiVehOff = true   -- 也不要 AI 坦克（AIVeh.lua，另有 mock/aiveh.lua）：它们停在 A 外 100 格当火力点，⑦站进圈里的攻方几秒就被机枪打死、A 拿不下来
 local ok = H.runUntil(function() return G.worldReady end, 900)
 check(ok, string.format("地图生成完（模拟 %.0f 秒，实际 %.1f 秒）：%s 个地形块、%s 个体素", H.now, os.clock() - clock0, tostring(G.terrainChunks), tostring(G.terrainVoxels)))
 check(#G.bootErrors == 0, "开服没有报错：" .. table.concat(G.bootErrors, " | "))
@@ -127,7 +143,7 @@ end
 -- 夜战：夜晚的光照；头盔、夜视仪、红外频闪；按 N 开夜视（画面调色、镜筒框、服务器那边镜筒翻下来），再按关掉、恢复
 local Lighting = H.game:GetService("Lighting")
 local Enum = roblox.Enum
-check(Lighting.ClockTime < 5 or Lighting.ClockTime > 20, string.format("锁定晚上（用户 11-18：把白天模式去掉）：钟点 %.1f", Lighting.ClockTime))
+check(Lighting.ClockTime < 5 or Lighting.ClockTime > 20, string.format("夜里（测试把钟点钉在半夜；用户 11-25 打开了昼夜更替）：钟点 %.1f", Lighting.ClockTime))
 check(Lighting:FindFirstChild("NightBloom") ~= nil and Lighting:FindFirstChildOfClass("Sky") ~= nil, "泛光、天空（夜里有星空）")
 if a1.Character then
 	local ch = a1.Character
@@ -197,7 +213,7 @@ if a1.Character and PA.alive then
 		H.run(0.3)
 	end
 	regive("sniper")
-	H.key(a1, Enum.KeyCode.One, true) H.key(a1, Enum.KeyCode.One, false)
+	pressSlot(a1, 1, Enum.KeyCode.One)
 	H.run(0.5)
 	H.mouseDown(a1, 640, 360, Enum.UserInputType.MouseButton2)
 	H.run(0.8)
@@ -299,37 +315,51 @@ local capOk = H.runUntil(function() return A.owner == "atk" end, G.Config.Captur
 check(capOk, "15 秒左右拿下 A（攻方多 3 人）")
 check(A.locked, "拿下后锁定")
 local st2 = G.Config.Stages[2]
-check(G.round.stage == 2 and math.abs((G.round.endsAt - H.now) - st2.time) < 3, "拿下 A 进入第二阶段（主岛），重新计时 " .. st2.time .. " 秒")
+check(G.round.stage == 2 and math.abs((G.round.endsAt - H.now) - st2.time) < 3, "拿下 A 进入第二阶段（港口），重新计时 " .. st2.time .. " 秒")
 check((G.round.tickets or 0) >= tk0 + G.Config.Tickets.perStage - 5, string.format("攻方兵力补了（%d → %d）", tk0 or -1, G.round.tickets or -1))
-check(G.pointActive("C") and G.pointActive("D") and not G.pointActive("E"), "第二阶段能占 C、D，E 还没开")
-local spA = false
-for _, s in ipairs(G.spawnList("atk", G.P[atk[1]])) do if s.id == "point.A" and s.ok then spA = true end end
-check(spA, "攻方可以在 A 出生")
--- 攻击出发阵地（第二阶段起）：C、D 前面各一处，守方没压过来就能用、推荐它，不在守方碉堡的射界里（同 tools/mock/flow.lua）
+-- 交战区（2f5175d，用户：同一时间只开一个交战区）：一个阶段一个据点 A → C → D → E，灯塔岛 B 不开放；
+--   攻方第一波以后不坐艇、不能在拿下的据点出生，只在当前目标前 200～300 格的攻击出发阵地出生；守方只在当前据点和它后面的集结点
+--   （下面照 tools/mock/flow.lua 改过的检查写；原来这里还按「第二阶段开 C、D，攻方能在 A 出生」查）
+check(G.pointActive("C") and not G.pointActive("D") and not G.pointActive("B") and not G.pointActive("E"), "第二阶段只开港口 C（同一时间一个交战区；D、E 还没开，灯塔岛 B 不开放）")
+local ids = {}
 local stg, recK = {}, nil
 for _, s in ipairs(G.spawnList("atk", G.P[atk[1]])) do
+	ids[s.id] = s.ok
 	if s.kind == "staging" then stg[s.point] = s end
 	if s.rec then recK = s.kind end
 end
-check(stg.C ~= nil and stg.C.ok and stg.D ~= nil and stg.D.ok, "第二阶段 C、D 前面各有攻击出发阵地能出生")
+local beachAny = false
+for id in pairs(ids) do if id:sub(1, 6) == "beach." then beachAny = true end end
+check(not beachAny and ids["point.A"] == nil, "攻方：第二阶段没有登陆艇、不能在 A 出生")
+local Cp = G.points.C
+local function dist(s, p) return ((s.x - p.x) ^ 2 + (s.z - p.z) ^ 2) ^ 0.5 end
+check(stg.C ~= nil and stg.C.ok and stg.D == nil, "攻方：港口 C 前面有攻击出发阵地（D 的没有）")
+check(stg.C ~= nil and dist(stg.C, Cp) >= 195 and dist(stg.C, Cp) <= 305, string.format("出发阵地离 C %.0f 格（200～300）", stg.C and dist(stg.C, Cp) or -1))
 check(recK == "staging", "推荐的出生点是攻击出发阵地（" .. tostring(recK) .. "）")
-check(stg.D ~= nil and not G.stagingCovered(stg.D.x, stg.D.z), "机场 D 的出发阵地不在守方碉堡的射界里")
--- 重新部署（H）：不算阵亡、不扣兵力，回部署界面；接着在 D 的出发阵地出生
+local dids, rallyC = {}, nil
+for _, s in ipairs(G.spawnList("def", G.P[def[1]])) do
+	dids[s.id] = true
+	if s.id == "rally.C" then rallyC = s end
+end
+check(dids["point.C"] and rallyC ~= nil and not dids["point.D"] and not dids["point.E"] and not dids["point.B"] and not dids["rally.D"], "守方：只能在 C 和 C 的集结点出生（D、E、B 不行）")
+check(rallyC ~= nil and dist(rallyC, Cp) >= 145 and dist(rallyC, Cp) <= 255, string.format("集结点在 C 后面 %.0f 格（150～250）", rallyC and dist(rallyC, Cp) or -1))
+check(dids["camp"] and dids["afield"], "守方的营地、机场（开载具、飞机）照旧能去")
+-- 重新部署（H）：不算阵亡、不扣兵力，回部署界面；接着在 C 的出发阵地出生
 local Pr = G.P[atk[2]]
 Pr.dmgLog = {}
 local d0, tk1 = Pr.deaths, G.round.tickets
 act(atk[2], "redeploy")
 H.run(0.5)
 check(not Pr.alive and Pr.deaths == d0 and G.round.tickets == tk1, string.format("按 H 重新部署：回部署界面，不算阵亡（%d → %d）、不扣兵力（%d → %d）", d0, Pr.deaths, tk1, G.round.tickets))
-act(atk[2], "deploy", "rifle", "stage.D")
+act(atk[2], "deploy", "rifle", "stage.C")
 H.run(1.5)
 local hrpR = atk[2].Character and atk[2].Character:FindFirstChild("HumanoidRootPart")
-check(Pr.alive and hrpR ~= nil and stg.D ~= nil and ((hrpR.Position.X - stg.D.x) ^ 2 + (hrpR.Position.Z - stg.D.z) ^ 2) ^ 0.5 < 40, "在 D 的攻击出发阵地出生")
+check(Pr.alive and hrpR ~= nil and stg.C ~= nil and ((hrpR.Position.X - stg.C.x) ^ 2 + (hrpR.Position.Z - stg.C.z) ^ 2) ^ 0.5 < 40, "在 C 的攻击出发阵地出生")
 H.run(1)
 check(CA.S.points[1].owner == "atk", "客户端顶栏上 A 变成攻方")
-check(briefA.Visible and briefA.Title.Text == CA.T("stage.main") and not nearby.Visible, "进入第二阶段显示简报并收起旧据点")
+check(briefA.Visible and briefA.Title.Text == CA.T("stage." .. G.Config.Stages[2].id) and not nearby.Visible, "进入第二阶段显示简报并收起旧据点（" .. briefA.Title.Text .. "）")
 local briefLate = atk[3].PlayerGui.Main.OperationBrief
-check(briefLate.Title.Text == H.Gs[atk[3].Name].T("stage.main"), "活着进入新阶段的队友也读到了当前目标")
+check(briefLate.Title.Text == H.Gs[atk[3].Name].T("stage." .. G.Config.Stages[2].id), "活着进入新阶段的队友也读到了当前目标")
 H.run(5)
 check(not briefA.Visible, "同一阶段持续收战况时简报不会重复显示")
 

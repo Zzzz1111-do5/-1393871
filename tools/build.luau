@@ -10,6 +10,20 @@ local process = require("@lune/process")
 local Instance = roblox.Instance
 local out = process.args[1] or "RobloxTotalBattlefield.rbxlx"
 
+-- 构建标记（用户 11-22：不知道新脚本换没换上）：Config.lua 里的 Config.Build = "dev" 换成「月-日 时:分 提交号」
+local stamp = os.date("%m-%d %H:%M")
+do
+	local ok, r = pcall(process.exec or process.spawn, "git", { "rev-parse", "--short", "HEAD" })   -- Lune 0.9 起 spawn 改名 exec
+	if ok and r and r.ok then stamp = stamp .. " " .. (string.gsub(r.stdout, "%s+", "")) end
+end
+local function stampSource(path, src)
+	if string.match(path, "ReplicatedStorage/Config%.lua$") then
+		local s2, n = string.gsub(src, 'Config%.Build = "dev"', 'Config.Build = "' .. stamp .. '"', 1)
+		if n == 1 then return s2 end
+	end
+	return src
+end
+
 local game = Instance.new("DataModel")
 local count = { Script = 0, LocalScript = 0, ModuleScript = 0, Folder = 0 }
 
@@ -53,7 +67,7 @@ local function build(dir, parent)
 			if cls then
 				local s = Instance.new(cls)
 				s.Name = base
-				s.Source = fs.readFile(path)
+				s.Source = stampSource(path, fs.readFile(path))
 				s.Parent = parent
 				count[cls] += 1
 			end
@@ -91,7 +105,8 @@ if fs.isDir("models/imported") then
 	if nImported > 0 then holder.Parent = game:GetService("ServerStorage") end
 end
 
--- 不是脚本的东西：放导入模型的文件夹、关掉流式加载（客户端要复制服务器的单位模型）
+-- 不是脚本的东西：放导入模型的文件夹、流式加载（同 tools/build_rbxlx.py 的说明：用户 11-24 晚「streaming 优化」；
+--   原来关着是因为客户端要从 workspace 复制服务器的单位模型——现在模型都在 ReplicatedStorage.Imported，不受 streaming 影响）
 local rs = game:GetService("ReplicatedStorage")
 if not rs:FindFirstChild("UnitModels") then
 	local f = Instance.new("Folder")
@@ -99,7 +114,27 @@ if not rs:FindFirstChild("UnitModels") then
 	f.Parent = rs
 end
 local ws = game:GetService("Workspace")
-ws.StreamingEnabled = false
+ws.StreamingEnabled = true
+ws.StreamingMinRadius = 512
+ws.StreamingTargetRadius = 4096
+pcall(function() ws.ModelStreamingBehavior = roblox.Enum.ModelStreamingBehavior.Improved end)
+pcall(function() ws.StreamOutBehavior = roblox.Enum.StreamOutBehavior.LowMemory end)   -- 内存紧了才卸（同 tools/build_rbxlx.py）
+pcall(function() ws.StreamingIntegrityMode = roblox.Enum.StreamingIntegrityMode.Disabled end)   -- 不暂停等加载
+-- 地形草叶（用户 11-24 发截图：「这个 roblox 的这种草你给海岛地图加上吧」）：Terrain.Decoration、GrassLength 脚本改不了，只能写进地点文件——
+--   草叶只长在 Grass 材质上（海岛图写地形时草地照写 Grass：Map.GRASS）；草长 1 = Roblox 最长（截图那样），嫌高在 Studio 里 Workspace → Terrain 调小
+local terrainSV = false
+do
+	local t = ws:FindFirstChildOfClass("Terrain")
+	if not t then
+		t = roblox.Instance.new("Terrain")
+		t.Parent = ws
+	end
+	t.Decoration = true
+	t.GrassLength = 1
+	-- SmoothVoxelsUpgraded 关着（用户 11-24 晚：沙海卡在「正在生成地图……%」）：Roblox 员工在论坛说这是没做完的功能，开着时 FillBlock 等地形操作慢几千到几万倍，
+	--   「Please keep it as False」；地点文件里不写的话由 Studio 定默认值。Lune 不认这个属性时 build 末尾直接往 XML 里补
+	terrainSV = pcall(function() t.SmoothVoxelsUpgraded = false end)
+end
 -- 光照：Future（脚本里改不了，只能写进地图文件）；其余的开服时 Scenery.lighting 还会再设一遍
 local L = game:GetService("Lighting")
 L.Technology = roblox.Enum.Technology.Future
@@ -140,6 +175,11 @@ local function protectSource(xml)
 	return table.concat(parts), fixed
 end
 local xml, fixed = protectSource(roblox.serializePlace(game, true))
+if not terrainSV or not string.find(xml, '"SmoothVoxelsUpgraded"', 1, true) then   -- Lune 的属性表里没有它：照 Roblox 地点文件的写法补进 Terrain 的 Properties
+	local a = string.find(xml, '<Item class="Terrain"', 1, true)
+	local b = a and string.find(xml, "<Properties>", a, true)
+	if b then xml = string.sub(xml, 1, b + 11) .. '\n        <bool name="SmoothVoxelsUpgraded">false</bool>' .. string.sub(xml, b + 12) end
+end
 fs.writeFile(out, xml)
 print("Source 改成 ProtectedString：" .. fixed .. " 处")
 print(string.format("写好了 %s：Script %d、LocalScript %d、ModuleScript %d、Folder %d", out, count.Script, count.LocalScript, count.ModuleScript, count.Folder))
@@ -166,4 +206,4 @@ count = count0
 local packXml = protectSource(roblox.serializeModel({ pack }, true))
 local packOut = string.gsub(out, "[^/\\]+$", "ScriptsUpdate.rbxmx")
 fs.writeFile(packOut, packXml)
-print("写好了 " .. packOut .. "（只换脚本的更新包）")
+print("写好了 " .. packOut .. "（只换脚本的更新包）；构建标记 " .. stamp)

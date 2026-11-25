@@ -16,6 +16,28 @@ function Ents.init(G)
   folder.Parent = workspace
   G.entFolder = folder
 
+  -- 流式加载（地点文件里 Workspace.StreamingEnabled 开着时；用户 11-24 晚「streaming 优化」）：客户端只收到身边一片的地图零件和地形。
+  --   一直要在的（雷达、标记、瞄准、队友、敌舰都要看全图的）设成 Persistent：实体代理（一个隐形的命中盒 Root，很轻）、玩家角色、舰队、据点；
+  --   玩家出生到远处、遥控无人机飞远，先请服务器把那一片送过去（RequestStreamAroundAsync / AddReplicationFocus）。没开 streaming 时这些都不起作用
+  G.streaming = false
+  pcall(function() G.streaming = workspace.StreamingEnabled == true end)
+  function G.persist(model)
+    if model then pcall(function() model.ModelStreamingMode = Enum.ModelStreamingMode.Persistent end) end
+  end
+  function G.streamAround(pl, pos, timeout)
+    if not G.streaming or not pl or typeof(pos) ~= "Vector3" then return end
+    local ch = pl.Character
+    local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
+    if hrp and (hrp.Position - pos).Magnitude < 400 then return end   -- 就在身边（最小半径 512 以内本来就在）：不用等
+    pcall(function() pl:RequestStreamAroundAsync(pos, timeout or 3) end)
+  end
+  function G.streamFocus(pl, part, on)
+    if not G.streaming or not pl or not part then return end
+    pcall(function()
+      if on then pl:AddReplicationFocus(part) else pl:RemoveReplicationFocus(part) end
+    end)
+  end
+
   local ents, byId, nextId = {}, {}, 0
   G.ents, G.entById = ents, byId
 
@@ -43,6 +65,7 @@ function Ents.init(G)
     m:SetAttribute("Cat", def.cat)
     m:SetAttribute("Hp", def.hp)
     m:SetAttribute("MaxHp", def.hp)
+    G.persist(m)   -- 全图都要看得见（雷达、标记、队友、瞄准）：不随 streaming 流出去
     local e = { id = id, model = m, root = root, kind = def.kind, team = def.team, cat = def.cat or "light", hp = def.hp or 100, maxHp = def.hp or 100,
       air = def.air, sea = def.sea, alive = true, born = os.clock(), data = def.data or {} }
     for k, v in pairs(def.extra or {}) do e[k] = v end
@@ -85,6 +108,21 @@ function Ents.init(G)
     if not e or not e.alive or amt <= 0 then return end
     if src and src.team == e.team then return end
     if e.invuln then return end
+    local dk = G.dmgK and G.dmgK[e]   -- 爆反挡下的这一发（Era.lua）：直接命中、爆炸都只剩几成
+    if dk then amt *= dk end
+    -- 战雷式飞机（WtAir.lua）：按打在哪伤机翼、尾翼、发动机、油箱、飞行员（机身血照扣）
+    if e.wta and not G.wtRaw and G.wtaHit then
+      local ok, err = pcall(G.wtaHit, e, amt, src, G.wtPos)
+      if not ok then warn("[战雷飞机] " .. tostring(err)) end
+    end
+    -- 战雷式伤害的车（Wt.lua）：不直接扣血，按这一下的大小分到车外的履带炮管、里面的乘员模块；
+    --   炮弹 / 火箭弹直接打中的那一下已经按穿深算过（G.wtSkip：同一发的溅射不再算它）；G.wtRaw 是 Wt.lua 自己判了击毁
+    if e.wt and not G.wtRaw and G.wtGeneric then
+      if G.wtSkip == e then return end
+      local ok, err = pcall(G.wtGeneric, e, amt, src, G.wtPos)
+      if ok then return end
+      warn("[战雷伤害] " .. tostring(err))   -- 出错时这一下照老办法扣血，别让车打不死
+    end
     e.hp -= amt
     e.lastHitBy = src
     e.model:SetAttribute("Hp", math.max(0, math.floor(e.hp)))
@@ -102,6 +140,7 @@ function Ents.init(G)
       e.alive = false
       if e.cat ~= "inf" then G.fx({ k = "boom", p = e.root.CFrame.Position, s = (e.cat == "ship") and 3 or 2, c = "wreck" }) end   -- 步兵倒下不炸（客户端画倒地）
       if src and src.P and G.P[src.P.pl] == src.P and e.cat ~= "inf" and e.cat ~= "fort" then G.addScore(src.P, Config.Score.vehicleKill) end
+      G.emit("entDied", e, src)   -- 战雷式对局（WtMatch.lua）：车主的阵容记「已毁」、打掉它的人记击毁 / 击落
       if e.onDeath then G.try("被毁", e.onDeath, e, src) else G.removeEnt(e) end
     end
   end
@@ -118,7 +157,10 @@ function Ents.init(G)
       local hb = e.hit or e.root   -- 小兵的命中零件随姿势变（Bots.lua）
       local head = e.headTop ~= nil and hitPos ~= nil and hitPos.Y > hb.CFrame.Position.Y + hb.Size.Y / 2 - e.headTop
       if head then k = headMul or 1 end
+      local p0 = G.wtPos
+      G.wtPos = hitPos or p0   -- 战雷式：打在哪（飞机的机翼 / 尾翼、坦克的零件）
       G.damageEnt(e, dmg * mult(w, e.cat) * k, src, head and (headMul or 1) > 1)
+      G.wtPos = p0
       return true
     end
     local char = inst:FindFirstAncestorOfClass("Model")
@@ -149,7 +191,13 @@ function Ents.init(G)
 
   -- 爆炸：半径 splash 内按距离线性衰减（中心全伤，边上三成）
   function G.explode(pos, w, src, scale)
+    if w and w.nuke and G.nukeAt then return G.nukeAt(pos, w, src) end   -- 核导弹撞到地面 / 房子：照样核爆（Nuke.lua）
     local r = w.splash or 8
+    local ownK = false
+    if not G.dmgK and G.eraBlast then
+      local m = G.eraBlast(pos, w, G.blastDir)
+      if m then G.dmgK, ownK = m, true end
+    end
     G.fx({ k = "boom", p = pos, s = scale or (r / 12), c = boomKind(w) })
     for _, P in pairs(G.P) do
       local char = P.char
@@ -174,10 +222,15 @@ function Ents.init(G)
         else
           d = (e.root.CFrame.Position - pos).Magnitude - math.max(e.root.Size.X, e.root.Size.Z) * 0.4
         end
-        if d < r then G.damageEnt(e, w.dmg * mult(w, e.cat) * (1 - 0.7 * math.max(0, d) / r), src) end
+        if d < r then
+          G.wtPos = pos   -- 战雷式伤害按炸点离哪个零件近（Wt.lua）
+          G.damageEnt(e, w.dmg * mult(w, e.cat) * (1 - 0.7 * math.max(0, d) / r), src)
+          G.wtPos = nil
+        end
       end
     end
     if G.onExplode then G.onExplode(pos, w, src) end
+    if ownK then G.dmgK = nil end
   end
 
   ---------------------------------------------------------------- 飞行中的弹
@@ -191,11 +244,12 @@ function Ents.init(G)
   local shotN = 0
   function G.launch(s)
     s.t = 0
+    s.p0 = s.p0 or s.pos   -- 出膛点：战雷式伤害按飞了多远算穿深（Wt.lua）
     shotN += 1
     s.id = shotN
     table.insert(shots, s)
     G.fx({ k = "shot", id = s.id, p = s.pos, v = s.vel, kind = s.kind, g = s.grav and true or false, gs = s.gscale, tg = s.tgId or (s.target and s.target.id) or nil,
-      f = s.w and s.w.fx or nil, w = s.w and s.w.id or nil, by = s.byEnt })
+      f = s.w and s.w.fx or nil, w = s.w and s.w.id or nil, by = s.byEnt, dr = s.drag, tr = s.tracer })   -- dr 空气阻力、tr 曳光（坦克炮弹，Ballistics.lua）
     return s
   end
 
@@ -210,8 +264,12 @@ function Ents.init(G)
       local s = shots[i]
       s.t += dt
       local done = false
-      if s.step then   -- 自己带导引的弹（机载导弹、制导炸弹、火箭弹）：每步先由它改速度；返回 true 是已经炸了
+      if G.apsCheck and (s.kind == "rocket" or s.kind == "missile") and G.apsCheck(s, dt) then   -- 被坦克的主动防御打掉了（Aps.lua）
+        done = true
+      elseif s.step then   -- 自己带导引的弹（机载导弹、制导炸弹、火箭弹）：每步先由它改速度；返回 true 是已经炸了
+        G.blastDir = s.vel   -- 导引弹自己引爆时（step 里调 G.explode）爆反按这个来向找块
         local ok, r = pcall(s.step, s, dt)
+        G.blastDir = nil
         if not ok then G.reportError("导引", r) done = true elseif r then done = true end
       elseif s.target then   -- 追踪：导弹朝目标拐（过载有限）
         local tg = s.target
@@ -219,17 +277,98 @@ function Ents.init(G)
           local want = (tg.root.CFrame.Position - s.pos).Unit * s.vel.Magnitude
           s.vel = s.vel:Lerp(want, math.clamp(dt * 3.2, 0, 1))
           if (tg.root.CFrame.Position - s.pos).Magnitude < 12 then
+            G.blastDir = s.vel
             G.explode(s.pos, s.w, s.src)
+            G.blastDir = nil
             done = true
           end
         end
       end
       if not done then
         if s.grav then s.vel += GRAV * (s.gscale or 1) * dt end
+        -- 空气阻力（坦克炮弹，Ballistics.lua：a = −k·v·|v|，k 每格）：脱壳穿甲弹每公里掉五六十米 / 秒，破甲弹掉一百多
+        if s.drag then s.vel -= s.vel * math.min(0.5, s.drag * s.vel.Magnitude * dt) end
         local step = s.vel * dt
         params.FilterDescendantsInstances = s.ignore or {}
         local res = workspace:Raycast(s.pos, step, params)
-        if res and s.kind == "shell" then   -- 炮弹：直接命中算足伤害，再炸一圈（三成）
+        local ricE = res and s.kind == "shell" and not s.ricocheted and res.Instance and G.entOf(res.Instance) or nil
+        local RIC = G.Config.Ricochet
+        local bounced = false
+        -- 战雷式伤害的车（Wt.lua）：炮弹、火箭弹、导弹直接打中——按穿深、角度判跳弹 / 未击穿 / 击穿，里面伤哪个乘员模块
+        local wtE = res and (s.kind == "shell" or s.kind == "rocket" or s.kind == "missile") and not s.ricocheted and res.Instance and G.entOf(res.Instance) or nil
+        if wtE and not (wtE.wt and wtE.alive and G.wtShellHit) then wtE = nil end
+        if wtE and s.kind == "rocket" and G.kitRocket and G.kitRocket(s, res) then wtE, done = nil, true end   -- 栅栏装甲卡住火箭弹的引信：哑火（Kit.lua）
+        local wtR = nil
+        if wtE then
+          ricE = nil
+          local ok, r = pcall(G.wtShellHit, wtE, s, res)
+          if not ok then G.reportError("战雷伤害", r) else wtR = r end
+        end
+        if wtR == "ric" then
+          local vd = s.vel.Unit
+          local n = res.Normal
+          local refl = vd - 2 * vd:Dot(n) * n
+          refl = (refl + V((math.random() - 0.5) * 0.16, math.random() * 0.08, (math.random() - 0.5) * 0.16)).Unit
+          s.vel = refl * s.vel.Magnitude * ((RIC and RIC.keep) or 0.5)
+          s.pos = res.Position + n * 0.5
+          s.ricocheted = true
+          s.life = s.t + ((RIC and RIC.life) or 1.2)
+          G.fx({ k = "ricochet", id = s.id, p = s.pos, v = s.vel, n = n })
+          G.ricochets = (G.ricochets or 0) + 1
+          bounced = true
+        elseif wtR then
+          -- 这一发打在车上算完了：钢甲上一团火花，溅射照样伤周围的人（不再算这辆车）
+          local hs = res.Instance and HitSurf.of(res.Instance, res.Material)
+          if hs and HitSurf.METAL[hs] then
+            G.fx({ k = "spark", p = res.Position, n = res.Normal, h = hs, s = math.clamp((s.w.cal or 0.25) * 5, 1, 3) })
+          end
+          -- 溅射出错也要把 wtSkip 放掉：不然这辆车之后再也不掉血
+          G.wtSkip = wtE
+          local okE, errE = pcall(function()
+            if s.kind == "shell" then
+              s.w.splashW = s.w.splashW or { dmg = (s.w.dmg or 100) * 0.3, splash = s.w.splash, vs = s.w.vs,
+                boom = (s.w.fx == "agun" or s.w.fx == "ac" or s.w.fx == "lmg") and "gun" or "shell" }
+              G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
+            else
+              G.explode(res.Position, s.w, s.src)
+            end
+          end)
+          G.wtSkip = nil
+          if not okE then G.reportError("战雷伤害溅射", errE) end
+          done = true
+        end
+        if ricE and RIC and ricE.alive and RIC.a0[ricE.cat] then
+          -- 跳弹（用户：跳弹也做出来）：炮弹打在坦克、装甲车上，入射方向和装甲面的法线夹角越大越容易滑开（a0 度起有可能、a1 度一定）
+          local vd = s.vel.Unit
+          local ang = math.deg(math.acos(math.clamp(math.abs(vd:Dot(res.Normal)), 0, 1)))
+          local k = math.clamp((ang - RIC.a0[ricE.cat]) / math.max(1, RIC.a1[ricE.cat] - RIC.a0[ricE.cat]), 0, 1)
+          if k > 0 and math.random() < k then
+            local n = res.Normal
+            local refl = vd - 2 * vd:Dot(n) * n
+            refl = (refl + V((math.random() - 0.5) * 0.16, math.random() * 0.08, (math.random() - 0.5) * 0.16)).Unit
+            s.vel = refl * s.vel.Magnitude * RIC.keep
+            s.pos = res.Position + n * 0.5
+            s.ricocheted = true
+            s.life = s.t + RIC.life
+            if RIC.dmg > 0 then G.damageEnt(ricE, s.w.dmg * RIC.dmg, s.src) end
+            G.fx({ k = "ricochet", id = s.id, p = s.pos, v = s.vel, n = n })
+            local P = s.src and s.src.P
+            if P and P.pl then G.msg(P.pl, "ric", "hit.ric") end
+            local D = ricE.driver
+            if D and D.pl then G.msg(D.pl, "ric", "hit.ricIn") end
+            G.ricochets = (G.ricochets or 0) + 1   -- 测试用
+            bounced = true
+          end
+        end
+        if bounced or done then
+          -- 刚跳开：位置、速度上面已经改好了（或者战雷式伤害那边已经算完了这一发）
+        elseif res and s.ricocheted then   -- 跳开过的弹：再碰到东西就没了（不炸、不伤），碰的地方迸一点火星
+          G.fx({ k = "spark", p = res.Position, n = res.Normal, h = "m", s = 1 })
+          done = true
+        elseif res and s.kind == "shell" then   -- 炮弹：直接命中算足伤害，再炸一圈（三成）
+          local hitE = res.Instance and G.eraShell and G.entOf(res.Instance)
+          local ek = hitE and G.eraShell(hitE, s, res.Position)   -- 重型爆反挡穿甲弹（Era.lua）
+          if ek then G.dmgK = { [hitE] = ek } end
           if res.Instance then hitThing(res.Instance, s.w, s.w.dmg, s.src, 1, res.Position) end
           -- 炮弹、航炮直接打在车、船、飞机上：钢甲上迸一团白热的火花（客户端 Fx 的 spark；大小按口径：坦克炮 2 倍，航炮 1.25 倍）
           local hs = res.Instance and HitSurf.of(res.Instance, res.Material)
@@ -239,10 +378,18 @@ function Ents.init(G)
           s.w.splashW = s.w.splashW or { dmg = s.w.dmg * 0.3, splash = s.w.splash, vs = s.w.vs,
             boom = (s.w.fx == "agun" or s.w.fx == "ac" or s.w.fx == "lmg") and "gun" or "shell" }   -- 航炮、高炮、小口径：小火光；坦克、舰炮：炮弹
           G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
+          if ek then G.dmgK = nil end
+          done = true
+        elseif res and s.kind == "rocket" and G.kitRocket and G.kitRocket(s, res) then
+          -- 火箭弹打在坦克的栅栏装甲上、引信被卡坏：哑火（Kit.lua），不炸
           done = true
         elseif res and s.kind ~= "grenade" then
+          -- 火箭弹、导弹：爆反按来向找块，这一发的爆炸和直接命中都按它打折（G.dmgK 在两下之间都留着）
+          local m = G.eraBlast and G.eraBlast(res.Position, s.w, s.vel)
+          if m then G.dmgK = m end
           G.explode(res.Position, s.w, s.src)
           if res.Instance and s.kind == "rocket" then hitThing(res.Instance, s.w, s.w.dmg * 0.3, s.src) end   -- 直接命中多一点
+          if m then G.dmgK = nil end
           done = true
         elseif res and s.kind == "grenade" then   -- 手雷：落地弹一下、滚一点，等引信
           s.pos = res.Position + res.Normal * 0.6

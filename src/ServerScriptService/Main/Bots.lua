@@ -98,6 +98,10 @@ function Bots.init(G)
 
   -- 每队要几个机器人：保底人数减真人，两队加起来不超过 maxTotal
   local function wanted()
+    if G.botWanted then   -- PvE 关卡（Pve.lua）：按关卡要的人数
+      local w = G.botWanted()
+      if w then return { atk = math.min(w.atk, BC.maxTotal), def = math.min(w.def, BC.maxTotal) } end
+    end
     local a = math.max(0, BC.minPerTeam - realCount("atk"))
     local d = math.max(0, BC.minPerTeam - realCount("def"))
     if a + d > BC.maxTotal then
@@ -376,6 +380,7 @@ function Bots.init(G)
         K.kills += 1
         G.addScore(K, Config.Score.botKill)
         G.msg(K.pl, "kill", "ui.youKilled", B.name)
+        if src.wid and G.gunXp then G.gunXp(K, src.wid, (Config.GunMods and Config.GunMods.botXp) or 60) end   -- 枪械经验（改枪）
       end
       kname = K.pl.DisplayName
     elseif src and src.bot then
@@ -454,6 +459,10 @@ function Bots.init(G)
   local function atkPlan()
     local tg0 = pickAtkTarget(nil)
     if not tg0 then return nil end
+    if Map.BASES then   -- 沙海：只在自己主基地的出生广场出生（用户 11-24「固定两边都在双方各自固定位置出生」）
+      local HB = Map.BASES.atk
+      return { mode = "land", tg = tg0, at = spotNear(HB.spawn.x, HB.spawn.z, 0, 24) }
+    end
     -- 攻击出发阵地能用（第二阶段起、守方没压过来，Round.lua）：八成在那里出生，直接上前线
     local st = G.stagingOk and G.stagingOk(tg0.id)
     if st and math.random() < 0.8 then return { mode = "land", tg = tg0, at = spotNear(st.x, st.z, 0, 35) } end
@@ -467,6 +476,15 @@ function Bots.init(G)
       local p = caps[math.random(#caps)]
       local tg = pickAtkTarget(p.land)
       if tg then return { mode = "land", tg = tg, at = spotNear(p.x, p.z, 10, 40) } end
+    end
+    if Map.LANDONLY then   -- 沙漠图没有登陆艇：出发阵地被守方压着也在那里（或拿下的据点）出生
+      local sp = G.stagingOf and G.stagingOf(tg0.id)
+      if sp then return { mode = "land", tg = tg0, at = spotNear(sp.x, sp.z, 0, 35) } end
+      if #caps > 0 then
+        local p = caps[math.random(#caps)]
+        return { mode = "land", tg = tg0, at = spotNear(p.x, p.z, 10, 40) }
+      end
+      return nil
     end
     local b = landingFor(tg0)
     if not b or not G.boatBot then return nil end
@@ -499,6 +517,10 @@ function Bots.init(G)
 
   local function defPlan()
     local p = pickDefPoint(nil)
+    if Map.BASES then   -- 沙海：守方也只在自己主基地出生，走过去守
+      local HB = Map.BASES.def
+      return { p = p, at = spotNear(HB.spawn.x, HB.spawn.z, 0, 24), face = V(0, 0, HB.face) }
+    end
     if not p then return { at = spotNear(Map.CAMP.x, Map.CAMP.z, 10, 60), face = V(0, 0, 1) } end
     local s = pointState(p.id)
     local hot = s and (s.pressed or (G.countAt and select(1, G.countAt(p.x, p.z, Map.ground(p.x, p.z), 160)) > 0))   -- 攻方到了 160 格以内：不在点里刷
@@ -529,13 +551,53 @@ function Bots.init(G)
     return true
   end
 
+  -- 征服模式（沙漠，Round.lua 的 G.conquest）：两边都一样——挑一个据点去打（敌人的、中立的先；自己的被压着就回去守；自己的没人碰就少派人），
+  --   离自己基地越远越不想去、已经有很多队友去的少派；出生在离目标最近、没被压着的自己的据点，没有就在自己基地
+  local function conquestOn() return G.conquest ~= nil and G.conquest() end
+  local function conqPick(team, from, self)
+    local best, bs = nil, -1e9
+    for _, p in ipairs(pointList()) do
+      local s = pointState(p.id)
+      if s then
+        local n = 0
+        for _, x in ipairs(list) do if x ~= self and x.team == team and x.e and x.target == p.id then n += 1 end end
+        local want
+        if s.owner == team then want = s.pressed and 1.5 or 0.12
+        elseif s.owner == "none" then want = 1.0
+        else want = 1.25 end
+        local d = math.sqrt((p.x - from.X) ^ 2 + (p.z - from.Z) ^ 2)
+        local sc = want / (1 + n * 0.35) - d / 9000 + math.random() * 0.15
+        if sc > bs then best, bs = p, sc end
+      end
+    end
+    return best
+  end
+  local function conqPlan(team)
+    local B0 = Map.BASES and Map.BASES[team]
+    if not B0 then return nil end
+    local home = V(B0.camp.x, 0, B0.camp.z)
+    local tg = conqPick(team, home, nil)
+    if not tg then return nil end
+    local at, bd = nil, math.huge
+    for _, p in ipairs(pointList()) do
+      local s = pointState(p.id)
+      if s and s.owner == team and not s.pressed and p.id ~= tg.id then
+        local d = (p.x - tg.x) ^ 2 + (p.z - tg.z) ^ 2
+        if d < bd then at, bd = p, d end
+      end
+    end
+    local spot = at and spotNear(at.x, at.z, 20, Map.POINT_R * 0.9) or spotNear(B0.camp.x, B0.camp.z, 10, 80)
+    return { mode = "land", tg = tg, at = spot }
+  end
   local function spawnSquad(team, group)
-    local plan = (team == "atk") and atkPlan() or defPlan()
+    local conq = conquestOn()
+    local plan
+    if conq then plan = conqPlan(team) else plan = (team == "atk") and atkPlan() or defPlan() end
     if not plan then return false end
     local S = { team = team, m = {}, bound = 1, boundAt = 0, face = plan.face }
     for k, B in ipairs(group) do
       local ok = false
-      if team == "atk" then ok = spawnAtk(B, plan, k - 1) else ok = spawnDef(B, plan, k - 1) end
+      if team == "atk" or conq then ok = spawnAtk(B, plan, k - 1) else ok = spawnDef(B, plan, k - 1) end
       if ok and B.e then
         B.sq, B.readyT = S, nil
         table.insert(S.m, B)
@@ -560,7 +622,7 @@ function Bots.init(G)
     local cands = {}
     local sight = BC.sight
     for _, P in pairs(G.P) do
-      if P.team ~= B.team and P.alive and P.char and not G.inVeh(P) then   -- 车里的人打不着（步枪打不动车）；端着平板遥控无人机的照打
+      if P.team ~= B.team and P.alive and P.char and not G.inVeh(P) and not P.downed then   -- 倒地的不补枪   -- 车里的人打不着（步枪打不动车）；端着平板遥控无人机的照打
         local hrp = P.char:FindFirstChild("HumanoidRootPart")
         local hum = P.char:FindFirstChildOfClass("Humanoid")
         if hrp and hum and hum.Health > 0 then
@@ -598,7 +660,7 @@ function Bots.init(G)
   local function targetPos(c)
     if c.P then
       local P = c.P
-      if not P.alive or not P.char or not c.part.Parent then return nil end
+      if not P.alive or not P.char or not c.part.Parent or P.downed then return nil end
       local hum = P.char:FindFirstChildOfClass("Humanoid")
       if not hum or hum.Health <= 0 then return nil end
       return c.part.Position + V(0, 0.8, 0)
@@ -975,6 +1037,39 @@ function Bots.init(G)
     end)
   end
 
+  local function thinkConq(B)
+    local e = B.e
+    local p = e.root.CFrame.Position
+    local s = B.target and pointState(B.target)
+    -- 目标拿下了、又没人来抢：守一会儿（20～45 秒）再挑下一个
+    if s and s.owner == B.team and not s.pressed then
+      B.holdUntil = B.holdUntil or (now() + 20 + math.random() * 25)
+      if now() >= B.holdUntil then
+        B.holdUntil = nil
+        local q = conqPick(B.team, p, B)
+        if q and q.id ~= B.target then B.target, B.goal = q.id, nil end
+      end
+    elseif not s then
+      local q = conqPick(B.team, p, B)
+      B.target, B.goal = q and q.id or nil, nil
+    else
+      B.holdUntil = nil
+    end
+    local pt = pointById(B.target)
+    if not pt then return end
+    if farHop(B, pt) then return end
+    local dx, dz = p.X - pt.x, p.Z - pt.z
+    local inside = dx * dx + dz * dz < (Map.POINT_R * 0.8) ^ 2
+    B.navKey = pt.id
+    if not B.goal and not B.detour then
+      if inside then
+        if not B.arrived or now() - B.arrived > 8 + math.random() * 10 then B.goal = spotNear(pt.x, pt.z, 5, Map.POINT_R * 0.75) end
+      else
+        B.goal = spotNear(pt.x, pt.z, 5, 45)
+      end
+    end
+  end
+
   local function think(B)
     local battle = G.round and G.round.phase == "battle"
     local S = B.sq
@@ -999,8 +1094,9 @@ function Bots.init(G)
     end
     B.supp = (B.supp or 0) * 0.8
     if not S or S.lead == B or not S.lead then
-      if B.team == "atk" then thinkAtk(B) else thinkDef(B) end
-      if S and B.team == "def" and B.e then
+      if conquestOn() then thinkConq(B)
+      elseif B.team == "atk" then thinkAtk(B) else thinkDef(B) end
+      if S and B.team == "def" and B.e and not conquestOn() then
         -- 阵地朝哪：在打的话朝敌人，不然朝来敌的方向（离据点最近的登陆滩）
         local pt = pointById(B.guard)
         if S.contactP and now() - (S.contactT or -1e9) < 20 then S.face = flatUnit(S.contactP - B.e.root.CFrame.Position, S.face or V(0, 0, 1))

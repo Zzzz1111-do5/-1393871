@@ -69,7 +69,7 @@ function Tactical.init(G)
     piece(m, V(5.9, 0.3, 4.1), base * CFrame.new(0, 2.6, 0), RGB(40, 42, 36), Enum.Material.Fabric)   -- 捆带
     piece(m, V(0.3, 3.5, 4.1), base * CFrame.new(1.4, 2.2, 0), RGB(40, 42, 36), Enum.Material.Fabric)
     piece(m, V(0.3, 3.5, 4.1), base * CFrame.new(-1.4, 2.2, 0), RGB(40, 42, 36), Enum.Material.Fabric)
-    local lamp = piece(m, V(0.5, 0.5, 0.5), base * CFrame.new(0, 4.15, 0), (team == "atk") and RGB(255, 90, 70) or RGB(90, 170, 255), Enum.Material.Neon)
+    local lamp = piece(m, V(0.5, 0.5, 0.5), base * CFrame.new(0, 4.15, 0), (team == "atk") and RGB(255, 90, 70) or RGB(96, 236, 120), Enum.Material.Neon)   -- 守方的灯：绿（原来蓝，用户 11-21 蓝色全改绿）
     lamp.CanCollide = false
     lamp:SetAttribute("Anim", "blink")   -- Night.lua 让它一闪一闪（夜里好找）
     lamp:SetAttribute("Spd", 1)

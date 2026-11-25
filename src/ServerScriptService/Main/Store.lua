@@ -47,14 +47,21 @@ function Store.init(G)
       wins = tonumber(d.wins) or 0, games = tonumber(d.games) or 0, caps = tonumber(d.caps) or 0,
       seen = {},
     }
+    -- 改枪（Gunsmith.lua）：每把枪装的配件、存的方案、枪械经验；读档前这一次进服已经改过的也并进来
+    if G.gunsFromSave then
+      P.data.guns, P.data.gxp = G.gunsFromSave(d)
+      G.gunsMergeEarly(P)
+    end
     -- 新手三步操作卡看过哪几种（Coach.lua）：只留认得的名字；读档前这一次进服已经看过的也并进来
     if type(d.seen) == "table" then
       for k, v in pairs(d.seen) do if SEEN[k] and v == true then P.data.seen[k] = true end end
     end
     for k in pairs(P.seenEarly or {}) do P.data.seen[k] = true end
     P.seenEarly = nil
+    if G.econFromSave then G.econFromSave(P, d) end   -- 金币、买过的载具和配件、PvE 打到第几关（Economy.lua）
     seenAttr(P)
     P.canSave = ok and store ~= nil
+    if G.gunPublish then G.gunPublish(P) end
     P.xp = P.data.xp
     P.rank = Config.RankOf(P.xp)
     G.pushOne(P)

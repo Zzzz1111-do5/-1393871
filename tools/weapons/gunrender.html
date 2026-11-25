@@ -1,0 +1,124 @@
+<!doctype html>
+<!-- 改枪核对图（tools/weapons/gunrender.mjs 用 Playwright 打开）：第一人称 M4（models/fps_m4.glb，各块按待机姿势）+ 配件原模型
+     （models/optics/<键>.glb）照 tools/mock/gunmount.lua 导出的位置装上，拍左右两侧、俯视斜看、瞄具的开镜视角（眼睛在光轴上） -->
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:#2a2e33}</style>
+<script type="importmap">{"imports":{"three":"./three/build/three.module.js","three/addons/":"./three/examples/jsm/"}}</script>
+</head><body>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const W = 900, H = 520;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setPixelRatio(1);
+renderer.setSize(W, H);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+document.body.appendChild(renderer.domElement);
+const cache = {};
+async function glb(url) {
+  if (!cache[url]) cache[url] = await new GLTFLoader().loadAsync(url);
+  return cache[url];
+}
+// Roblox CFrame 的 12 个数（x y z R00 R01 R02 R10 … R22）→ Matrix4
+function m4(c) { return new THREE.Matrix4().set(c[3], c[4], c[5], c[0], c[6], c[7], c[8], c[1], c[9], c[10], c[11], c[2], 0, 0, 0, 1); }
+function addScene(scene, g, mat, only, glass) {
+  g.scene.traverse(o => {
+    if (o.isMesh && (!only || only(o.name))) {
+      let mt = o.material;
+      if (glass && glass.some(p => o.name.endsWith('__' + p) || (o.parent && o.parent.name.endsWith('__' + p)))) {
+        mt = o.material.clone();   // 镜片、窗玻璃：同游戏里一样半透明
+        mt.transparent = true;
+        mt.opacity = 0.14;
+        mt.depthWrite = false;
+      }
+      const m = new THREE.Mesh(o.geometry, mt);
+      m.matrixAutoUpdate = false;
+      m.matrix.copy(mat);
+      scene.add(m);
+    }
+  });
+}
+window.renderBuild = async (D, bi, view) => {
+  const B = D.builds[bi];
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x2a2e33);
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x404040, 1.6));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.2);
+  sun.position.set(1, 2, 1.5);
+  scene.add(sun);
+  const back = new THREE.DirectionalLight(0xffffff, 1.0);
+  back.position.set(-1.5, 1, -1);
+  scene.add(back);
+  const m4g = await glb('/models/fps_m4.glb');
+  for (const p of D.m4) {
+    if (B.skipMag && (p.node === 'FPS_M4_Mag1' || p.node === 'FPS_M4_Mag2')) continue;
+    if (p.piece === 'mag2') continue;   // 换弹时手里那个
+    addScene(scene, m4g, m4(p.cf), n => n === p.node || n.startsWith(p.node + '_') || n.replace(/_\d+$/, '') === p.node);
+  }
+  let sight = null;
+  for (const a of B.att) {
+    const g = await glb('/models/optics/' + a.model + '.glb');
+    addScene(scene, g, m4(a.cf), null, a.glass);
+    if (a.riser) {
+      const r = new THREE.Mesh(new THREE.BoxGeometry(0.058, a.riser, 0.1), new THREE.MeshStandardMaterial({ color: 0x222224 }));
+      r.matrixAutoUpdate = false;
+      r.matrix.copy(m4(a.cf)).multiply(new THREE.Matrix4().makeTranslation(0, -a.riser / 2, 0.01));
+      scene.add(r);
+    }
+    if (a.eye) sight = a;
+  }
+  let cam;
+  if (view === 'sight') {
+    const e = new THREE.Vector3(...(sight ? sight.eye : D.sightIron.rear));
+    const o = new THREE.Vector3(...(sight ? sight.obj : D.sightIron.front));
+    const dir = o.clone().sub(e).normalize();
+    const d = sight ? (sight.kind === 'dot' ? (sight.adsD || 0.3) : 0.18) : 0.34;
+    cam = new THREE.PerspectiveCamera(68 / ((sight && sight.zoom) || 1.3), W / H, 0.01, 100);
+    cam.position.copy(e.clone().sub(dir.clone().multiplyScalar(d)));
+    cam.up.set(0, 1, 0);
+    cam.lookAt(e.clone().add(dir.multiplyScalar(10)));
+  } else {
+    const half = 1.45;
+    cam = new THREE.OrthographicCamera(-half, half, half * H / W, -half * H / W, 0.01, 100);
+    const c = new THREE.Vector3(0, -0.05, 0.35);
+    if (view === 'left') cam.position.set(-5, -0.05, 0.35);
+    else if (view === 'right') cam.position.set(5, -0.05, 0.35);
+    else { cam.position.set(3, 2.4, 2.2); }
+    cam.up.set(0, 1, 0);
+    cam.lookAt(c);
+  }
+  renderer.render(scene, cam);
+  return renderer.domElement.toDataURL('image/png');
+};
+// 照改枪界面的镜头拍（tools/mock/hudshot.lua kind=gunsmith 写的 cam.json）：透明底，贴进界面截图的视口
+window.renderCam = async (D, cam, w, h) => {
+  renderer.setSize(w, h);
+  renderer.setClearColor(0x000000, 0);
+  const scene = new THREE.Scene();
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x404040, 1.5));
+  const sun = new THREE.DirectionalLight(0xffffff, 2.0);
+  sun.position.set(0.4, 1, -0.3);
+  scene.add(sun);
+  const B = D.builds[0];
+  const m4g = await glb('/models/fps_m4.glb');
+  for (const p of D.m4) {
+    if (B.skipMag && (p.node === 'FPS_M4_Mag1' || p.node === 'FPS_M4_Mag2')) continue;
+    if (p.piece === 'mag2') continue;
+    addScene(scene, m4g, m4(p.cf), n => n === p.node || n.replace(/_\d+$/, '') === p.node);
+  }
+  for (const a of B.att) {
+    const g = await glb('/models/optics/' + a.model + '.glb');
+    addScene(scene, g, m4(a.cf), null, a.glass);
+  }
+  const c = new THREE.PerspectiveCamera(cam.fov, w / h, 0.01, 100);
+  c.matrixAutoUpdate = false;
+  c.matrix.copy(m4(cam.cf));
+  c.matrixWorld.copy(c.matrix);
+  c.matrixWorldInverse.copy(c.matrix).invert();
+  renderer.render(scene, c);
+  const url = renderer.domElement.toDataURL('image/png');
+  renderer.setSize(W, H);
+  renderer.setClearColor(0x2a2e33, 1);
+  return url;
+};
+window.ready = true;
+</script></body></html>

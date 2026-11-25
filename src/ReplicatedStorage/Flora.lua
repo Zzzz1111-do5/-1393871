@@ -36,6 +36,8 @@ local function forts()
   end
   return fortPts
 end
+-- 换地图（Map.use）：工事的位置重新按新地图的 FortDefs 算
+function Flora.reset() fortPts = nil end
 local function nearFort(x, z, r)
   for _, f in ipairs(forts()) do
     local dx, dz = x - f[1], z - f[2]
@@ -78,7 +80,7 @@ local function site(x, z, roadPad, flatMax)
   if rd and rd < rw * 0.5 + roadPad then return nil end
   if Map.flatW(x, z) > (flatMax or 0.02) then return nil end
   local zs, zn = Map.coastS(x), Map.coastN(x)
-  if zs and (zs - z < 70 or z - zn < 50) and h < 14 then return nil end   -- 海滩后面的沙丘
+  if zs and zn and (zs - z < 70 or z - zn < 50) and h < 14 then return nil end   -- 海滩后面的沙丘
   return h, Map.slope(x, z)
 end
 
@@ -88,7 +90,44 @@ local BUSH = { "cshrub", "dshrub", "holly", "sapling" }
 
 local function pick(list, r) return list[floor(r * #list) + 1] end
 
+-- 沙漠图（沙海）：不长树、草、花；平原上零星几丛枯灌木，岩坡、方山脚下多石头
+local function desertCell(cx, cz, layer)
+  local out = {}
+  if layer ~= "bush" and layer ~= "rock" then return out end
+  local step = Flora.LAYERS[layer]
+  local R = rng(cx, cz, SALT[layer] + 40)
+  local n = floor(CELL / step + 0.5)
+  local x0, z0 = cx * CELL, cz * CELL
+  for i = 0, n - 1 do
+    for k = 0, n - 1 do
+      local x = x0 + (i + 0.15 + R() * 0.7) * step
+      local z = z0 + (k + 0.15 + R() * 0.7) * step
+      local roll, roll2, yaw, sc = R(), R(), R() * math.pi * 2, 0.7 + R() * 0.4
+      if layer == "bush" then
+        if roll < 0.035 then
+          local h, sl = site(x, z, 4)
+          if h and sl < 0.4 and not nearFort(x, z, 24) and not nearPoint(x, z, Map.POINT_R) then
+            table.insert(out, { k = "dshrub", x = x, y = h - 0.3, z = z, yaw = yaw, s = sc * 0.8 })
+          end
+        end
+      else
+        local sl = Map.slope(x, z)
+        local p = 0.012 + 0.6 * smooth(0.35, 1.0, sl)
+        if roll < p then
+          local h = site(x, z, 3)
+          if h and not nearFort(x, z, 20) then
+            local k2 = (sl > 0.6 and roll2 < 0.6) and "rock3" or ((roll2 < 0.5) and "rock1" or "rock2")
+            table.insert(out, { k = k2, x = x, y = h - 1.2, z = z, yaw = yaw, s = sc * ((k2 == "rock3") and 1.1 or 0.8) })
+          end
+        end
+      end
+    end
+  end
+  return out
+end
+
 function Flora.cell(cx, cz, layer)
+  if Map.DESERT then return desertCell(cx, cz, layer) end
   local out = {}
   local step = Flora.LAYERS[layer]
   local R = rng(cx, cz, SALT[layer])

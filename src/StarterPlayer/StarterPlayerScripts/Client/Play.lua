@@ -9,7 +9,7 @@ local Play = {}
 
 function Play.init(G)
   local Config = G.Config
-  local W = Config.Weapons
+  local W = G.W or Config.Weapons   -- 自己的枪按装的配件（init.client.lua 的 G.W）
   local player = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local V = Vector3.new
@@ -146,23 +146,30 @@ function Play.init(G)
   local function equipTool(t)
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 or G.drive or not t then return end
+    if not hum or hum.Health <= 0 or G.drive or G.downed or not t then return end   -- 倒地（Downed.lua）拿不了枪
     if t.Parent == char then return end   -- 已经拿着
     local cur0 = char:FindFirstChildOfClass("Tool")
     if cur0 then lastTool = cur0 end
     hum:EquipTool(t)
   end
-  -- 按数字键拿第几件：已经拿着就不动（原来是收起来、变成空手——用户：切到 2 号武器就卡住，多半是连按 / 按住时收起来了）；
-  --   0.15 秒内只认一次（键盘连发、和别的界面同时收到按键）
+  -- 按数字键拿第几件；已经拿着这一把再按一次就收起来、空手（用户 11-21：持枪按 1 回不到空手）——
+  --   刚拿出来 0.4 秒内再按不收（以前连按两下又收回去、像卡住了：用户说过「切到 2 号武器就卡住」）；0.15 秒内只认一次
   local lastEquipT = 0
   local function equip(i)
     local char = player.Character
     local hum = char and char:FindFirstChildOfClass("Humanoid")
-    if not hum or hum.Health <= 0 or G.drive then return end
+    if not hum or hum.Health <= 0 or G.drive or G.downed then return end
     local t = tools()[i]
-    if not t or t.Parent == char then return end
+    if not t then return end
     local now = os.clock()
     if now - lastEquipT < 0.15 then return end
+    if t.Parent == char then
+      if now - lastEquipT < 0.4 then return end
+      lastEquipT = now
+      lastTool = t
+      hum:UnequipTools()
+      return
+    end
     lastEquipT = now
     equipTool(t)
   end
@@ -246,7 +253,7 @@ function Play.init(G)
     -- 实体（小兵、车、船、工事）不打服务器的隐形命中盒，按画面上看得见的位置算（View.lua G.viewRay；服务器按你看到的那一刻判定，Rewind.lua）
     rayP.FilterDescendantsInstances = { player.Character, G.fxFolder, G.viewFolder, workspace:FindFirstChild("Ents") }
     local len = range or 1500
-    local res = workspace:Raycast(ray.Origin, ray.Direction * len, rayP)
+    local res = G.rayFar(ray.Origin, ray.Direction * len, rayP)   -- 迫击炮、标点打到远处没加载的地形：按地形高度算（Stream.lua）
     if not ground and G.viewRay then
       local vp3, vem = G.viewRay(ray.Origin, ray.Direction, res and (res.Position - ray.Origin).Magnitude or len)
       if vp3 then return vp3, vem end
@@ -255,6 +262,7 @@ function Play.init(G)
     return ray.Origin + ray.Direction * len, nil
   end
   G.aimPoint = aimPoint
+  G.curWeapon = function() return cur.id, cur.aiming end   -- 手雷抛物线预览（Nade.lua）：拿着什么、按没按右键
 
   -- 防空导弹锁定：准星 12° 以内、射程内最近的敌方飞机直升机
   local function lockCandidate(w)
@@ -297,7 +305,7 @@ function Play.init(G)
   local function tryFire(alt)
     local id = cur.id
     local char = player.Character
-    if not id or not char or G.drive then return end
+    if not id or not char or G.drive or G.downed then return end
     local hum = char:FindFirstChildOfClass("Humanoid")
     if not hum or hum.Health <= 0 then return end
     local S = G.S
@@ -350,7 +358,19 @@ function Play.init(G)
       local handle = cur.tool and cur.tool:FindFirstChild("Handle")
       local mz = handle and handle:FindFirstChild("Muzzle")
       local from = (G.fpsMuzzle and G.fpsMuzzle()) or (mz and mz.WorldPosition)   -- 第一人称时曳光从镜头前那支枪的枪口出去
-      if G.gunFx and from then G.gunFx(id, from, p, true) end
+      if G.gunFx and from then G.gunFx(id, from, p, true, nil, w.quiet) end   -- w.quiet：装了消音器（改枪）
+      if G.gunFx and from and (w.pellets or 1) > 1 then   -- 霰弹：别的弹丸也画几道散开的曳光（服务器各算各的，这里只是看着像）
+        local d0 = p - from
+        local L0 = d0.Magnitude
+        if L0 > 1 then
+          local cf = CFrame.lookAt(from, p)
+          for _ = 2, math.min(w.pellets, 6) do
+            local a1, a2 = math.random() * math.pi * 2, math.rad(w.spread or 4) * math.sqrt(math.random())
+            local dir = (cf * CFrame.Angles(0, 0, a1) * CFrame.Angles(a2, 0, 0)).LookVector
+            G.gunFx(id, from, from + dir * L0, true, nil, w.quiet, true)
+          end
+        end
+      end
       -- 开着镜（镜子已经举到眼前）告诉服务器：散布按开镜算（Config.gunSpread）；镜子还在往上举的那一下按腰射算
       local ads = cur.aiming and not (G.fpsOpticPending and G.fpsOpticPending())
       RShoot:FireServer(id, p, ads and "ads" or nil)
@@ -387,6 +407,10 @@ function Play.init(G)
       if cur.id and (W[cur.id].kind == "place") then tryFire(true) end
     elseif k == Enum.KeyCode.R then reload()
     elseif k == Enum.KeyCode.V then G.firstPerson = not (G.firstPerson ~= false)   -- 第一 / 第三人称
+    elseif k == Enum.KeyCode.Z then   -- 标记敌人（服务器 Weapons.lua 的 ACT.spot：准星方向几度以内、看得见的敌人，队友那边标出来）
+      local p = aimPoint(Config.QuickSpot and Config.QuickSpot.range or 620, true)
+      if p then G.R.Act:FireServer("spot", p) end
+      if G.sfx then G.sfx("dry", nil, { vol = 0.45, speed = 1.7 }) end   -- 轻轻「嗒」一下
     elseif k == Enum.KeyCode.F then
       if cur.id and W[cur.id].kind == "spot" then tryFire(true) end
     elseif k == Enum.KeyCode.One then equip(1)
@@ -409,25 +433,72 @@ function Play.init(G)
     elseif io.UserInputType == Enum.UserInputType.MouseButton2 then cur.aiming = false end
   end)
 
-  -- 手机：开火（按住）、瞄准、换弹、换武器、F
+  local touchControls, layoutTouch, touchSpot
+  -- 右手触控区避开右下的跳跃键。横竖屏切换时按实际视口重新排列。
   if UIS.TouchEnabled then
-    local function tbtn(text, pos, size)
-      local b = ui.button(hud, text, UDim2.fromOffset(size or 70, size or 70), pos, RGB(30, 36, 42))
-      b.BackgroundTransparency = 0.35
-      b.TextSize = 15
+    touchControls = ui.frame(hud, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
+    touchControls.Name = "InfantryTouch"
+    touchControls.Visible = false
+    local function tbtn(name)
+      local b = ui.button(touchControls, "", UDim2.new(), nil, RGB(18, 29, 37), Vector2.new(1, 1))
+      b.Name = name
+      b.BackgroundTransparency = 0.24
+      b.TextScaled = true
+      local textSize = Instance.new("UITextSizeConstraint")
+      textSize.MinTextSize, textSize.MaxTextSize = 11, 14
+      textSize.Parent = b
+      ui.stroke(b, RGB(184, 208, 220), 1, 0.6)
       return b
     end
-    local fire = tbtn("●", UDim2.new(1, -110, 1, -300), 90)
+    local fire = tbtn("Fire")
     fire.InputBegan:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch then cur.firing = true tryFire(false) end end)
     fire.InputEnded:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch then cur.firing = false end end)
-    local aim = tbtn("◎", UDim2.new(1, -200, 1, -250))
+    local aim = tbtn("Aim")
     aim.Activated:Connect(function() cur.aiming = not cur.aiming end)
-    local rl = tbtn("R", UDim2.new(1, -200, 1, -330), 56)
+    local rl = tbtn("Reload")
     rl.Activated:Connect(reload)
-    local sw = tbtn("⇄", UDim2.new(1, -110, 1, -390), 56)
+    local sw = tbtn("Swap")
     sw.Activated:Connect(function() cycle(1) end)
-    local fbtn = tbtn("F", UDim2.new(1, -200, 1, -170), 56)
-    fbtn.Activated:Connect(function() tryFire(true) end)
+    touchSpot = tbtn("Support")
+    touchSpot.Activated:Connect(function() tryFire(true) end)
+    local night = tbtn("NightVision")
+    night.Text = "NV"
+    night.Activated:Connect(function() if G.nvgToggle then G.nvgToggle() end end)
+    local tablet = tbtn("Tablet")
+    tablet.Activated:Connect(function() if G.tacToggle then G.tacToggle() end end)
+    local lastWidth, lastHeight, lastLanguage, lastAim
+    function layoutTouch()
+      local camera = workspace.CurrentCamera
+      local viewport = camera and camera.ViewportSize
+      if viewport and viewport.Y > 0 and (viewport.X ~= lastWidth or viewport.Y ~= lastHeight) then
+        lastWidth, lastHeight = viewport.X, viewport.Y
+        local edge, spacing = 18, 8
+        local fireSize = math.floor(math.clamp(viewport.Y * 0.19, 58, 78))
+        local aimSize = math.floor(math.clamp(viewport.Y * 0.155, 48, 65))
+        local bottom = math.floor(math.clamp(viewport.Y * 0.24, 76, 116))
+        local aimX = edge + fireSize + spacing
+        fire.Size, fire.Position = UDim2.fromOffset(fireSize, fireSize), UDim2.new(1, -edge, 1, -bottom)
+        aim.Size, aim.Position = UDim2.fromOffset(aimSize, aimSize), UDim2.new(1, -aimX, 1, -bottom)
+        rl.Size, rl.Position = UDim2.fromOffset(math.max(aimSize, 56), 44), UDim2.new(1, -aimX, 1, -bottom - aimSize - spacing)
+        sw.Size, sw.Position = UDim2.fromOffset(math.max(56, fireSize - 12), 44), UDim2.new(1, -edge, 1, -bottom - fireSize - spacing)
+        touchSpot.Size, touchSpot.Position = UDim2.fromOffset(math.max(56, aimSize), 44), UDim2.new(1, -aimX, 1, -bottom + 52)
+        local utilityY = -bottom - fireSize - 44 - spacing * 2
+        night.Size, night.Position = sw.Size, UDim2.new(1, -edge, 1, utilityY)
+        tablet.Size, tablet.Position = rl.Size, UDim2.new(1, -aimX, 1, utilityY)
+        G.infantryTouchWidth = aimX + math.max(aimSize, 56) + 10
+      end
+      if G.lang ~= lastLanguage then
+        lastLanguage = G.lang
+        fire.Text, aim.Text = T("touch.fire"), T("touch.aim")
+        rl.Text, sw.Text, touchSpot.Text = T("touch.reload"), T("touch.swap"), T("touch.support")
+        tablet.Text = T("tac.key")
+      end
+      if cur.aiming ~= lastAim then
+        lastAim = cur.aiming
+        aim.BackgroundColor3 = cur.aiming and RGB(37, 75, 83) or RGB(18, 29, 37)
+      end
+    end
+    layoutTouch()
   end
 
   ---------------------------------------------------------------- 每帧
@@ -478,12 +549,25 @@ function Play.init(G)
       player.CameraMinZoomDistance = 8
     end
   end
+  local sprint = { hum = nil, base = 16, set = nil }   -- 疾跑：基础速度、自己设的那个数
   function G.stepPlay(dt)
     if G.drive then   -- 开着车：镜头、开火归 Drive 管；武器栏、弹药字藏起来（载具面板在同一个位置）
+      if touchControls then touchControls.Visible = false end
       cross.Visible, scope.Visible, bar.Visible = false, false, false
       if G.scopeStep then G.scopeStep(dt, false) end
       ammoText.Text, tipText.Text = "", ""
       cur.firing = false
+      G.fpsAiming = false
+      G.fpActive = false
+      if G.fpsOff then G.fpsOff() end
+      return
+    end
+    if G.downed then   -- 倒地（Downed.lua）：准星、镜头前的枪都收起来，开不了火
+      if touchControls then touchControls.Visible = false end
+      cross.Visible, scope.Visible = false, false
+      if G.scopeStep then G.scopeStep(dt, false) end
+      cur.firing, cur.aiming = false, false
+      G.fpsAiming = false
       G.fpActive = false
       if G.fpsOff then G.fpsOff() end
       return
@@ -497,8 +581,37 @@ function Play.init(G)
     G.fpActive = fp   -- 步行第一人称（UI 据此藏鼠标指针、底部键位说明）
     local menu = G.menuOpen and G.menuOpen()
     if menu then cur.firing, cur.aiming = false, false end
+    if touchControls then
+      local touchVisible = armed == true and not menu and not (G.boardShown and G.boardShown())
+      if touchControls.Visible and not touchVisible then cur.firing = false end
+      touchControls.Visible = touchVisible
+      if touchVisible then
+        touchSpot.Visible = W[cur.id].kind == "spot"
+        layoutTouch()
+      end
+    end
     if hum and hum.Health > 0 then setFirstPerson(fp) end
-    baseFov = fp and 62 or 70   -- 第一人称的枪照竖直视角约 60° 做的（原动作包的相机水平 90°）
+    -- 疾跑（用户 11-21：按住 Shift 没法疾跑）：按住 Shift 往前走，速度 × 1.6；开枪、开镜、换弹、开着菜单时不跑。
+    --   基础速度是服务器给的（兵种、铁丝网里减速），这里只在上面乘：服务器改了（不是自己设的那个数）就跟着换基础速度
+    if hum and hum.Health > 0 then
+      local ws = hum.WalkSpeed
+      if sprint.hum ~= hum then sprint.hum, sprint.base, sprint.set = hum, ws, nil end
+      if sprint.set == nil or math.abs(ws - sprint.set) > 0.01 then sprint.base = ws end
+      local shift = (UIS:IsKeyDown(Enum.KeyCode.LeftShift) or UIS:IsKeyDown(Enum.KeyCode.RightShift)) and UIS:GetFocusedTextBox() == nil
+      local md, lk = hum.MoveDirection, cam.CFrame.LookVector
+      local flat = V(lk.X, 0, lk.Z)
+      local fwd = md.Magnitude > 0.1 and flat.Magnitude > 0.1 and md.Unit:Dot(flat.Unit) > 0.5
+      local am = cur.id and ammoOf(cur.id)
+      local busy = cur.firing or cur.aiming or (am and am.r > 0) or menu
+      local run = shift and fwd and not busy and not (hrp and hrp.Anchored)
+      G.sprinting = run == true
+      local want = sprint.base * (run and 1.6 or 1)
+      if math.abs(ws - want) > 0.01 then hum.WalkSpeed = want end
+      sprint.set = want
+    else
+      G.sprinting = false
+    end
+    baseFov = fp and 68 or 70   -- 第一人称的枪照竖直视角约 60° 做的（原动作包的相机水平 90°）；记录仪是广角，放宽到 68°
     if fp then
       hum.AutoRotate = true
       hum.CameraOffset = V()
@@ -515,7 +628,9 @@ function Play.init(G)
       hum.CameraOffset = hum.CameraOffset:Lerp(V(), math.min(1, dt * 10))
     end
     local wc = cur.id and W[cur.id]
-    cross.Visible = armed == true and not (fp and cur.aiming) and not (cur.aiming and wc and (wc.scope ~= nil or wc.kind == "spot"))   -- 开着镜不画准星（第三人称也是）
+    G.fpsAiming = armed == true and cur.aiming == true   -- 记录仪观感（Bodycam.lua）：开镜时镜头不晃
+    -- 开着镜不画准星（第三人称也是）；第一人称是记录仪的画面（Bodycam.lua）：不画四根线，只有一个淡淡的小点
+    cross.Visible = armed == true and not (fp and cur.aiming) and not (fp and G.bodycamOn) and not (cur.aiming and wc and (wc.scope ~= nil or wc.kind == "spot"))
     if cross.Visible and wc and hrp then
       -- 张开多少：这一发的散布在屏幕上有多宽（跑起来、跳起来、连射攒的都算），开枪那一下再弹开一点
       local okv, v = pcall(function() return hrp.AssemblyLinearVelocity end)   -- 读不到（测试台）就当站着不动
@@ -538,11 +653,23 @@ function Play.init(G)
     local w = cur.id and W[cur.id]
     local zoom = 1
     if armed and cur.aiming and w then
-      if w.scope or w.kind == "spot" then zoom = G.scopeZoom and G.scopeZoom(w) or (w.scope or 5) else zoom = 1.35 end   -- 镜子的倍率滚轮能变
+      if w.scope or w.kind == "spot" then zoom = G.scopeZoom and G.scopeZoom(w) or (w.scope or 5) else zoom = w.adsZoom or 1.35 end   -- 镜子的倍率滚轮能变；红点、全息按瞄具（改枪）
     end
     scope.Visible = armed and cur.aiming and w and (w.scope ~= nil or w.kind == "spot") or false
+    G.scopeVisible = G.scopeVisible or function() return scope.Visible end
     if G.scopeStep then G.scopeStep(dt, scope.Visible, w) end
-    cam.FieldOfView = cam.FieldOfView + (baseFov / zoom - cam.FieldOfView) * math.min(1, dt * 12)
+    -- 第一人称的瞄准镜（使命召唤那样）：倍率跟着举镜进度放大——枪举到一半以后才开始拉近，镜子贴到眼前时正好放大到位
+    --   （视角收窄得太早，还没举到眼前的枪和手会被放大得很怪）；松开右键照样跟着慢慢退回来
+    local sw = cur.id and W[cur.id]
+    if fp and armed and sw and sw.scope and sw.kind ~= "spot" and G.fpsAds and G.fps then
+      -- 镜内单独放大（画中画，用户 11-21）：镜外只放大一点点（普通开镜），倍率在镜片里那个圆（ScopePip.lua）
+      local Z = (G.scopePipMode and G.scopePipMode()) and (G.PIP_ADS or 1.25) or (G.scopeZoom and G.scopeZoom(sw) or sw.scope)
+      local e = math.clamp((G.fpsAds() - 0.35) / 0.6, 0, 1)
+      e = e * e * (3 - 2 * e)
+      cam.FieldOfView = baseFov / (1 + (Z - 1) * e)
+    else
+      cam.FieldOfView = cam.FieldOfView + (baseFov / zoom - cam.FieldOfView) * math.min(1, dt * 12)
+    end
     -- 连发
     if cur.firing and armed and w and (w.auto or w.kind == "repair") then tryFire(false) end
     -- 防空导弹锁定：右键按住对准

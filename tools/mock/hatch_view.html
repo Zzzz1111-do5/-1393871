@@ -1,0 +1,156 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><style>html,body{margin:0;background:#000;overflow:hidden}</style>
+<script type="importmap">{"imports":{"three":"/three/build/three.module.js","three/addons/":"/three/examples/jsm/"}}</script></head>
+<body><script type="module">
+// 舱盖预览（tools/mock/hatch_view.cjs 驱动）：原模型 + HatchDefs 算出来的舱盖（tools/mock/hatch_dump.luau 的 JSON），
+//   一张图四格：关着（舱盖画成半透明，看位置对不对）、全开后上方、全开前上方、全开俯视；Roblox 和 three.js 都是右手系 Y 朝上，矩阵照搬
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+const P = new URLSearchParams(location.search);
+const W = 1600, H = 1000;
+const renderer = new THREE.WebGLRenderer({ antialias: true, preserveDrawingBuffer: true });
+renderer.setSize(W, H);
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+document.body.appendChild(renderer.domElement);
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x9fb8cf);
+scene.add(new THREE.HemisphereLight(0xdde8f0, 0x504840, P.get('bright') ? +P.get('bright') : 1.3));   // bright=4：贴图很暗的车（96 式）量位置时调亮
+const sun = new THREE.DirectionalLight(0xfff2dd, 2.4);
+sun.position.set(30, 60, 20);
+scene.add(sun);
+const ground = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), new THREE.MeshStandardMaterial({ color: 0x7a7562, roughness: 1 }));
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.02;
+scene.add(ground);
+const cam = new THREE.PerspectiveCamera(32, (W / 2) / (H / 2), 0.1, 2000);
+window.ready = false;
+const D = await (await fetch('/data.json')).json();
+const key = P.get('key');
+const E = D[key] || { hatches: [] };
+const gl = await new GLTFLoader().loadAsync('/repo/models/' + (P.get('dir') || 'veh') + '/' + (P.get('glb') || key) + '.glb');   // dir=air：看飞机（glb=原模型文件名）
+const car = gl.scene;
+scene.add(car);
+// 炮塔按 tur 摆，原模型就是炮塔朝前的样子，不用转
+const box = new THREE.Box3().setFromObject(car);
+const size = box.getSize(new THREE.Vector3()), ctr = box.getCenter(new THREE.Vector3());
+function mtx(c) {
+  const m = new THREE.Matrix4();
+  m.set(c[3], c[4], c[5], c[0], c[6], c[7], c[8], c[1], c[9], c[10], c[11], c[2], 0, 0, 0, 1);
+  return m;
+}
+function geo(shape, s) {
+  if (shape === 'round') {
+    const g = new THREE.CylinderGeometry(s[1] / 2, s[1] / 2, s[0], 40);
+    g.rotateZ(Math.PI / 2);   // Roblox 圆柱的轴是 X
+    return g;
+  }
+  return new THREE.BoxGeometry(s[0], s[1], s[2]);
+}
+const lids = [];
+const LID = new THREE.MeshStandardMaterial({ color: 0xd2691e, roughness: 0.6, metalness: 0.2 });
+const GHOST = new THREE.MeshStandardMaterial({ color: 0xff2020, roughness: 0.6, transparent: true, opacity: 0.55, depthTest: false });
+const HOLE = new THREE.MeshStandardMaterial({ color: 0x0c0c0c, roughness: 1 });
+for (const h of E.hatches) {
+  const lid = new THREE.Mesh(geo(h.shape, h.size), LID);
+  lid.matrixAutoUpdate = false;
+  const hole = new THREE.Mesh(geo(h.shape, h.holeSize), HOLE);
+  hole.matrixAutoUpdate = false;
+  hole.matrix.copy(mtx(h.hole));
+  scene.add(lid, hole);
+  lids.push({ h, lid, hole });
+}
+function state(p) {   // p：0～4（at 的下标）；'op'：艾布拉姆斯打开保护位
+  for (const L of lids) {
+    const c = (p === 'op') ? (L.h.op || L.h.at[0]) : L.h.at[p];
+    L.lid.matrix.copy(mtx(c));
+    L.lid.material = (p === 0) ? GHOST : LID;
+    L.hole.visible = p !== 0;
+  }
+}
+const R = Math.max(size.x, size.z);
+function view(i, pos, look, label) {
+  const x = (i % 2) * W / 2, y = (i < 2 ? 1 : 0) * H / 2;
+  renderer.setViewport(x, y, W / 2, H / 2);
+  renderer.setScissor(x, y, W / 2, H / 2);
+  renderer.setScissorTest(true);
+  cam.position.copy(pos);
+  cam.lookAt(look);
+  renderer.render(scene, cam);
+}
+const mode = P.get('mode') || 'main';
+if (mode === 'main') {
+  state(0); view(0, new THREE.Vector3(R * 0.9, R * 1.1, R * 1.3), ctr);
+  state(4); view(1, new THREE.Vector3(R * 0.9, R * 1.0, R * 1.3), ctr);
+  view(2, new THREE.Vector3(-R * 1.1, R * 0.9, -R * 1.2), ctr);
+  view(3, new THREE.Vector3(ctr.x + 0.01, R * 2.6, ctr.z + 0.02), ctr);
+} else if (mode === 'look') {   // 随便摆镜头看：?p=x,y,z&t=x,y,z&fov=；lids=1 叠关着的舱盖，open=1 全开的舱盖
+  const pp = (P.get('p') || '20,15,20').split(',').map(Number), tt = (P.get('t') || '0,4,0').split(',').map(Number);
+  // hl=Body_3,Canopy：这几块涂成红色半透明（看某一块是不是座舱盖）
+  if (P.get('hl')) { const want = P.get('hl').split(','); const red = new THREE.MeshBasicMaterial({ color: 0xff2020, transparent: true, opacity: 0.6 });
+    car.traverse(o => { if (o.isMesh) { const nm = o.name + ' ' + (o.parent ? o.parent.name : ''); if (want.some(w => nm.includes('__' + w))) o.material = red; } }); }
+  for (const x of lids) { x.lid.visible = P.get('lids') === '1' || P.get('open') === '1'; x.hole.visible = P.get('open') === '1'; }
+  state(P.get('open') === '1' ? 4 : 0);
+  if (P.get('open') !== '1') for (const x of lids) x.hole.visible = false;
+  renderer.setViewport(0, 0, W, H); renderer.setScissorTest(false);
+  cam.aspect = W / H; cam.fov = +(P.get('fov') || 32); cam.updateProjectionMatrix();
+  cam.position.set(pp[0], pp[1], pp[2]); cam.lookAt(tt[0], tt[1], tt[2]);
+  renderer.render(scene, cam);
+} else if (mode === 'grid') {   // 量位置：叠 1 格一条的网格（每 5 格粗线、原点红点）。ax=y 正上方看（车头朝上）、ax=x 从右边看（车头朝右）、ax=z 从车尾看；
+  //   ?cx=&cy=&cz= 看哪里，d 镜头离多远，gy / gx / gz 网格放在哪个平面；tur=0 藏掉炮塔，lids=1 叠上关着的舱盖（红色半透明）
+  const ax = P.get('ax') || 'y';
+  const cx = +(P.get('cx') || 0), cy = +(P.get('cy') || 4), cz = +(P.get('cz') || 0), d = +(P.get('d') || 14);
+  if (P.get('tur') === '0') car.traverse(o => { if (o.isMesh && /__(Turret|Gun|Rws)/.test(o.name + ' ' + (o.parent ? o.parent.name : ''))) o.visible = false; });
+  for (const x of lids) { x.lid.visible = P.get('lids') === '1'; x.hole.visible = false; }
+  if (P.get('lids') === '1') state(0);
+  const mk = (n, col, op) => { const g = new THREE.GridHelper(60, n, col, col); g.material.transparent = true; g.material.opacity = op; g.material.depthTest = false; return g; };
+  const g1 = mk(60, 0x00ffff, 0.35), g5 = mk(12, 0xff00ff, 1);
+  const o = new THREE.Mesh(new THREE.SphereGeometry(0.12), new THREE.MeshBasicMaterial({ color: 0xff0000, depthTest: false }));
+  for (const g of [g1, g5]) {
+    if (ax === 'y') g.position.set(0, +(P.get('gy') || cy), 0);
+    else if (ax === 'x') { g.rotation.z = Math.PI / 2; g.position.set(+(P.get('gx') || 0), 0, 0); }
+    else { g.rotation.x = Math.PI / 2; g.position.set(0, 0, +(P.get('gz') || 0)); }
+    scene.add(g);
+  }
+  scene.add(o);
+  renderer.setViewport(0, 0, W, H); renderer.setScissorTest(false);
+  cam.aspect = W / H; cam.updateProjectionMatrix();
+  if (ax === 'y') { cam.up.set(0, 0, -1); cam.position.set(cx, cy + d, cz + 0.001); }
+  else if (ax === 'x') { cam.up.set(0, 1, 0); cam.position.set(cx + d, cy, cz); }
+  else { cam.up.set(0, 1, 0); cam.position.set(cx, cy, cz + d); }
+  cam.lookAt(cx, cy, cz);
+  renderer.render(scene, cam);
+} else if (mode.startsWith('top')) {   // 正上方看第 n 块舱盖（车头朝上）：原模型本身 / 叠上红色半透明的舱盖 / 全开 / 侧面平视
+  const L = lids[+(mode.slice(3) || 0)] || lids[0];
+  const c = L.h.hole;
+  const at = new THREE.Vector3(c[0], c[1], c[2]);
+  const d = Math.max(L.h.size[1], L.h.size[2], 2) * 4.0;
+  cam.up.set(0, 0, -1);
+  // 车体上的舱盖：炮塔、炮、机枪塔挡在头顶上，藏起来
+  if (L.h.g === 'hull') car.traverse(o => { if (o.isMesh && /__(Turret|Gun|Rws)/.test(o.name + ' ' + (o.parent ? o.parent.name : ''))) o.visible = false; });
+  for (const x of lids) { x.lid.visible = false; x.hole.visible = false; }
+  view(0, at.clone().add(new THREE.Vector3(0, d, 0.001)), at);
+  state(0); for (const x of lids) x.lid.visible = true;
+  view(1, at.clone().add(new THREE.Vector3(0, d, 0.001)), at);
+  state(4);
+  view(2, at.clone().add(new THREE.Vector3(0, d, 0.001)), at);
+  cam.up.set(0, 1, 0);
+  view(3, at.clone().add(new THREE.Vector3(d * 1.2, d * 0.15, 0)), at);
+} else if (mode.startsWith('zoom')) {   // 近看第 n 块舱盖：关着（红色半透明）/ 半开 / 全开 / 全开换个角度
+  const L = lids[+(mode.slice(4) || 0)] || lids[0];
+  const c = L.h.hole;
+  const at = new THREE.Vector3(c[0], c[1], c[2]);
+  const d = Math.max(L.h.size[1], L.h.size[2], 2) * 3.2;
+  state(0); view(0, at.clone().add(new THREE.Vector3(d * 0.7, d * 0.9, d * 1.0)), at);
+  state(2); view(1, at.clone().add(new THREE.Vector3(d * 0.7, d * 0.9, d * 1.0)), at);
+  state(4); view(2, at.clone().add(new THREE.Vector3(d * 0.7, d * 0.9, d * 1.0)), at);
+  view(3, at.clone().add(new THREE.Vector3(-d * 1.1, d * 0.6, -d * 0.6)), at);
+} else {   // 半开过程：0.25 / 0.5 / 0.75 / 打开保护位
+  const tgt = ctr.clone();
+  state(1); view(0, new THREE.Vector3(R * 0.9, R * 1.1, R * 1.3), tgt);
+  state(2); view(1, new THREE.Vector3(R * 0.9, R * 1.1, R * 1.3), tgt);
+  state(3); view(2, new THREE.Vector3(R * 0.9, R * 1.1, R * 1.3), tgt);
+  state('op'); view(3, new THREE.Vector3(R * 0.9, R * 1.1, R * 1.3), tgt);
+}
+window.ready = true;
+</script></body></html>

@@ -7,11 +7,24 @@ local check = T.check
 local side = TEST_ARGS:match("atk") and "atk" or "def"
 
 local G = T.boot()
+-- 用户 11-25 打开了昼夜更替（DayClock.lua）：这里测夜视、夜里的灯，钟点钉在半夜
+R.services.Workspace:SetAttribute("DayFix", 2.3)
 G.fortsHold = true   -- 这里测的不是工事：工事不开火
 G.navyNoAI = true   -- 也不要 AI 舰艇（同 tools/test/ia_veh.luau）
 G.Config.Bots.minPerTeam = 0
 T.runUntil(function() return G.worldReady end, 120)
 check(G.worldReady, "地图生成好了（地形体素 " .. tostring(R.voxelsWritten) .. "）")
+-- 草地的材质：Roblox 会动的草叶只长在 Grass 上（脚本关不掉、也改不了草长）——用户 11-21 嫌草叶盖住车，写成过 LeafyGrass；
+--   用户 11-24 发截图要回来：海岛图（Map.GRASS）大片草地照写 Grass（长草叶），深色的 LeafyGrass 只有零星几块；别的图不写 Grass
+do
+  local VM = R.voxelMats or {}
+  if G.Map.GRASS then
+    check((VM.Grass or 0) > 1000 and (VM.Grass or 0) > (VM.LeafyGrass or 0),
+      string.format("海岛图草地写 Grass（长草叶）：Grass %d、LeafyGrass %d、Sand %d、Ground %d 个体素（抽样）", VM.Grass or 0, VM.LeafyGrass or 0, VM.Sand or 0, VM.Ground or 0))
+  else
+    check((VM.Grass or 0) == 0, string.format("这张图不写 Grass（不长草叶）：Grass %d、LeafyGrass %d 个体素（抽样）", VM.Grass or 0, VM.LeafyGrass or 0))
+  end
+end
 local me = T.join("P1", 5001, true)
 local other = T.join("P2", 5002, false)
 -- 有客户端的这个人放到要测的一方
@@ -54,6 +67,14 @@ if side == "def" then
     local n = 0
     for _, id in ipairs(tp.vids) do if T.findNamed("Pick_" .. id) then n = n + 1 end end
     check(n == #tp.vids and n >= 10, string.format("按 E 弹出了本队全部 %d 型地面载具的卡片（看得见 %d 张）", #tp.vids, n))
+    -- 用户 11-23：召唤界面名字下面带图标——每张卡片名字下面一张这一型的侧影（HudIcons 的 veh_<型号>）
+    local ni = 0
+    for _, id in ipairs(tp.vids) do
+      local c = T.findNamed("Pick_" .. id)
+      local ic = c and c:FindFirstChild("Icon")
+      if ic and ic:GetAttribute("Icon") == "veh_" .. id then ni = ni + 1 end
+    end
+    check(ni == #tp.vids, string.format("每张卡片名字下面都有侧影图标（%d / %d）", ni, #tp.vids))
     local cancel = T.findNamed("Cancel")
     if cancel then T.press(cancel) end
     R.run(0.2)
@@ -68,7 +89,7 @@ if side == "def" then
   local lighting = R.services.Lighting
   local nvg = me:FindFirstChild("PlayerGui") and me.PlayerGui:FindFirstChild("NVG")
   -- 锁定晚上（用户 11-18：把白天模式去掉）：一直是半夜；出生自动开夜视（全屏调色、没有镜筒框），开着就不提示「按 N」；按 N 关掉、再按又开
-  check(C.isNight and C.isNight() and lighting.ClockTime < 5, string.format("锁定晚上（钟点 %.1f）", lighting.ClockTime or -1))
+  check(C.isNight and C.isNight() and lighting.ClockTime < 5, string.format("夜里（测试把钟点钉在半夜：%.1f）", lighting.ClockTime or -1))
   check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil and not (nvg and nvg.Enabled) and not (hint and hint.Visible), "出生自动开夜视：全屏调色、没有镜筒框、不提示「按 N」")
   T.tap(Enum.KeyCode.N)
   R.run(1)
@@ -93,6 +114,20 @@ if side == "def" then
   R.run(1.5)
   check(v0 and v0.solidOn == false, "坐进自己开的车：这辆不再挡人（人在里面）")
   check(C.nvgOn and C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "坐进车里夜视照样开着")
+  -- 用户 11-21：坦克里强制锁着夜视仪视角——没开瞄准镜时 N 照样开关夜视仪（原来地面载具里 N 整个让给瞄准镜，关不掉）
+  -- 用户 11-22：「坦克第三人称不光夜视，还要加一个红外，第一人称也是」——地面载具里 N 在 夜视 → 热成像（白热）→ 关 之间切（同飞机）
+  local m0 = C.drive and C.drive.mode
+  T.tap(Enum.KeyCode.N)
+  R.run(0.5)
+  local irc = lighting:FindFirstChild("VehIrCC")
+  check(not C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil and C.vehThermalShown and C.vehThermalShown() and irc ~= nil and irc.Enabled
+    and C.drive and C.drive.mode == m0, "车里（没开镜）按 N：夜视仪关掉、换成热成像（白热、整个画面），瞄准镜的档没被跟着换")
+  T.tap(Enum.KeyCode.N)
+  R.run(0.5)
+  check(not C.nvgOn() and not C.vehThermalShown() and not (irc and irc.Enabled), "再按 N：热成像也关掉")
+  T.tap(Enum.KeyCode.N)
+  R.run(0.5)
+  check(C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "再按 N 夜视仪又开了")
   local e = P.vehicle
   check(e ~= nil and e.alive and e.def.id == tankId, "坐进了 " .. tostring(e and e.def.id))
   check(e and e.root.CanCollide == false, "服务器的方盒不挡人（只管挨打）")
@@ -128,23 +163,29 @@ if side == "def" then
     end
   end
   local hv, hm = shown("HintOptic"), shown("HintSmoke")
-  check(hv and hv:find("V", 1, true) and hv:find(C.T("sight.nv"), 1, true), "镜里写着：" .. tostring(hv))
+  check(hv and hv:find("V", 1, true) and hv:find(C.T("sight.whot"), 1, true), "镜里写着（天黑默认热成像白热，不是绿色的夜视）：" .. tostring(hv))
   check(hm and hm:find("M", 1, true) and hm:find(tostring(e.smoke or e.def.smoke.n * #e.def.smoke.banks), 1, true) ~= nil or (hm and hm:find("M", 1, true)), "镜里写着：" .. tostring(hm))
   check(C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil, "看瞄准镜时夜视仪先让出画面（瞄准镜有自己的夜视 / 热成像）")
+  local fb = lighting:FindFirstChild("FarBlur")
+  check(fb ~= nil and not fb.Enabled, "瞄准镜里远处不糊（远处景深模糊关掉）")
   local modes = {}
   for _ = 1, 3 do
     T.tap(Enum.KeyCode.V)
     R.run(0.6)
     modes[#modes + 1] = tostring(({ "day", "nv", "whot", "bhot" })[C.drive.mode])
   end
-  check(modes[1] == "whot" and modes[2] == "bhot" and modes[3] == "day", "瞄准镜默认夜视档，V 依次切白热、黑热、昼光：" .. table.concat(modes, " → "))
+  check(modes[1] == "bhot" and modes[2] == "day" and modes[3] == "nv", "瞄准镜默认白热档，V 依次切黑热、昼光、夜视：" .. table.concat(modes, " → "))
+  R.run(0.3)
+  check(C.sightNv == true and lighting.ExposureCompensation > 2.5,
+    string.format("镜里的夜视档照夜视仪那样增亮（曝光 %.2f；原来夜视仪让出画面时增亮也撤了，一片墨绿）", lighting.ExposureCompensation))
   local hv2 = shown("HintOptic")
-  check(hv2 and hv2:find(C.T("sight.day"), 1, true), "提示跟着换成现在的模式：" .. tostring(hv2))
+  check(hv2 and hv2:find(C.T("sight.nv"), 1, true), "提示跟着换成现在的模式：" .. tostring(hv2))
   T.tap(Enum.KeyCode.LeftShift)
   R.run(0.3)
   check(not C.drive.sight and not cc.Enabled, "再按 Shift 退出瞄准镜，调色关了")
   check(shown("HintOptic") == nil, "退出瞄准镜提示也收起来")
   check(C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "退出瞄准镜，夜视仪的画面又回来了")
+  check(fb ~= nil and fb.Enabled and not C.sightNv, "退出瞄准镜：远处景深模糊又开了，镜里夜视档的增亮撤掉")
 
   print("④ 开战后开炮、放烟幕弹")
   T.runUntil(function() return G.round.phase == "battle" end, 40)

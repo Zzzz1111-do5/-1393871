@@ -1,7 +1,7 @@
 --!nocheck
 -- 瞄准镜真模型测试：假装在 Studio 里导入了 models/optics/atacr.glb、binoc.glb（按 OpticsMeta 摆一套同名的 MeshPart 放在 Workspace）→
 --   开服时收进 ReplicatedStorage.Imported.Optics → 服务器发的狙击枪工具上装的是真瞄准镜（别人看到的）→ 第一人称狙击枪装着真瞄准镜 →
---   按住右键：先把镜子举到眼前（目镜里的像还没出来），举到了换成目镜里的像；目镜正对屏幕中心、光轴朝前、在屏幕上占高度的 86% →
+--   按住右键：先把镜子举到眼前，镜身一直看得见（使命召唤那样，镜筒里面的块藏掉、从正圆的目镜洞里看放大的画面）；目镜正对屏幕中心、光轴朝前、在屏幕上占高度的 90% →
 --   滚轮变倍：视角变小、目镜推远（屏幕上一样大）、分划跟着放大（第一焦平面：每密位的像素数跟着倍率涨）→ 松开：收镜、模型又看得见 →
 --   观察员的望远镜也是真模型，举到眼前后换成双圆视野 → 手持装备的真模型（这里还假装导入了 m40a5、rpg7）：服务器按阵营发的工具上装的是它，
 --   美军狙击枪 = M40A5 + 导轨上的 ATACR，第一人称也是这一套、开镜看的是 ATACR 的目镜；解放军 RPG-7 的筒口在弹头尖
@@ -11,6 +11,20 @@ local roblox = require("@lune/roblox")
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
 local H = require("./harness")
+-- 拿第 i 件（同 Play.lua 的 tools()：按 Slot 属性排）：已经拿着就不按——再按一次同一个数字键是收枪（11-21 起）
+local function slotTool(pl, i)
+	local list = {}
+	for _, holder in ipairs({ pl:FindFirstChildOfClass("Backpack"), pl.Character }) do
+		if holder then for _, t in ipairs(holder:GetChildren()) do if t:IsA("Tool") and t:GetAttribute("Slot") then table.insert(list, t) end end end
+	end
+	table.sort(list, function(a, b) return a:GetAttribute("Slot") < b:GetAttribute("Slot") end)
+	return list[i]
+end
+local function pressSlot(pl, i, key)
+	local t = slotTool(pl, i)
+	if t and pl.Character and t.Parent == pl.Character then return end
+	H.key(pl, key, true) H.key(pl, key, false)
+end
 local V3, CF, Enum, Inst = roblox.Vector3, roblox.CFrame, roblox.Enum, roblox.Instance
 H.quietWarn = process.args[2] ~= "v"
 H.realProjection = true
@@ -53,15 +67,18 @@ G.Config.Bots.minPerTeam = 0
 H.runUntil(function() return G.worldReady end, 120)
 
 print("① 开服：收好导入的瞄准镜、望远镜；狙击枪工具装的是真瞄准镜")
+-- ATACR 有几块按 OpticsMeta 数（af599a2 把镜筒里面挡视线的三角形拆成了 <块名>In：原来 4 块，现在 6 块）
+local NA = 0
+for _ in pairs(OM.atacr.parts) do NA += 1 end
 local RS = H.game:GetService("ReplicatedStorage")
 local opt = RS:FindFirstChild("Imported") and RS.Imported:FindFirstChild("Optics")
-check(opt and opt:FindFirstChild("atacr") and #opt.atacr:GetChildren() == 4 and opt:FindFirstChild("binoc") ~= nil, "Imported.Optics 里有 atacr（4 块）、binoc")
+check(opt and opt:FindFirstChild("atacr") and #opt.atacr:GetChildren() == NA and opt:FindFirstChild("binoc") ~= nil, "Imported.Optics 里有 atacr（" .. NA .. " 块）、binoc")
 local function count(tool, pat) local n = 0 for _, c in ipairs(tool:GetChildren()) do if string.match(c.Name, pat) then n += 1 end end return n end
 local TA, TD = G.TOOLS.atk, G.TOOLS.def
 local nReal = count(TA.sniper, "^Scope_")
-check(nReal == 4 and TA.sniper:FindFirstChild("Scope") == nil and count(TA.sniper, "^Gear_") == 0,
+check(nReal == NA and TA.sniper:FindFirstChild("Scope") == nil and count(TA.sniper, "^Gear_") == 0,
 	"解放军狙击枪（QBU-88 没导入）：零件拼的枪上装着真瞄准镜（" .. nReal .. " 块），没有零件拼的镜筒")
-check(count(TD.sniper, "^Gear_") == 3 and count(TD.sniper, "^Scope_") == 4 and TD.sniper:GetAttribute("Gear") == "m40a5" and TD.sniper:GetAttribute("GearMount") == "atacr",
+check(count(TD.sniper, "^Gear_") == 3 and count(TD.sniper, "^Scope_") == NA and TD.sniper:GetAttribute("Gear") == "m40a5" and TD.sniper:GetAttribute("GearMount") == "atacr",
 	string.format("美军狙击枪：M40A5 真模型 %d 块 + 导轨上的 ATACR %d 块", count(TD.sniper, "^Gear_"), count(TD.sniper, "^Scope_")))
 -- ATACR 的镜座底面贴在 M40A5 的导轨上（工具坐标：握把在把手处、枪口朝 −Z）
 do
@@ -93,7 +110,7 @@ H.run(2)
 local C = H.Gs[pl.Name]
 local P = G.P[pl]
 check(P and P.alive, "狙击手在舰上出生")
-H.key(pl, Enum.KeyCode.One, true) H.key(pl, Enum.KeyCode.One, false)
+pressSlot(pl, 1, Enum.KeyCode.One)
 H.run(1)
 if not (P.char and P.char:FindFirstChildOfClass("Tool")) then
 	local prev = H.ctx
@@ -106,31 +123,34 @@ local vm = C.fps
 local body, eyeInfo = nil, OM.atacr.eye
 local nOptic = 0
 if vm then for _, it in ipairs(vm.items) do if it.optic then nOptic += 1 if it.optic == "Body" then body = it[1] end end end end
-check(vm and vm.id == "sniper" and nOptic == 4 and vm.optic ~= nil, "第一人称的狙击枪上是真瞄准镜（" .. nOptic .. " 块）")
+check(vm and vm.id == "sniper" and nOptic == NA and vm.optic ~= nil, "第一人称的狙击枪上是真瞄准镜（" .. nOptic .. " 块）")
 
-print("③ 开镜：先举到眼前，再换成目镜里的像")
+print("③ 开镜：举到眼前，镜身看得见，目镜上画镜片那一层")
 local cam = H.workspace.CurrentCamera
 local sg = pl.PlayerGui:FindFirstChild("Scope")
 H.mouseDown(pl, 640, 360, Enum.UserInputType.MouseButton2)
 H.run(0.05)
-check(C.fpsOpticPending() == true and not sg.Enabled, "刚按右键：还在举镜，目镜里的像没出来")
+check(C.fpsOpticPending() == true, "刚按右键：还在举镜")
 H.run(0.8)
-check(C.fpsOpticPending() == false and sg.Enabled, "举到眼前：换成目镜里的像")
+check(C.fpsOpticPending() == false and sg.Enabled, "举到眼前：目镜上画着镜片那一层")
 local function eyeCheck(tag)
-	local bc = OM.atacr.parts.Body.c
-	local e = eyeInfo.c
-	local eyeW = body.CFrame * V3.new(e[1] - bc[1], e[2] - bc[2], e[3] - bc[3])
-	local o = OM.atacr.obj.c
-	local objW = body.CFrame * V3.new(o[1] - bc[1], o[2] - bc[2], o[3] - bc[3])
+	-- 目镜、物镜在世界里的位置：照 tools/mock/fps.lua，枪身骨骼（gun 那一轨第一块零件的 CFrame 去掉它的偏移）× FPSView 记的 eyeG / objG
+	--   （原来拿 Body 零件的 CFrame 直接套 OpticsMeta 的坐标：导入的块每块各转了半圈摆回来以后，算出来的是镜像的点——光轴朝后、离得远）
+	local gi = nil
+	for _, it in ipairs(vm.items) do if it[2] == "gun" then gi = it break end end
+	local gcf = gi[1].CFrame * gi[3]:Inverse()
+	local eyeW, objW = gcf * vm.optic.eyeG, gcf * vm.optic.objG
 	local lp = cam.CFrame:PointToObjectSpace(eyeW)
 	local axis = (objW - eyeW).Unit:Dot(cam.CFrame.LookVector)
 	local frac = (eyeInfo.r / -lp.Z) / math.tan(math.rad(cam.FieldOfView) / 2)
-	check(math.abs(lp.X) < 0.02 and math.abs(lp.Y) < 0.02 and lp.Z < 0 and axis > 0.995 and math.abs(frac - 0.86) < 0.08,
+	check(math.abs(lp.X) < 0.02 and math.abs(lp.Y) < 0.02 and lp.Z < 0 and axis > 0.995 and math.abs(frac - 0.9) < 0.08,
 		string.format("%s：目镜正对中心（偏 %.3f, %.3f 格，距离 %.2f 格）、光轴朝前（%.4f）、占屏幕高度 %.0f%%（视角 %.1f°）", tag, lp.X, lp.Y, -lp.Z, axis, frac * 100, cam.FieldOfView))
 	return -lp.Z
 end
 local d1 = eyeCheck("10 倍")
-check(body.LocalTransparencyModifier == 1, "眼睛贴上目镜以后模型藏起来（屏幕上是目镜里的像）")
+local nIn, inHid = 0, true
+for _, it in ipairs(vm.items) do if it.inner then nIn += 1 if it[1].LocalTransparencyModifier ~= 1 then inHid = false end end end
+check(body.LocalTransparencyModifier == 0 and nIn > 0 and inHid, "镜身一直看得见，镜筒里面的块（" .. nIn .. " 块）藏起来")
 local function milPx()
 	local f = sg:FindFirstChild("MilX5", true)
 	return f and f.Position.X.Offset / 5 or 0
@@ -178,7 +198,7 @@ act(p2, "deploy", "sniper", "camp")
 H.run(3)
 local C2 = H.Gs[p2.Name]
 local P2 = G.P[p2]
-H.key(p2, Enum.KeyCode.One, true) H.key(p2, Enum.KeyCode.One, false)
+pressSlot(p2, 1, Enum.KeyCode.One)
 H.run(1)
 for _ = 1, 3 do
 	if P2 and P2.char and P2.char:FindFirstChildOfClass("Tool") then break end
@@ -191,7 +211,7 @@ end
 local vm2 = C2.fps
 local nGun, nOpt = 0, 0
 if vm2 then for _, it in ipairs(vm2.items) do if it.optic then nOpt += 1 elseif string.match(it[1].Name, "^O_m40a5__") then nGun += 1 end end end
-check(P2 and P2.alive and P2.team == "def" and vm2 and vm2.id == "sniper" and nGun == 3 and nOpt == 4 and vm2.optic ~= nil,
+check(P2 and P2.alive and P2.team == "def" and vm2 and vm2.id == "sniper" and nGun == 3 and nOpt == NA and vm2.optic ~= nil,
 	string.format("第一人称：M40A5 %d 块 + ATACR %d 块（开镜用 ATACR 的目镜；活着 %s、%s 队、拿着 %s、视图 %s 共 %d 块）", nGun, nOpt, tostring(P2 and P2.alive), tostring(P2 and P2.team),
 		tostring(P2 and P2.char and P2.char:FindFirstChildOfClass("Tool") and P2.char:FindFirstChildOfClass("Tool"):GetAttribute("Gear")), tostring(vm2 and vm2.id), vm2 and #vm2.items or -1))
 -- 开镜的目镜：ATACR 的目镜中心（装在导轨上）

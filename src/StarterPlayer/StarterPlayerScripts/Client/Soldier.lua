@@ -12,7 +12,6 @@
 --   远了降帧：300 格外每秒 15 次、700 格外每秒 4 次；1500 格外（跟着自动画质缩放）整个收起来
 --   零件都不碰撞、不挡射线（子弹打的是服务器上的命中盒）
 local RS = game:GetService("ReplicatedStorage")
-local RunService = game:GetService("RunService")
 local Debris = game:GetService("Debris")
 
 local Soldier = {}
@@ -649,9 +648,10 @@ function Soldier.init(G)
     step = function(v, dt, camPos)
       local target = v.root.CFrame
       local p = target.Position
-      -- 远了（1500 格外，跟着自动画质 G.perfK 缩放）：整个人收起来（不画、动作也不算）；回到范围里再摆回去
+      -- 远了（2600 格外，跟着自动画质 G.perfK 缩放；原来 1500，用户 11-22 视野改成无限远：狙击镜、望远镜里一公里外的人也看得见）：
+      --   整个人收起来（不画、动作也不算）；回到范围里再摆回去（700 格外的动作本来就四分之一秒才算一次）
       local dist = (p - camPos).Magnitude
-      local hideD = 1500 * (G.perfK or 1)
+      local hideD = 2600 * (G.perfK or 1)
       if dist > hideD then
         if not v.hidden then
           v.hidden, v.home = true, v.model.Parent
@@ -707,7 +707,7 @@ function Soldier.init(G)
     if not v or not v.rj or v.hidden then return nil end
     return (v.hrp.CFrame * v.rj.C0 * CF(RIF.muzzle)).Position
   end
-  RunService.RenderStepped:Connect(function()
+  G.frameConn("Soldier", function()
     local t = os.clock()
     for i = #dying, 1, -1 do
       local d = dying[i]

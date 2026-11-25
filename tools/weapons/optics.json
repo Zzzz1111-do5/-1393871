@@ -98,12 +98,476 @@
    "author": "GoldbergR",
    "license": "CC-BY-4.0",
    "url": "https://sketchfab.com/3d-models/trijicon-acog-35x35-riflescope-low-poly-374bd6e3054b47cdbeb2eeb7817613d1"
+  },
+  "sup10": {
+   "uid": "3a3c123f94a446589873b1d4df53c83c",
+   "name": "Suppressors 10 Pack",
+   "author": "TheWarVet",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/3a3c123f94a446589873b1d4df53c83c"
+  },
+  "silpack": {
+   "uid": "e96a019757a6440390edfef888f0867e",
+   "name": "Silencers Pack 1",
+   "author": "pedrobelthori",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/e96a019757a6440390edfef888f0867e"
+  },
+  "muzset": {
+   "uid": "07f62ec5ca604446848d1a0238b11f1d",
+   "name": "low-poly Muzzle Device Set",
+   "author": "DU1701",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/07f62ec5ca604446848d1a0238b11f1d"
+  },
+  "reddot": {
+   "uid": "8bf2794c30d04fa0aed1e3df92cd8a9e",
+   "name": "Generic Red Dot Scope / Rifle Attachment Lowpoly",
+   "author": "valterjherson1",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/8bf2794c30d04fa0aed1e3df92cd8a9e"
+  },
+  "eotech": {
+   "uid": "45e4fcdfb1b34756ab9e866564a12f66",
+   "name": "EoTech EXPS3-0 Holographic Weapon Sight Lowpoly",
+   "author": "valterjherson1",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/45e4fcdfb1b34756ab9e866564a12f66"
+  },
+  "romeo3": {
+   "uid": "a099c1db8ceb457aa5d1a44e967cb941",
+   "name": "Sig Sauer Romeo3 Reflex Sight",
+   "author": "ense7en",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/a099c1db8ceb457aa5d1a44e967cb941"
+  },
+  "acog6": {
+   "uid": "d7c2a92ba3dc4b02abe03944fc7600d7",
+   "name": "Trijicon ACOG 6x48 BAC Riflescope (Low-Poly)",
+   "author": "GoldbergR",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/d7c2a92ba3dc4b02abe03944fc7600d7"
+  },
+  "rvg": {
+   "uid": "86b3580a65c441db9d3401712c5c9b6d",
+   "name": "Low-Poly Magpul RVG",
+   "author": "notcplkerry",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/86b3580a65c441db9d3401712c5c9b6d"
+  },
+  "afg": {
+   "uid": "a92a52cbb5854f7c8e33507f579073f7",
+   "name": "Low-Poly Magpul AFG",
+   "author": "notcplkerry",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/a92a52cbb5854f7c8e33507f579073f7"
+  },
+  "armags": {
+   "uid": "72b06590aa4b4b6ab324dc7e0c11b884",
+   "name": "Low-Poly AR-15 magazines",
+   "author": "notcplkerry",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/72b06590aa4b4b6ab324dc7e0c11b884"
+  },
+  "peq15": {
+   "uid": "3758001408b0404592e7e80e7d5b3072",
+   "name": "ATPIAL AN/PEQ-15 (Low-Poly)",
+   "author": "GoldbergR",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/3758001408b0404592e7e80e7d5b3072"
+  },
+  "light": {
+   "uid": "208f42ab474b40f08453ee8df016a8e6",
+   "name": "Surefire M952V Weapon Light",
+   "author": "RedRogueXIII",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/models/208f42ab474b40f08453ee8df016a8e6"
+  },
+  "ip_radio": {
+   "uid": "f5c8f0420f054b32a2e977fbcd248d84",
+   "name": "Military Radio",
+   "author": "curichenkow",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/military-radio-f5c8f0420f054b32a2e977fbcd248d84"
+  },
+  "ip_radio2": {
+   "uid": "6647f257eb384c108ecf440bb161d91a",
+   "name": "Military Radio - Low Poly",
+   "author": "Camille Barral",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/military-radio-low-poly-6647f257eb384c108ecf440bb161d91a"
+  },
+  "ip_m829": {
+   "uid": "08c469c62c4e4a2794fd6135ff674b30",
+   "name": "M829A1 OBJ",
+   "author": "Jeyhun1985",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/m829a1-obj-08c469c62c4e4a2794fd6135ff674b30"
+  },
+  "ip_r125": {
+   "uid": "98087179c6ae4a63a09d017d87945888",
+   "name": "Tank ammo HEAT 3BK18",
+   "author": "VladIG_CG",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/tank-ammo-heat-3bk18-98087179c6ae4a63a09d017d87945888"
+  },
+  "ip_he125": {
+   "uid": "61532bea91314025b5d3a5eaa63d389b",
+   "name": "HE shell 125mm",
+   "author": "dichevk",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/he-shell-125mm-61532bea91314025b5d3a5eaa63d389b"
+  },
+  "ip_chg125": {
+   "uid": "ffeec6c6b381415fbf001a3e3dea2004",
+   "name": "GunPowder shell 125mm",
+   "author": "dichevk",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/gunpowder-shell-125mm-ffeec6c6b381415fbf001a3e3dea2004"
+  },
+  "ip_ext": {
+   "uid": "0253bc18de06471e8413ad24ea49ce92",
+   "name": "Fire Extinguisher",
+   "author": "Sir Erdees",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/fire-extinguisher-0253bc18de06471e8413ad24ea49ce92"
+  },
+  "ip_cvc": {
+   "uid": "c1516dc3d0ea420b9246334a94e5681e",
+   "name": "Combat Vehicle Crewman (CVC) Helmet, Vietnam Era",
+   "author": "olmopotums",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/combat-vehicle-crewman-cvc-helmet-vietnam-era-c1516dc3d0ea420b9246334a94e5681e"
+  },
+  "ip_tsh": {
+   "uid": "e0a6ed324a514c57bc05ffd365ac0eb0",
+   "name": "Tank Helmet",
+   "author": "denj666",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/tank-helmet-e0a6ed324a514c57bc05ffd365ac0eb0"
+  },
+  "ip_cdu": {
+   "uid": "797da922b1724a2fbdcf5b6379525b49",
+   "name": "Aircraft instrument/module thingy",
+   "author": "LuddePudde",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/aircraft-instrumentmodule-thingy-797da922b1724a2fbdcf5b6379525b49"
+  },
+  "ip_tab": {
+   "uid": "f7d8e3c008e24e0c9b32748b3d6105f1",
+   "name": "Rugged Sci-Fi Tactical Military Tablet",
+   "author": "3DMOAN",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/rugged-sci-fi-tactical-military-tablet-f7d8e3c008e24e0c9b32748b3d6105f1"
+  },
+  "ip_mon": {
+   "uid": "894a096d447e4dcaa8869f4c01917f6a",
+   "name": "Computer Box Monitor",
+   "author": "SUrusso613",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/computer-box-monitor-894a096d447e4dcaa8869f4c01917f6a"
+  },
+  "ip_yoke": {
+   "uid": "2d96da0d802746fcb30044bfba87e968",
+   "name": "ANIMATED KC-135 YOKE",
+   "author": "StratoArt",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/animated-kc-135-yoke-2d96da0d802746fcb30044bfba87e968"
+  },
+  "ip_stick": {
+   "uid": "8d85a47465c94c629c9e6cc60f9106d0",
+   "name": "B-8 Fighter Control Stick (Low Poly)",
+   "author": "StratoArt",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/b-8-fighter-control-stick-low-poly-8d85a47465c94c629c9e6cc60f9106d0"
+  },
+  "ip_asq": {
+   "uid": "b8d6bd36d6a446038931b76374a835e7",
+   "name": "ASQ-155 Ballistic Computer",
+   "author": "TwilightFox",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/asq-155-ballistic-computer-b8d6bd36d6a446038931b76374a835e7"
+  },
+  "ip_sw": {
+   "uid": "b01232380685412a8485c5dd3be4265a",
+   "name": "Industrial Switches Apollo Command Module",
+   "author": "ntilted",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/industrial-switches-apollo-command-module-b01232380685412a8485c5dd3be4265a"
+  },
+  "ip_lamp": {
+   "uid": "4c50439bcbc247629fe2194862d7acc9",
+   "name": "Industrial Bulkhead Wall Lamp Lowpoly",
+   "author": "iwanPlays",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/industrial-bulkhead-wall-lamp-lowpoly-4c50439bcbc247629fe2194862d7acc9"
+  },
+  "ip_can": {
+   "uid": "6fb5bbb064b649cc92780fad0036db9c",
+   "name": "Ammuntion box",
+   "author": "jaiharitheking",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/ammuntion-box-6fb5bbb064b649cc92780fad0036db9c"
+  },
+  "ip_canopy": {
+   "gen": "gen_canopy.mjs",
+   "name": "战斗机座舱盖玻璃（光滑曲面）",
+   "author": "本项目",
+   "license": "自制（tools/weapons/gen_canopy.mjs 程序生成：和游戏里零件拼的座舱盖同一个曲面）",
+   "url": ""
+  },
+  "ip_cdus": {
+   "gen": "gen_cdus.mjs",
+   "name": "M1A2 SEPv2 车长显示单元的机壳和屏框",
+   "author": "本项目",
+   "license": "自制（照用户发来的钢铁猛兽截图量的比例，tools/weapons/gen_cdus.mjs 程序生成）",
+   "url": ""
+  },
+  "ip_peri": {
+   "uid": "52c930bb607f4ae69aab580992e7449e",
+   "name": "FV105 Sultan periscop",
+   "author": "renalds_rs",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/fv105-sultan-periscop-52c930bb607f4ae69aab580992e7449e",
+   "prep": "periscope.mjs",
+   "note": "三维扫描件只取车里看得见的下半截（观察窗 + 外壳，截到安装法兰），从 155 万面简化到约 2000 面，贴图按新的网格重新烘焙，观察窗玻璃调成中性灰"
+  },
+  "ip_dseat": {
+   "uid": "b6cd4493fff547af8a87316952a51e82",
+   "name": "Driver seat \"Pilot\" with air suspension.",
+   "author": "dewolfepilot",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/driver-seat-pilot-with-air-suspension-b6cd4493fff547af8a87316952a51e82",
+   "prep": "blprep.py",
+   "note": "Blender：去掉气囊减震底座（坐垫下面那一截），转成乘员朝 −Z，原点放在坐垫顶面中心，厘米换成米",
+   "blprep": {
+    "rot": [
+     [
+      "z",
+      180
+     ]
+    ],
+    "scale": 0.01,
+    "origin": "seat",
+    "cut": [
+     {
+      "axis": "z",
+      "below": -0.13
+     }
+    ],
+    "tris": 4000
+   }
+  },
+  "ip_swheel": {
+   "uid": "bd3d964b2ba8425197ef1a76acf131f3",
+   "name": "car bus truck steering wheel interior control",
+   "author": "kopofx",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/car-bus-truck-steering-wheel-interior-control-bd3d964b2ba8425197ef1a76acf131f3",
+   "prep": "blprep.py",
+   "note": "Blender：盘面转成朝 +Z（对着驾驶员）、转向柱朝 −Z，轮缘直径缩到 0.40 米，原点在轮缘中心；原模型没贴图，涂成黑色",
+   "blprep": {
+    "rot": [
+     [
+      "x",
+      125
+     ]
+    ],
+    "fit": {
+     "axis": "x",
+     "size": 0.4,
+     "of": "Torus"
+    },
+    "origin": {
+     "of": "Torus"
+    },
+    "colors": {
+     "volante": [
+      0.02,
+      0.02,
+      0.02,
+      0.55
+     ]
+    },
+    "tris": 3000
+   }
+  },
+  "ip_lever": {
+   "uid": "ed7ce8e75f9f44dc9a60a499c7fdaf0b",
+   "name": "Classic Shift Lever",
+   "author": "kryoxshade",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/classic-shift-lever-ed7ce8e75f9f44dc9a60a499c7fdaf0b",
+   "prep": "blprep.py",
+   "note": "Blender：高度缩到 0.50 米，原点在防尘套底面中心",
+   "blprep": {
+    "fit": {
+     "axis": "z",
+     "size": 0.5
+    },
+    "origin": {
+     "z": "min"
+    },
+    "tris": 4000
+   }
+  },
+  "ip_gauges": {
+   "uid": "05288d08679d4cb195217a3477ae10ad",
+   "name": "Dashboard Gauges",
+   "author": "kryoxshade",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/dashboard-gauges-05288d08679d4cb195217a3477ae10ad",
+   "prep": "blprep.py",
+   "note": "Blender：三块表整组宽缩到 0.26 米，表盘朝 +Z，原点在背面中心",
+   "blprep": {
+    "fit": {
+     "axis": "x",
+     "size": 0.26
+    },
+    "origin": {
+     "y": "max"
+    },
+    "tris": 6000
+   }
+  },
+  "ip_pedals": {
+   "uid": "aed5b969daad4f2086468869b06a4f84",
+   "name": "Pedals Sets",
+   "author": "kryoxshade",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/pedals-sets-aed5b969daad4f2086468869b06a4f84",
+   "prep": "blprep.py",
+   "note": "Blender：只留四套里的一套（黑胶刹车 + 银色油门），截掉伸出去的长转轴和踏板臂后段（只留 0.4 米深），高度缩到 0.30 米，踏板面朝 +Z（对着驾驶员），原点在两块踏板底边的中点",
+   "blprep": {
+    "keep": [
+     "^Object_(17|22|14|20|15|18|28|26|24)$"
+    ],
+    "fit": {
+     "axis": "z",
+     "size": 0.3
+    },
+    "origin": {
+     "of": "^Object_(17|22|14|20|15)$",
+     "y": "min",
+     "z": "min"
+    },
+    "cut": [
+     {
+      "axis": "x",
+      "below": -0.16
+     },
+     {
+      "axis": "x",
+      "above": 0.16
+     },
+     {
+      "axis": "y",
+      "above": 0.4
+     }
+    ],
+    "tris": 4000
+   }
+  },
+  "ip_grip": {
+   "uid": "b53fdc25c8cc43aba8fdf6c40bb709e3",
+   "name": "F-4 Phantom II Flight Stick (Joystick)-Low Poly",
+   "author": "alpertheronin",
+   "license": "CC-BY-4.0",
+   "url": "https://sketchfab.com/3d-models/f-4-phantom-ii-flight-stick-joystick-low-poly-b53fdc25c8cc43aba8fdf6c40bb709e3",
+   "prep": "blprep.py",
+   "note": "Blender：扳机转成朝 −Z（朝前），原点在握把底面中心（原模型就是米）",
+   "blprep": {
+    "rot": [
+     [
+      "z",
+      90
+     ]
+    ],
+    "origin": {
+     "z": "min"
+    }
+   }
+  },
+  "qbz191": {
+   "uid": "88786970cb164adaad127a91a29b3dd8",
+   "name": "QBZ-191 - Free",
+   "author": "Brahian_s_g",
+   "license": "CC-BY-4.0",
+   "note": "转成枪口朝前、缩到真枪尺寸，减面到约 2.4 万面，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/qbz-191-free-88786970cb164adaad127a91a29b3dd8"
+  },
+  "qjy88": {
+   "uid": "f3d6595f4b954ce48d9441590b64fb3e",
+   "name": "QJY88",
+   "author": "flyinglist1",
+   "license": "CC-BY-4.0",
+   "note": "转成枪口朝前、缩到真枪尺寸，减面到约 2.4 万面，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/qjy88-f3d6595f4b954ce48d9441590b64fb3e"
+  },
+  "qcw05": {
+   "uid": "0418d46e15d941d1a89f84d639ee118d",
+   "name": "Low-Poly QCW-05 JS",
+   "author": "TastyTony",
+   "license": "CC-BY-4.0",
+   "note": "转成枪口朝前、缩到真枪尺寸，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/low-poly-qcw-05-js-0418d46e15d941d1a89f84d639ee118d"
+  },
+  "qbs09": {
+   "uid": "e13ccd2227c64edbb4f611fc52ab6325",
+   "name": "Low-Poly QBS-09",
+   "author": "TastyTony",
+   "license": "CC-BY-4.0",
+   "note": "转成枪口朝前、缩到真枪尺寸，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/low-poly-qbs-09-e13ccd2227c64edbb4f611fc52ab6325"
+  },
+  "qsz92": {
+   "uid": "6e8275a366454ad2ad370620412b5075",
+   "name": "Low-Poly QSZ-92",
+   "author": "TastyTony",
+   "license": "CC-BY-4.0",
+   "note": "转成枪口朝前、缩到真枪尺寸，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/low-poly-qsz-92-6e8275a366454ad2ad370620412b5075"
+  },
+  "m249": {
+   "uid": "b1e60faa37de4461822103fe38e5c9ce",
+   "name": "M249",
+   "author": "ArtDmitriyK",
+   "license": "CC-BY-4.0",
+   "note": "去掉两脚架、瞄准镜和镜座；转成枪口朝前、缩到真枪尺寸，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/m249-b1e60faa37de4461822103fe38e5c9ce"
+  },
+  "m17": {
+   "uid": "35e5bc9e68a841788ec8fdb09589fb92",
+   "name": "low-poly SIG Sauer M17",
+   "author": "DU1701",
+   "license": "CC-BY-4.0",
+   "note": "去掉枪身下挂的附件；转成枪口朝前、缩到真枪尺寸，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/low-poly-sig-sauer-m17-35e5bc9e68a841788ec8fdb09589fb92"
+  },
+  "m1014d": {
+   "uid": "623381817230474f9148f6208655cdfb",
+   "name": "Low Poly ShotGun-M1014",
+   "author": "BravoCastle",
+   "license": "CC-BY-4.0",
+   "note": "转成枪口朝前、缩到真枪尺寸，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/low-poly-shotgun-m1014-623381817230474f9148f6208655cdfb"
+  },
+  "mp7": {
+   "uid": "0ebd1e2b7a60408cb3b587b4807635ab",
+   "name": "Low-Poly HK MP7",
+   "author": "TastyTony",
+   "license": "CC-BY-4.0",
+   "note": "转成枪口朝前、缩到真枪尺寸，贴图缩小",
+   "url": "https://sketchfab.com/3d-models/low-poly-hk-mp7-0ebd1e2b7a60408cb3b587b4807635ab"
   }
  },
  "items": {
   "atacr": {
    "src": "atacr",
    "title": "狙击镜（Nightforce ATACR 7-35×56 F1，带皮卡汀尼镜座）",
+   "inner": {
+    "cone": 0.6
+   },
    "axes": "x,y,z",
    "scale": 2.8,
    "anchor": {
@@ -190,6 +654,9 @@
   },
   "qbu88": {
    "src": "qbu88",
+   "inner": {
+    "cone": 0.6
+   },
    "title": "解放军狙击枪（QBU-88）",
    "axes": "-z,y,x",
    "scale": 0.00548,
@@ -463,6 +930,21 @@
   },
   "acog": {
    "src": "acog",
+   "inner": {
+    "cone": 0.19
+   },
+   "ring": {
+    "rIn": 0.0216,
+    "rOut": 0.0336,
+    "t0": -0.0125,
+    "t1": 0.0135,
+    "bevel": 0.0012,
+    "col": [
+     36,
+     36,
+     38
+    ]
+   },
    "title": "步枪瞄准镜（Trijicon ACOG 3.5×35，装在 M4 上机匣导轨上）",
    "axes": "x,y,z",
    "scale": 2.8,
@@ -487,6 +969,1089 @@
    "eye": "Glass 1_Trijicon",
    "obj": "Glass 1\\.001",
    "embedTex": {}
+  },
+  "sup_socom": {
+   "src": "sup10",
+   "title": "SOCOM 战术消音器",
+   "keep": [
+    4
+   ],
+   "axes": "-z,y,x",
+   "scale": 0.028,
+   "anchor": {
+    "nodes": "^Object_12$",
+    "y": "center",
+    "z": "min"
+   },
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "sup_wrap": {
+   "src": "sup10",
+   "title": "裹布消音器",
+   "keep": [
+    10
+   ],
+   "axes": "-z,y,x",
+   "scale": 0.028,
+   "anchor": {
+    "nodes": "^Object_24$",
+    "y": "center",
+    "z": "min"
+   },
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "sup_sr8": {
+   "src": "silpack",
+   "title": "SR8 长消音器",
+   "keep": [
+    10
+   ],
+   "axes": "x,y,z",
+   "scale": 0.000134,
+   "anchor": {
+    "nodes": "^SR8_low",
+    "y": "center",
+    "z": "min"
+   },
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "muz_comp": {
+   "src": "muzset",
+   "title": "战术补偿器",
+   "keep": [
+    3
+   ],
+   "axes": "-z,y,x",
+   "scale": 0.28,
+   "anchor": {
+    "nodes": "^Object_9$",
+    "y": "center",
+    "z": "min"
+   }
+  },
+  "muz_brake": {
+   "src": "muzset",
+   "title": "多孔枪口制退器",
+   "keep": [
+    1,
+    2
+   ],
+   "axes": "-z,y,x",
+   "scale": 0.28,
+   "anchor": {
+    "nodes": "^Object_6$",
+    "y": "center",
+    "z": "min"
+   }
+  },
+  "opt_rds": {
+   "src": "reddot",
+   "title": "T1 红点瞄具",
+   "drop": [
+    9
+   ],
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "."
+   },
+   "eye": "wSphere\\.002",
+   "obj": "wSphere\\.003",
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "opt_holo": {
+   "src": "eotech",
+   "title": "EXPS3 全息瞄具",
+   "axes": "x,y,z",
+   "scale": 0.3395,
+   "anchor": {
+    "nodes": "."
+   },
+   "eye": "1\\.003_Holo",
+   "obj": "1\\.001_Holo",
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "opt_romeo": {
+   "src": "romeo3",
+   "title": "Romeo3 迷你反射瞄具",
+   "axes": "-z,y,x",
+   "scale": 0.0294,
+   "anchor": {
+    "nodes": "."
+   },
+   "obj": "^Object_4$",
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "opt_acog6": {
+   "src": "acog6",
+   "title": "ACOG 6×48 瞄准镜",
+   "eyePt": [
+    0,
+    0.129,
+    -0.27
+   ],
+   "eyeR": 0.042,
+   "objPt": [
+    0,
+    0.129,
+    0.205
+   ],
+   "objR": 0.064,
+   "inner": {
+    "cone": 0.55
+   },
+   "axes": "x,y,z",
+   "ring": {
+    "rIn": 0.0428,
+    "rOut": 0.0755,
+    "t0": -0.0215,
+    "t1": 0.0855,
+    "bevel": 0.002,
+    "col": [
+     32,
+     32,
+     33
+    ]
+   },
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "."
+   },
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "grip_rvg": {
+   "src": "rvg",
+   "title": "RVG 垂直握把",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": ".",
+    "y": "max"
+   }
+  },
+  "grip_afg": {
+   "src": "afg",
+   "title": "AFG 斜握把",
+   "keep": [
+    0,
+    1,
+    2
+   ],
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "^Object_(4|5|6)$",
+    "y": "max"
+   }
+  },
+  "mag_pmag20": {
+   "src": "armags",
+   "title": "PMAG 20 发短弹匣",
+   "keep": [
+    10
+   ],
+   "axes": "-x,y,-z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "^Object_21$",
+    "y": "max"
+   }
+  },
+  "mag_hex30": {
+   "src": "armags",
+   "title": "HEXMAG 30 发弹匣",
+   "keep": [
+    5,
+    6,
+    7
+   ],
+   "axes": "-x,y,-z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "^Object_(12|13|15)$",
+    "y": "max"
+   }
+  },
+  "mag_pmag40": {
+   "src": "armags",
+   "title": "PMAG 40 发扩容弹匣",
+   "keep": [
+    19
+   ],
+   "axes": "-x,y,-z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "^Object_37$",
+    "y": "max"
+   }
+  },
+  "mag_drum": {
+   "src": "armags",
+   "title": "D-60 弹鼓",
+   "keep": [
+    20,
+    21
+   ],
+   "axes": "-x,y,-z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "^Object_(39|40)$",
+    "y": "max"
+   }
+  },
+  "tac_peq": {
+   "src": "peq15",
+   "title": "AN/PEQ-15 激光指示器",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": "."
+   },
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "tac_light": {
+   "src": "light",
+   "title": "M952V 战术手电",
+   "axes": "-x,y,-z",
+   "scale": 0.000736,
+   "anchor": {
+    "nodes": "."
+   },
+   "embedTex": {
+    "Body": 128
+   }
+  },
+  "ip_radio": {
+   "src": "ip_radio",
+   "title": "车内饰：车载电台（现代数字电台，带安装架、手持话筒）",
+   "axes": "x,y,z",
+   "scale": 0.01553,
+   "anchor": {
+    "nodes": ".",
+    "y": "min"
+   },
+   "tris": 9000,
+   "embedTex": {
+    "Body": 256
+   }
+  },
+  "ip_radio2": {
+   "src": "ip_radio2",
+   "title": "车内饰：车载电台（老式箱体）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": ".",
+    "y": "min"
+   },
+   "tris": 9000,
+   "embedTex": {
+    "Body": 256
+   }
+  },
+  "ip_m829": {
+   "src": "ip_m829",
+   "title": "车内饰：120 毫米 M829A1 尾翼稳定脱壳穿甲弹（整发，装填手手上那一发）",
+   "axes": "x,y,z",
+   "scale": 0.0028,
+   "anchor": {
+    "nodes": ".",
+    "y": "center",
+    "z": "min"
+   },
+   "tris": 6000
+  },
+  "ip_m829lo": {
+   "src": "ip_m829",
+   "title": "车内饰：120 毫米 M829A1（尾舱弹架里那 36 发，减面版）",
+   "axes": "x,y,z",
+   "scale": 0.0028,
+   "anchor": {
+    "nodes": ".",
+    "y": "center",
+    "z": "min"
+   },
+   "tris": 1400
+  },
+  "ip_r125": {
+   "src": "ip_r125",
+   "title": "车内饰：125 毫米 3BK18 破甲弹弹丸（转盘装弹机）",
+   "keep": [
+    2
+   ],
+   "rot": [
+    [
+     "x",
+     -15.13
+    ],
+    [
+     "y",
+     180
+    ]
+   ],
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": ".",
+    "y": "center",
+    "z": "min"
+   },
+   "tris": 3000,
+   "embedTex": {
+    "Body": 256
+   }
+  },
+  "ip_he125": {
+   "src": "ip_he125",
+   "title": "车内饰：125 毫米杀爆弹弹丸（转盘装弹机）",
+   "keep": [
+    0,
+    1,
+    2,
+    6,
+    7
+   ],
+   "axes": "x,-z,y",
+   "scale": 0.2464,
+   "anchor": {
+    "nodes": ".",
+    "y": "center",
+    "z": "min"
+   },
+   "tris": 3000
+  },
+  "ip_chg125": {
+   "src": "ip_chg125",
+   "title": "车内饰：125 毫米发射药筒（转盘装弹机）",
+   "axes": "x,-z,y",
+   "scale": 0.28,
+   "anchor": {
+    "nodes": ".",
+    "y": "center",
+    "z": "min"
+   },
+   "tris": 3000
+  },
+  "ip_ext": {
+   "src": "ip_ext",
+   "title": "车内饰：二氧化碳手提灭火瓶",
+   "axes": "x,y,z",
+   "scale": 1.134,
+   "anchor": {
+    "nodes": ".",
+    "y": "min"
+   },
+   "tris": 4000,
+   "embedTex": {
+    "Body": 256
+   }
+  },
+  "ip_cvc": {
+   "src": "ip_cvc",
+   "title": "车内饰：美军坦克乘员头盔（CVC）",
+   "axes": "x,y,z",
+   "scale": 0.0056,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "tris": 8000,
+   "embedTex": {
+    "Body": 256
+   }
+  },
+  "ip_tsh": {
+   "src": "ip_tsh",
+   "title": "车内饰：坦克乘员皮帽（带耳机）",
+   "axes": "x,y,z",
+   "scale": 0.924,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "tris": 8000,
+   "embedTex": {
+    "Body": 256
+   }
+  },
+  "ip_cdu": {
+   "src": "ip_cdu",
+   "title": "车内饰：带边键的显示控制单元（车长热像仪显示器 CITV、炮长控制显示面板 GCDP）",
+   "axes": "x,y,z",
+   "scale": 0.1416,
+   "anchor": {
+    "nodes": "defaultMaterial",
+    "y": "center"
+   },
+   "tris": 5000,
+   "embedTex": {
+    "Body": 256
+   },
+   "sq": [
+    1,
+    1,
+    0.35
+   ],
+   "front": true
+  },
+  "ip_tab": {
+   "src": "ip_tab",
+   "title": "车内饰：车长战术显示器（JBC-P 加固显示终端）",
+   "axes": "-z,y,x",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "tris": 6000,
+   "embedTex": {
+    "Body": 256
+   },
+   "dropBox": [
+    -1,
+    0.235,
+    -1,
+    1,
+    1,
+    1
+   ],
+   "front": true
+  },
+  "ip_mon": {
+   "src": "ip_mon",
+   "title": "车内饰：带侧键的显示器（CROWS 遥控武器站显示器）",
+   "axes": "x,y,z",
+   "scale": 0.72,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {
+    "Body": 256
+   },
+   "sq": [
+    1,
+    1,
+    0.45
+   ],
+   "front": true
+  },
+  "ip_yoke": {
+   "src": "ip_yoke",
+   "title": "车内饰：炮长双握把（凯迪拉克）",
+   "axes": "-x,y,-z",
+   "scale": 14.6,
+   "anchor": {
+    "nodes": "^Object_12$",
+    "y": "center"
+   },
+   "tris": 5000,
+   "clipBox": [
+    -1,
+    -2,
+    -1,
+    1,
+    -0.36,
+    1
+   ],
+   "front": true
+  },
+  "ip_stick": {
+   "src": "ip_stick",
+   "title": "车内饰：车长操纵握把 CCH",
+   "axes": "-z,y,x",
+   "scale": 0.1213,
+   "anchor": {
+    "nodes": ".",
+    "y": "min"
+   },
+   "tris": 4000,
+   "front": true
+  },
+  "ip_asq": {
+   "src": "ip_asq",
+   "title": "车内饰：火控计算机（带操纵杆、键盘）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": ".",
+    "y": "min"
+   },
+   "opaque": true,
+   "tris": 8000,
+   "embedTex": {
+    "Body": 256
+   },
+   "front": true
+  },
+  "ip_asq2": {
+   "src": "ip_asq",
+   "title": "车内饰：弹道计算机的机箱（去掉原来的操纵杆，上面装 B-8 握杆）——车长操纵握把底下的白色电子箱",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "anchor": {
+    "nodes": ".",
+    "y": "min"
+   },
+   "opaque": true,
+   "tris": 8000,
+   "embedTex": {
+    "Body": 256
+   },
+   "front": true,
+   "dropBox": [
+    [
+     -0.1,
+     1.18,
+     0.0,
+     0.25,
+     1.6,
+     0.45
+    ]
+   ]
+  },
+  "ip_sw": {
+   "src": "ip_sw",
+   "title": "车内饰：拨动开关面板（带护盖）",
+   "axes": "x,y,z",
+   "scale": 0.14,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "tris": 7000,
+   "embedTex": {
+    "Body": 256
+   },
+   "front": true
+  },
+  "ip_lamp": {
+   "src": "ip_lamp",
+   "title": "车内饰：车内顶灯（防爆壁灯）",
+   "axes": "-x,y,-z",
+   "scale": 0.0013,
+   "anchor": {
+    "nodes": ".",
+    "y": "center",
+    "z": "min"
+   },
+   "embedTex": {
+    "Body": 128
+   },
+   "front": true
+  },
+  "ip_can": {
+   "src": "ip_can",
+   "title": "车内饰：弹药箱（12.7 毫米 M2A1 弹箱）",
+   "axes": "x,y,z",
+   "scale": 0.448,
+   "anchor": {
+    "nodes": ".",
+    "y": "min"
+   },
+   "tris": 2500,
+   "embedTex": {
+    "Body": 256
+   },
+   "front": true
+  },
+  "ip_canopy": {
+   "src": "ip_canopy",
+   "title": "座舱：战斗机座舱盖玻璃（截面半圆的管子 + 弹头形风挡，一整块光滑曲面、正反两面）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "parts": {
+    "glass": "Glass"
+   }
+  },
+  "ip_cdus": {
+   "src": "ip_cdus",
+   "title": "车内饰：M1A2 SEPv2 车长显示单元（上 CITV 热像、下指挥地图、右边字母数字键盘）的机壳、银色屏框、按键槽、把手",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "parts": {
+    "body": "Housing",
+    "bezel": "Bezel",
+    "glass": "Glass",
+    "well": "Wells",
+    "strip": "LedStrip",
+    "handle": "Handles",
+    "post": "Posts"
+   },
+   "front": true
+  },
+  "ip_peri": {
+   "src": "ip_peri",
+   "title": "车内饰：坦克潜望镜（车里看得见的下半截）",
+   "axes": "x,y,z",
+   "scale": 0.0028,
+   "embedTex": {
+    "Body": 512
+   }
+  },
+  "ip_dseat": {
+   "src": "ip_dseat",
+   "title": "车内饰：驾驶员座椅（坐垫 + 靠背 + 头枕，乘员朝 −Z，原点在坐垫顶面中心）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "tris": 4000,
+   "embedTex": {
+    "Body": 512
+   },
+   "front": true
+  },
+  "ip_swheel": {
+   "src": "ip_swheel",
+   "title": "车内饰：方向盘（盘面朝 +Z 对着驾驶员，原点在轮缘中心，直径 0.40 米）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "tris": 3000,
+   "front": true
+  },
+  "ip_lever": {
+   "src": "ip_lever",
+   "title": "车内饰：操纵杆 / 换挡杆（原点在底座中心，高 0.50 米）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "tris": 4000,
+   "embedTex": {
+    "Body": 256,
+    "Body2": 256
+   }
+  },
+  "ip_gauges": {
+   "src": "ip_gauges",
+   "title": "车内饰：指针式仪表三块（表盘朝 +Z，原点在背面中心）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "tris": 6000,
+   "embedTex": {
+    "Body": 256
+   },
+   "front": true
+  },
+  "ip_pedals": {
+   "src": "ip_pedals",
+   "title": "车内饰：刹车、油门踏板（踏板面朝 +Z 对着驾驶员，原点在踏板底边中点）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "tris": 4000,
+   "embedTex": {
+    "Body": 256
+   },
+   "front": true
+  },
+  "ip_grip": {
+   "src": "ip_grip",
+   "title": "车内饰：操纵握把（扳机朝 −Z，原点在握把底面中心，高 0.13 米）",
+   "axes": "x,y,z",
+   "scale": 2.8,
+   "embedTex": {
+    "Body": 256
+   },
+   "front": true
+  },
+  "qbz191": {
+   "src": "qbz191",
+   "title": "解放军步枪（QBZ-191）",
+   "axes": "x,y,z",
+   "scale": 3.18,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {
+    "Body": 256,
+    "Body2": 128,
+    "Body2_2": 128
+   },
+   "pts": {
+    "grip": [
+     0,
+     -0.02,
+     -0.62
+    ],
+    "rail": [
+     0,
+     0.35,
+     -0.1
+    ],
+    "muzzle": [
+     0,
+     0.245,
+     1.23
+    ],
+    "sightR": [
+     0,
+     0.43,
+     -0.59
+    ],
+    "sightF": [
+     0,
+     0.44,
+     0.54
+    ]
+   },
+   "tris": 24000
+  },
+  "qjy88": {
+   "src": "qjy88",
+   "title": "解放军通用机枪（QJY-88）",
+   "axes": "x,y,z",
+   "scale": 0.4213,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {},
+   "pts": {
+    "grip": [
+     0,
+     -0.215,
+     -0.73
+    ],
+    "rail": [
+     0,
+     0.13,
+     -0.3
+    ],
+    "muzzle": [
+     0,
+     0.05,
+     1.66
+    ],
+    "sightR": [
+     0,
+     0.18,
+     -0.565
+    ],
+    "sightF": [
+     0,
+     0.2,
+     1.47
+    ]
+   },
+   "tris": 24000
+  },
+  "qcw05": {
+   "src": "qcw05",
+   "title": "解放军冲锋枪（QCW-05）",
+   "axes": "-x,-z,-y",
+   "scale": 0.000228,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {},
+   "pts": {
+    "grip": [
+     0,
+     -0.12,
+     0.05
+    ],
+    "rail": [
+     0,
+     0.3,
+     0.2
+    ],
+    "muzzle": [
+     0,
+     0.215,
+     0.87
+    ],
+    "sightR": [
+     0,
+     0.415,
+     0.06
+    ],
+    "sightF": [
+     0,
+     0.425,
+     0.57
+    ]
+   }
+  },
+  "qbs09": {
+   "src": "qbs09",
+   "title": "解放军霰弹枪（QBS-09）",
+   "axes": "-x,-z,-y",
+   "scale": 0.000366,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {},
+   "pts": {
+    "grip": [
+     0,
+     -0.15,
+     -0.5
+    ],
+    "rail": [
+     0,
+     0.225,
+     -0.13
+    ],
+    "muzzle": [
+     0,
+     0.17,
+     1.46
+    ],
+    "sightR": [
+     0,
+     0.275,
+     -0.55
+    ],
+    "sightF": [
+     0,
+     0.285,
+     0.87
+    ]
+   }
+  },
+  "qsz92": {
+   "src": "qsz92",
+   "title": "解放军手枪（QSZ-92）",
+   "axes": "-x,-z,-y",
+   "scale": 0.000268,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {},
+   "pts": {
+    "grip": [
+     0,
+     -0.07,
+     -0.165
+    ],
+    "muzzle": [
+     0,
+     0.115,
+     0.26
+    ],
+    "sightR": [
+     0,
+     0.172,
+     -0.188
+    ],
+    "sightF": [
+     0,
+     0.174,
+     0.228
+    ]
+   }
+  },
+  "m249": {
+   "src": "m249",
+   "title": "美军轻机枪（M249）",
+   "axes": "x,y,z",
+   "scale": 2.43,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {
+    "Body": 256
+   },
+   "dropBox": [
+    [
+     -1,
+     -1,
+     0.75,
+     1,
+     0.02,
+     1.05
+    ],
+    [
+     -1,
+     0.55,
+     -0.9,
+     1,
+     0.8,
+     -0.1
+    ],
+    [
+     -1,
+     0.44,
+     -0.66,
+     1,
+     0.64,
+     -0.28
+    ]
+   ],
+   "pts": {
+    "grip": [
+     0,
+     -0.12,
+     -0.61
+    ],
+    "rail": [
+     0,
+     0.52,
+     -0.45
+    ],
+    "muzzle": [
+     0,
+     0.33,
+     1.42
+    ],
+    "sightR": [
+     0,
+     0.47,
+     -0.05
+    ],
+    "sightF": [
+     0,
+     0.5,
+     1.05
+    ]
+   }
+  },
+  "m1014": {
+   "src": "m1014d",
+   "title": "美军霰弹枪（M1014）",
+   "axes": "x,y,z",
+   "scale": 0.597,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {
+    "Body": 256
+   },
+   "pts": {
+    "grip": [
+     0,
+     -0.135,
+     -0.62
+    ],
+    "rail": [
+     0,
+     0.22,
+     -0.13
+    ],
+    "muzzle": [
+     0,
+     0.135,
+     1.36
+    ],
+    "sightR": [
+     0,
+     0.235,
+     -0.45
+    ],
+    "sightF": [
+     0,
+     0.24,
+     1.25
+    ]
+   }
+  },
+  "m17": {
+   "src": "m17",
+   "title": "美军手枪（M17）",
+   "axes": "-z,y,x",
+   "scale": 0.2777,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {},
+   "dropBox": [
+    [
+     -1,
+     -0.04,
+     0.11,
+     1,
+     0.07,
+     0.22
+    ],
+    [
+     -1,
+     -0.24,
+     -0.09,
+     1,
+     -0.05,
+     0.27
+    ]
+   ],
+   "pts": {
+    "grip": [
+     0,
+     -0.045,
+     -0.18
+    ],
+    "muzzle": [
+     0,
+     0.14,
+     0.28
+    ],
+    "sightR": [
+     0,
+     0.215,
+     -0.2
+    ],
+    "sightF": [
+     0,
+     0.215,
+     0.256
+    ]
+   }
+  },
+  "mp7": {
+   "src": "mp7",
+   "title": "美军冲锋枪（MP7A1）",
+   "axes": "-y,-z,x",
+   "scale": 0.001317,
+   "anchor": {
+    "nodes": ".",
+    "y": "center"
+   },
+   "embedTex": {},
+   "pts": {
+    "grip": [
+     0,
+     -0.065,
+     0.105
+    ],
+    "rail": [
+     0,
+     0.2,
+     0.17
+    ],
+    "muzzle": [
+     0,
+     0.107,
+     0.59
+    ],
+    "sightR": [
+     0,
+     0.25,
+     -0.024
+    ],
+    "sightF": [
+     0,
+     0.25,
+     0.393
+    ]
+   }
   }
  }
 }

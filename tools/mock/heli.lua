@@ -152,6 +152,34 @@ T.key(Enum.KeyCode.S, false)
 R.run(3)
 local p = st.cf.Position
 check(p.X == p.X and p.Y == p.Y and p.Z == p.Z, "位置正常（没有 NaN）")
+print("⑥ 准心决定机头（用户 11-22）：准心往下 → 桨盘前倾往前飞；准心猛往上 → 往后仰，受力往后、往上；机炮比机身先对上准心")
+R.run(4)
+local base = -0.15
+st.camPitch = base - 0.35   -- 准心往下 20°
+local vA = fwdSpeed()
+R.run(4)
+local vB = fwdSpeed()
+check(st.tiltP < -0.2 and vB > vA + 20, string.format("准心往下：机头、桨盘往前倾（%.0f°），往前飞（%.0f → %.0f 格 / 秒）", math.deg(st.tiltP), vA, vB))
+st.camPitch = base + 0.45   -- 准心猛往上 26°
+local vyMax, yS = -1e9, st.cf.Position.Y
+for _ = 1, 20 do
+  R.run(0.1)
+  vyMax = math.max(vyMax, st.vy)
+end
+local vC = fwdSpeed()
+check(st.tiltP > 0.15, string.format("准心猛往上：机头往后仰（%.0f°）", math.deg(st.tiltP)))
+check(vC < vB - 10, string.format("受力往后：前进速度 %.0f → %.0f 格 / 秒", vB, vC))
+check(vyMax > 3 and st.cf.Position.Y > yS, string.format("受力往上：升降速度最大 %.1f 格 / 秒，高度 %.0f → %.0f", vyMax, yS, st.cf.Position.Y))
+st.camPitch = base
+R.run(6)
+local yawN = st.yaw
+st.camYaw = yawN + 0.9   -- 准心往左 52°
+R.run(0.25)
+local noseLeft = math.abs(angd(st.yaw, st.camYaw))
+local gunLeft = -(st.ty or 0)   -- 炮塔相对机头往左转了多少度
+check(noseLeft > 0.45 and gunLeft > 25, string.format("准心一甩：机身才转了 %.0f°（还差 %.0f°），机头炮塔已经往左转了 %.0f°", math.deg(0.9) - math.deg(noseLeft), math.deg(noseLeft), gunLeft))
+check(math.abs(math.rad(gunLeft) - noseLeft) < noseLeft * 0.35, string.format("炮比机身先对上准心（炮还差 %.0f°，机身还差 %.0f°）", math.abs(math.deg(noseLeft) - gunLeft), math.deg(noseLeft)))
+R.run(4)
 -- 开了一会儿（看过三步卡的 10 秒后）：最下面收成一个「F1 全部按键」；F1 打开全部按键（原来最下面那一整行说明的全文）
 check(keyShown("F1") and not keyShown("E/Q"), "开了一会儿：最下面收成「F1 全部按键」")
 T.tap(Enum.KeyCode.F1)

@@ -54,7 +54,7 @@ void main() {
   #include <logdepthbuf_fragment>
   float f0 = floor(vF.x), w = vF.x - f0;
   vec4 t = mix(at(f0), at(min(f0 + 1.0, uFr - 1.0)), w);
-  float a = t.a * vF.y;
+  float a = t.a * vF.y * smoothstep(0.5, 0.4, length(vUv - 0.5));   // 圆形遮罩：小尺寸时 mipmap 把相邻帧混进来，原来烟团边上一圈方框
   if (a < 0.003) discard;
   float fog = filmFog2(vW, fogDensity);
   vec3 c;
@@ -371,7 +371,7 @@ export function explosion(o) {
     // 地上一圈尘土
     if (dust && !water && u < 3) for (let i = 0; i < 8; i++) {
       const a = i / 8 * Math.PI * 2 + seed, r = s * (0.4 + 1.6 * (1 - Math.exp(-u * 2.5)));
-      fx.sprite('puff', p.clone().add(new THREE.Vector3(Math.cos(a) * r, s * 0.15, Math.sin(a) * r)), s * 0.9, 10 + u * 8, 0.55 * (1 - u / 3), 0, [0.55, 0.5, 0.42], a);
+      fx.sprite('puff', p.clone().add(new THREE.Vector3(Math.cos(a) * r, s * 0.42, Math.sin(a) * r)), s * 0.9, 10 + u * 8, 0.55 * (1 - u / 3), 0, [0.55, 0.5, 0.42], a);   // 下沿不插进地里（深度打架出方块）
     }
   };
 }

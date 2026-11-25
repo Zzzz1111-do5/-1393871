@@ -119,6 +119,8 @@ function build(n, parentEl, inFlow, scaleAcc, depth, topInfo) {
     } else d.style.boxShadow = `0 0 0 ${th}px ${rgba(stroke.p.Color, a0)}`;
   }
   if (p.ClipsDescendants || n.c === 'ScrollingFrame' || n.c === 'CanvasGroup') { d.style.overflow = 'hidden'; d.dataset.clip = '1'; }   // CanvasGroup 按自己的圆角裁剪里面的东西（雷达）
+  const arc = comp(n, 'UIAspectRatioConstraint');   // 宽高比（FitWithinMaxSize：在原来的框里取最大的那一块）：排好版以后 fixAspect 再定像素
+  if (arc) d.dataset.ar = arc.p.AspectRatio || 1;
   const szc = comp(n, 'UISizeConstraint');
   if (szc) {
     if (szc.p.MaxSize) { if (szc.p.MaxSize[0] < 1e7) d.style.maxWidth = szc.p.MaxSize[0] + 'px'; if (szc.p.MaxSize[1] < 1e7) d.style.maxHeight = szc.p.MaxSize[1] + 'px'; }
@@ -443,6 +445,15 @@ function render(snap) {
     if (single) for (const k of kids) if (k !== roots[0]) k.p.__top = 1;
     topInfo = { depth: single ? 1 : 0 };
     for (const k of kids) build(k, sg, false, 1, 0, topInfo);
+  }
+  // UIAspectRatioConstraint（照 Roblox 默认的 FitWithinMaxSize）：按排出来的宽高缩成定比例的最大一块；外层先定，里层跟着
+  for (const el of document.querySelectorAll('[data-ar]')) {
+    const ar = +el.dataset.ar, w = el.offsetWidth, h = el.offsetHeight;
+    if (!w || !h) continue;
+    let nw = w, nh = w / ar;
+    if (nh > h) { nh = h; nw = h * ar; }
+    el.style.width = nw + 'px';
+    el.style.height = nh + 'px';
   }
   fixCanvas();
   for (const o of vps) drawVp(o);

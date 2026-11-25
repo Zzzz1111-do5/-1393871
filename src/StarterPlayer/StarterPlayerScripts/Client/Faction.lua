@@ -10,7 +10,7 @@ function Faction.init(G)
   local RGB = Color3.fromRGB
   local function T(k, ...) return G.T(k, ...) end
   local TEXT, MUTE, LINE = RGB(238, 240, 242), RGB(138, 146, 154), RGB(255, 255, 255)
-  local COL = { atk = RGB(214, 58, 46), def = RGB(64, 132, 238) }
+  local COL = { atk = RGB(214, 58, 46), def = RGB(64, 186, 92) }   -- 守方：绿（用户 11-21 蓝色全改绿，同 Config.Teams.def）
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "Faction"

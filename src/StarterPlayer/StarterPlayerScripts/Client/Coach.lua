@@ -31,7 +31,10 @@ function Coach.init(G)
   local mobile = G.mobile == true
   local clock = os.clock
   local function T(k, ...) return G.T(k, ...) end
-  local function teamColor(t) return Config.Teams[(t == "def") and "def" or "atk"].color end
+  local function teamColor(t)
+    if t == "none" then return Color3.fromRGB(200, 200, 200) end   -- 征服模式的中立据点
+    return Config.Teams[(t == "def") and "def" or "atk"].color
+  end
   G.coachOn = not mobile   -- UI.lua：有按键提示就不画最下面那一整行说明（手机上是触屏按钮，本来就不画）
 
   -- 字的大概宽度（中日韩字一个字号宽，其余半个多）：按键格子、提示条按它排
@@ -90,9 +93,9 @@ function Coach.init(G)
     inf = { { "LMB", "coach.fire" }, { "RMB", "coach.aim" }, { "R", "coach.reload" }, { "E", "coach.board" }, { "F1", "coach.allKeys" } },
     veh = { { "W/S", "coach.drive" }, { "A/D", "coach.steer" }, { "LMB", "coach.fire" }, { "Shift", "coach.sight" }, { "Space", "coach.exit" } },
     lcac = { { "W/S", "coach.throttle" }, { "A/D", "coach.steer" }, { nil, "coach.lcacBeach" }, { "Space", "coach.exit" } },
-    jetGround = { { "W", "coach.throttleUp" }, { "A/D", "coach.taxi" }, { "Mouse", "coach.rotate" }, { "S", "coach.reverse" } },
-    jet = { { "Mouse", "coach.aimSteer" }, { "W/S", "coach.speed" }, { "A/D", "coach.roll" }, { "LMB", "coach.gun" }, { "F", "coach.missile" } },
-    jetLand = { { "G", "coach.gearDown" }, { "S", "coach.throttleDown" } },
+    jetGround = { { "Shift", "coach.throttleUp" }, { "A/D", "coach.taxi" }, { "S", "coach.rotate" }, { "Ctrl", "coach.reverse" } },   -- 用户 11-21：WASD 控制方向、不要准心
+    jet = { { "W/S", "coach.pitch" }, { "A/D", "coach.roll" }, { "Shift/Ctrl", "coach.throttle" }, { "LMB", "coach.gun" }, { "F", "coach.missile" } },
+    jetLand = { { "G", "coach.gearDown" }, { "Ctrl", "coach.throttleDown" } },
     heliSpool = { { nil, "coach.spool" } },
     heli = { { "Mouse", "coach.nose" }, { "E/Q", "coach.updown" }, { "W/S", "coach.cyclic" }, { "A/D", "coach.strafe" }, { "LMB", "coach.gun" } },
     uav = { { "Mouse", "coach.aimSteer" }, { "W/S", "coach.speed" }, { "A/D", "coach.roll" }, { "LMB", "coach.gun" }, { "F", "coach.missile" }, { "Space", "coach.stowPad" } },
@@ -531,14 +534,19 @@ function Coach.init(G)
     if panelOpen and panelMode ~= mode then buildPanel(mode) end
     -- 三步卡：换了状态（下车、阵亡）就收起；第一次进某种载具弹出来；30 秒没关自己收（算看过）
     if cardMode and (cardMode ~= mode or now - cardT0 > 30) then closeCard(now - cardT0 > 30) end
-    if not cardMode and mode and CARDS[mode] and not mobile and hudOn and not isSeen(mode) and not hudTipOpen() then openCard(mode) end   -- Hud 的目标说明开着就先等它关上
-    card.Visible = cardMode ~= nil and not panelOpen and hudOn
+    -- 电脑上开坦克（VehHud 的 MWT 那套，G.tankHudActive）：屏幕上只留那一套——三步卡、按键条、目标箭头都不出（F1 照样能开全部按键）
+    local mwt = G.tankHudActive == true
+    if not cardMode and mode and CARDS[mode] and not mobile and hudOn and not mwt and not isSeen(mode) and not hudTipOpen() then openCard(mode) end   -- Hud 的目标说明开着就先等它关上
+    card.Visible = cardMode ~= nil and not panelOpen and hudOn and not mwt
+    -- 开飞机（AirHud，用户 11-19 照 MWT 截图改）：圆形雷达挪到了左上，三步卡挪到雷达和「被发现!」下面
+    local airDock = G.airRadarDocked ~= nil and G.airRadarDocked() == true
+    card.Position = airDock and UDim2.fromOffset(16, 330) or UDim2.new(0, 24, 0.28, 0)
     -- 按键提示
     local sub = mode and subOf(mode)
     if sub ~= lastSub then lastSub, subT0 = sub, now end
     local list, dim = nil, false
     local d = G.drive
-    local hidden = mobile or not hudOn or panelOpen or G.scopeOn or (d and (d.sight or d.eo))
+    local hidden = mobile or not hudOn or panelOpen or G.scopeOn or (d and (d.sight or d.eo)) or mwt
     if not hidden and mode then
       if mode == "inf" then
         local od = G.objDist and G.objDist()
@@ -561,7 +569,7 @@ function Coach.init(G)
     end
     -- 目标箭头、队友、空车
     local showWorld = hudOn and alive and S.phase ~= "end"
-    stepArrow(showWorld and not G.scopeOn and not (d and (d.sight or d.eo)))
+    stepArrow(showWorld and not G.scopeOn and not (d and (d.sight or d.eo)) and not mwt)
     stepMarks(dt, showWorld)
   end
 end

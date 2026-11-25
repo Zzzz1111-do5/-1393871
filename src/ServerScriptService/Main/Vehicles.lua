@@ -21,7 +21,7 @@ function Vehicles.init(G)
   local laneN = {}   -- [beachId] = 这处海滩开过几条（左右错开排）
   local nextSlot = {}   -- [beachId] = 下一班最早几点开（上一班开走 + every）
 
-  local beachOf = Map.landingOf
+  local function beachOf(id) return Map.landingOf(id) end   -- 每次按现在这张图查（地图是开服以后投票定的，初始化时 Map 还是岛）
 
   -- 艇的位置：从海上 start 格处沿 b.dir 方向冲向岸线；返回 CFrame（船头朝岸）
   local function boatCF(b, d, lane)

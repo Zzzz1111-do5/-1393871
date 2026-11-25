@@ -97,6 +97,41 @@ if sh then
 	local cmz = VD.muzzle(d, st.root * CF.new(0, -d.H / 2, 0), st.ty, st.gp, "rws", st.my, st.mp)
 	check((cmz.Position - sh.from).Magnitude < 1.5, string.format("和客户端画面上的枪口对得上（差 %.2f 格）", (cmz.Position - sh.from).Magnitude))
 end
+print("⑤ 每型坦克都有会转的车顶机枪（用户 11-19：坦克的机枪要能转，开火位置要在机枪）；99A 是车长舱口一挺手动的 12.7 毫米重机枪，并列机枪也留着（用户 11-21 晚）")
+local VMm
+H.ctx = def
+VMm = H.require(def.PlayerScripts:FindFirstChild("Client", true):FindFirstChild("VehModels"))
+H.ctx = nil
+for _, side in ipairs({ "def", "atk" }) do
+	for _, vid in ipairs(G.Config.Vehicles[side].tank) do
+		local dd = VD.get(vid)
+		local ok = dd.rws ~= nil and table.find(dd.weapons, "hmg") ~= nil and (dd.rws.mk == "manual" or not table.find(dd.weapons, "coax"))   -- 手动重机枪（99A）：并列机枪留着
+		local mz = dd.rws and VD.muzzle(dd, base0, 30, 0, "rws", 25, 5)
+		local pv = dd.rws and (VD.turretCF(dd, base0, 30) * CF.new(dd.rws.pivot)).Position
+		local fwd = mz and pv and (mz.Position - pv).Magnitude or 0
+		-- 模型：遥控站底座（rws）、机枪（rwg）都有零件（导入的原模型或者零件拼的）
+		local nR, nG = 0, 0
+		if VMm and VMm.build then
+			local okB, M = pcall(VMm.build, dd, side)
+			if okB and M then
+				for _, it in ipairs(M.parts) do
+					if it[2] == "rws" then nR += 1 elseif it[2] == "rwg" then nG += 1 end
+				end
+				M.model:Destroy()
+			end
+		end
+		if dd.noRoofMg then
+			check(dd.rws == nil and table.find(dd.weapons, "coax") ~= nil and nR == 0 and nG == 0, string.format("%s：车顶不放机枪（遥控站 %s，机枪栏 %s，零件 底座 %d 机枪 %d）",
+				vid, tostring(dd.rws ~= nil), table.concat(dd.weapons, ","), nR, nG))
+		else
+			check(ok and fwd > 1.2 and nR > 0 and nG > 0, string.format("%s：遥控站 %s，机枪栏 %s，枪口离座圈 %.1f 格，零件 底座 %d 机枪 %d",
+				vid, tostring(dd.rws ~= nil), table.concat(dd.weapons, ","), fwd, nR, nG))
+			if dd.rws and dd.rws.mk == "manual" then
+				check(table.find(dd.weapons, "coax") ~= nil and table.find(dd.weapons, "hmg") ~= nil, string.format("%s：手动重机枪，并列机枪也留着（机枪栏 %s）", vid, table.concat(dd.weapons, ",")))
+			end
+		end
+	end
+end
 H.summary()
 print(fails == 0 and "全部通过" or ("不对 " .. fails .. " 处"))
 process.exit(fails == 0 and 0 or 1)
