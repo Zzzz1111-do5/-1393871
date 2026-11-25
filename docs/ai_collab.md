@@ -206,6 +206,19 @@
 
 ## 合并记录
 
+- 11-25 C 合 B（8bed071：坦克抽搐、昼夜更替 DayClock、对照战雷挑刺 15 条）、再合 D（8d49e9f：科技树、机库、战斗等级、改装、乘员、三种模式、资料卡、试驾、真模型第一批）→ 4e89b25：
+  · **豹 2A6、T-80U 两边都做了：用 D 的**（模型更细、负重轮单独转、T-80U 带接触-5、有同族型号）；C 的勒克莱尔、T-72B3 留着。用户导过 C 那版的要删掉旧的 V_leo2a6__ / V_t80u__ 再导 D 的
+  · **C 11-24 夜照用户删的九辆车照旧删着**（用户原话「很多内饰粗糙不方便做的车删掉」，选了「M10 布克，步战车 / 装甲车 8 辆」）：D 的 TechTree 里借 m10 / stryker / bmp3 / ztd05 的、
+    本身是 ptl02 / ztd05 / zsl92b / zbd05 / m10 / stryker / m1150 / bmp3 的 36 项，改借还在的真模型车（都还写「暂用」）：T-55 一类 → m60a1、79 / 88B / PTZ-89 → m60a3、
+    轻坦和歼击车 → leo1 / leo1a5、水陆和 BMP 一族（含 ZBD-04 / 05）→ bmp1、轮式车和导弹车 → m2a3。**D 以后加暂用车别再借这九辆**；Tech.lua 试驾靶车兜底 m10 → m1a1
+  · stryker.glb 留着（M-SHORAD 的车体，ImportedMeta alias mshorad = "stryker"）——C 上一版误删过，已恢复
+  · 昼夜：用 B 的 DayClock（Config.DayNight 的 day / dusk / night / dawn / start），D 的 period 那版不用了；D 的 Night.lua（天黑提示、天亮收夜视、白天关灯）照用 G.isNight / G.dayK；
+    tools/mock/veh.lua 改成钉 workspace 属性 DayFix 测昼夜
+  · World.lua 后台铺地形：D 的切小块（fill / reliefBg）+ B 的 BG_BUDGET 4 毫秒和每 30 秒报一次
+  · 机库开着（G.hangarActive）时 C 的出击栏（WtBattle WtLineup）不出来；击杀栏只留 C 的战雷式那条（WtMatch wtFeed 多了 kk / vk 科技树键，写科技树里的名字），
+    Round.lua 车毁的老击杀播报在 G.wtFeedOn() 时不再写；X 光标题（Wt.lua 的 tk）、「被谁击毁」（kk）也写科技树里的名字
+  · 射流弹补到 D 的新炮表（gun125u / b → jet125，gun120l55 / l44 → jet120，105 那几门 → jet105，排最后）
+
 - 11-24 夜 E 合 B（eef4629，里面有 A 905d5ee、C 05adba1）——快进；再合 D（480ac31：流式加载）：冲突只有客户端模块清单（D 的 Stream + C 的 Wt* + A 的 Radar 都留）、
   ai_collab、导入说明（模型数用 D 的 131），游戏文件重新打包（b5d6c0f）。合完 E 改了沙海开服写地形（见上面 E ⑦）。
 
