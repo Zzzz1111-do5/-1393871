@@ -26,10 +26,18 @@ function Stream.init(G)
   end
 
   --   any：朝上、水平的也按地形算（激光测距按一下打一次：往上坡打要测得到）；每帧都打的瞄准射线不给——朝天打空了还一步步走，白费时间
+  -- 每帧都打的瞄准射线打空了要沿着射线一步步算地形高度（一次一百多次 Map.height）：用户 11-25「特别卡」「坦克一直在抽搐」——
+  --   开服后远处的地形还在后台铺，坦克往远处瞄，每帧两三条都打空、都走一遍；改成每帧最多走 3 次（多的这一帧当打空），步子放大到全长的 1/64
+  local frameN, frameUsed = 0, 0
+  G.frameConn("stream", function() frameN += 1 end)
+  local usedAt = -1
   function G.rayFar(o, v, params, any)
     local res = workspace:Raycast(o, v, params)
     if res or not G.streaming or (v.Y >= 0 and not any) then return res end
-    local p, dist = Map.rayGround(o, v)
+    if usedAt ~= frameN then usedAt, frameUsed = frameN, 0 end
+    if not any and frameUsed >= 3 then return nil end
+    frameUsed += 1
+    local p, dist = Map.rayGround(o, v, (not any) and math.clamp(v.Magnitude / 64, 10, 80) or nil)
     if not p then return nil end
     fallbacks += 1
     local okM, mat = pcall(Map.material, p.X, p.Z, p.Y, 0)

@@ -133,6 +133,14 @@ World.floodPole = floodPole
 -- 夜战（用户：交战全部设成夜晚——夜晚弥补画质，做出 3A 的质感）：凌晨两点多，月亮偏西、冷蓝的月光，环境光压得很低，远处深蓝灰的雾；
 --   主要的光是枪口焰、爆炸、热诱弹、航行灯、跑道灯、甲板灯、营地探照灯（Future 光照：地图文件里设好了，脚本改不了）；夜视仪在客户端 Night.lua
 function World.lighting()
+  -- 昼夜（用户 11-25「给沙漠地图做个昼夜更替」）：开服记一次这一圈从哪一刻起算，之后跨局接着走（ReplicatedStorage/DayClock.lua；客户端 DayNight.lua 画）
+  pcall(function()
+    if type(workspace:GetAttribute("DayT0")) ~= "number" then
+      local DC = require(RS:WaitForChild("DayClock"))
+      local DN = require(RS:WaitForChild("Config")).DayNight or {}
+      workspace:SetAttribute("DayT0", DC.t0For(DN.start or 15.5))
+    end
+  end)
   pcall(function()
     Lighting.ClockTime = 2.3
     Lighting.GeographicLatitude = 23
@@ -388,6 +396,7 @@ end
 --   （3 万多次 FillBlock、16 亿个体素，进度条涨 1% 要铺一千多次），Roblox 里地形引擎铺这些远比算高度慢；现在开服前只剩基地一带几百次
 -- 地底只填到这里（原来 −40：整张图平地填 13 层体素——用户 11-24「沙海加载时间太长」；弹坑最深 5.5 格（Config.Battle.crater.maxDepth），16 格厚的地壳够了）
 local DESERT_BASE = -4
+local BG_BUDGET = 0.004   -- 开服以后后台铺地形：每帧最多花几秒（见下面 terrainDesert 的后台那段）
 local function terrainDesert(T, onProgress, G)
   local SR, TILE, CH = Map.SEA_R, 2048, 256
   local NT = math.floor(2 * SR / TILE)   -- 一边几个大块
@@ -561,7 +570,10 @@ local function terrainDesert(T, onProgress, G)
   if G then G.terrainRest = #tilesLeft + #reliefQ end
   task.spawn(function()
     local Players = game:GetService("Players")
-    budget = 0.008
+    -- 后台每帧最多 4 毫秒（原来 8：用户 11-25「然后现在特别卡」「坦克一直在抽搐」——开服后十几分钟一直在铺远处的平地，
+    --   Studio 里点「开始」时服务器和客户端在同一台电脑上，服务器每帧花 8 毫秒铺地形，客户端跟着掉帧）；铺得慢一点，近处的照样插队先铺
+    budget = BG_BUDGET
+    local bgT0, bgSay = os.clock(), os.clock() + 30
     local urgentTiles, urgentRelief = {}, {}
     local seen = {}
     local function want(p)   -- 这一点身边 ±6 个小块：还没铺的大块、还没写的起伏块排进插队
@@ -610,7 +622,7 @@ local function terrainDesert(T, onProgress, G)
         reliefDone[bk] = true
         for q = 0, 3 do
           relief(best[1] + (q % 2) * 128, best[2] + (q // 2) * 128, 32)
-          if q % 2 == 1 then task.wait() t0 = os.clock() else pace(0.008) end
+          if q % 2 == 1 then task.wait() t0 = os.clock() else pace(BG_BUDGET) end
         end
         return true
       end
@@ -634,7 +646,7 @@ local function terrainDesert(T, onProgress, G)
               reliefDone[ckey(x0, z0)] = true
               for q = 0, 3 do
                 relief(x0 + (q % 2) * 128, z0 + (q // 2) * 128, 32)
-                if q % 2 == 1 then task.wait() t0 = os.clock() else pace(0.008) end
+                if q % 2 == 1 then task.wait() t0 = os.clock() else pace(BG_BUDGET) end
               end
               return true
             end
@@ -659,15 +671,19 @@ local function terrainDesert(T, onProgress, G)
             reliefDone[k] = true
             for q = 0, 3 do
               relief(c[1] + (q % 2) * 128, c[2] + (q // 2) * 128, 32)
-              if q % 2 == 1 then task.wait() t0 = os.clock() else pace(0.008) end
+              if q % 2 == 1 then task.wait() t0 = os.clock() else pace(BG_BUDGET) end
             end
           end
         end
       end
       if G then G.terrainRest = math.max(0, #tilesLeft - ti + 1) + math.max(0, #reliefQ - ri + 1) end
+      if os.clock() >= bgSay then   -- 每 30 秒说一声还剩多少（卡不卡、是不是在铺地形，对照 Output 就知道）
+        bgSay = os.clock() + 30
+        print(string.format("[地形] 后台还在铺远处：剩 %d 项（已经 %.0f 秒，一共 %d 次 FillBlock）", G and G.terrainRest or -1, os.clock() - bgT0, diag.fills))
+      end
     end
     if G then G.terrainRest = 0 end
-    print(string.format("[地形] 后台写完：一共 %d 次 FillBlock（%.2f 亿体素）、%d 块起伏", diag.fills, diag.vox / 1e8, diag.chunks))
+    print(string.format("[地形] 后台写完：一共 %d 次 FillBlock（%.2f 亿体素）、%d 块起伏（后台用了 %.0f 秒）", diag.fills, diag.vox / 1e8, diag.chunks, os.clock() - bgT0))
   end)
   return total, #coreRelief + #reliefQ
 end
