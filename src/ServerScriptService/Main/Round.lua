@@ -54,10 +54,22 @@ function Round.init(G)
   -- 现在能不能占：当前阶段的、开放了的侧翼，还没被拿下
   --   用户（交战区）：同一时间只开一个交战区——没排进阶段的据点（灯塔岛 B）一直不开放
   -- 征服模式（原来给「沙漠风暴」用，用户 11-24 把那张图删了，现在没有图用；留着规则以后别的图要用）：据点开局中立、两边都能占、一直都开着；两边都有兵力，据点少的一边慢慢掉兵力（MapDesert.lua 的 M.desert）
-  local function conquest() return Map.desert == true end
+  -- 每局换任务（用户 11-25「全部都做」⑱：战雷每局换地图 / 换任务）：沙海上三种轮着来——
+  --   break 突破（原来那套：A～E 一个阶段一个阶段打）、dom 统治（中间三个据点 B / C / D，开局中立，两边抢，据点多的那边按差几个扣对面兵力）、
+  --   conq 征服（只有镇子 C 一个点）；统治、征服用下面征服模式那套规则（两边都有兵力、阵亡扣自己的）。
+  --   只在战雷式纯载具对战（WtMatch.lua G.wtGroundOnly）里换；PvE、测试照旧突破。workspace 属性 WtMission 给客户端
+  local MISSIONS = { "break", "dom", "conq" }
+  local MISSION_PTS = { dom = { B = true, C = true, D = true }, conq = { C = true } }
+  R.mission = "break"
+  local function missionOff(id)
+    local set = MISSION_PTS[R.mission]
+    return set ~= nil and not set[id]
+  end
+  local function conquest() return Map.desert == true or MISSION_PTS[R.mission] ~= nil end
   G.conquest = conquest
+  G.wtMission = function() return R.mission end
   local function isActive(s)
-    if conquest() then return s ~= nil end
+    if conquest() then return s ~= nil and not s.off end   -- 统治 / 征服（⑱）：这一局不用的据点不算
     if not s or s.locked then return false end
     local k = stageOf[s.id]
     if not k then return false end
@@ -901,13 +913,21 @@ function Round.init(G)
 
   ---------------------------------------------------------------- 据点
 
+  local pointPar = {}   -- 这一局不用的据点（⑱）：模型先摘下来，记着原来挂在哪
   local function resetPoints()
     for k in pairs(points) do points[k] = nil end   -- 换了地图（据点不一样）：旧的清掉
     local own = conquest() and "none" or "def"
     for _, p in ipairs(Map.POINTS) do
-      points[p.id] = { id = p.id, x = p.x, z = p.z, y = p.y, owner = own, prog = 0, cap = 0, locked = false, atk = 0, def = 0, pressed = false }
+      local off = missionOff(p.id)
+      points[p.id] = { id = p.id, x = p.x, z = p.z, y = p.y, owner = off and "none" or own, prog = 0, cap = 0, locked = off, off = off or nil, atk = 0, def = 0, pressed = false }
       local m = G.pointModels and G.pointModels[p.id]
-      if m then m:SetAttribute("Owner", own) m:SetAttribute("Prog", 0) end
+      if m then
+        m:SetAttribute("Owner", off and "none" or own)
+        m:SetAttribute("Prog", 0)
+        m:SetAttribute("Off", off or nil)
+        if off and m.Parent then pointPar[p.id] = m.Parent m.Parent = nil
+        elseif not off and not m.Parent and pointPar[p.id] then m.Parent = pointPar[p.id] end
+      end
     end
   end
   resetPoints()
@@ -1026,7 +1046,7 @@ function Round.init(G)
   local function conqStep(dt)
     for _, p in ipairs(Map.POINTS) do
       local s = points[p.id]
-      if s then
+      if s and not s.off then
         local a, d, who, ra, rd = countIn(s)
         s.atk, s.def = a, d
         local effA = ra + (a - ra) * (CC.botW or 1)
@@ -1077,7 +1097,9 @@ function Round.init(G)
   local function conqBleed(dt)
     local nA, nD = 0, 0
     for _, s in pairs(points) do
-      if s.owner == "atk" then nA += 1 elseif s.owner == "def" then nD += 1 end
+      if not s.off then
+        if s.owner == "atk" then nA += 1 elseif s.owner == "def" then nD += 1 end
+      end
     end
     local lose = (nA > nD) and "def" or ((nD > nA) and "atk" or nil)
     if not lose then return end
@@ -1141,6 +1163,14 @@ function Round.init(G)
     R.winner = nil
     R.stage, R.stageAt, R.overtimeEnds = 1, now(), nil
     -- 昼夜：跨局接着走（用户 11-25 昼夜更替；开服时 World.lighting 记了 DayT0，PvE 关卡开局按自己的钟点改，Pve.lua）
+    -- ⑱ 这一局的任务：战雷式纯载具对战、沙海上按 突破 → 统治 → 征服 轮着来
+    if G.wtGroundOnly and G.wtGroundOnly() and Map.id == "sands" then
+      R.missionI = ((R.missionI or 0) % #MISSIONS) + 1
+      R.mission = MISSIONS[R.missionI]
+    else
+      R.mission = "break"
+    end
+    workspace:SetAttribute("WtMission", R.mission)
     local TK = Config.Tickets or {}
     R.tickets = (TK.start or 200) + (TK.perReal or 0) * teamCount("atk", true)   -- 准备阶段先给个数（开战时按真人数重算）
     R.ticketsMax = R.tickets
@@ -1151,6 +1181,7 @@ function Round.init(G)
       P.kills, P.deaths, P.score, P.caps, P.roundXp = 0, 0, 0, 0, 0
     end
     G.emit("roundStart")
+    if R.mission ~= "break" or (G.wtGroundOnly and G.wtGroundOnly()) then G.msgAll("info", "wtm.mission", { k = "wtm.mi." .. R.mission }) end
     G.pushAll()
   end
 
@@ -1248,8 +1279,10 @@ function Round.init(G)
     local out = {}
     for _, p in ipairs(Map.POINTS) do
       local s = points[p.id]
+      if s and not s.off then   -- ⑱ 这一局不用的据点不发（比分条、地图上都不画）
       table.insert(out, { id = s.id, owner = s.owner, prog = math.floor(s.prog * 100 + 0.5) / 100, cap = math.floor((s.cap or 0) * 100 + 0.5) / 100, atk = s.atk, def = s.def, locked = s.locked,
         act = isActive(s), stage = stageOf[s.id], flank = flankOf[s.id] or nil, motion = s.motion or 0 })
+      end
     end
     return out
   end

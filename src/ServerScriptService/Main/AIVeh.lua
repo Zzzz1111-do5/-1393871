@@ -41,7 +41,7 @@ function AIVeh.init(G)
   local function eligible(team, p, land)
     local s = G.points and G.points[p.id]
     if G.conquest and G.conquest() then   -- 征服（沙漠）：两边一样——敌人的、中立的据点去打，自己的被压着回去守
-      if not s then return 0 end
+      if not s or s.off then return 0 end   -- ⑱ 这一局不用的据点
       if s.owner == team then return s.pressed and 3 or 0 end
       return (s.owner == "none") and 2 or 2.4
     end

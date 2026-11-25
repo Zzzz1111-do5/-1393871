@@ -393,6 +393,10 @@ function MapUI.init(G)
 
   function G.mapRefresh(S)
     if S and S.points then
+      -- ⑱ 每局换任务：这一局不用的据点服务器不发——地图上的点也藏起来
+      local inS = {}
+      for _, s in ipairs(S.points) do inS[s.id] = true end
+      for id, d in pairs(pointDots) do d.Visible = inS[id] == true end
       for _, s in ipairs(S.points) do
         local d = pointDots[s.id]
         if d then
