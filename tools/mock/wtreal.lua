@@ -60,6 +60,10 @@ check(L ~= nil and L.b ~= nil and #L.b >= 10, "T-80U 原模型上量了爆反块
 -- 同一族的两型不共用嵌套的表（variant 深拷）：改一型的武器表不会改到另一型
 check(VD.get("t80b").turret ~= VD.get("t80u").turret and VD.get("t80b").weapons ~= VD.get("t80u").weapons, "同族两型各有一份炮塔、武器表")
 check(VD.get("t80u").weapons[1] == "gun125u" and VD.get("t80b").weapons[1] == "gun125b" and VD.get("t80bvm").weapons[1] == "gun125r", "T-80 一族各打各的弹（3BM42 / 3BM22 / 3BM60）")
+-- 车炮的穿深表按武器认（VehDefs.W 没有 id：WtDamage 反查键）：73 毫米 PG-15V 300 毫米破甲、30 毫米脱壳穿甲弹 70 毫米，不再落到通用 40 毫米榴弹
+local p73 = WD.pen(VD.W.gun73, 0.3)
+local p30 = WD.pen(VD.W.ac30, 0.3)
+check(p73 >= 290 and p30 >= 60, string.format("车炮穿深按武器认（73 毫米 %d、30 毫米 %d 毫米）", math.floor(p73), math.floor(p30)))
 
 print("② 科技树")
 local want = {
@@ -139,7 +143,7 @@ local function fireAt(e)
   R.run(0.5)
   return (G.wtHits or 0) > h0, G.wtLast
 end
-local KEYS = { "ru_t80u", "ru_t80b", "de_leo2a6", "de_leo2a4", "de_leo1", "us_m60a3", "ru_bmp1" }
+local KEYS = { "ru_bmp1", "ru_t80u", "ru_t80b", "de_leo2a6", "de_leo2a4", "de_leo1", "us_m60a3" }   -- BMP-1 放最前：后面几型打过靶车以后靶车位置会变
 local FIRE = { ru_t80u = true, ru_bmp1 = true, us_m60a3 = true }
 -- 只跑一型（排查用）：python3 tools/mock/run.py tools/mock/wtreal.lua only=ru_bmp1
 local ONLY = TEST_ARGS:match("only=([%w_]+)")

@@ -14464,9 +14464,23 @@ W.KIND = {
   gun = { p0 = 8, fall = 5, t = "ke", spall = 0, n = 0, core = 0 },
 }
 -- 这一发的穿深：返回（毫米，表项）；distM 飞了多少米
+-- 车上的武器表（VehDefs.W）没有 id 字段（飞机、舰艇、工事的有）：按表反查它在 VehDefs.W 里的键，W.WPN 才认得
+--   （原来车载的 30 毫米炮、73 / 100 毫米炮都落到通用的「炮弹」40 毫米榴弹上）
+local vehWid
+local function widOf(w)
+  if not vehWid then
+    vehWid = {}
+    local ok, VD = pcall(function() return require(script.Parent:FindFirstChild("VehDefs")) end)
+    if ok and type(VD) == "table" and VD.W then
+      for k, t in pairs(VD.W) do vehWid[t] = k end
+    end
+  end
+  return w and vehWid[w]
+end
 function W.ammoOf(w)
   if not w then return W.KIND.gun end
-  return (w.ammo and W.AMMO[w.ammo]) or (w.id and W.WPN[w.id]) or (w.base and w.base.id and W.WPN[w.base.id]) or W.KIND[w.kind] or W.KIND.gun
+  return (w.ammo and W.AMMO[w.ammo]) or (w.id and W.WPN[w.id]) or (w.base and w.base.id and W.WPN[w.base.id])
+    or W.WPN[widOf(w) or ""] or W.WPN[widOf(w.base) or ""] or W.KIND[w.kind] or W.KIND.gun
 end
 function W.pen(w, distM)
   local a = W.ammoOf(w)
