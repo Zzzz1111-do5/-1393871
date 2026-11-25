@@ -109,6 +109,8 @@
      T-80U 的接触-5 在 EraMeta（eralayout.py 量的）。**TechTree 每项多了 model 字段**：性能是这一型自己的、模型借同族的（界面写「同族模型」，it.stand 仍只表示模型和性能都借）。
      **blveh.py 新能力**：split 拆出来的块可以直接当车轮（wheels 里写 "<原名>.<组名>"）、整块拆空的原物体自动删掉、texTint（按真车涂装给灰贴图调色）；
      节点名是乱码的 glTF 先用 tools/models/gltf_rename.py 改名（BMP-1）。测试 tools/mock/wtreal.lua（数据、科技树、逐型试驾、开炮走战雷伤害）
+     **第二批在做**：models/veh/t64.glb、type74.glb 已经转好（blveh.json 里有配置、署名进了 credits.txt），还没接进游戏（ImportedMeta 没写、VehDefs 没有型号）；
+     下一步黄鼠狼 1A3、猎豹、BMP-2、通古斯卡、石勒喀、15 式、T-62M（Sketchfab 都核对过是 CC-BY）
 - E（11-24 晚，用户给 E 的一串，按这个顺序做，做完一样推一样）：
   ① **已做**：飞机座舱眼位（7 个没有 pit 的模型：AirModels.lua PIT_FIX，importedFor 补进 info.pit；量法和每个数的来由写在表旁边；测试 tools/test/ia_pit.luau）——原来写给 D 的那条 D 不用接了；
   ② **已做**：地面运兵车、步战车真能载人——Armor.lua：有人开（或 AI 开着）的车按 E 坐后面（e.pass，座位 = VehDefs seats − 1，坦克没有）、
