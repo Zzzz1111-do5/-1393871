@@ -367,7 +367,7 @@ function TechUI.init(G)
   -- 原来的部署界面（UI.lua）每次刷新都问一下：该显示部署页的时候机库盖上去
   local lastSig = nil
   function G.hangarSet(show)
-    local want = show and G.hangarActive()
+    local want = show and G.hangarActive() and not (G.wtSpectating and G.wtSpectating())   -- C ⑮：观战的时候机库收起（WtCam.lua）
     if hangar.Visible ~= want then
       hangar.Visible = want
       if want then refreshHangar() end

@@ -300,6 +300,7 @@ function Wt.init(G)
       local kill = table.clone(payload)
       kill.op, kill.from, kill.kveh = "wtKilled", (P and P.pl and P.pl.DisplayName) or (s.src and s.src.name), kveh
       kill.kk = P and P.vehicle and P.vehicle.treeKey or nil
+      kill.kid = (P and P.vehicle and P.vehicle.id) or s.byEnt or nil   -- 击杀镜头（⑮，DeathFx.lua）看这辆
       for _, Q in ipairs({ e.wtLastDriver or e.driver, table.unpack(e.wtLastPass or e.pass or {}) }) do
         if Q and Q.pl then G.R.Drive:FireClient(Q.pl, kill) end
       end

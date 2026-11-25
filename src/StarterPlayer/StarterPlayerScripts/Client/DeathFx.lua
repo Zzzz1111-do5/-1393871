@@ -163,6 +163,34 @@ function DeathFx.init(G)
     -- 越来越慢地升高、往后拉（像慢动作）：从死的那一刻的镜头位置出发
     local k = easeOut(u / (S.dur * 0.95))
     local want = S.from:Lerp(f + S.back * (S.dist + 9 * k) + V(0, 3 + 7 * k, 0), smooth(u / 0.9) * 0.35 + 0.65 * k)
+    -- 战雷式击杀镜头（C 11-25「全部都做」⑮）：车被打掉的，先看一秒自己的车，再转去看打你的那辆（WtHud 收到 wtKilled 记下 G.wtKiller）——
+    --   镜头在凶手和你之间、离凶手三十几格、稍高，看着它
+    local K = G.wtKiller
+    if K and os.clock() - K.t < 10 and u > 1.0 and G.viewById then
+      local v = G.viewById(K.id)
+      local km = v and v.model
+      if not km then   -- 飞机、直升机不在 View 里：按实体号在 Ents 里找
+        if not K.em or not K.em.Parent then
+          K.em = nil
+          local ents = workspace:FindFirstChild("Ents")
+          for _, em in ipairs(ents and ents:GetChildren() or {}) do
+            if em:GetAttribute("EntId") == K.id then K.em = em break end
+          end
+        end
+        km = K.em
+      end
+      local okP, kp = false, nil
+      if km and km.Parent then okP, kp = pcall(function() return km:GetPivot().Position end) end
+      if okP and kp then
+        local dir = (focusPoint() - kp)
+        dir = (dir.Magnitude > 1) and dir.Unit or V(0, 0, 1)
+        local kf = kp + V(0, 2, 0)
+        local kwant = kf + dir * 34 + V(0, 9, 0)
+        local blend = smooth((u - 1.0) / 0.6)
+        f = f:Lerp(kf, blend)
+        want = want:Lerp(kwant, blend)
+      end
+    end
     -- 别穿进墙里、地里
     local rp = RaycastParams.new()
     rp.FilterType = Enum.RaycastFilterType.Exclude
@@ -209,7 +237,7 @@ function DeathFx.init(G)
     blur.Name = "DeathBlur"
     blur.Size = 0
     blur.Parent = Lighting
-    title.Text = T("death.title")
+    title.Text = (G.hangarActive and G.hangarActive()) and T("wt.kcTitle") or T("death.title")   -- 战雷式（开车、不当步兵）：「被击毁」
     sub.Text = subText()
     gui.Enabled = true
     blackGui.Enabled = true

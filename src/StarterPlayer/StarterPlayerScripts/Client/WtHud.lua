@@ -760,6 +760,7 @@ function WtHud.init(G)
       if G.wtVoice then G.wtVoice("fixed") end
       say(T("wt.fixed"), OK, 2)
     elseif op == "wtKilled" then   -- 自己的车被打掉：「被 XX 的 YY 击毁」+ 那一发的 X 光（战雷的击毁回放）
+      G.wtKiller = m.kid and { id = m.kid, t = os.clock() } or nil   -- 击杀镜头（⑮）：阵亡效果（DeathFx.lua）的镜头转去看打你的那辆
       local kv = m.kveh and (string.match(T("veh." .. m.kveh), "^(%S+)") or T("veh." .. m.kveh)) or nil
       if m.kk and T("tree." .. m.kk) ~= "tree." .. m.kk then kv = T("tree." .. m.kk) end   -- 打你的是科技树出的车：写科技树里的名字
       say(kv and T("wt.killedBy", m.from or "?", kv) or T("wt.killedBy2", m.from or "?"), DEAD, 5)
