@@ -534,9 +534,15 @@ function Air.init(G)
         dir = nd
       end
       local fuse = 8 + ((t and not t.decoy and t.root) and math.min(14, t.root.Size.Magnitude * 0.18) or 0)
-      if dist < fuse then
-        if t and t.decoy then G.fx({ k = "boom", p = s.pos, s = 0.6, c = "msl" }) return true end
-        G.explode(s.pos, w, s.src)
+      -- 这一步里离目标最近是多远（导弹、目标都在动）：C 11-25 ⑩ 导弹按真实速度飞（一步四五十格），只看步头会从近炸圈里穿过去
+      local dvR = dir * spd - tgtVel(t)
+      local rel = s.pos - tp
+      local tt = math.clamp(-rel:Dot(dvR) / math.max(dvR:Dot(dvR), 1e-6), 0, dt)
+      local dmin = (rel + dvR * tt).Magnitude
+      if dist < fuse or dmin < fuse then
+        local bp = (dist < fuse) and s.pos or (s.pos + dir * spd * tt)
+        if t and t.decoy then G.fx({ k = "boom", p = bp, s = 0.6, c = "msl" }) return true end
+        G.explode(bp, w, s.src)
         return true
       end
     end

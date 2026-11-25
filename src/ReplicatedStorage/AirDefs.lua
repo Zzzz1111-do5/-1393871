@@ -631,6 +631,37 @@ for wid, a in pairs(ARH) do
   if w then w.act, w.notch = a.act, a.notch end
 end
 
+-- 照真实的速度、射程（用户 11-25「全部都做」⑩，B 挑刺 9：原来照 MWT 的尺度——歼-20 开加力最快约 600 公里 / 时、霹雳-15 约 270 米 / 秒、
+--   射程一公里多）：上面的数是原来手调的（各型之间的比例照旧），这里统一放大——喷气机军推 / 加力速度 ×2.25（低空 1300 公里 / 时上下）、失速 ×1.7、
+--   直升机最大平飞 ×2.4（约 290 公里 / 时）；空空、空地导弹速度 ×3.5（雷达弹约 3 马赫）、射程 ×6、能飞多久 ×1.8、发动机烧的时间 ×1.3
+--   （转弯按过载 w.g 限，快了转弯半径自然变大）；火箭弹速度、射程 ×2.5；机载雷达搜索 / 锁定距离、雷达弹开导引头的距离 ×2.5。
+--   作战区 ±Map.PLAY（沙海 3.7 万格，约 ±13 公里）够喷气机按真速度飞；推重比（accel）不变（A 的飞行手感）
+AirDefs.REAL = { jet = 2.25, stall = 1.7, heli = 2.4, mslSpeed = 3.5, mslRange = 6, mslLife = 1.8, mslBurn = 1.3, rkt = 2.5, radar = 2.5 }
+do
+  local K = AirDefs.REAL
+  for _, d in pairs(D) do
+    if d.kind == "jet" then
+      for _, f in ipairs({ "vMil", "vAB" }) do if d[f] then d[f] = d[f] * K.jet end end
+      if d.stall then d.stall = d.stall * K.stall end   -- 失速只放大 1.7 倍（歼-20 约 230 公里 / 时）：再大了进近太快，1.3 公里的跑道停不下
+    elseif d.kind == "heli" then
+      if d.vMax then d.vMax = d.vMax * K.heli end
+    end
+  end
+  for _, w in pairs(AirDefs.W) do
+    if (w.kind == "aam" or w.kind == "agm") and not w.nuke and not w.hyper then
+      w.speed = w.speed * K.mslSpeed
+      w.range = w.range * K.mslRange
+      if w.life then w.life = w.life * K.mslLife end
+      if w.burn then w.burn = w.burn * K.mslBurn end
+      if w.act then w.act = w.act * K.radar end
+    elseif w.kind == "rkt" then
+      w.speed = w.speed * K.rkt
+      w.range = w.range * K.rkt
+    end
+  end
+  for _, r in pairs(RADAR) do r.range, r.lock = r.range * K.radar, r.lock * K.radar end
+end
+
 for id, d in pairs(D) do
   d.id = id
   d.air = true
