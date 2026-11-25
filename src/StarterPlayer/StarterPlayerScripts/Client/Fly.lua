@@ -1998,6 +1998,7 @@ function Fly.init(G)
       st.zoom = (st.zoom < 3.9) and 4 or ((st.zoom < 11.9) and 12 or ((st.zoom < 29.9) and 30 or 1))   -- 用户：光电要看得远一点（最大 30 倍）
     else
       local n = ({ [Enum.KeyCode.One] = 1, [Enum.KeyCode.Two] = 2, [Enum.KeyCode.Three] = 3, [Enum.KeyCode.Four] = 4, [Enum.KeyCode.Five] = 5, [Enum.KeyCode.Six] = 6 })[k]
+      if n and G.radioOpen and G.radioOpen() then n = nil end   -- 无线电菜单开着（WtComms.lua）：数字键选无线电
       if n and st.wl[n] then
         st.wi = n
         st.lock, st.lockT = nil, 0

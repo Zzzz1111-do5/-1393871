@@ -1485,6 +1485,7 @@ function Drive.init(G)
       lase()
     elseif k == Enum.KeyCode.Q then   -- 换弹种（穿甲 / 破甲 / 多用途……）
       cycleAmmo()
+    elseif NUMK[k] and G.radioOpen and G.radioOpen() then   -- 无线电菜单开着（WtComms.lua，O）：数字键选无线电，不换弹
     elseif NUMK[k] then   -- 3 / 4：车顶重机枪、改装的车顶加特林
       local i = NUMK[k]
       -- 战雷式（WtTank.lua）：数字键照底部弹药栏一格一个数——主炮的弹种在前（1 穿甲、2 破甲……），再是机炮、机枪

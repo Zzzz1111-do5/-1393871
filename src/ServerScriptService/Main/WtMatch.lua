@@ -408,6 +408,30 @@ function WtMatch.init(G)
     end
   end)
   G.wtSightOf = sightOf   -- 测试用
+
+  ---------------------------------------------------------------- 标点、无线电（用户 11-25「全部都做」⑭，客户端 WtComms.lua）：发给同一队的人
+  local RADIO = { need = true, follow = true, ok = true, no = true, retreat = true, enemy = true, attack = true, defend = true }
+  local function toTeam(P, msg)
+    for pl, Q in pairs(G.P) do
+      if Q.team == P.team then G.R.Drive:FireClient(pl, msg) end
+    end
+  end
+  local function okPos(p) return typeof(p) == "Vector3" and p.X == p.X and math.abs(p.X) < 1e6 and math.abs(p.Z) < 1e6 end
+  function G.ACT.wtPing(P, pos)
+    if not okPos(pos) then return end
+    local t = now()
+    if t < (P.pingT or 0) then return end
+    P.pingT = t + 1.5
+    toTeam(P, { op = "wtPing", p = pos, from = P.pl.DisplayName })
+  end
+  function G.ACT.wtRadio(P, k, arg, pos)
+    if type(k) ~= "string" or not RADIO[k] then return end
+    local t = now()
+    if t < (P.radioT or 0) then return end
+    P.radioT = t + 1.5
+    if type(arg) ~= "string" or #arg > 6 then arg = nil end
+    toTeam(P, { op = "wtRadio", k = k, arg = arg, p = okPos(pos) and pos or nil, from = P.pl.DisplayName })
+  end
 end
 
 return WtMatch
