@@ -167,6 +167,7 @@ function Forts.init(G)
       wires[i] = W
     end
     for _, F in pairs(fields) do F.list = {} end
+    if G.wtGroundOnly and G.wtGroundOnly() then return end   -- 纯载具对战（战雷没有雷区）：铁丝网当摆设留着，雷不摆
     for i, m0 in ipairs(obst.mines) do
       local m = { x = m0.x, z = m0.z, y = Map.ground(m0.x, m0.z), at = m0.at, alive = true, i = i, known = {} }
       mines[i] = m
@@ -735,6 +736,7 @@ function Forts.init(G)
 
   local function stepAI(e, dt)
     if G.fortsHold then return end   -- 测试用：工事不开火
+    if G.wtGroundOnly and G.wtGroundOnly() then return end   -- 纯载具对战（战雷：没有会开火的电脑工事，WtMatch.lua）：工事只当掩体
     local t = now()
     if (e.supUntil or 0) > t then   -- 被压制（原来的 Ambience.lua 火力准备会设；用户嫌莫名其妙的炮火怪，已删，留着给以后的真炮火用）：缩着不开火
       e.tgt = nil

@@ -300,6 +300,12 @@ function WtMatch.init(G)
   end)
 
   G.wtFeedOn = function() return on() end   -- Round.lua：开着战雷式击杀栏时，车毁那一下不再写老的击杀播报（免得一条写两遍）
+  -- 纯载具对战（用户 11-25：「地图上还有不属于战雷的东西：电脑步兵还在、据点工事会自己开火、地雷 C4 望远镜还在——战雷陆战没有步兵，
+  --   也没有会开火的电脑工事」）：战雷式对局开着、玩家不当步兵（Config.Wt.noInfantry）、不是 PvE、不是测试放行步兵（G.allowInfantry）时为真。
+  --   Bots.lua 不刷电脑步兵、Forts.lua 工事不开火也不摆雷区、Weapons.lua 地雷 / C4 / 望远镜用不了（电脑开的车 AIVeh 照旧，战雷里也有）
+  G.wtGroundOnly = function()
+    return on() and (Config.Wt or {}).noInfantry == true and not G.pve and not G.allowInfantry
+  end
 
   -- 推给自己的客户端（Round.lua personal）：SP、阵容（出过几次、毁了几次）、免费那一辆还在不在
   function G.wtPersonal(P)
