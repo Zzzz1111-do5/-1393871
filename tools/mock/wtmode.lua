@@ -34,14 +34,21 @@ R.run(1)
 check(G.wtModeNow() == "rb" and ws:GetAttribute("WtMode") == "rb", "默认历史（" .. tostring(ws:GetAttribute("WtMode")) .. "）")
 local C = T.C
 local hg = C.hangarGui
-local abBtn
-for _, c in ipairs(hg and hg:GetDescendants() or {}) do if c.Name == "Mode_ab" then abBtn = c end end
-check(abBtn ~= nil, "机库上有模式按钮")
-if abBtn then T.press(abBtn) end
+-- 用户 11-25「把那个选择真实度的图改成选地图吧」：机库上不再有模式按钮，换成地图（点了展开地图列表）；模式照旧能投（服务器 ACT）
+local abBtn, mapB
+for _, c in ipairs(hg and hg:GetDescendants() or {}) do
+  if c.Name == "Mode_ab" then abBtn = c end
+  if c.Name == "MapVote" then mapB = c end
+end
+check(abBtn == nil and mapB ~= nil, "机库上是选地图、不是选模式")
+if mapB then T.press(mapB) end
+R.run(0.3)
+local ml
+for _, c in ipairs(hg:GetDescendants()) do if c.Name == "MapList" then ml = c end end
+check(ml ~= nil and ml.Visible and #ml:GetChildren() >= 1, "点了展开地图列表")
+T.act("wtModeVote", "ab")
 R.run(1)
 check(me:GetAttribute("ModeVote") == "ab" and G.wtModeNow() == "ab" and ws:GetAttribute("WtMode") == "ab", "投了街机：这一局街机")
-R.run(2.5)
-check(abBtn and abBtn.Text:find("✓") ~= nil, "按钮上打勾（" .. tostring(abBtn and abBtn.Text) .. "）")
 T.runUntil(function() return G.round.phase == "battle" end, 200, 1 / 10)
 R.run(1)
 G.wtModeNow()
@@ -61,6 +68,13 @@ for _, k in ipairs(G.treeLineup(P)) do
 end
 check(airKey ~= nil, "阵容里有飞机：" .. tostring(airKey))
 if airKey then
+  -- 用户 11-25「第一辆必须是地面车，飞机要攒点数才能出」：这一局还没出过地面车，飞机出不来
+  T.act("deployVeh", airKey)
+  R.run(1)
+  check(not (P.vehicle and P.vehicle.air), "第一辆不能是飞机（" .. tostring(P.vehicle and P.vehicle.def and P.vehicle.def.id) .. "）")
+  local s0 = G.wtState(P)
+  check(G.wtCost(P, TT.get(airKey).play, "air") > 0, "飞机不免费：要 " .. tostring(G.wtCost(P, TT.get(airKey).play, "air")) .. " SP")
+  s0.ground, s0.sp = true, 5000   -- 当作已经开地面车攒够了 SP：下面测飞机从跑道出发
   T.act("deployVeh", airKey)
   T.runUntil(function() return P.alive and P.vehicle ~= nil end, 20)
   local e = P.vehicle

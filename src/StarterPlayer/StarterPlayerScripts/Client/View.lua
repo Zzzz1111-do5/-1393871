@@ -211,7 +211,7 @@ function View.init(G)
         local l = Instance.new("TextLabel")
         l.BackgroundTransparency = 1
         l.Size = UDim2.fromScale(1, 1)
-        l.Text, l.TextScaled, l.Font = txt, true, Enum.Font.GothamBlack
+        l.Text, l.TextScaled, l.Font = txt, true, Enum.Font.BuilderSansExtraBold
         l.TextColor3, l.TextTransparency = col, 0.08
         l.Parent = sg
         table.insert(M.parts, { p, grp, off })
@@ -680,6 +680,7 @@ function View.init(G)
     local rF = M.rpiv and (tF * CF(M.rpiv) * CFrame.Angles(0, -math.rad(v.my or 0), 0)) or nil
     local rgF = (rF and M.rgpiv) and (rF * CF(M.rgpiv) * CFrame.Angles(math.rad(v.mp or 0), 0, 0)) or nil
     v.hullF, v.tF, v.gF, v.rF, v.rgF = hullF, tF, gF, rF, rgF
+    if G.tracksStep and M.imported then G.tracksStep(v, M, hullF, dt, far) end   -- 会转的履带（Tracks.lua，用户 11-25「坦克履带也要能动」）
     local steerA = math.rad(28) * math.clamp(v.steer, -1, 1)
     local now = os.clock()
     -- 爆反块被炸掉（服务器写 EraX："3,7,12"）：那一块换成焦黑的空位（VehModels.eraBlown 新加的零件接到零件表后面）

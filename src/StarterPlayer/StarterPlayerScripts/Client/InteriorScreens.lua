@@ -10,7 +10,7 @@ local UD2 = UDim2.new
 local V3 = Vector3.new
 local PI = math.pi
 local FONT = Enum.Font.RobotoMono
-local FONTB = Enum.Font.GothamBold
+local FONTB = Enum.Font.BuilderSansBold
 local function clamp(x, a, b) return x < a and a or (x > b and b or x) end
 
 ---------------------------------------------------------------- 画图的小工具（像素坐标）
@@ -1147,7 +1147,7 @@ P.citv = function(s, env, zh)
     Ln(sym, c[1], c[2], c[1] + c[3] * aw, c[2], 1.5, G, 7)
     Ln(sym, c[1], c[2], c[1], c[2] + c[4] * ah, 1.5, G, 7)
   end
-  local mag = Tx(sym, "3X", W * 0.78, H * 0.09, W * 0.19, H * 0.09, 15, GT, Enum.TextXAlignment.Right, Enum.Font.GothamBlack, 8)
+  local mag = Tx(sym, "3X", W * 0.78, H * 0.09, W * 0.19, H * 0.09, 15, GT, Enum.TextXAlignment.Right, Enum.Font.BuilderSansExtraBold, 8)
   local modeT = Tx(sym, "", W * 0.03, H * 0.04, W * 0.5, H * 0.07, 9, GT, nil, FONTB, 8)
   -- 下面黑底的数据框：箭头、弹种、距离
   local dw, dh = W * 0.26, H * 0.11

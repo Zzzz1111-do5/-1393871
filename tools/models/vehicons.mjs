@@ -80,6 +80,30 @@ if (SET === 'air') {
     save('air_' + id, r);
   }
 }
+// SET=photo：写实图（用户 11-25「主页和科技树的载具图用实拍图吧 然后角度要像战雷那样」）——地面车按 GLB、飞机按 AIR 各拍一张，
+//   存成 pic_veh_<型号>.png / pic_air_<型号>.png（960 × 480，透明背景），tools/models/vehpics.py 缩小、压进 src/ReplicatedStorage/VehPics.lua
+//   TINT=<json>：没贴图的模型按真车涂装上色 { 型号: "#rrggbb" }
+if (SET === 'photo') {
+  const TINT = process.env.TINT ? JSON.parse(fs.readFileSync(process.env.TINT, 'utf8')) : {};
+  const done = new Set();
+  for (const [id, key] of Object.entries(GLB)) {
+    if (!want(id) || done.has('veh/' + key)) continue;
+    done.add('veh/' + key);
+    if (!fs.existsSync(path.join(ROOT, 'models', 'veh', key + '.glb'))) continue;   // 删掉的、没在仓库里的模型
+    if (fs.existsSync(path.join(outDir, 'pic_veh_' + key + '.png')) && process.env.REDO !== '1') continue;
+    const r = await page.evaluate(async ([u, o]) => window.renderPhoto(u, o), [`/veh/${key}.glb`, { flip: FLIP.has(id), tint: TINT[key] }]);
+    save('pic_veh_' + key, r);
+  }
+  for (const [id, key] of Object.entries(AIR)) {
+    if (!want(id) || done.has('air/' + key)) continue;
+    done.add('air/' + key);
+    if (!fs.existsSync(path.join(ROOT, 'models', 'air', key + '.glb'))) continue;
+    if (fs.existsSync(path.join(outDir, 'pic_air_' + key + '.png')) && process.env.REDO !== '1') continue;
+    const hide = (id === 'z10') ? '__TRotor' : '';
+    const r = await page.evaluate(async ([u, o]) => window.renderPhoto(u, o), [`/air/${key}.glb`, { flip: FLIP.has(id), hide, pitch: 18, yaw: 38, tint: TINT[key] }]);
+    save('pic_air_' + key, r);
+  }
+}
 if (SET === 'ship') {
   for (const [id, key] of Object.entries(SHIP)) {
     if (!want(id)) continue;
@@ -87,12 +111,12 @@ if (SET === 'ship') {
     save('ship_' + id, r);
   }
 }
-for (const [id, key] of Object.entries((SET === 'air' || SET === 'ship') ? {} : GLB)) {
+for (const [id, key] of Object.entries((SET === 'air' || SET === 'ship' || SET === 'photo') ? {} : GLB)) {
   if (!want(id)) continue;
   const r = await page.evaluate(async ([u, fl]) => window.renderGLB(u, fl), [`/veh/${key}.glb`, FLIP.has(id)]);
   save(id, r);
 }
-if (partsJson && SET !== 'air') {
+if (partsJson && SET !== 'air' && SET !== 'photo') {
   const all = JSON.parse(fs.readFileSync(partsJson, 'utf8'));
   for (const [id, v] of Object.entries(all)) {
     if (GLB[id] || !want(id)) continue;

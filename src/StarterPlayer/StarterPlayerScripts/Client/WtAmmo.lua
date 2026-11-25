@@ -17,7 +17,7 @@ function WtAmmo.init(G)
   local me = Players.LocalPlayer
   local RGB, UD2, V2 = Color3.fromRGB, UDim2.new, Vector2.new
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local BOLD, MED = Enum.Font.GothamBold, Enum.Font.GothamMedium
+  local BOLD, MED = Enum.Font.BuilderSansBold, Enum.Font.BuilderSansMedium
   local TH = G.Theme   -- 统一外观（docs/style.md）
   local WHITE, DIM, GOLD, BAD = TH.C.TEXT, TH.C.MUTE, TH.C.WARN, TH.C.BAD
   local SPLIT = { 5, 3, 2, 1, 1 }   -- 默认配弹（同服务器 Wt.lua）

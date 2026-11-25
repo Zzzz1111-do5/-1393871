@@ -329,11 +329,11 @@ function Fly.init(G)
   dcs.Visible = false
   local panel = ui.frame(gui, UDim2.fromOffset(460, 86), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.35, Vector2.new(0.5, 1))   -- 操作说明在屏幕最下面一行（UI.lua，st.help）
   panel.Visible = false
-  local aName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.GothamBold, nil, Enum.TextXAlignment.Left)
+  local aName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
   local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 8), UDim2.fromOffset(10, 30), RGB(0, 0, 0), 0.4)
   local hpBar = ui.frame(hpBg, UDim2.fromScale(1, 1), nil, RGB(90, 210, 110), 0)
-  local aInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 44), 14, Color3.new(1, 1, 1), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
-  local aWpn = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 62), 14, RGB(255, 220, 120), Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+  local aInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 44), 14, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local aWpn = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 62), 14, RGB(255, 220, 120), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   ui.flatPanel(panel, { hp = hpBg, name = aName })   -- 跟新界面一个样子（UI.lua）
   local bore = hud("+", UDim2.fromOffset(40, 40), UDim2.fromScale(0.5, 0.5), 34, Vector2.new(0.5, 0.5))   -- 机头指向
   local aimRing = hud("◯", UDim2.fromOffset(36, 36), UDim2.fromScale(0.5, 0.5), 30, Vector2.new(0.5, 0.5))   -- 鼠标想去的方向
@@ -588,7 +588,7 @@ function Fly.init(G)
   TG.track = mfd("AREA", UDim2.new(0.5, 0, 0.5, MOB and 70 or 112), nil, TS + 2)
   TG.track.Name = "TrackMode"
   -- 指北箭头
-  TG.north = ui.label(disp, "➤", UDim2.fromOffset(30, 30), UDim2.new(0.9, 0, 0.11, 0), MOB and 18 or 26, MFD, Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
+  TG.north = ui.label(disp, "➤", UDim2.fromOffset(30, 30), UDim2.new(0.9, 0, 0.11, 0), MOB and 18 or 26, MFD, Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
   TG.north.ZIndex = 12
   TG.northN = mfd("N", UDim2.new(0.9, -22, 0.11, -18), nil, TS - 2)
   -- 右边一栏（显示器外面的黑边上）
@@ -613,7 +613,7 @@ function Fly.init(G)
   TG.away = sl("", y0, MOB and 10 or 11, MFD)
   TG.arm = sl("", y0 + (MOB and 15 or 20), MOB and 10 or 11, RGB(236, 200, 120))
   TG.lst = sl("", y0 + (MOB and 30 or 40), MOB and 10 or 11, MFD)
-  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 16, MFD, Enum.Font.GothamMedium)
+  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 16, MFD, Enum.Font.BuilderSansMedium)
   TG.say.Size = UDim2.new(1, 0, 0, MOB and 40 or 56)
   local eoHint = sl("", y0 + (MOB and 96 or 140), MOB and 9 or 10, MFD_DIM)
   eoHint.Size = UDim2.new(1, 0, 0, 90)
@@ -727,7 +727,7 @@ function Fly.init(G)
       local ic = ui.frame(f, UDim2.fromOffset(60, 20), UDim2.new(0, 38, 0.5, 0), RGB(0, 0, 0), 1, Vector2.new(0, 0.5))
       ic.Name = "Icon"
       drawIcon(ic, it)
-      local nm = ui.label(f, it.flare and T("air.flareName") or T("aw." .. it.wid), UDim2.new(1, -164, 1, 0), UDim2.fromOffset(104, 0), 14, HUD, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
+      local nm = ui.label(f, it.flare and T("air.flareName") or T("aw." .. it.wid), UDim2.new(1, -164, 1, 0), UDim2.fromOffset(104, 0), 14, HUD, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
       nm.TextWrapped = false
       nm.Name = "Name"
       local cnt = ui.label(f, "", UDim2.fromOffset(58, H), UDim2.new(1, -6, 0, 0), 17, HUD, Enum.Font.RobotoMono, Vector2.new(1, 0), Enum.TextXAlignment.Right)
@@ -2310,7 +2310,7 @@ function Fly.init(G)
     end
     -- 镜头转动
     if not G.mobile then UIS.MouseBehavior = Enum.MouseBehavior.LockCenter end
-    local md = UIS:GetMouseDelta()
+    local md = G.mouseDelta and G.mouseDelta(st.eo or st.uav) or UIS:GetMouseDelta()   -- 设置里的灵敏度、反转 Y（Settings.lua）
     -- 平板前视光电变焦：倍率越大鼠标越慢（准星在画面上走得一样快）
     st.zoomS = st.zoomS + ((((st.uav and st.dcam == "nose") or st.eo) and st.zoom or 1) - st.zoomS) * math.min(1, dt * 8)
     if st.uav or st.eo then md = md / st.zoomS end
@@ -2545,8 +2545,8 @@ function Fly.init(G)
       local load = math.clamp(math.abs(st.c.col or 0), 0, 1)
       local camCF, camShake, fov = G.vehCam({ key = "heli", pivot = pos + V(0, d.H * 0.45, 0), dir = dirCam, dist = d.L * 0.62 + 7, up = 0, vel = st.vel, dt = dt,
         rough = 0.45 + 0.6 * load, speedK = math.clamp(0.35 + st.vel.Magnitude / math.max(d.vMax, 1) * 0.65, 0, 1.2), up3 = st.cf.UpVector, params = heliCamParams,
-        fov0 = 70, fovK = 3, pushK = 0.03, maxPush = 3, follow = 8, maxLag = 3 })
-      cam.CFrame = camCF * camShake
+        fov0 = G.fov3Air or G.fov3 or 70, fovK = 3, pushK = 0.03, maxPush = 3, follow = 8, maxLag = 3 })   -- 设置：空战第三人称视野
+      cam.CFrame = G.noShake and camCF or (camCF * camShake)   -- 设置里能关镜头晃动
     end
     -- 视野：固定翼越快越宽；光电吊舱 / 无人机前视按倍率收（另一会话：开火时镜头抖、视野收一点，打中时再猛跳一下）
     local fovT = (d.kind == "jet") and math.clamp(70 + st.spd / d.vMax * 10, 70, 82) or 70

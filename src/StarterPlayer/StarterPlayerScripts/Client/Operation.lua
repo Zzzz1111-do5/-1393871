@@ -66,9 +66,9 @@ function Operation.init(G)
   railFade.Transparency = NumberSequence.new(0, 0.8)
   railFade.Parent = rail
 
-  local header = label(brief, "Chapter", UDim2.new(0.57, -16, 0, 14), nil, 11, TEAL, Enum.Font.GothamBold, LEFT)
-  local sector = label(brief, "Sector", UDim2.new(0.43, -16, 0, 14), nil, 11, WHITE, Enum.Font.GothamMedium, RIGHT)
-  local title = label(brief, "Title", UDim2.new(), nil, 30, WHITE, Enum.Font.GothamBlack, LEFT)
+  local header = label(brief, "Chapter", UDim2.new(0.57, -16, 0, 14), nil, 11, TEAL, Enum.Font.BuilderSansBold, LEFT)
+  local sector = label(brief, "Sector", UDim2.new(0.43, -16, 0, 14), nil, 11, WHITE, Enum.Font.BuilderSansMedium, RIGHT)
+  local title = label(brief, "Title", UDim2.new(), nil, 30, WHITE, Enum.Font.BuilderSansExtraBold, LEFT)
   for _, textLabel in ipairs({ header, sector, title }) do
     textLabel.TextWrapped = false
     textLabel.TextTruncate = Enum.TextTruncate.AtEnd
@@ -77,7 +77,7 @@ function Operation.init(G)
   local titleSize = Instance.new("UITextSizeConstraint")
   titleSize.MinTextSize = 14
   titleSize.Parent = title
-  local description = label(brief, "Orders", UDim2.new(), nil, 14, WHITE, Enum.Font.GothamMedium, LEFT)
+  local description = label(brief, "Orders", UDim2.new(), nil, 14, WHITE, Enum.Font.BuilderSansMedium, LEFT)
   description.TextYAlignment = Enum.TextYAlignment.Top
   description.TextScaled = true
   local orderSize = Instance.new("UITextSizeConstraint")
@@ -97,7 +97,7 @@ function Operation.init(G)
       local stop = ui.frame(route, UDim2.new(width, -3, 1, 0), UDim2.new((i - 1) * width, 0, 0, 0), INK, 0.25)
       stop.Name = stage.id
       local edge = ui.frame(stop, UDim2.new(1, 0, 0, 1), UDim2.fromScale(0, 1), MUTE, 0.55, Vector2.new(0, 1))
-      local text = label(stop, "Objectives", UDim2.fromScale(1, 1), nil, 11, WHITE, Enum.Font.GothamBold)
+      local text = label(stop, "Objectives", UDim2.fromScale(1, 1), nil, 11, WHITE, Enum.Font.BuilderSansBold)
       text.TextWrapped = false
       stops[i] = { frame = stop, edge = edge, label = text, points = table.concat(stage.points, " · ") }
     end
@@ -109,9 +109,9 @@ function Operation.init(G)
   local localPanel = panel("Frame", "ObjectiveStatus")
   localPanel.BackgroundTransparency = 0.08
   ui.stroke(localPanel, MUTE, 1, 0.68)
-  local objective = label(localPanel, "Objective", UDim2.new(1, -80, 0, 18), UDim2.fromOffset(12, 6), 14, WHITE, Enum.Font.GothamBold, LEFT)
-  local percent = label(localPanel, "Progress", UDim2.fromOffset(56, 18), UDim2.new(1, -68, 0, 6), 14, WHITE, Enum.Font.GothamBold, RIGHT)
-  local status = label(localPanel, "Status", UDim2.new(1, -24, 0, 26), UDim2.fromOffset(12, 23), 11, MUTE, Enum.Font.GothamMedium, LEFT)
+  local objective = label(localPanel, "Objective", UDim2.new(1, -80, 0, 18), UDim2.fromOffset(12, 6), 14, WHITE, Enum.Font.BuilderSansBold, LEFT)
+  local percent = label(localPanel, "Progress", UDim2.fromOffset(56, 18), UDim2.new(1, -68, 0, 6), 14, WHITE, Enum.Font.BuilderSansBold, RIGHT)
+  local status = label(localPanel, "Status", UDim2.new(1, -24, 0, 26), UDim2.fromOffset(12, 23), 11, MUTE, Enum.Font.BuilderSansMedium, LEFT)
   local track = ui.frame(localPanel, UDim2.new(1, -24, 0, 3), UDim2.new(0, 12, 1, -9), MUTE, 0.72)
   local fill = ui.frame(track, UDim2.fromScale(0, 1), nil, AMBER, 0)
 

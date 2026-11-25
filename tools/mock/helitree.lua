@@ -72,6 +72,10 @@ T.act("treeLineup", "us", { "us_ch47" })
 R.run(0.3)
 check(G.treeLineup(P)[1] == "us_ch47", "阵容里是 CH-47（" .. tostring(G.treeLineup(P)[1]) .. "）")
 T.runUntil(function() return G.round.phase == "battle" end, 200, 1 / 10)
+do   -- 用户 11-25：第一辆必须是地面车、飞机要攒 SP——这里测直升机本身，当作已经开地面车攒够了
+  local s0 = G.wtState(P)
+  s0.ground, s0.sp = true, 5000
+end
 T.act("deployVeh", "us_ch47")
 T.runUntil(function() return P.alive and P.vehicle ~= nil end, 20)
 local e = P.vehicle

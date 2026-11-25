@@ -260,6 +260,22 @@ function TT.rankOpen(save, nat, branch, rank)
   if cnt == 0 then return TT.rankOpen(save, nat, branch, rank - 1) end
   return n >= math.min(need, cnt)
 end
+-- 解锁这一级还差什么（界面上写，规则同 rankOpen）：返回 上一级研究完几辆、要几辆、看的是哪一级（上一级这棵树没车就再往上看）
+function TT.rankNeed(save, nat, branch, rank)
+  local B = TT.BRANCH[branch]
+  for r = rank - 1, 1, -1 do
+    local need = ((B and B.need) or TT.RANK_NEED)[r] or 2
+    local n, cnt = 0, 0
+    for _, it in ipairs(TT.list[nat][branch]) do
+      if it.rank == r then
+        cnt += 1
+        if (save.res or {})[it.key] or it.free then n += 1 end
+      end
+    end
+    if cnt > 0 then return n, math.min(need, cnt), r end
+  end
+  return 0, 0, 1
+end
 function TT.researched(save, key)
   local it = TT.byKey[key]
   return it ~= nil and (it.free or (save.res or {})[key] == true)

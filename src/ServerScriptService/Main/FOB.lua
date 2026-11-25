@@ -87,7 +87,7 @@ local function board(f, cf, w, h, text, bg, fg, solid)
   t.Position = UDim2.fromOffset(3, 2)
   t.BackgroundTransparency = 1
   t.TextScaled = true
-  t.Font = Enum.Font.GothamBold
+  t.Font = Enum.Font.BuilderSansBold
   t.TextColor3 = fg or Color3.new(0.1, 0.1, 0.1)
   t.Text = text
   t.Parent = sg
@@ -800,7 +800,7 @@ local function airfield(f, B0, R, team, yaw)
     t.Size = UDim2.fromScale(1, 1)
     t.BackgroundTransparency = 1
     t.TextScaled = true
-    t.Font = Enum.Font.GothamBlack
+    t.Font = Enum.Font.BuilderSansExtraBold
     t.TextColor3 = COL.paint
     t.Text = ((s > 0) == (team == "atk")) and "27" or "09"
     t.Parent = sg

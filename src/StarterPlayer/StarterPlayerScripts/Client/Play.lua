@@ -58,14 +58,14 @@ function Play.init(G)
     crossBars[i] = f
   end
   local crossGap, crossPop = 8, 0
-  local hitX = ui.label(G.gui, "✕", UDim2.fromOffset(34, 34), UDim2.fromScale(0.5, 0.5), 28, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
+  local hitX = ui.label(G.gui, "✕", UDim2.fromOffset(34, 34), UDim2.fromScale(0.5, 0.5), 28, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
   hitX.TextTransparency = 1
   hitX.ZIndex = 16
   local hitT = 0
-  local ammoText = ui.label(hud, "", UDim2.fromOffset(320, 26), UDim2.new(1, -260, 1, -90), 18, Color3.new(1, 1, 1), Enum.Font.GothamBold, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+  local ammoText = ui.label(hud, "", UDim2.fromOffset(320, 26), UDim2.new(1, -260, 1, -90), 18, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, Vector2.new(1, 0), Enum.TextXAlignment.Right)
   ammoText.TextStrokeTransparency = 0.4
   G.ammoLabel = ammoText   -- Hud.lua 换成右下角的武器、弹药（这一行字收起来）
-  local tipText = ui.label(G.gui, "", UDim2.fromOffset(300, 22), UDim2.new(0.5, 0, 0.5, 30), 14, RGB(255, 230, 140), Enum.Font.GothamBold, Vector2.new(0.5, 0))
+  local tipText = ui.label(G.gui, "", UDim2.fromOffset(300, 22), UDim2.new(0.5, 0, 0.5, 30), 14, RGB(255, 230, 140), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0))
   tipText.TextStrokeTransparency = 0.4
   tipText.ZIndex = 15
   local scope = { Visible = false }   -- 狙击镜、望远镜开镜：圆形目镜和光学效果在 Scope.lua（这里只记开没开）
@@ -206,7 +206,7 @@ function Play.init(G)
       b.AutoButtonColor = false
       b.Text = i .. "   " .. T("weapon." .. id)
       b.TextSize = 13
-      b.Font = on and Enum.Font.GothamBold or Enum.Font.GothamMedium
+      b.Font = on and Enum.Font.BuilderSansBold or Enum.Font.BuilderSansMedium
       b.TextColor3 = on and RGB(255, 255, 255) or RGB(150, 156, 160)
       b.Parent = bar
       if on then ui.frame(b, UDim2.new(1, 0, 0, 2), nil, RGB(255, 255, 255), 0) end

@@ -415,7 +415,7 @@ function Fx.init(G)
   --     开车、开飞机是脚本镜头（每帧重新摆），照旧加全量。横滚每帧都被 Roblox 镜头摆正，加全量
   --   · 留下来的（后坐的上抬、左右飘）：几帧里平滑加上去（不是一下跳），要自己往下压枪
   local trauma = 0
-  function G.shake(a) trauma = math.min(1, trauma + a) end
+  function G.shake(a) if G.noShake then return end trauma = math.min(1, trauma + a) end   -- 设置里关了镜头晃动（Settings.lua）
   local pp, py, pr, vp, vy, vr = 0, 0, 0, 0, 0, 0   -- 踢：俯仰、偏航、横滚（弧度）和角速度
   local climbP, climbY = 0, 0                       -- 还没加上去的上抬、左右飘
   local aP, aY = 0, 0                               -- 步行时已经加进镜头朝向里的「一下就回来的」那份
@@ -961,6 +961,13 @@ function Fx.init(G)
     med = { gap = 0.04, s0 = 1.3, s1 = 5.5, tr = 0.32, life = 2.4, col = RGB(222, 222, 218) },
     heavy = { gap = 0.022, s0 = 2.0, s1 = 9.0, tr = 0.12, life = 4.5, col = RGB(214, 212, 206) },
   }
+  -- 抛射的弹点火（服务器 shotIgn，或者时候到了还没收到）：发动机声、尾焰从这里开始，发动机的时间（双脉冲、助推段）从这里算
+  local function ejIgnite(s)
+    if not s.ejUntil then return end
+    s.ejDur, s.ejUntil, s.ejg = s.t, nil, nil
+    if s.glow and not s.roar then addRoar(s, s.glow, s.p) end
+    if not s.my then G.sfx("msl", s.p) end   -- 自己打的：开火那一下 Fly.lua 已经放过
+  end
   local function newShot(e)
     local kind = e.kind
     local aw = e.w and AD.W[e.w]
@@ -973,7 +980,7 @@ function Fx.init(G)
         glow = part(BALL, V(1.1, 1.1, 1.1) * math.max(1, aw.shape and aw.shape.d * 1.6 or 1), CFrame.new(e.p), RGB(255, 200, 120), Enum.Material.Neon, 0)
         glowOn(glow, RGB(255, 180, 100), 22, 4)   -- 尾焰照亮弹体和周围
       end
-      if not mine(e) and not aw.hyper then G.sfx((kind == "missile") and "msl" or "bombRel", e.p) end
+      if not mine(e) and not aw.hyper then G.sfx((kind == "missile" and not e.ej) and "msl" or "bombRel", e.p) end   -- 抛射的：先是挂架弹开的一声
       flying[e.id] = { wm = mdl, glow = glow, half = (aw.shape and aw.shape.L or 5) / 2, p = e.p, v = e.v, gb = kind == "bomb", t = 0, kind = kind, trailT = 0,
         burn = aw.burn or 4, aw = aw, cfs = table.create(#mdl.parts), tg = e.tg, w = e.w, my = mine(e) }   -- my：自己打出去的（Marks.lua 给自己的炸弹标落点）
       if aw.hyper and glow then   -- 高超音速（惊雷-1）：先掉一下不点火；点火后一大团白热尾焰 + 一条很长的尾迹（速度太快，一颗颗烟球连不起来）
@@ -997,8 +1004,13 @@ function Fx.init(G)
         fs.trail = tr
         glow.Transparency = 1
       end
-      if glow then addRoar(flying[e.id], glow, e.p) end
-      if mine(e) and G.onMyShot then G.onMyShot(e) end   -- 自己打出去的：导弹视角小窗（MslCam.lua）
+      if e.ej and kind == "missile" then   -- 抛射：先往下掉、不喷火，点火（服务器 shotIgn，或者到时候了）才亮、才有发动机声
+        local fs = flying[e.id]
+        fs.ejUntil = os.clock() + e.ej + 0.25   -- 服务器的 shotIgn 丢了也照样点火
+        fs.ejg = true
+        if glow then glow.Transparency = 1 end
+      elseif glow then addRoar(flying[e.id], glow, e.p) end
+      if mine(e) and G.onMyShot then G.onMyShot(e) end   -- 自己打出去的：按 L 跟踪（MslCam.lua）
       return
     end
     local body
@@ -1085,7 +1097,7 @@ function Fx.init(G)
       s.t += dt
       if s.g then s.v += GRAV * (s.gs or 1) * dt end
       if s.dr then s.v -= s.v * math.min(0.5, s.dr * s.v.Magnitude * dt) end   -- 空气阻力（同服务器 Ents.lua，坦克炮弹）
-      if s.gb then s.v += V(0, -27.5, 0) * dt end   -- 机载炸弹：AirDefs.GRAV
+      if s.gb or s.ejg then s.v += V(0, -27.5, 0) * dt end   -- 机载炸弹、还没点火的抛射弹：AirDefs.GRAV（不用 gb：Marks.lua 按它画炸弹落点）
       s.p += s.v * dt
       if s.path then
         local pv, vv = pathAt(s)
@@ -1096,8 +1108,11 @@ function Fx.init(G)
         local cf = CFrame.lookAt(s.p, s.p + ((s.v.Magnitude > 0.1) and s.v or V(0, -1, 0)))
         for i, o in ipairs(s.wm.offs) do s.cfs[i] = cf * o end
         workspace:BulkMoveTo(s.wm.parts, s.cfs, Enum.BulkMoveMode.FireCFrameChanged)
-        local burning = s.aw and AD.motorOn(s.aw, s.t) or (s.t < s.burn)   -- 双脉冲第二次、巡航弹一直开
+        if s.ejUntil and os.clock() >= s.ejUntil then ejIgnite(s) end
+        local tm = s.t - (s.ejDur or 0)   -- 抛射的弹：发动机从点火那一刻算
+        local burning = s.aw and AD.motorOn(s.aw, tm) or (tm < s.burn)   -- 双脉冲第二次、巡航弹一直开
         if s.hyper then burning = s.lit end
+        if s.ejUntil then burning = false end   -- 抛射的弹：还没点火
         if not burning and s.roar then stopRoar(s) end
         if s.glow then
           s.glow.CFrame = cf * CFrame.new(0, 0, s.half + (s.hyper and 2.5 or 0.5))
@@ -1112,7 +1127,7 @@ function Fx.init(G)
         elseif s.kind == "missile" and burning then
           -- 尾烟按型号（AirDefs 的 smoke；用户 11-24 夜：「不同导弹尾烟……都是不一样的」）：低烟发动机细、淡、散得快（AIM-120、AIM-9X、霹雳-15），
           --   老式发动机、助推器又粗又浓、挂在天上很久（AIM-54、57E6 的助推段、巡航弹起飞那一下）；发动机一关就不冒烟（只靠惯性滑翔）
-          local sp = MSL_SMOKE[AD.smokeOf(s.aw, s.t)] or MSL_SMOKE.med
+          local sp = MSL_SMOKE[AD.smokeOf(s.aw, tm)] or MSL_SMOKE.med
           s.trailT += dt
           if s.trailT > sp.gap then
             s.trailT = 0
@@ -1522,6 +1537,9 @@ function Fx.init(G)
         if G.nukeEvent then (G.try_ or pcall)(G.nukeEvent, e) end
       elseif k == "shotEnd" then endShot(e.id)
       elseif k == "shotFix" then fixShot(e)
+      elseif k == "shotIgn" then   -- 抛射的弹点火了：喷火、拖烟，发动机的时间从这里算
+        local s = flying[e.id]
+        if s then ejIgnite(s) end
       elseif k == "shotAct" then   -- 主动雷达弹导引头开机（服务器 Air.lua arhStep）：雷达屏上数据链虚线变实线
         local fs = flying[e.id]
         if fs then fs.act, fs.lost = true, false end

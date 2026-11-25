@@ -14,6 +14,9 @@ local ANG = CFrame.Angles
 local MAT = Enum.Material
 local UP = ANG(0, 0, math.pi / 2)   -- 圆柱的轴（X）竖起来
 local ORIGIN = CF(-9000, 900, 9000)   -- 地图外、半空里：周围什么都没有（主菜单的场景在另一个角上，同一个高度）
+-- 看飞机、直升机（用户 11-25「查看飞机和直升机的时候单独做个背景吧」）：另一个角上搭一块露天机场停机坪，选中飞机就切过去
+local ORIGIN_AIR = CF(-9000, 900, -9000)
+local BUILD_AT = ORIGIN   -- part() 摆零件用哪个原点（搭停机坪时换成 ORIGIN_AIR）
 local HX, Z0, Z1, HY, RISE = 96, -124, 156, 62, 15   -- 半宽、近端墙、远端墙、檐口高、屋脊比檐口高多少
 local FOV = 40
 
@@ -28,7 +31,7 @@ local function part(parent, name, size, cf, color, mat, shape)
   p.Name = name
   if shape then p.Shape = shape end
   p.Size = size
-  p.CFrame = ORIGIN * cf
+  p.CFrame = BUILD_AT * cf
   p.Color = color
   p.Material = mat or MAT.SmoothPlastic
   p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch = true, false, false, false
@@ -190,7 +193,7 @@ local function shell(m)
       local t = Instance.new("TextLabel")
       t.BackgroundTransparency = 1
       t.Size, t.Position = UDim2.fromScale(0.5, 0.36), UDim2.fromScale(0.25, 0.3)
-      t.Font = Enum.Font.GothamBlack
+      t.Font = Enum.Font.BuilderSansExtraBold
       t.TextScaled = true
       t.TextColor3 = RGB(214, 214, 204)
       t.TextTransparency = 0.45
@@ -511,10 +514,97 @@ end
 local function build()
   local m = Instance.new("Model")
   m.Name = "HangarStage"
+  BUILD_AT = ORIGIN
   shell(m)
   lights(m)
   props(m)
   model = m
+end
+
+---------------------------------------------------------------- 机场停机坪（看飞机、直升机时）
+--   露天：一大片分缝的水泥坪、黄色滑行线和停机框、轮挡；背后一座大机库（波纹钢板墙、敞着的大门、里面暗）、
+--   侧后方塔台（玻璃顶）、雷达罩、灯杆（夜里打光）、加油车、牵引车、导流墙、远处一道低山；天空就是游戏的天
+local airModel = nil
+local mode = "ground"
+local APRON = { HX = 380, Z0 = -380, Z1 = 380, HY = 140 }
+local function buildAir()
+  local m = Instance.new("Model")
+  m.Name = "HangarApron"
+  BUILD_AT = ORIGIN_AIR
+  local function W(name, size, cf, color, mat, shape) return part(m, name, size, cf, color, mat, shape) end
+  local C1, C2, LINE = RGB(152, 150, 142), RGB(140, 138, 131), RGB(214, 176, 52)
+  -- 水泥坪：大块拼起来（深浅两色错开），缝是细的深色条
+  for i = -4, 3 do
+    for k = -4, 3 do
+      W("Apron", V(100, 2, 100), CF(i * 100 + 50, -1, k * 100 + 50), ((i + k) % 2 == 0) and C1 or C2, MAT.Concrete)
+    end
+  end
+  for i = -4, 4 do
+    W("Joint", V(0.4, 0.05, 800), CF(i * 100, 0.02, 0), RGB(96, 94, 88), MAT.Concrete)
+    W("Joint", V(800, 0.05, 0.4), CF(0, 0.02, i * 100), RGB(96, 94, 88), MAT.Concrete)
+  end
+  -- 外面一圈更大的地面（远处的草和沙）
+  W("Field", V(4000, 1, 4000), CF(0, -1.6, 0), RGB(124, 120, 98), MAT.Ground)
+  -- 滑行线（黄）、停机框、机位号
+  W("TaxiLine", V(1.2, 0.06, 760), CF(-60, 0.05, 0), LINE, MAT.SmoothPlastic)
+  W("TaxiLine", V(300, 0.06, 1.2), CF(-210, 0.05, -120), LINE, MAT.SmoothPlastic)
+  for _, e in ipairs({ { 0, -34 }, { 0, 34 }, { -34, 0 }, { 34, 0 } }) do
+    local horiz = e[1] == 0
+    W("StandBox", horiz and V(68, 0.06, 1) or V(1, 0.06, 68), CF(e[1], 0.05, e[2]), LINE, MAT.SmoothPlastic)
+  end
+  W("StandLead", V(1, 0.06, 90), CF(0, 0.05, -80), LINE, MAT.SmoothPlastic)
+  for _, x in ipairs({ -4, 4 }) do W("Chock", V(1.4, 1.2, 2.4), CF(x, 0.6, -6), RGB(206, 164, 44), MAT.SmoothPlastic) end
+  -- 背后的大机库：波纹钢板墙、拱顶（三段斜屋面）、敞开的大门里面暗
+  local HZ = 230
+  W("HangarWallL", V(4, 70, 120), CF(-150, 35, HZ + 60), RGB(150, 156, 150), MAT.CorrugatedSteel)
+  W("HangarWallR", V(4, 70, 120), CF(150, 35, HZ + 60), RGB(150, 156, 150), MAT.CorrugatedSteel)
+  W("HangarBack", V(300, 70, 4), CF(0, 35, HZ + 120), RGB(140, 146, 140), MAT.CorrugatedSteel)
+  W("HangarInside", V(296, 66, 2), CF(0, 33, HZ + 117), RGB(30, 32, 34), MAT.SmoothPlastic)
+  W("HangarFloor", V(296, 0.4, 118), CF(0, 0.2, HZ + 60), RGB(70, 72, 72), MAT.Concrete)
+  W("HangarHeader", V(304, 16, 6), CF(0, 78, HZ), RGB(120, 126, 122), MAT.CorrugatedSteel)
+  for i, a in ipairs({ -0.32, 0, 0.32 }) do
+    W("HangarRoof", V(108, 4, 130), CF((i - 2) * 100, 86 - math.abs(a) * 20, HZ + 60) * ANG(0, 0, a), RGB(110, 116, 112), MAT.CorrugatedSteel)
+  end
+  for _, x in ipairs({ -150, -50, 50, 150 }) do W("DoorPost", V(6, 70, 6), CF(x, 35, HZ), RGB(90, 94, 92), MAT.Metal) end
+  local lamp = W("HangarLamp", V(200, 1, 2), CF(0, 64, HZ + 30), WARM, MAT.Neon)
+  lamp.CastShadow = false
+  -- 塔台（侧后方）：方塔身 + 玻璃顶 + 栏杆
+  W("TowerBase", V(30, 90, 30), CF(-290, 45, 320), RGB(186, 182, 170), MAT.Concrete)
+  W("TowerCab", V(40, 16, 40), CF(-290, 98, 320), RGB(60, 80, 84), MAT.Glass).Transparency = 0.25
+  W("TowerRoof", V(44, 3, 44), CF(-290, 107.5, 320), RGB(70, 72, 72), MAT.Metal)
+  W("TowerMast", V(1, 24, 1), CF(-290, 121, 320), RGB(60, 60, 60), MAT.Metal)
+  -- 雷达罩、导流墙、加油车、牵引车
+  W("RadarMast", V(4, 40, 4), CF(250, 20, 340), RGB(120, 120, 116), MAT.Metal)
+  W("RadarDome", V(24, 24, 24), CF(250, 52, 340), RGB(230, 228, 220), MAT.SmoothPlastic, Enum.PartType.Ball)
+  W("BlastWall", V(70, 18, 3), CF(200, 9, 60) * ANG(-0.35, 0, 0), RGB(120, 118, 112), MAT.Metal)
+  W("FuelTruckBody", V(10, 9, 30), CF(-90, 5.5, 110), RGB(196, 196, 186), MAT.SmoothPlastic)
+  W("FuelTruckCab", V(10, 8, 8), CF(-90, 5, 92), RGB(170, 40, 34), MAT.SmoothPlastic)
+  for _, z in ipairs({ 94, 114, 122 }) do
+    for _, x in ipairs({ -95.5, -84.5 }) do W("Wheel", V(1.6, 3.4, 3.4), CF(x, 1.7, z) * UP * ANG(0, 0, math.pi / 2), BLACK, MAT.Rubber, Enum.PartType.Cylinder) end
+  end
+  W("Tug", V(9, 4, 12), CF(60, 2.4, -60), RGB(206, 164, 44), MAT.SmoothPlastic)
+  -- 灯杆：四根，夜里往停机位打光
+  for _, q in ipairs({ { -120, -120 }, { 120, -120 }, { -120, 140 }, { 120, 140 } }) do
+    W("LightPole", V(2, 80, 2), CF(q[1], 40, q[2]), RGB(80, 82, 82), MAT.Metal)
+    local head = W("LightHead", V(8, 3, 4), CF(q[1], 80, q[2]), RGB(60, 62, 62), MAT.Metal)
+    local sl = Instance.new("SpotLight")
+    sl.Face = Enum.NormalId.Bottom
+    sl.Angle, sl.Range, sl.Brightness = 90, 160, 3
+    sl.Color = WARM
+    sl.Parent = head
+  end
+  -- 滑行道边灯（一排小蓝灯）
+  for z = -360, 360, 40 do
+    local l = W("EdgeLight", V(1, 1.4, 1), CF(-75, 0.7, z), RGB(70, 120, 255), MAT.Neon)
+    l.CastShadow = false
+  end
+  -- 远处一道低山（只是背景）
+  for i = -3, 3 do
+    local h = 120 + (i % 3) * 50
+    W("Hill", V(900, h, 500), CF(i * 800, h / 2 - 20, 2000 + (i % 2) * 300), RGB(150, 140, 116), MAT.Ground)
+  end
+  airModel = m
+  BUILD_AT = ORIGIN
 end
 
 ---------------------------------------------------------------- 镜头
@@ -526,6 +616,10 @@ local function camCF()
   local cp = math.cos(pitch)
   local tgt = V(0, v.sh, 0)
   local eye = tgt + V(math.sin(yaw) * cp, math.sin(pitch), math.cos(yaw) * cp) * v.sd
+  if mode == "air" then
+    eye = V(math.clamp(eye.X, -APRON.HX, APRON.HX), math.clamp(eye.Y, 2.4, APRON.HY), math.clamp(eye.Z, APRON.Z0, APRON.Z1))
+    return ORIGIN_AIR * CFrame.lookAt(eye, tgt) * ANG(math.rad(-3.5), 0, 0)
+  end
   eye = V(math.clamp(eye.X, -HX + 8, HX - 8), math.clamp(eye.Y, 2.4, HY - 10), math.clamp(eye.Z, Z0 + 8, Z1 - 8))   -- 别钻到墙外面
   return ORIGIN * CFrame.lookAt(eye, tgt) * ANG(math.rad(-3.5), 0, 0)   -- 镜头压低一点：车在画面里偏上（底下是阵容卡片）
 end
@@ -533,7 +627,28 @@ end
 ---------------------------------------------------------------- 给 TechUI 的
 
 -- 车摆在哪（底座系：原点在地面正中，车头朝 −Z）
-function Stage.floorCF() return ORIGIN end
+function Stage.floorCF() return (mode == "air") and ORIGIN_AIR or ORIGIN end
+-- 换场景："ground" 厂房（坦克、步战车……）/ "air" 机场停机坪（飞机、直升机）
+function Stage.mode(k)
+  k = (k == "air") and "air" or "ground"
+  if k == mode then return end
+  mode = k
+  if k == "air" and not airModel then
+    local ok, err = pcall(buildAir)
+    if not ok then
+      warn("[全面大战场] 停机坪没搭好：" .. tostring(err))
+      BUILD_AT = ORIGIN
+      mode = "ground"
+      return
+    end
+  end
+  if shown then
+    if model then model.Parent = (mode == "ground") and workspace or nil end
+    if airModel then airModel.Parent = (mode == "air") and workspace or nil end
+  end
+  if slot then slot:Destroy() slot = nil end   -- 车 / 飞机按新场景的原点重新摆（TechUI 接着 put）
+end
+function Stage.modeNow() return mode end
 
 -- 打开 / 关上。keep：关的时候镜头已经有人接手了——"all" 一点不动（开了主菜单：它有自己的场景和视场角）；
 --   "type" 镜头类型不动、只把视场角还回去（坐进了车 / 飞机、在观战）；不给就整个还给游戏
@@ -547,7 +662,8 @@ function Stage.show(on, keep)
         return false
       end
     end
-    model.Parent = workspace
+    model.Parent = (mode == "ground") and workspace or nil
+    if airModel then airModel.Parent = (mode == "air") and workspace or nil end
     shown = true
     if cam then
       cam.CameraType = Enum.CameraType.Scriptable
@@ -556,6 +672,7 @@ function Stage.show(on, keep)
     end
   else
     if model then model.Parent = nil end
+    if airModel then airModel.Parent = nil end
     if shown and cam and keep ~= "all" then
       if keep ~= "type" then cam.CameraType = Enum.CameraType.Custom end
       cam.FieldOfView = 70
@@ -577,7 +694,7 @@ function Stage.put(m, dims)
     if m then m:Destroy() end
     return
   end
-  m.Parent = model
+  m.Parent = (mode == "air" and airModel) or model
   slot = m
   local L, Wd, H = (dims and dims.L) or 26, (dims and dims.W) or 12, (dims and dims.H) or 9
   view.base = math.clamp(math.max(L * 1.5, Wd * 2, H * 3.2) + 12, 40, 118)

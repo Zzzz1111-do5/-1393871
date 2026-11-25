@@ -191,7 +191,7 @@ function B:placard(g, w, h, cf, text, opt)
   l.BackgroundTransparency = 1
   l.Text = text
   l.TextColor3 = opt.fg or RGB(20, 20, 18)
-  l.Font = opt.font or Enum.Font.GothamBold
+  l.Font = opt.font or Enum.Font.BuilderSansBold
   l.TextScaled = true
   l.TextWrapped = true
   l.Parent = sg
@@ -299,7 +299,7 @@ function B:screen(g, w, h, cf, page, opt)
         t.BackgroundTransparency = 1
         t.Text = label
         t.TextColor3 = RGB(190, 236, 214)
-        t.Font = Enum.Font.GothamBold
+        t.Font = Enum.Font.BuilderSansBold
         t.TextScaled = true
         t.Parent = lg
         local st = Instance.new("UIStroke")   -- 触摸格的细边框（玻璃上画的，不是实体键）
@@ -329,7 +329,7 @@ function B:screen(g, w, h, cf, page, opt)
           t.BackgroundTransparency = 1
           t.Text = label
           t.TextColor3 = opt.keyFg or RGB(176, 214, 255)
-          t.Font = Enum.Font.GothamBold
+          t.Font = Enum.Font.BuilderSansBold
           t.TextScaled = true
           t.Parent = lg
           table.insert(self.softkeys, { part = key, label = label, screen = s, side = side, idx = i, col = key.Color })
@@ -354,7 +354,7 @@ function B:screen(g, w, h, cf, page, opt)
         t.BackgroundTransparency = 1
         t.Text = label
         t.TextColor3 = RGB(226, 230, 222)
-        t.Font = Enum.Font.GothamBold
+        t.Font = Enum.Font.BuilderSansBold
         t.TextScaled = true
         t.Parent = lg
         table.insert(self.softkeys, { part = key, label = label, screen = s, side = side, idx = i, col = key.Color })
@@ -444,7 +444,7 @@ function B:keyCap(g, s, cf, w, h, label, style, opt)
     l.Position, l.Size = UDim2.fromScale(x, y), UDim2.fromScale(sw, sh)
     l.Text = t
     l.TextColor3 = col
-    l.Font = Enum.Font.GothamBold
+    l.Font = Enum.Font.BuilderSansBold
     l.TextScaled = true
     l.TextXAlignment = align or Enum.TextXAlignment.Center
     l.Parent = lg

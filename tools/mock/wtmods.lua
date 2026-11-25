@@ -158,7 +158,8 @@ for _, c in ipairs(mp and mp:GetDescendants() or {}) do
   if c.Name:match("^Mod_") then cells = cells + 1 end
   if c.Name == "Mod_filter" then cell = c end
 end
-check(mp and mp.Visible and cells == #WM.GROUND, "改装面板开着：" .. cells .. " 格")
+-- 96 式（1997 年，数字火控那一代）：十二项改装 + 三级火控升级（用户 11-25「在坦克细分具体小科技的树里面更新火控计算机」）
+check(mp and mp.Visible and cells == #WM.list(it96) and #WM.list(it96) == #WM.GROUND + 3, "改装面板开着：" .. cells .. " 格（含三级火控）")
 if cell then T.press(cell) end
 R.run(0.5)
 check(md.cur == "filter", "点一格「空滤」成了研究目标（" .. tostring(md.cur) .. "）")

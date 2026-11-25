@@ -24,7 +24,7 @@ function WtTank.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local BOLD, MED = Enum.Font.GothamBold, Enum.Font.GothamMedium
+  local BOLD, MED = Enum.Font.BuilderSansBold, Enum.Font.BuilderSansMedium
   local LEFT, RIGHT = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right
   local TH = G.Theme   -- 统一外观（docs/style.md）
   local WHITE, INK = TH.C.TEXT, TH.C.INK
@@ -116,11 +116,17 @@ function WtTank.init(G)
   end
   stroke(round(frame(AIM.root, UD2(0, 3, 0, 3), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), INK, 1, 0.5)
   AIM.dot = round(frame(AIM.root, UD2(0, 3, 0, 3), UD2(0.5, 0, 0.5, 0), WHITE, 0, V2(0.5, 0.5)))
-  -- 装填弧：圈外一道，底下一道很淡的轨道
-  AIM.track = stroke(round(frame(AIM.root, UD2(0, 36, 0, 36), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), INK, 2.2, 0.7)
-  AIM.rel = progRing(AIM.root, 40.4, 2.2, AMBER)
-  AIM.relT = label(AIM.root, "", UD2(0, 50, 0, 14), UD2(0.5, -30, 0.5, 0), 13, AMBER, BOLD, V2(1, 0.5), RIGHT)
-  AIM.rng = label(AIM.root, "", UD2(0, 70, 0, 14), UD2(0.5, 30, 0.5, 0), 13, WHITE, BOLD, V2(0, 0.5), LEFT)
+  -- 装填弧：圈外一道大环（用户 11-25「坦克开炮后外面那个大环装弹是顺时针从红色变成绿色」）——从正上方顺时针走满，
+  --   颜色跟着进度从红经琥珀变绿，装好那一下整圈绿亮一下再收；底下一道很淡的轨道
+  AIM.track = stroke(round(frame(AIM.root, UD2(0, 48, 0, 48), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), INK, 3, 0.7)
+  AIM.rel = progRing(AIM.root, 54, 3, PEN_NO)
+  AIM.relT = label(AIM.root, "", UD2(0, 50, 0, 14), UD2(0.5, -36, 0.5, 0), 14, AMBER, BOLD, V2(1, 0.5), RIGHT)
+  AIM.rng = label(AIM.root, "", UD2(0, 70, 0, 14), UD2(0.5, 36, 0.5, 0), 14, WHITE, BOLD, V2(0, 0.5), LEFT)
+  local function relColor(k)   -- 装填进度 → 红 → 琥珀 → 绿
+    k = math.clamp(k or 0, 0, 1)
+    if k < 0.5 then return PEN_NO:Lerp(AMBER, k / 0.5) end
+    return AMBER:Lerp(PEN_OK, (k - 0.5) / 0.5)
+  end
   local readyT, wasReady = -9, true
 
   ---------------------------------------------------------------- 穿深指示：照服务器（Wt.lua G.wtShellHit）同一套算
@@ -612,9 +618,11 @@ function WtTank.init(G)
         if G.wtVoice and wasReady == false then G.wtVoice("loaded") end   -- 车组语音：装填完毕（⑬）
       end
       wasReady = ready
-      AIM.rel.root.Visible = not ready
-      AIM.track.Transparency = ready and 1 or 0.7
-      if not ready then AIM.rel.set(I.relK or 0, AMBER) end
+      local flash = ready and (t - readyT) < 0.45   -- 刚装好：整圈绿亮一下
+      AIM.rel.root.Visible = (not ready) or flash
+      AIM.track.Transparency = (ready and not flash) and 1 or 0.7
+      if not ready then AIM.rel.set(I.relK or 0, relColor(I.relK)) elseif flash then AIM.rel.set(1, PEN_OK) end
+      AIM.relT.TextColor3 = relColor(I.relK)
       AIM.relT.Text = ready and "" or string.format("%.1f", I.left or 0)
       local pop = math.clamp(1 - (t - readyT) / 0.25, 0, 1)
       AIM.scale.Scale = 1 + 0.18 * pop

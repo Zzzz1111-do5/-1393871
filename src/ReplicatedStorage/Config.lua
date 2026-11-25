@@ -348,7 +348,7 @@ Config.WtVoice = { off = false, voiceId = "1", volume = 1.4 }
 -- 第一人称（坐进车里、飞机座舱：Interior.lua 的 C / T / F2～F5 / V、全真模式自动坐进去）只有这几型有
 --   （用户 11-25：「除了m1a1和a2 其他载具不要做第一人称模式」）；only = nil 就全开（测试内饰的老测试用）
 Config.FirstPerson = { only = { m1a1 = true, m1a2 = true } }
-Config.Wt = { on = true, noInfantry = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, backup = 1, rise = 0.25,
+Config.Wt = { on = true, noInfantry = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, lineupAir = 2, backup = 1, rise = 0.25,   -- lineupAir：阵容里飞行单位最多几个（用户 11-25）
   br0 = 4.0, brUp = 1.0, teamSize = 8, aiMax = 5,
   -- 三种模式（机库里投票，准备阶段按票数，开战定住；Tech.lua）：ab 街机（敌人都标、飞机空中出生）、rb 历史（只标近处看得见的）、
   --   sb 全真（不标、只能第一人称）；研究点、乘员经验按 modeK 乘

@@ -77,7 +77,7 @@ local function sign(p, text, height, w, h, color, maxDist)
   local t = Instance.new("TextLabel")
   t.Size = UDim2.fromScale(1, 1)
   t.BackgroundTransparency = 1
-  t.Font = Enum.Font.GothamBlack
+  t.Font = Enum.Font.BuilderSansExtraBold
   t.TextScaled = true
   t.TextColor3 = color or Color3.new(1, 1, 1)
   t.TextStrokeTransparency = 0.3
@@ -1647,7 +1647,7 @@ local function deckText(m, cf, size, text, face)
   local t = Instance.new("TextLabel")
   t.Size = UDim2.fromScale(1, 1)
   t.BackgroundTransparency = 1
-  t.Font = Enum.Font.GothamBlack
+  t.Font = Enum.Font.BuilderSansExtraBold
   t.TextScaled = true
   t.Text = text
   t.TextColor3 = CV.white

@@ -83,7 +83,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   hint.BackgroundTransparency = 1
   hint.TextColor3 = RGB(230, 236, 230)
   hint.TextStrokeTransparency = 0.4
-  hint.Font = Enum.Font.GothamMedium
+  hint.Font = Enum.Font.BuilderSansMedium
   hint.TextSize = 14
   hint.Visible = false
   hint.Parent = gui
@@ -94,7 +94,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   title.BackgroundTransparency = 1
   title.TextColor3 = RGB(255, 236, 190)
   title.TextStrokeTransparency = 0.4
-  title.Font = Enum.Font.GothamBold
+  title.Font = Enum.Font.BuilderSansBold
   title.TextSize = 18
   title.Visible = false
   title.Parent = gui
@@ -1262,7 +1262,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   tip.BackgroundTransparency = 1
   tip.TextColor3 = RGB(255, 226, 150)
   tip.TextStrokeTransparency = 0.3
-  tip.Font = Enum.Font.GothamMedium
+  tip.Font = Enum.Font.BuilderSansMedium
   tip.TextSize = 14
   tip.TextWrapped = true
   tip.Visible = false
@@ -2731,7 +2731,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
           local lv = rel.LookVector
           free.yaw, free.pitch = math.atan2(-lv.X, -lv.Z), math.asin(clamp(lv.Y, -1, 1))
         end
-      elseif k == Enum.KeyCode.L and cur and mode then lightMode = lightMode % #LIGHTS + 1
+      elseif k == Enum.KeyCode.L and cur and mode and not (G.mslFollowAvail and G.mslFollowAvail()) then lightMode = lightMode % #LIGHTS + 1   -- 有自己的导弹在飞：L 让给跟踪导弹（MslCam.lua）
       elseif k == Enum.KeyCode.U and (mode or hideUI) then setHideUI(not hideUI) end
       return
     end
@@ -2773,7 +2773,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
         local order = cur.spec.order
         local idx = 0
         for i, s in ipairs(order) do if s == station then idx = i end end
-        if idx >= #order and workspace:GetAttribute("WtMode") == "sb" then   -- 全真模式（战雷）：只能第一人称，转一圈回第一个乘员位，不回车外
+        if idx >= #order and workspace:GetAttribute("WtMode") == "sb" and not (G.inTestDrive and G.inTestDrive()) then   -- 全真模式（战雷）：只能第一人称，转一圈回第一个乘员位，不回车外（试驾不管）
           enterStation(cur, order[1])
         elseif idx >= #order then
           mode = nil
@@ -2822,7 +2822,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       end
       if st.sight and G.driveSetSight then G.driveSetSight(false) return end
       enterOptic(cur, slot)
-    elseif k == Enum.KeyCode.L and cur and mode then
+    elseif k == Enum.KeyCode.L and cur and mode and not (G.mslFollowAvail and G.mslFollowAvail()) then
       lightMode = lightMode % #LIGHTS + 1
     elseif k == Enum.KeyCode.U and (mode or hideUI) then
       setHideUI(not hideUI)

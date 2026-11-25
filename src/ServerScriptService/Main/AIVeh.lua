@@ -360,7 +360,7 @@ function AIVeh.init(G)
       end
     end
     for _, x in ipairs(G.ents) do
-      if x.alive and x.team ~= e.team and x ~= e and not x.air and not x.ship and not x.sea then
+      if x.alive and x.team ~= e.team and x ~= e and not x.air and not x.ship and not x.sea and not x.testDummy then   -- 试驾场的靶车不打（Tech.lua）
         local kind = (x.kind == "bot") and "inf" or ((x.kind == "veh") and "veh") or (x.fort and "fort") or nil
         if kind then consider(x.root.CFrame.Position, kind, x) end
       end

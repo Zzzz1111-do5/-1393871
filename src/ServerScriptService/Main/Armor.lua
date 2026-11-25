@@ -271,7 +271,8 @@ function Armor.init(G)
         self.alive = false
         self.wreck = true
         self.model:SetAttribute("Wreck", true)
-        G.fx({ k = "boom", p = self.root.CFrame.Position, s = 2.4, c = "wreck" })
+        -- 战雷式伤害打死的（Wt.lua 给了 wtWhy）照真车：殉爆 Wt.lua 自己炸，乘员打光、烧毁不炸（客户端 WreckFx 画窜火、冒烟）
+        if not self.wtWhy then G.fx({ k = "boom", p = self.root.CFrame.Position, s = 2.4, c = "wreck" }) end
         G.fx({ k = "wreck", id = self.id, p = self.root.CFrame.Position, life = 25 })
         if not self.ai then   -- AI 的车被毁不给玩家记冷却
           local list = pending[self.team][self.vcat] or {}
@@ -605,7 +606,10 @@ function Armor.init(G)
       local dist = flat.Magnitude
       if dist < w.minR or dist > w.maxR then G.msg(P.pl, "bad", "ui.outOfRange") return end
       local sc = (w.scatter or 10) + dist * 0.01
-      local a, r = math.random() * math.pi * 2, math.random() * sc
+      -- 炮兵视角的散布圈（ArtyView.lua，用户 11-25）：瞄准稳了圈小（基础的一半），刚挪过圈大（两倍）；没开炮兵视角按原来的
+      local dk = msg and tonumber(msg.disp)
+      if dk then sc = sc * (0.5 + 1.5 * math.clamp(dk, 0, 1)) end
+      local a, r = math.random() * math.pi * 2, math.sqrt(math.random()) * sc   -- 圈里均匀落
       local x, z = aim.X + math.cos(a) * r, aim.Z + math.sin(a) * r
       G.shell(V(x, Map.ground(x, z), z), w, S, w.flight + dist / 700, mz.Position)
       G.fx({ k = "vfire", p = mz.Position, d = gdir, f = "arty", id = e.id })

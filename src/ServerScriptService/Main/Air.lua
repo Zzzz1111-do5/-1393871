@@ -495,6 +495,20 @@ function Air.init(G)
   G.airArhStep = arhStep   -- 测试用
 
   local function guideMissile(s, dt)
+    -- 抛射（用户 11-25「部分直升机我记得发射导弹是抛射」「或许不止直升机」）：弹舱、机身半埋挂点的中距弹被弹射器推出去，
+    --   直升机的筒射防空弹（毒刺、天燕-90、针-V、西北风）先被抛射药推出发射筒——往下掉 ejT 秒、离开飞机，发动机才点火、开始制导
+    if s.ejT and (s.ejAge or 0) < s.ejT then
+      s.ejAge = (s.ejAge or 0) + dt
+      s.vel += V(0, -GRAV, 0) * dt
+      s.vel = s.vel * (1 - 0.04 * dt)
+      if s.ejAge >= s.ejT then G.fx({ k = "shotIgn", id = s.id }) end   -- 客户端：这时候才喷火、拖烟
+      s.fixT = (s.fixT or 0) + dt
+      if s.fixT > 0.15 then
+        s.fixT = 0
+        G.fx({ k = "shotFix", id = s.id, p = s.pos, v = s.vel })
+      end
+      return false
+    end
     s.age += dt
     local w = s.w
     if w.seeker == "radar" and w.act and s.ref then arhStep(s, dt) end
@@ -710,8 +724,13 @@ function Air.init(G)
       e.nextStore = t + 1
     elseif w.kind == "aam" or w.kind == "agm" then
       local launch = scf.Position - scf.UpVector * 1.2
-      local sh = G.launch({ kind = "missile", pos = launch, vel = base + fwd * 60 - scf.UpVector * 6, w = w, src = S, ignore = ignoreOf(e), life = w.life or 8,
-        step = guideMissile, age = 0, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = (not tgt and w.kind == "agm") and aimPt or nil, byEnt = e.id,
+      -- 抛射（AirDefs.EJ）：弹本身标了 eject（筒射的、投放的、只用弹射挂架的），或者挂在主弹舱、弹射挂点（挂点标了 ej）；
+      --   其余的（响尾蛇、霹雳-10 的导轨、侧弹舱伸出去的导轨、地狱火）照旧：在导轨上点火冲出去
+      local ej = w.eject or ((s.ej or s.bay == "main") and "drop") or nil
+      local E = ej and (type(ej) == "table" and ej or AD.EJ[ej]) or nil
+      local sh = G.launch({ kind = "missile", pos = launch, vel = E and (base + fwd * E.f - scf.UpVector * E.d) or (base + fwd * 60 - scf.UpVector * 6),
+        w = w, src = S, ignore = ignoreOf(e), life = (w.life or 8) + (E and E.t or 0),
+        step = guideMissile, age = 0, ejT = E and E.t or nil, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = (not tgt and w.kind == "agm") and aimPt or nil, byEnt = e.id,
         ref = (w.seeker == "radar" and w.act) and tgt or nil })   -- 主动雷达弹：记住真正的目标（数据链 / 开导引头按它）
       e.nextStore = t + 0.35
       if tgt and tgt.driver then G.R.Drive:FireClient(tgt.driver.pl, { op = "rwr", id = sh.id, w = wid }) end

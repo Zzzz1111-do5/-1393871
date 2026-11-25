@@ -39,7 +39,7 @@ function VehHud.init(G)
   local TH = G.Theme   -- 统一外观（docs/style.md）
   local INK, TXT, MUTE = TH.C.BG, TH.C.TEXT, TH.C.MUTE
   local AMBER, OK, BAD, CYAN = TH.C.WARN, TH.C.GOOD, TH.C.BAD, TH.C.HUD
-  local MONO, BOLD, MED = Enum.Font.RobotoMono, Enum.Font.GothamBold, Enum.Font.GothamMedium
+  local MONO, BOLD, MED = Enum.Font.RobotoMono, Enum.Font.BuilderSansBold, Enum.Font.BuilderSansMedium
   local WHITE = Color3.new(1, 1, 1)
 
   local function frame(parent, size, pos, color, alpha, anchor)
@@ -1451,7 +1451,9 @@ function VehHud.init(G)
       local tint = (cc and cc.Enabled) and cc.TintColor or Color3.fromRGB(255, 255, 255)
       SG.haze.BackgroundColor3 = Color3.fromRGB(168, 156, 136):Lerp(tint, 0.55)
     end
-    SG.ringStroke.Color = ready and OK or AMBER
+    -- 装填（用户 11-25「装弹是顺时针从红色变成绿色」）：颜色跟着进度红 → 琥珀 → 绿
+    local rk = math.clamp(relK, 0, 1)
+    SG.ringStroke.Color = ready and OK or ((rk < 0.5) and TH.C.BAD:Lerp(AMBER, rk / 0.5) or AMBER:Lerp(OK, (rk - 0.5) / 0.5))
     SG.ringStroke.Transparency = ready and 0.3 or (0.8 - 0.5 * relK)
     SG.ammo.Text = wid and T("vw." .. wid) or ""
     SG.count.Text = wid and (ammo and string.format("%d/%d", ammo[1], ammo[2]) or "∞") or ""

@@ -89,7 +89,7 @@ function TacPad.init(G)
     l.Text = text or ""
     l.TextSize = ts
     l.TextColor3 = col
-    l.Font = font or Enum.Font.Gotham
+    l.Font = font or Enum.Font.BuilderSans
     l.TextXAlignment = ax or AL
     l.Parent = parent
     return l
@@ -159,12 +159,12 @@ function TacPad.init(G)
       local x = BL + 70 + (i - 1) * 64
       local led = fr(dev, UDo(x, BT / 2 - 3), UDo(6, 6), GOOD)
       corner(led, 3)
-      txt(dev, nm, UDo(x + 12, BT / 2 - 7), UDo(50, 14), 10, RGB(150, 156, 150), Enum.Font.GothamMedium)
+      txt(dev, nm, UDo(x + 12, BT / 2 - 7), UDo(50, 14), 10, RGB(150, 156, 150), Enum.Font.BuilderSansMedium)
       leds[nm] = led
     end
   end
   -- 底边：牌子、硬键（键帽上印键位）
-  local brand = txt(dev, "", UDo(BL + 4, DH - BB / 2 - 8), UDo(360, 16), 11, RGB(128, 134, 126), Enum.Font.GothamBold)
+  local brand = txt(dev, "", UDo(BL + 4, DH - BB / 2 - 8), UDo(360, 16), 11, RGB(128, 134, 126), Enum.Font.BuilderSansBold)
   brand.Visible = not mob
   local capLabels = {}
   if not mob then
@@ -177,9 +177,9 @@ function TacPad.init(G)
       local cap = fr(dev, UDo(x, DH - BB / 2 - 11), UDo(w, 22), RGB(28, 30, 28))
       corner(cap, 5)
       stroke(cap, RGB(78, 82, 76), 1)
-      local l = txt(cap, c[1], UDs(0, 0), UDs(1, 1), 11, TEXT, Enum.Font.GothamBold, AC)
+      local l = txt(cap, c[1], UDs(0, 0), UDs(1, 1), 11, TEXT, Enum.Font.BuilderSansBold, AC)
       l.TextYAlignment = Enum.TextYAlignment.Center
-      local lab = txt(dev, "", UDo(x - 6, DH - BB / 2 - 7), UDo(70, 14), 11, RGB(130, 136, 128), Enum.Font.GothamMedium, AR, V2(1, 0))
+      local lab = txt(dev, "", UDo(x - 6, DH - BB / 2 - 7), UDo(70, 14), 11, RGB(130, 136, 128), Enum.Font.BuilderSansMedium, AR, V2(1, 0))
       capLabels[#capLabels + 1] = { lab, c[2] }
       x -= 84
     end
@@ -198,7 +198,7 @@ function TacPad.init(G)
 
   -- 状态栏
   local bar = fr(scr, UDs(0, 0), UD(1, 0, 0, TOP), RGB(0, 0, 0), 0.45)
-  local title = txt(bar, "", UDo(14, 0), UD(0, 320, 1, 0), mob and 12 or 13, TEXT, Enum.Font.GothamBold)
+  local title = txt(bar, "", UDo(14, 0), UD(0, 320, 1, 0), mob and 12 or 13, TEXT, Enum.Font.BuilderSansBold)
   local coord = txt(bar, "", UDs(0.5, 0), UD(0, 300, 1, 0), mob and 11 or 12, DIM, Enum.Font.RobotoMono, AC, V2(0.5, 0))
   local clock = txt(bar, "", UD(1, -14, 0, 0), UD(0, 280, 1, 0), mob and 11 or 12, TEXT, Enum.Font.RobotoMono, AR, V2(1, 0))
   fr(scr, UDo(0, TOP), UD(1, 0, 0, 1), RGB(255, 255, 255), 0.92)
@@ -273,13 +273,13 @@ function TacPad.init(G)
     local ib = fr(b, UDo(mob and 8 or 12, (CH - IB) / 2), UDo(IB, IB), RGB(23, 28, 29))
     corner(ib, 5)
     local paint = icon(ib, (it.kind == "drop") and "drop" or it.kind)
-    if not mob then txt(ib, tostring(i), UD(1, -3, 1, -1), UDo(12, 12), 9, FAINT, Enum.Font.GothamBold, AR, V2(1, 1)) end
-    local name = txt(b, "", UDo(NX, mob and 5 or 10), UDo(LW - 24 - NX - 96, 18), mob and 13 or 15, TEXT, Enum.Font.GothamBold)
-    local state = txt(b, "", UD(1, -12, 0, mob and 5 or 10), UDo(96, 18), mob and 10 or 11, DIM, Enum.Font.GothamMedium, AR, V2(1, 0))
+    if not mob then txt(ib, tostring(i), UD(1, -3, 1, -1), UDo(12, 12), 9, FAINT, Enum.Font.BuilderSansBold, AR, V2(1, 1)) end
+    local name = txt(b, "", UDo(NX, mob and 5 or 10), UDo(LW - 24 - NX - 96, 18), mob and 13 or 15, TEXT, Enum.Font.BuilderSansBold)
+    local state = txt(b, "", UD(1, -12, 0, mob and 5 or 10), UDo(96, 18), mob and 10 or 11, DIM, Enum.Font.BuilderSansMedium, AR, V2(1, 0))
     if mob then state.Position, state.AnchorPoint, state.TextXAlignment = UDo(NX, 24), V2(0, 0), AL end
     local desc
     if not mob then
-      desc = txt(b, "", UDo(NX, 31), UDo(LW - 24 - NX - 50, 32), 11, DIM, Enum.Font.Gotham)
+      desc = txt(b, "", UDo(NX, 31), UDo(LW - 24 - NX - 50, 32), 11, DIM, Enum.Font.BuilderSans)
       desc.TextWrapped = true
       desc.TextYAlignment = Enum.TextYAlignment.Top
     end
@@ -298,10 +298,10 @@ function TacPad.init(G)
   -- 选中那一样的详情 + 呼叫按钮
   local DY = TOP + 12 + #ORDER * (CH + CG) + (mob and 0 or 4)
   local det = fr(scr, UDo(12, DY), UDo(LW - 24, SH - DY - 12), RGB(0, 0, 0), 1)
-  local dName = txt(det, "", UDo(2, 0), UD(1, -4, 0, 22), 18, TEXT, Enum.Font.GothamBold)
-  local dInfo = txt(det, "", UDo(2, 26), UD(1, -4, 0, 16), 12, DIM, Enum.Font.Gotham)
+  local dName = txt(det, "", UDo(2, 0), UD(1, -4, 0, 22), 18, TEXT, Enum.Font.BuilderSansBold)
+  local dInfo = txt(det, "", UDo(2, 26), UD(1, -4, 0, 16), 12, DIM, Enum.Font.BuilderSans)
   local dTgt = txt(det, "", UDo(2, mob and 0 or 50), UD(1, -4, 0, 16), mob and 12 or 13, TEXT, Enum.Font.RobotoMono)
-  local dWarn = txt(det, "", UDo(2, mob and 17 or 70), UD(1, -4, 0, 14), 11, RED, Enum.Font.GothamMedium)
+  local dWarn = txt(det, "", UDo(2, mob and 17 or 70), UD(1, -4, 0, 14), 11, RED, Enum.Font.BuilderSansMedium)
   dName.Visible, dInfo.Visible = not mob, not mob
   local BTN_H = mob and 40 or 46
   local callBtn = Instance.new("TextButton")
@@ -309,7 +309,7 @@ function TacPad.init(G)
   callBtn.AutoButtonColor = true
   callBtn.BorderSizePixel = 0
   callBtn.Position, callBtn.Size = UD(0, 0, 1, -BTN_H), UD(1, 0, 0, BTN_H)
-  callBtn.Font = Enum.Font.GothamBold
+  callBtn.Font = Enum.Font.BuilderSansBold
   callBtn.TextSize = mob and 14 or 15
   callBtn.Parent = det
   corner(callBtn, 6)
@@ -339,7 +339,7 @@ function TacPad.init(G)
   ring.AnchorPoint = V2(0.5, 0.5)
   corner(ring, UDim.new(0.5, 0))
   stroke(ring, TEXT, 1.5, 0.45)
-  local ringLabel = txt(over, "", UDs(0.5, 0.5), UDo(160, 14), 11, DIM, Enum.Font.GothamMedium, AC, V2(0.5, 1))
+  local ringLabel = txt(over, "", UDs(0.5, 0.5), UDo(160, 14), 11, DIM, Enum.Font.BuilderSansMedium, AC, V2(0.5, 1))
   -- 自己 → 目标的连线、覆盖带、目标标记
   local path = fr(over, UDs(0.5, 0.5), UDo(10, 1.5), TEXT, 0.55)
   path.AnchorPoint = V2(0.5, 0.5)
@@ -361,7 +361,7 @@ function TacPad.init(G)
   local markL = txt(over, "", UDs(0.5, 0.5), UDo(220, 16), 12, AMBER, Enum.Font.RobotoMono, AL, V2(0, 0.5))
   markL.TextStrokeTransparency = 0.4
   -- 北、比例尺、操作提示、状态
-  local north = txt(over, "N", UD(1, -14, 0, 10), UDo(20, 16), 13, TEXT, Enum.Font.GothamBold, AC, V2(1, 0))
+  local north = txt(over, "N", UD(1, -14, 0, 10), UDo(20, 16), 13, TEXT, Enum.Font.BuilderSansBold, AC, V2(1, 0))
   local nTick = fr(over, UD(1, -24, 0, 6), UDo(2, 5), TEXT)
   nTick.AnchorPoint = V2(0.5, 0)
   local _ = north
@@ -370,11 +370,11 @@ function TacPad.init(G)
   local sbarR = fr(sbar, UD(1, -1.5, 0, -4), UDo(1.5, 6), TEXT)
   local _ = sbarL, sbarR
   local sText = txt(over, "", UD(0, 14, 1, -36), UDo(120, 14), 11, TEXT, Enum.Font.RobotoMono)
-  local hint = txt(over, "", UD(1, -14, 1, -12), UDo(360, 14), 11, DIM, Enum.Font.Gotham, AR, V2(1, 1))
+  local hint = txt(over, "", UD(1, -14, 1, -12), UDo(360, 14), 11, DIM, Enum.Font.BuilderSans, AR, V2(1, 1))
   local pill = fr(over, UD(0.5, 0, 0, 12), UDo(360, 26), RGB(0, 0, 0), 0.25)
   pill.AnchorPoint = V2(0.5, 0)
   corner(pill, 4)
-  local pillT = txt(pill, "", UDs(0, 0), UDs(1, 1), 13, TEXT, Enum.Font.GothamMedium, AC)
+  local pillT = txt(pill, "", UDs(0, 0), UDs(1, 1), 13, TEXT, Enum.Font.BuilderSansMedium, AC)
   pill.Visible = false
   -- 缩放按钮（右下）
   local zoomBtns = {}
@@ -382,7 +382,7 @@ function TacPad.init(G)
     local b = Instance.new("TextButton")
     b.Name = "Zoom" .. i
     b.Text = s
-    b.Font = Enum.Font.GothamBold
+    b.Font = Enum.Font.BuilderSansBold
     b.TextSize = 18
     b.TextColor3 = TEXT
     b.BackgroundColor3 = RGB(0, 0, 0)
@@ -783,7 +783,7 @@ function TacPad.init(G)
     closeBtn.Size = UDo(70, TOP - 4)
     closeBtn.Position = UD(1, -84, 0, 2)
     closeBtn.BackgroundTransparency = 1
-    closeBtn.Font = Enum.Font.GothamBold
+    closeBtn.Font = Enum.Font.BuilderSansBold
     closeBtn.TextSize = 12
     closeBtn.TextColor3 = AMBER
     closeBtn.Text = T("tac.closeTouch")

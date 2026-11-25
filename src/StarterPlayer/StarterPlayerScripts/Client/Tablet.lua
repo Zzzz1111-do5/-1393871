@@ -120,19 +120,19 @@ function Tablet.init(G)
       local x = (i == 1) and (X0 + 0.01) or (X1 - 0.05)
       local led = fr(root, UD(x, 0, Y0 * 0.5, -4), UDo(8, 8), RGB(80, 230, 110))
       corner(led, 4)
-      txt(root, name, UD(x, 14, Y0 * 0.5, -7), UDo(60, 14), 11, RGB(150, 156, 150), Enum.Font.GothamMedium)
+      txt(root, name, UD(x, 14, Y0 * 0.5, -7), UDo(60, 14), 11, RGB(150, 156, 150), Enum.Font.BuilderSansMedium)
       G.tabletLeds[name] = led
     end
     -- 底边：牌子、四个硬键（键帽上印着键位）
-    statics[#statics + 1] = { txt(root, "", UD(X0 + 0.004, 0, Y1 + (1 - Y1) * 0.18, 0), UDo(360, 18), 12, RGB(132, 138, 130), Enum.Font.GothamBold), "uav.brand" }
+    statics[#statics + 1] = { txt(root, "", UD(X0 + 0.004, 0, Y1 + (1 - Y1) * 0.18, 0), UDo(360, 18), 12, RGB(132, 138, 130), Enum.Font.BuilderSansBold), "uav.brand" }
     local keys = { { "V", "uav.kCam" }, { "Z", "uav.kZoom" }, { "N", "uav.kNv" }, { "F", "uav.kExit" } }
     for i, kk in ipairs(keys) do
       local x = X1 - 0.004 - (#keys - i + 1) * 0.052
       local cap = fr(root, UD(x, 0, Y1 + (1 - Y1) * 0.16, 0), UDo(46, 22), RGB(28, 30, 28))
       corner(cap, 5)
       stroke(cap, RGB(78, 82, 76), 1)
-      txt(cap, kk[1], UDs(0, 0), UDs(1, 1), 13, RGB(230, 232, 226), Enum.Font.GothamBold, AC).TextStrokeTransparency = 1
-      statics[#statics + 1] = { txt(root, "", UD(x, 23, Y1 + (1 - Y1) * 0.16, 24), UDo(80, 14), 10, RGB(130, 136, 128), Enum.Font.GothamMedium, AC, V2(0.5, 0)), kk[2] }
+      txt(cap, kk[1], UDs(0, 0), UDs(1, 1), 13, RGB(230, 232, 226), Enum.Font.BuilderSansBold, AC).TextStrokeTransparency = 1
+      statics[#statics + 1] = { txt(root, "", UD(x, 23, Y1 + (1 - Y1) * 0.16, 24), UDo(80, 14), 10, RGB(130, 136, 128), Enum.Font.BuilderSansMedium, AC, V2(0.5, 0)), kk[2] }
     end
   end
 
@@ -155,7 +155,7 @@ function Tablet.init(G)
   local sig = {}   -- 信号格：五根一根比一根高的竖条
   for i = 1, 5 do sig[i] = fr(bar, UD(0, 166 + (i - 1) * 6, 1, -5 - i * 2.4), UDo(4, i * 2.4), WHITE) end
   local linkType = txt(bar, "", UDo(202, 0), UD(0, 80, 1, 0), 14, WHITE)
-  local title = txt(bar, "", UDs(0.5, 0), UD(0, 420, 1, 0), 14, WHITE, Enum.Font.GothamBold, AC, V2(0.5, 0))
+  local title = txt(bar, "", UDs(0.5, 0), UD(0, 420, 1, 0), 14, WHITE, Enum.Font.BuilderSansBold, AC, V2(0.5, 0))
   local batText = txt(bar, "", UD(1, -12, 0, 0), UD(0, 230, 1, 0), 14, WHITE, Enum.Font.RobotoMono, AR, V2(1, 0))
   -- 航向带：每 10° 一格，看得见左右 30°
   local tape = fr(osd, UD(0.5, 0, 0, 32), UD(0.4, 0, 0, 22), RGB(0, 0, 0), 0.65)
@@ -166,7 +166,7 @@ function Tablet.init(G)
   for i = 0, 35 do
     local a = i * 10
     local s = NAMES[a] or ((a % 30 == 0) and tostring(a // 10) or "·")
-    marks[i] = txt(tape, s, UDs(0.5, 0.5), UDo(30, 20), (NAMES[a] and 15) or 13, NAMES[a] and AMBER or WHITE, Enum.Font.GothamBold, AC, V2(0.5, 0.5))
+    marks[i] = txt(tape, s, UDs(0.5, 0.5), UDo(30, 20), (NAMES[a] and 15) or 13, NAMES[a] and AMBER or WHITE, Enum.Font.BuilderSansBold, AC, V2(0.5, 0.5))
     marks[i].Visible = false
   end
   fr(tape, UD(0.5, -1, 0, 0), UD(0, 2, 0, 5), AMBER)
@@ -197,11 +197,11 @@ function Tablet.init(G)
     local f = fr(osd, UDs(0, 0), UD(1, 0, 0, 3), RGB(255, 255, 255), 1)
     noise[i] = f
   end
-  local weakText = txt(osd, "", UD(0.5, 0, 0, 80), UDo(300, 20), 16, AMBER, Enum.Font.GothamBold, AC, V2(0.5, 0))
+  local weakText = txt(osd, "", UD(0.5, 0, 0, 80), UDo(300, 20), 16, AMBER, Enum.Font.BuilderSansBold, AC, V2(0.5, 0))
   -- 操作员挨打：屏幕边一圈红闪 + 字
   local hurt = fr(osd, UDo(8, 8), UD(1, -16, 1, -16), RGB(0, 0, 0), 1)
   local hurtS = stroke(hurt, RED, 8, 1)
-  local hurtText = txt(osd, "", UD(0.5, 0, 0, 104), UDo(420, 24), 18, RED, Enum.Font.GothamBold, AC, V2(0.5, 0))
+  local hurtText = txt(osd, "", UD(0.5, 0, 0, 104), UDo(420, 24), 18, RED, Enum.Font.BuilderSansBold, AC, V2(0.5, 0))
   -- 开机：黑屏 + 「建立数据链…」+ 进度条
   local boot = fr(osd, UDs(0, 0), UDs(1, 1), RGB(4, 6, 6), 0)
   local bootT = txt(boot, "", UDs(0.5, 0.46), UDo(420, 24), 18, RGB(150, 230, 170), Enum.Font.RobotoMono, AC, V2(0.5, 0.5))
@@ -378,7 +378,7 @@ function Tablet.init(G)
   hint.BackgroundTransparency = 0.35
   hint.BorderSizePixel = 0
   hint.AutoButtonColor = false
-  hint.Font = Enum.Font.GothamMedium
+  hint.Font = Enum.Font.BuilderSansMedium
   hint.TextSize = 15
   hint.TextColor3 = RGB(236, 240, 236)
   hint.Text = ""

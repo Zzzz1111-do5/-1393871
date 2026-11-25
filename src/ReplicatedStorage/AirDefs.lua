@@ -11,6 +11,16 @@ local V = Vector3.new
 
 AirDefs.M = 2.8   -- 1 米多少格
 AirDefs.GRAV = 27.5   -- 飞行用的重力（格 / 秒²，9.8 米 / 秒²）
+-- 抛射（用户 11-25「部分直升机我记得发射导弹是抛射」「或许不止直升机」）：发射后先不点火，t 秒以后发动机才着、开始制导
+--   tube 筒射：抛射药把弹往前推出发射筒（毒刺约 28 米 / 秒，离开 8 米左右主发动机才点火，免得烧着射手 / 飞机）；
+--   drop 弹射下落：弹舱、机身半埋挂点的弹射挂架（F-22 的 LAU-142、F-15 机身的 LAU-106、F-14 的 LAU-93、苏-27 进气道下的 AKU-470）
+--   把弹往下推开约 7.6 米 / 秒，掉出气流再点火；cruise 涡喷巡航弹（鹰击-83K、KD-88）从挂架上投下，发动机起动要一会儿
+--   f 往前推的速度、d 往下推的速度（格 / 秒，1 米 = 2.8 格）；挂点也能标 ej = true（那个挂点的弹一律弹射下落）
+AirDefs.EJ = {
+  tube = { t = 0.3, f = 78, d = 0 },
+  drop = { t = 0.45, f = 0, d = 21 },
+  cruise = { t = 0.9, f = 0, d = 10 },
+}
 
 ---------------------------------------------------------------- 机载武器
 
@@ -49,12 +59,12 @@ AirDefs.W = {
     shape = { L = 8.4, d = 0.36, fin = 0.8 } },
   aim120 = { kind = "aam", seeker = "radar", dmg = 560, splash = 16, speed = 760, range = 3800, lockTime = 2.0, cone = 22, turn = 55, burn = 5, life = 8.5, vs = VS_AAM,
     shape = { L = 10.2, d = 0.5, fin = 1.0 } },
-  ty90 = { kind = "aam", seeker = "ir", dmg = 340, splash = 10, speed = 480, range = 1300, lockTime = 0.9, cone = 30, turn = 60, burn = 3, life = 5.5, vs = VS_AAM,
+  ty90 = { kind = "aam", eject = "tube", seeker = "ir", dmg = 340, splash = 10, speed = 480, range = 1300, lockTime = 0.9, cone = 30, turn = 60, burn = 3, life = 5.5, vs = VS_AAM,
     shape = { L = 5.3, d = 0.25, fin = 0.6 } },
-  aim92 = { kind = "aam", seeker = "ir", dmg = 340, splash = 10, speed = 480, range = 1300, lockTime = 0.9, cone = 30, turn = 60, burn = 3, life = 5.5, vs = VS_AAM,
+  aim92 = { kind = "aam", eject = "tube", seeker = "ir", dmg = 340, splash = 10, speed = 480, range = 1300, lockTime = 0.9, cone = 30, turn = 60, burn = 3, life = 5.5, vs = VS_AAM,
     shape = { L = 4.5, d = 0.2, fin = 0.5 } },
   -- AIM-54 不死鸟（F-14 专用，用户 11-23 加 F-14）：4 米长、454 公斤的远程雷达弹——射程最远、飞得快，但又重又笨（转得慢、导引头视场窄、锁得慢）
-  aim54 = { kind = "aam", seeker = "radar", dmg = 620, splash = 18, speed = 820, range = 4600, lockTime = 2.6, cone = 18, turn = 38, burn = 6, life = 10, vs = VS_AAM,
+  aim54 = { kind = "aam", eject = { t = 0.6, f = 0, d = 18 }, seeker = "radar", dmg = 620, splash = 18, speed = 820, range = 4600, lockTime = 2.6, cone = 18, turn = 38, burn = 6, life = 10, vs = VS_AAM,
     shape = { L = 11.0, d = 1.06, fin = 1.6 } },
 
   -- 铠甲-S1 的 57E6 地空导弹（地面车发射；车上的弹药数在 VehDefs.W.s57e6，服务器 Armor.lua 按这里的速度、转弯飞；客户端照 shape 画）：
@@ -66,7 +76,7 @@ AirDefs.W = {
     shape = { L = 5.0, d = 0.5, fin = 0.7 } },
   agm114 = { kind = "agm", dmg = 900, splash = 10, speed = 380, range = 2400, lockTime = 1.2, cone = 25, turn = 40, burn = 6, life = 9, vs = VS_AGM,
     shape = { L = 4.5, d = 0.5, fin = 0.7 } },
-  kd88 = { kind = "agm", dmg = 1400, splash = 22, speed = 520, range = 4200, lockTime = 1.6, cone = 18, turn = 25, burn = 9, life = 12, vs = VS_AGM,
+  kd88 = { kind = "agm", eject = "cruise", dmg = 1400, splash = 22, speed = 520, range = 4200, lockTime = 1.6, cone = 18, turn = 25, burn = 9, life = 12, vs = VS_AGM,
     shape = { L = 13, d = 1.0, fin = 1.6, wing = 2.6 } },
   agm65 = { kind = "agm", dmg = 1150, splash = 14, speed = 480, range = 3000, lockTime = 1.4, cone = 20, turn = 30, burn = 6, life = 10, vs = VS_AGM,
     shape = { L = 7.0, d = 0.85, fin = 1.4 } },
@@ -92,11 +102,11 @@ AirDefs.W = {
 
   pl12 = { kind = "aam", seeker = "radar", dmg = 540, splash = 15, speed = 720, range = 2800, lockTime = 1.6, cone = 25, turn = 50, burn = 4.5, life = 7.5, vs = VS_AAM,
     shape = { L = 10.4, d = 0.57, fin = 1.0 } },
-  yj91 = { kind = "agm", arm = true, dmg = 1000, splash = 14, speed = 560, range = 3800, lockTime = 1.4, cone = 25, turn = 30, burn = 8, life = 11,
+  yj91 = { kind = "agm", eject = "drop", arm = true, dmg = 1000, splash = 14, speed = 560, range = 3800, lockTime = 1.4, cone = 25, turn = 30, burn = 8, life = 11,
     vs = { inf = 0.6, light = 1.8, armor = 0.8, air = 0.2, ship = 1.1, fort = 1.6 }, shape = { L = 13.2, d = 1.0, fin = 1.6 } },
   -- 鹰击-83K 空射反舰导弹（歼-15T 的原模型就挂着它，用户给的「J-15T with YJ-83K」）：长约 5.1 米、弹径 0.36 米、翼展约 1.2 米；
   --   涡喷发动机亚音速掠海飞行，比 KD-88 慢、射程远，打船狠（对船 3.2 倍）
-  yj83k = { kind = "agm", dmg = 1600, splash = 20, speed = 440, range = 5000, lockTime = 1.6, cone = 18, turn = 22, burn = 14, life = 15,
+  yj83k = { kind = "agm", eject = "cruise", dmg = 1600, splash = 20, speed = 440, range = 5000, lockTime = 1.6, cone = 18, turn = 22, burn = 14, life = 15,
     vs = { inf = 0.6, light = 1.2, armor = 0.8, air = 0.1, ship = 3.2, fort = 1.0 }, shape = { L = 14.3, d = 1.0, fin = 1.4, wing = 3.4 } },
   agm88 = { kind = "agm", arm = true, dmg = 950, splash = 13, speed = 580, range = 3600, lockTime = 1.4, cone = 25, turn = 30, burn = 8, life = 11,
     vs = { inf = 0.6, light = 1.8, armor = 0.8, air = 0.2, ship = 1.1, fort = 1.6 }, shape = { L = 11.6, d = 0.71, fin = 1.3 } },
@@ -113,20 +123,20 @@ AirDefs.W = {
     vs = { inf = 1, light = 0.6, armor = 0.03, air = 0.9, ship = 0.05, fort = 0.15 } },
   m197 = { kind = "gun", rate = 0.06, dmg = 30, speed = 1500, range = 1500, splash = 2.5, cal = 0.16, turret = true,  -- AH-1 M197 20 毫米三管炮塔
     vs = { inf = 1, light = 1.05, armor = 0.18, air = 1.2, ship = 0.25, fort = 0.5 } },
-  ataka = { kind = "agm", dmg = 950, splash = 10, speed = 430, range = 2200, lockTime = 1.4, cone = 25, turn = 35, burn = 6, life = 9, vs = VS_AGM,   -- 9M120 攻击（米-28N）：无线电指令
+  ataka = { kind = "agm", eject = "tube", dmg = 950, splash = 10, speed = 430, range = 2200, lockTime = 1.4, cone = 25, turn = 35, burn = 6, life = 9, vs = VS_AGM,   -- 9M120 攻击（米-28N）：无线电指令
     shape = { L = 6.1, d = 0.45, fin = 0.7 } },
-  shturm = { kind = "agm", dmg = 800, splash = 9, speed = 350, range = 2000, lockTime = 1.4, cone = 22, turn = 30, burn = 5, life = 9, vs = VS_AGM,   -- 9M114 突击（米-24V）
+  shturm = { kind = "agm", eject = "tube", dmg = 800, splash = 9, speed = 350, range = 2000, lockTime = 1.4, cone = 22, turn = 30, burn = 5, life = 9, vs = VS_AGM,   -- 9M114 突击（米-24V）
     shape = { L = 6.0, d = 0.45, fin = 0.7 } },
   vikhr = { kind = "agm", dmg = 950, splash = 10, speed = 520, range = 2800, lockTime = 1.4, cone = 25, turn = 35, burn = 6, life = 9, vs = VS_AGM,   -- 9K121 旋风（卡-52）：激光驾束、超音速
     shape = { L = 8.0, d = 0.4, fin = 0.7 } },
   hot3 = { kind = "agm", dmg = 850, splash = 9, speed = 280, range = 1900, lockTime = 1.3, cone = 25, turn = 35, burn = 5, life = 10, vs = VS_AGM,    -- HOT 3（虎式 UHT）：有线指令
     shape = { L = 3.6, d = 0.5, fin = 0.8 } },
-  tow = { kind = "agm", dmg = 800, splash = 9, speed = 290, range = 1700, lockTime = 1.3, cone = 22, turn = 30, burn = 5, life = 9, vs = VS_AGM,      -- BGM-71 陶式（AH-1S）：有线指令
+  tow = { kind = "agm", eject = { t = 0.18, f = 188, d = 0 }, dmg = 800, splash = 9, speed = 290, range = 1700, lockTime = 1.3, cone = 22, turn = 30, burn = 5, life = 9, vs = VS_AGM,      -- BGM-71 陶式（AH-1S）：有线指令
     shape = { L = 3.3, d = 0.45, fin = 0.8 } },
   s8 = { kind = "rkt", dmg = 250, splash = 13, speed = 700, range = 1700, rate = 0.1, tubes = 20, vs = VS_RKT, shape = { L = 4.4, d = 1.2 } },        -- S-8 80 毫米（B-8V20 火箭巢）
-  igla = { kind = "aam", seeker = "ir", dmg = 320, splash = 10, speed = 470, range = 1200, lockTime = 1.0, cone = 28, turn = 55, burn = 3, life = 5.5, vs = VS_AAM,   -- 9K38 针-V
+  igla = { kind = "aam", eject = "tube", seeker = "ir", dmg = 320, splash = 10, speed = 470, range = 1200, lockTime = 1.0, cone = 28, turn = 55, burn = 3, life = 5.5, vs = VS_AAM,   -- 9K38 针-V
     shape = { L = 4.4, d = 0.2, fin = 0.5 } },
-  type91 = { kind = "aam", seeker = "ir", dmg = 320, splash = 10, speed = 470, range = 1200, lockTime = 1.0, cone = 28, turn = 55, burn = 3, life = 5.5, vs = VS_AAM, -- 91 式便携防空导弹（OH-1）
+  type91 = { kind = "aam", eject = "tube", seeker = "ir", dmg = 320, splash = 10, speed = 470, range = 1200, lockTime = 1.0, cone = 28, turn = 55, burn = 3, life = 5.5, vs = VS_AAM, -- 91 式便携防空导弹（OH-1）
     shape = { L = 4.0, d = 0.2, fin = 0.5 } },
 }
 -- 导引方式：ir 红外、radar 主动雷达、laser 激光、gps 卫星 / 惯性、tv 电视 / 红外成像、arm 被动雷达（反辐射）、none 无制导
@@ -440,7 +450,7 @@ D.j15t = { kind = "jet", cat = "jet", L = 61, W = 41, H = 16.5, gearH = 7.2, hp 
     { name = "outer", pos = V(16, -1.1, 8.5), opts = { "pl10", "pl15", "pl12" } },
     { name = "mid", pos = V(12, -1.3, 6.0), opts = { "pl15", "pl12", "kd88", "yj83k", "yj91", "ls6", "lt2", "b250" }, n = N({ b250 = 2 }) },
     { name = "inner", pos = V(7.8, -1.5, 4.0), opts = { "pl15", "pl12", "kd88", "yj83k", "yj91", "ls6", "lt2", "b250" }, n = N({ b250 = 2 }) },
-    { name = "duct", pos = V(2.8, -3.6, 3.0), opts = { "pl15", "pl12", "ls6" } },
+    { name = "duct", pos = V(2.8, -3.6, 3.0), opts = { "pl15", "pl12", "ls6" }, ej = true },
   }),
   presets = { preset("aa", { tip = "pl10", outer = "pl10", mid = "pl15", inner = "pl15", duct = "pl15" }),
     preset("antiship", { tip = "pl10", outer = "pl12", mid = "pl15", inner = "yj83k", duct = "pl15" }),   -- 两枚鹰击-83K（原模型的挂法）
@@ -461,7 +471,7 @@ D.j16 = { kind = "jet", cat = "jet", L = 61, W = 41, H = 16.5, gearH = 7.2, hp =
     { name = "outer", pos = V(16, -1.1, 8.5), opts = { "pl10", "pl15", "pl12" } },
     { name = "mid", pos = V(12, -1.3, 6.0), opts = { "pl15", "pl12", "kd88", "yj91", "ls6", "lt2", "b250" }, n = N({ b250 = 2 }) },
     { name = "inner", pos = V(7.8, -1.5, 4.0), opts = { "pl15", "pl12", "kd88", "yj91", "ls6", "lt2", "b250" }, n = N({ b250 = 2 }) },
-    { name = "duct", pos = V(2.8, -3.6, 3.0), opts = { "pl15", "pl12", "ls6", "kd88" } },
+    { name = "duct", pos = V(2.8, -3.6, 3.0), opts = { "pl15", "pl12", "ls6", "kd88" }, ej = true },
   }),
   presets = { preset("aa", { tip = "pl10", outer = "pl10", mid = "pl15", inner = "pl15", duct = "pl15" }),
     preset("ag", { tip = "pl10", outer = "pl15", mid = "kd88", inner = "kd88", duct = "ls6" }),
@@ -483,8 +493,8 @@ D.j11 = { kind = "jet", cat = "jet", L = 61, W = 39, H = 14, gearH = 10, hp = 76
     { name = "tip", pos = V(19.3, -0.2, 11.5), opts = { "pl10" } },
     { name = "outer", pos = V(14.5, -1.0, 8.0), opts = { "pl10", "pl12" } },
     { name = "mid", pos = V(10.5, -1.2, 5.0), opts = { "pl12", "pl15", "kd88", "ls6", "lt2", "b250" }, n = N({ b250 = 2 }) },
-    { name = "duct", pos = V(2.6, -3.0, 2.0), opts = { "pl12", "pl15" } },
-    { name = "ctr", pos = V(0, -2.6, -3.0), opts = { "pl12", "pl15", "ls6", "b250" }, n = N({ b250 = 2 }) },
+    { name = "duct", pos = V(2.6, -3.0, 2.0), opts = { "pl12", "pl15" }, ej = true },
+    { name = "ctr", pos = V(0, -2.6, -3.0), opts = { "pl12", "pl15", "ls6", "b250" }, n = N({ b250 = 2 }), ej = true },
   }),
   presets = { preset("aa", { tip = "pl10", outer = "pl10", mid = "pl12", duct = "pl12", ctr = "pl15" }),
     preset("ag", { tip = "pl10", outer = "pl12", mid = "kd88", duct = "pl12", ctr = "ls6" }),
@@ -707,8 +717,8 @@ D.f15 = { kind = "jet", cat = "jet", L = 54, W = 36.5, H = 15.8, gearH = 6.4, hp
     { name = "railO", pos = V(10.6, -1.7, 4.5), opts = { "aim9x", "aim120" } },
     { name = "railI", pos = V(8.2, -1.7, 4.5), opts = { "aim120", "aim9x" } },
     { name = "pylon", pos = V(9.4, -2.6, 3.0), opts = { "tk370", "gbu12", "gbu31", "mk82" } },
-    { name = "fusF", pos = V(3.9, -2.6, -5), opts = { "aim120" } },
-    { name = "fusA", pos = V(3.9, -2.6, 9), opts = { "aim120" } },
+    { name = "fusF", pos = V(3.9, -2.6, -5), opts = { "aim120" }, ej = true },   -- 机身半埋挂点：LAU-106 弹射挂架
+    { name = "fusA", pos = V(3.9, -2.6, 9), opts = { "aim120" }, ej = true },
     { name = "ctr", pos = V(0, -3.2, 2), opts = { "tk370" } },
   }),
   presets = { preset("aa", { railO = "aim9x", railI = "aim120", fusF = "aim120", fusA = "aim120", ctr = "tk370" }),
@@ -730,8 +740,8 @@ D.f14 = { kind = "jet", cat = "jet", L = 53.5, W = 54.7, H = 13.7, gearH = 6.0, 
   st = mirror({
     { name = "gloveO", pos = V(6.6, -0.6, -1.0), opts = { "aim9x" } },
     { name = "gloveI", pos = V(5.6, -1.7, 0.5), opts = { "aim54", "aim120" } },
-    { name = "tunF", pos = V(1.6, -2.7, -6), opts = { "aim54", "aim120", "gbu12", "mk82" } },
-    { name = "tunA", pos = V(1.6, -2.7, 6), opts = { "aim54", "aim120", "gbu12", "mk82" } },
+    { name = "tunF", pos = V(1.6, -2.7, -6), opts = { "aim54", "aim120", "gbu12", "mk82" }, ej = true },   -- 机腹通道托架：LAU-93 / LAU-92 弹射
+    { name = "tunA", pos = V(1.6, -2.7, 6), opts = { "aim54", "aim120", "gbu12", "mk82" }, ej = true },
     { name = "duct", pos = V(4.2, -3.4, 2), opts = { "tk370" } },
   }),
   presets = { preset("phoenix", { gloveO = "aim9x", gloveI = "aim54", tunF = "aim54", tunA = "aim54" }),

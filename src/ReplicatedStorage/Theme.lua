@@ -35,16 +35,30 @@ Theme.A = {
   stroke = 0.45,  -- 战场上的字的描边
 }
 
--- 字体：正文 GothamMedium、强调 GothamBold、大标题 GothamBlack、数字和仪表 RobotoMono（Code 字体缺字形，不用）
+-- 字体（用户 11-25「字体不清晰」）：正文、强调、标题换成 Roblox 自己的 Builder Sans（小字号下比 Gotham 清楚，中文跟着用粗一档的字重），
+--   数字和仪表 RobotoMono；卡片上的短标签、型号用窄体 RobotoCondensed（同类游戏的军事界面感）
 Theme.F = {
-  body = Enum.Font.GothamMedium,
-  bold = Enum.Font.GothamBold,
-  title = Enum.Font.GothamBlack,
+  body = Enum.Font.BuilderSansMedium,
+  bold = Enum.Font.BuilderSansBold,
+  title = Enum.Font.BuilderSansExtraBold,
   mono = Enum.Font.RobotoMono,
+  cond = Enum.Font.RobotoCondensed,
 }
 
--- 字号
-Theme.S = { tiny = 11, small = 12, body = 14, sub = 16, title = 20, big = 28, huge = 40 }
+-- 字号（11-25 整体大一档：12 / 13 / 15 / 17 / 21 / 29 / 42）
+Theme.S = { tiny = 12, small = 13, body = 15, sub = 17, title = 21, big = 29, huge = 42 }
+-- 科技树等级的底色（用户 11-25「载具科技树不同等级的载具背景颜色要有区别」）：一级一个色，压暗、偏军用色，不用蓝；
+--   科技树每一级的横条、车卡车图底板、机库阵容卡、详情大图都按它（Theme.rankGrad）
+Theme.RANK = {
+  Color3.fromRGB(86, 104, 80),    -- I   灰绿
+  Color3.fromRGB(108, 106, 62),   -- II  橄榄
+  Color3.fromRGB(124, 104, 70),   -- III 沙褐
+  Color3.fromRGB(128, 86, 58),    -- IV  铜褐
+  Color3.fromRGB(122, 64, 62),    -- V   砖红
+  Color3.fromRGB(102, 70, 98),    -- VI  紫褐
+  Color3.fromRGB(132, 112, 52),   -- VII 暗金
+}
+function Theme.rankColor(r) return Theme.RANK[math.clamp(math.floor(r or 1), 1, #Theme.RANK)] end
 Theme.R = 2   -- 圆角（像素）：方正、硬朗
 
 -- 自己这一边 / 对面：一律按看的人算（不按攻守方的固定颜色）
@@ -123,6 +137,26 @@ function Theme.button(parent, text, size, pos, primary)
   if not primary then Theme.stroke(b) end
   b.Parent = parent
   return b
+end
+
+-- 竖着的渐变（上 → 下）：面板、卡片的车图底板（用户 11-25「没有设计感」：纯色细线太平，加一点层次）
+-- 车图底板按等级上色：上面是这一级的颜色（亮一点）、往下压到近黑
+function Theme.rankGrad(o, r)
+  local c = Theme.rankColor(r)
+  return Theme.grad(o, c:Lerp(Color3.new(1, 1, 1), 0.12), c:Lerp(Color3.new(0, 0, 0), 0.82))
+end
+function Theme.grad(o, top, bottom, rot)
+  local g = o:FindFirstChildOfClass("UIGradient") or Instance.new("UIGradient")
+  g.Color = ColorSequence.new(top, bottom)
+  g.Rotation = rot or 90
+  g.Parent = o
+  return g
+end
+-- 选中的发光描边（琥珀）：外面再套一圈淡的
+function Theme.glow(o, col)
+  local s = Theme.stroke(o, true, col or Theme.C.WARN)
+  s.Thickness, s.Transparency = 2, 0
+  return s
 end
 
 -- 选中 / 没选中（页签、分段按钮）：选中白底黑字，没选中灰底白字
