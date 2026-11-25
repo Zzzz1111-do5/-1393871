@@ -80,6 +80,7 @@ function WtCam.init(G)
     if G.hangarSet then pcall(G.hangarSet, false) end
   end
   specBtn.MouseButton1Click:Connect(start)
+  G.wtSpecStart = start   -- 机库顶上的「观战」（TechUI.lua）调这个
   backBtn.MouseButton1Click:Connect(stop)
   UIS.InputBegan:Connect(function(io, gp)
     if not on or gp then return end
@@ -94,7 +95,7 @@ function WtCam.init(G)
     local hangar = G.hangarActive and G.hangarActive() and not alive and S and (S.phase == "battle" or S.phase == "prep")
       and not (G.deathFxOn and G.deathFxOn())
     if on and (alive or not hangar) then stop() end
-    specBtn.Visible = (hangar and not on) == true   -- 开局还没有 S 时 hangar 是 nil（给 Visible 赋 nil 会报错）
+    specBtn.Visible = (hangar and not on and not G.hangarHasSpec) == true   -- 开局还没有 S 时 hangar 是 nil（给 Visible 赋 nil 会报错）；机库顶上有「观战」就不画这个
     backBtn.Visible = on
     info.Visible = on
     if not on then return end

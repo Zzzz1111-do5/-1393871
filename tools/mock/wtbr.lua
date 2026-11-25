@@ -65,7 +65,7 @@ if high then
   R.run(1.5)
   local go
   for _, c in ipairs(hg and hg:GetDescendants() or {}) do
-    if c.Name == "Line_" .. high.key then go = c:FindFirstChild("Go") end
+    if c.Name == "Line_" .. high.key then go = c:FindFirstChild("Sp") end   -- 机库 11-25 重排：卡片底下那行状态字
   end
   check(go ~= nil and go.Text:find("超出") ~= nil, "机库卡片写着超出本局战斗等级（" .. tostring(go and go.Text) .. "）")
 end

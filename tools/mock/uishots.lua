@@ -74,11 +74,15 @@ local function lineupKey(branch)
 end
 local function sortie(key)
   if not key then return false end
-  local go = nil
+  local card, go = nil, nil
   for _, c in ipairs(hg:GetDescendants()) do
-    if c.Name == "Line_" .. key then go = c:FindFirstChild("Go") end
+    if c.Name == "Line_" .. key then card = c end
   end
-  if go then T.press(go) else T.act("deployVeh", key) end
+  if card then T.press(card) R.run(0.2) end   -- 点卡片选中，再按右下大「出击」
+  for _, c in ipairs(hg:GetDescendants()) do
+    if c.Name == "HangarGo" then go = c end
+  end
+  if go and card then T.press(go) else T.act("deployVeh", key) end
   T.runUntil(function() return P.alive and P.vehicle ~= nil end, 15)
   return P.vehicle ~= nil
 end

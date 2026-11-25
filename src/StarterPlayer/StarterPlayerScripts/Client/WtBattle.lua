@@ -415,6 +415,7 @@ function WtBattle.init(G)
     local covered = (G.menuShown and G.menuShown()) or (G.boardShown and G.boardShown()) or G.factionOpen
     local driving = G.drive ~= nil or G.myVeh ~= nil
     local show = w ~= nil and not covered and not driving and (S.phase == "battle" or S.phase == "prep") and S.picked ~= false
+      and not (G.hangarGui and G.hangarGui.Visible)   -- 机库顶上自己写了 SP（TechUI.lua），这一块不再叠在 3D 车上
     chip.Visible = show
     local t = os.clock()
     if w then
