@@ -9,7 +9,7 @@ local RGB = Color3.fromRGB
 local UD2 = UDim2.new
 local V3 = Vector3.new
 local PI = math.pi
-local FONT = Enum.Font.Code
+local FONT = Enum.Font.RobotoMono
 local FONTB = Enum.Font.GothamBold
 local function clamp(x, a, b) return x < a and a or (x > b and b or x) end
 

@@ -10,7 +10,7 @@ function SquadHud.init(G)
   local T = G.T or function(k) return k end
   local player = Players.LocalPlayer
   local RGB, V = Color3.fromRGB, Vector3.new
-  local GREEN = RGB(116, 232, 120)
+  local GREEN = G.Theme.C.GOOD
   local function clamp(x, a, b) return x < a and a or (x > b and b or x) end
 
   local gui = Instance.new("ScreenGui")
@@ -155,7 +155,9 @@ function SquadHud.init(G)
     local myHrp = myCh and myCh:FindFirstChild("HumanoidRootPart")
     -- 开飞机、战雷式界面（WtFlight.lua）开着时左上是参数表：小队名单先收起来
     local flying = G.wtFlightOn and G.fly ~= nil and G.fly.pilot == true
-    panel.Visible = sq ~= nil and not menu and myHrp ~= nil and not flying
+    -- 只开车的对局（机库）：没有步兵小队这回事，「等队友加入」那一块不画（统一外观：左上是击杀栏 / 飞行参数）
+    local vehOnly = G.hangarActive ~= nil and G.hangarActive() == true
+    panel.Visible = sq ~= nil and not menu and myHrp ~= nil and not flying and not vehOnly
     title.Text = sq and T("squad.title", sq) or ""
     local seen = {}
     for i, pl in ipairs(list) do

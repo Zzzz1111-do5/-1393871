@@ -142,11 +142,11 @@ function Drive.init(G)
   local dc = Instance.new("UICorner")
   dc.CornerRadius = UDim.new(0.5, 0)
   dc.Parent = dot
-  local rangeText = ui.label(sight, "", UDim2.fromOffset(200, 30), UDim2.new(0.5, 0, 0.5, 150), 26, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
-  local modeText = ui.label(sight, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.5, -180), 16, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
-  local zoomText = ui.label(sight, "", UDim2.fromOffset(120, 22), UDim2.new(0.5, 200, 0.5, 150), 16, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local rangeText = ui.label(sight, "", UDim2.fromOffset(200, 30), UDim2.new(0.5, 0, 0.5, 150), 26, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
+  local modeText = ui.label(sight, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.5, -180), 16, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
+  local zoomText = ui.label(sight, "", UDim2.fromOffset(120, 22), UDim2.new(0.5, 200, 0.5, 150), 16, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
   -- 火控显示（照钢铁猛兽 / 真车主瞄准镜下沿那一行）：弹种、测距（没测距是战斗瞄准距离，前面写 BS；没回波 ----）、待发方块（装好弹是实心）
-  local ammoText = ui.label(sight, "", UDim2.fromOffset(150, 24), UDim2.new(0.5, -190, 0.5, 150), 18, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local ammoText = ui.label(sight, "", UDim2.fromOffset(150, 24), UDim2.new(0.5, -190, 0.5, 150), 18, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
   ammoText.Name = "FcsAmmo"
   rangeText.Name = "FcsRange"
   local readyBox = ui.frame(sight, UDim2.fromOffset(15, 15), UDim2.new(0.5, 118, 0.5, 150), RET, 0, Vector2.new(0.5, 0.5))
@@ -156,7 +156,7 @@ function Drive.init(G)
   multiBar.Name = "FcsMulti"
   multiBar.Visible = false
   -- 火控状态（方式不是正常、稳定器关、激光保险、炮口基准该更新了）：分划上方一行
-  local fcsText = ui.label(sight, "", UDim2.fromOffset(420, 20), UDim2.new(0.5, 0, 0.5, 118), 15, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local fcsText = ui.label(sight, "", UDim2.fromOffset(420, 20), UDim2.new(0.5, 0, 0.5, 118), 15, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
   fcsText.Name = "FcsStatus"
   local readyStroke = Instance.new("UIStroke")
   readyStroke.Color = RET

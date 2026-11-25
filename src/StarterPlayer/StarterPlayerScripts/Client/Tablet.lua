@@ -74,7 +74,7 @@ function Tablet.init(G)
     l.Text = text
     l.TextSize = ts
     l.TextColor3 = col
-    l.Font = font or Enum.Font.Code
+    l.Font = font or Enum.Font.RobotoMono
     l.TextXAlignment = ax or AL
     l.TextStrokeTransparency = 0.6
     l.TextStrokeColor3 = RGB(0, 0, 0)
@@ -156,7 +156,7 @@ function Tablet.init(G)
   for i = 1, 5 do sig[i] = fr(bar, UD(0, 166 + (i - 1) * 6, 1, -5 - i * 2.4), UDo(4, i * 2.4), WHITE) end
   local linkType = txt(bar, "", UDo(202, 0), UD(0, 80, 1, 0), 14, WHITE)
   local title = txt(bar, "", UDs(0.5, 0), UD(0, 420, 1, 0), 14, WHITE, Enum.Font.GothamBold, AC, V2(0.5, 0))
-  local batText = txt(bar, "", UD(1, -12, 0, 0), UD(0, 230, 1, 0), 14, WHITE, Enum.Font.Code, AR, V2(1, 0))
+  local batText = txt(bar, "", UD(1, -12, 0, 0), UD(0, 230, 1, 0), 14, WHITE, Enum.Font.RobotoMono, AR, V2(1, 0))
   -- 航向带：每 10° 一格，看得见左右 30°
   local tape = fr(osd, UD(0.5, 0, 0, 32), UD(0.4, 0, 0, 22), RGB(0, 0, 0), 0.65)
   tape.AnchorPoint = V2(0.5, 0)
@@ -170,7 +170,7 @@ function Tablet.init(G)
     marks[i].Visible = false
   end
   fr(tape, UD(0.5, -1, 0, 0), UD(0, 2, 0, 5), AMBER)
-  local hdgText = txt(osd, "", UD(0.5, 0, 0, 56), UDo(70, 18), 14, AMBER, Enum.Font.Code, AC, V2(0.5, 0))
+  local hdgText = txt(osd, "", UD(0.5, 0, 0, 56), UDo(70, 18), 14, AMBER, Enum.Font.RobotoMono, AC, V2(0.5, 0))
   -- 左下：遥测
   local tele = fr(osd, UD(0, 14, 1, -138), UDo(220, 120), RGB(0, 0, 0), 0.6)
   corner(tele, 6)
@@ -204,7 +204,7 @@ function Tablet.init(G)
   local hurtText = txt(osd, "", UD(0.5, 0, 0, 104), UDo(420, 24), 18, RED, Enum.Font.GothamBold, AC, V2(0.5, 0))
   -- 开机：黑屏 + 「建立数据链…」+ 进度条
   local boot = fr(osd, UDs(0, 0), UDs(1, 1), RGB(4, 6, 6), 0)
-  local bootT = txt(boot, "", UDs(0.5, 0.46), UDo(420, 24), 18, RGB(150, 230, 170), Enum.Font.Code, AC, V2(0.5, 0.5))
+  local bootT = txt(boot, "", UDs(0.5, 0.46), UDo(420, 24), 18, RGB(150, 230, 170), Enum.Font.RobotoMono, AC, V2(0.5, 0.5))
   local bootBg = fr(boot, UD(0.5, -130, 0.52, 0), UDo(260, 4), RGB(40, 60, 46))
   local bootBar = fr(bootBg, UDs(0, 0), UDs(0, 1), RGB(120, 230, 150))
 

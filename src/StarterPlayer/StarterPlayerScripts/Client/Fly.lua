@@ -312,7 +312,7 @@ function Fly.init(G)
   gui.Parent = me:WaitForChild("PlayerGui")
   local HUD = RGB(118, 240, 140)   -- 绿色全息（用户 11-19：飞机操作界面照 MWT 改，跟开坦克的界面一套颜色，那时是青色；用户 11-21：蓝色全部改成绿色）
   local function hud(text, size, pos, ts, anchor, align)
-    local l = ui.label(gui, text, size, pos, ts or 16, HUD, Enum.Font.Code, anchor, align)
+    local l = ui.label(gui, text, size, pos, ts or 16, HUD, Enum.Font.RobotoMono, anchor, align)
     l.TextStrokeTransparency = 0.5
     l.TextStrokeColor3 = RGB(0, 24, 10)
     l.Visible = false
@@ -364,7 +364,7 @@ function Fly.init(G)
       segs[i] = ui.frame(holder, UDim2.fromOffset(10, 2), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0.5))
     end
     local ticks = { ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)), ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)) }
-    local labs = { ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)), ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)) }
+    local labs = { ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5)), ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5)) }
     for _, l in ipairs(labs) do l.TextStrokeTransparency, l.TextStrokeColor3 = 0.5, RGB(0, 24, 10) end
     return { f = holder, segs = segs, ticks = ticks, labs = labs }
   end
@@ -430,7 +430,7 @@ function Fly.init(G)
     l.Parent, l.Size, l.Position, l.AnchorPoint = it[2], UDim2.new(1, -8, 1, 0), UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5)
     l.TextSize, l.TextXAlignment, l.Visible = 30, Enum.TextXAlignment.Center, true
   end
-  local hdgText = ui.label(hdgBox, "", UDim2.fromScale(1, 1), nil, 18, HUD, Enum.Font.Code)
+  local hdgText = ui.label(hdgBox, "", UDim2.fromScale(1, 1), nil, 18, HUD, Enum.Font.RobotoMono)
   local spdCap = hud(T("hud.spd"), UDim2.fromOffset(120, 16), UDim2.new(0.5, -420, 0.5, -34), 13, Vector2.new(0, 0.5), Enum.TextXAlignment.Left)
   local altCap = hud(T("hud.alt"), UDim2.fromOffset(120, 16), UDim2.new(0.5, 300, 0.5, -34), 13, Vector2.new(0, 0.5), Enum.TextXAlignment.Left)
   thrText.Position, vsText.Position, fuelText.Position = UDim2.new(0.5, -300, 0.5, 36), UDim2.new(0.5, 300, 0.5, 36), UDim2.new(0.5, -300, 0.5, 56)
@@ -514,7 +514,7 @@ function Fly.init(G)
     ui.stroke(edge, RGB(90, 94, 90), 1, 0.2)
   end
   local function mfd(text, pos, anchor, size, col, align)
-    local l = ui.label(disp, text, UDim2.fromOffset(150, (size or 16) + 4), pos, size or (MOB and 12 or 16), col or MFD, Enum.Font.Code, anchor or Vector2.new(0.5, 0.5), align)
+    local l = ui.label(disp, text, UDim2.fromOffset(150, (size or 16) + 4), pos, size or (MOB and 12 or 16), col or MFD, Enum.Font.RobotoMono, anchor or Vector2.new(0.5, 0.5), align)
     l.TextStrokeTransparency, l.TextStrokeColor3 = 0.55, RGB(0, 0, 0)
     l.ZIndex = 12
     return l
@@ -593,14 +593,14 @@ function Fly.init(G)
   side.Name = "TgpSide"
   side.ZIndex = 12
   local function sl(text, y, size, col, font)
-    local l = ui.label(side, text, UDim2.new(1, 0, 0, (size or 12) + 4), UDim2.fromOffset(0, y), size or 12, col or MFD, font or Enum.Font.Code, nil, Enum.TextXAlignment.Left)
+    local l = ui.label(side, text, UDim2.new(1, 0, 0, (size or 12) + 4), UDim2.fromOffset(0, y), size or 12, col or MFD, font or Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left)
     l.ZIndex = 12
     l.TextWrapped = true
     return l
   end
   TG.rel = sl("", 0, MOB and 10 or 11, MFD_DIM)
-  ui.label(side, "TTI", UDim2.fromOffset(30, 14), UDim2.fromOffset(0, MOB and 36 or 52), MOB and 10 or 11, MFD_DIM, Enum.Font.Code, nil, Enum.TextXAlignment.Left).ZIndex = 12
-  TG.ttiBig = ui.label(side, "-:--", UDim2.fromOffset(160, 34), UDim2.fromOffset(34, MOB and 22 or 34), MOB and 22 or 32, MFD, Enum.Font.Code, nil, Enum.TextXAlignment.Left)
+  ui.label(side, "TTI", UDim2.fromOffset(30, 14), UDim2.fromOffset(0, MOB and 36 or 52), MOB and 10 or 11, MFD_DIM, Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left).ZIndex = 12
+  TG.ttiBig = ui.label(side, "-:--", UDim2.fromOffset(160, 34), UDim2.fromOffset(34, MOB and 22 or 34), MOB and 22 or 32, MFD, Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left)
   TG.ttiBig.ZIndex = 12
   local barBg = ui.frame(side, UDim2.new(0.86, 0, 0, 3), UDim2.fromOffset(0, MOB and 58 or 76), RGB(70, 72, 70), 0)
   barBg.ZIndex = 12
@@ -610,7 +610,7 @@ function Fly.init(G)
   TG.away = sl("", y0, MOB and 10 or 11, MFD)
   TG.arm = sl("", y0 + (MOB and 15 or 20), MOB and 10 or 11, RGB(236, 200, 120))
   TG.lst = sl("", y0 + (MOB and 30 or 40), MOB and 10 or 11, MFD)
-  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 16, MFD, Enum.Font.Garamond)
+  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 16, MFD, Enum.Font.GothamMedium)
   TG.say.Size = UDim2.new(1, 0, 0, MOB and 40 or 56)
   local eoHint = sl("", y0 + (MOB and 96 or 140), MOB and 9 or 10, MFD_DIM)
   eoHint.Size = UDim2.new(1, 0, 0, 90)
@@ -719,7 +719,7 @@ function Fly.init(G)
       local sk = ui.stroke(f, HUD, 1, 0.7)
       local kb = ui.frame(f, UDim2.fromOffset(24, 24), UDim2.new(0, 6, 0.5, 0), RGB(0, 0, 0), 0.4, Vector2.new(0, 0.5))
       ui.stroke(kb, HUD, 1, 0.2)
-      local kl = ui.label(kb, it.key, UDim2.fromScale(1, 1), nil, 15, HUD, Enum.Font.Code)
+      local kl = ui.label(kb, it.key, UDim2.fromScale(1, 1), nil, 15, HUD, Enum.Font.RobotoMono)
       kl.Name = "Key"
       local ic = ui.frame(f, UDim2.fromOffset(60, 20), UDim2.new(0, 38, 0.5, 0), RGB(0, 0, 0), 1, Vector2.new(0, 0.5))
       ic.Name = "Icon"
@@ -727,7 +727,7 @@ function Fly.init(G)
       local nm = ui.label(f, it.flare and T("air.flareName") or T("aw." .. it.wid), UDim2.new(1, -164, 1, 0), UDim2.fromOffset(104, 0), 14, HUD, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
       nm.TextWrapped = false
       nm.Name = "Name"
-      local cnt = ui.label(f, "", UDim2.fromOffset(58, H), UDim2.new(1, -6, 0, 0), 17, HUD, Enum.Font.Code, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+      local cnt = ui.label(f, "", UDim2.fromOffset(58, H), UDim2.new(1, -6, 0, 0), 17, HUD, Enum.Font.RobotoMono, Vector2.new(1, 0), Enum.TextXAlignment.Right)
       cnt.Name = "Count"
       wRows[i] = { f = f, s = sk, cnt = cnt, nm = nm, it = it }
     end

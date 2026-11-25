@@ -83,8 +83,9 @@ function Radar.init(G)
   gui.Parent = me:WaitForChild("PlayerGui")
   local UIS = game:GetService("UserInputService")
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
-  local GRN, LINE, FILL, BEAM = RGB(140, 255, 160), RGB(110, 230, 140), RGB(24, 120, 56), RGB(170, 255, 190)
-  local AMB, RED = RGB(255, 200, 80), RGB(255, 80, 64)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local GRN, LINE, FILL, BEAM = TH.C.HUD, TH.C.HUD:Lerp(TH.C.INK, 0.12), TH.C.HUD:Lerp(TH.C.INK, 0.55), TH.C.HUD:Lerp(Color3.new(1, 1, 1), 0.3)
+  local AMB, RED = TH.C.WARN, TH.C.BAD
   local function frame(parent, size, pos, col, tr, anchor)
     local f = Instance.new("Frame")
     f.Size, f.Position = size, pos or U2.new()
@@ -98,7 +99,7 @@ function Radar.init(G)
     l.Name = name
     l.BackgroundTransparency = 1
     l.Size, l.Position, l.AnchorPoint = U2.fromOffset(90, 14), pos, anchor or V2(0, 0)
-    l.Font, l.TextSize, l.TextColor3 = Enum.Font.Code, ts or 13, GRN
+    l.Font, l.TextSize, l.TextColor3 = Enum.Font.RobotoMono, ts or 13, GRN
     l.TextXAlignment = align or Enum.TextXAlignment.Left
     l.TextStrokeTransparency, l.TextStrokeColor3 = 0.45, RGB(0, 20, 8)
     l.Text = ""

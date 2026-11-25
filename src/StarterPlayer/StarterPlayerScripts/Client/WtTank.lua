@@ -26,11 +26,12 @@ function WtTank.init(G)
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local BOLD, MED = Enum.Font.GothamBold, Enum.Font.GothamMedium
   local LEFT, RIGHT = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right
-  local WHITE, INK = RGB(240, 244, 244), RGB(0, 0, 0)
-  local PEN_OK, PEN_MAYBE, PEN_NO = RGB(84, 236, 72), RGB(255, 214, 48), RGB(255, 58, 44)
-  local AMBER = RGB(255, 186, 64)
-  local M_OK, M_HURT, M_DEAD = RGB(196, 204, 208), RGB(255, 196, 40), RGB(232, 48, 36)
-  local C_OK, C_HURT, C_DEAD = RGB(236, 242, 242), RGB(255, 150, 40), RGB(90, 92, 94)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, INK = TH.C.TEXT, TH.C.INK
+  local PEN_OK, PEN_MAYBE, PEN_NO = TH.C.GOOD, TH.C.WARN, TH.C.BAD
+  local AMBER = TH.C.WARN
+  local M_OK, M_HURT, M_DEAD = TH.C.NEUTRAL, TH.C.WARN, TH.C.BAD
+  local C_OK, C_HURT, C_DEAD = TH.C.TEXT, TH.C.WARN, TH.C.FAINT
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "WtTank"

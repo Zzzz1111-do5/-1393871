@@ -28,11 +28,12 @@ function WtFlight.init(G)
   local clamp, rad, deg = math.clamp, math.rad, math.deg
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
-  local HUD = RGB(120, 255, 150)                     -- 战雷平显的绿（界面一律绿色：用户 11-21）
-  local TXT, LAB = RGB(238, 242, 238), RGB(178, 188, 180)   -- 左上：数白、标签灰白
-  local RED, ORG, WHITE = RGB(255, 72, 60), RGB(255, 168, 60), Color3.new(1, 1, 1)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local HUD = TH.C.HUD                     -- 战雷平显的绿（界面一律绿色：用户 11-21）
+  local TXT, LAB = TH.C.TEXT, TH.C.MUTE   -- 左上：数白、标签灰白
+  local RED, ORG, WHITE = TH.C.BAD, TH.C.WARN, Color3.new(1, 1, 1)
   local INK = RGB(0, 0, 0)
-  local MONO, SANS = Enum.Font.Code, Enum.Font.GothamMedium
+  local MONO, SANS = Enum.Font.RobotoMono, Enum.Font.GothamMedium
   G.wtFlightOn = true
 
   local gui = Instance.new("ScreenGui")

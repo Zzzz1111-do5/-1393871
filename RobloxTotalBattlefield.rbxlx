@@ -1109,7 +1109,7 @@ return { unit = { w = 0.41, h = 0.47, d = 0.075, r = 0.014, ch = 0.005 }, zTop =
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-25 14:10 b7a3292"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-25 15:15 5b074a2"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
@@ -1451,6 +1451,9 @@ function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用
 --   off = true 关掉；voiceId 文字转语音的嗓音；键：pen 击穿、ric 跳弹、np 未击穿、kill 击毁、killAmmo 殉爆、hurtPen 我们被击穿、fire 着火、
 --   gnr / drv / ldr / cmd 谁阵亡、loaded 装填完毕、engine / track / barrel / breech 模块坏了、swap 换位、fireOut 灭火、fixed 修好、resupply 补给
 Config.WtVoice = { off = false, voiceId = "1", volume = 1.4 }
+-- 第一人称（坐进车里、飞机座舱：Interior.lua 的 C / T / F2～F5 / V、全真模式自动坐进去）只有这几型有
+--   （用户 11-25：「除了m1a1和a2 其他载具不要做第一人称模式」）；only = nil 就全开（测试内饰的老测试用）
+Config.FirstPerson = { only = { m1a1 = true, m1a2 = true } }
 Config.Wt = { on = true, noInfantry = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, backup = 1, rise = 0.25,
   br0 = 4.0, brUp = 1.0, teamSize = 8, aiMax = 5,
   -- 三种模式（机库里投票，准备阶段按票数，开战定住；Tech.lua）：ab 街机（敌人都标、飞机空中出生）、rb 历史（只标近处看得见的）、
@@ -6156,10 +6159,10 @@ add("air.bsMode2", "双投", "PAIR")
 add("air.bsMode0", "齐投", "SALVO")
 add("air.ccrpT", "{1} 秒后投弹", "release in {1} s")
 add("air.ccrpPassed", "飞过了 · 掉头再来", "passed · come around")
-add("air.ccrpRel", "投弹！", "BOMBS AWAY")
+add("air.ccrpRel", "投弹", "BOMBS AWAY")
 add("air.ccrpNoBomb", "没有炸弹了", "no bombs left")
 add("air.radarTrack", "被雷达照射", "RADAR TRACKING")
-add("air.radarLock", "被雷达锁定！", "RADAR LOCK!")
+add("air.radarLock", "被雷达锁定", "Radar lock")
 add("air.radarNotch", "置零", "NOTCH")
 add("air.radarClutter", "地杂波", "CLUTTER")
 add("air.radarLost", "雷达丢失目标", "Radar lost the target")
@@ -6190,10 +6193,10 @@ add("pve.locked", "先打通第 {1} 关", "Clear mission {1} first")
 add("pve.cleared", "✓ 已通关", "✓ CLEARED")
 add("pve.start", "开始", "START")
 add("pve.hud", "PvE 第 {1} 关 · {2} · {3}", "PvE {1} · {2} · {3}")
-add("pve.win", "关卡完成！", "Mission complete!")
+add("pve.win", "关卡完成", "Mission complete")
 add("pve.next", "下一局：第 {1} 关", "Next round: mission {1}")
 add("pve.nextMap", "下一关换地图了：回主菜单「开始游戏 → 关卡」选第 {1} 关", "The next mission is on another map: open PLAY → MISSIONS and pick mission {1}")
-add("pve.allClear", "全部关卡都打通了！", "All missions cleared!")
+add("pve.allClear", "全部关卡都打通了", "All missions cleared")
 add("pve.retry", "没打下来，再来一次第 {1} 关", "Mission failed — retrying mission {1}")
 add("pve.needNew", "这个服务器在打别的：在 Studio 里请重新开始测试再选关卡", "This server is busy with another mode — restart the test in Studio to pick a mission")
 add("pve.teleport", "正在带你去新的关卡服务器……", "Taking you to a new mission server…")
@@ -6309,7 +6312,7 @@ add("point.E", "E 指挥所", "E Command Post")
 add("spawn.base", "本方基地", "Home Base")
 add("ui.lostPoint", "{1} 丢了", "{1} was lost")
 add("ui.weTook", "我方拿下了 {1}", "We took {1}")
-add("ui.conquestStart", "开战！占领据点，打光敌人的兵力", "Battle! Capture the points and drain the enemy's tickets")
+add("ui.conquestStart", "开战，占领据点，打光敌人的兵力", "Battle. Capture the points and drain the enemy's tickets")
 add("ui.win.atk@desert", "西线胜利：敌人的兵力打光了", "WEST WINS: the enemy ran out of tickets")
 add("ui.win.def@desert", "东线胜利：敌人的兵力打光了", "EAST WINS: the enemy ran out of tickets")
 add("beach.red", "红滩", "Red Beach")
@@ -6427,10 +6430,10 @@ add("ui.goalDef", "守住当前阶段的据点，耗光攻方兵力或拖到时�
 add("ui.timeLeft", "剩余", "Time")
 add("ui.overtime", "加时", "Overtime")
 add("ui.capturing", "正在占领 {1}", "Capturing {1}")
-add("ui.losing", "{1} 正在被攻方占领！", "{1} is being captured!")
+add("ui.losing", "{1} 正在被攻方占领", "{1} is being captured")
 add("ui.contested", "{1} 争夺中", "{1} contested")
 add("ui.captured", "{1} 被攻方拿下了", "{1} has fallen to the Attackers")
-add("ui.capturedYou", "拿下 {1}！时间 +3 分钟", "{1} captured! +3 minutes")
+add("ui.capturedYou", "拿下 {1}，时间 +3 分钟", "{1} captured. +3 minutes")
 add("ui.scoreboard", "战况", "Scoreboard")
 add("ui.kills", "击杀", "Kills")
 add("ui.deaths", "阵亡", "Deaths")
@@ -6439,7 +6442,7 @@ add("ui.captures", "占领", "Caps")
 add("ui.bot", "（AI）", "(AI)")
 add("ui.win.atk", "进攻方胜利：5 个据点全部拿下", "ATTACKERS WIN: all 5 points captured")
 add("ui.win.def", "防守方胜利：守住了据点", "DEFENDERS WIN: held the line")
-add("ui.youWon", "你们赢了！", "Victory!")
+add("ui.youWon", "你们赢了", "Victory")
 add("ui.youLost", "你们输了", "Defeat")
 add("ui.nextRound", "{1} 秒后开下一局", "Next round in {1}s")   -- 开新一局不打乱分队（各自留在选的阵营）
 add("ui.roundOver", "本局结束", "ROUND OVER")
@@ -6522,7 +6525,7 @@ add("ship.sam", "防空导弹 {1}（自动）", "SAM {1} (auto)")
 add("ship.ciws", "近防炮（自动）", "CIWS (auto)")
 add("ship.lock", "锁定：{1}", "Locked: {1}")
 add("ship.noLock", "没有锁定：打准星下那一点", "No lock: fires at the crosshair")
-add("ship.shallow", "水太浅！", "Shallow water!")
+add("ship.shallow", "水太浅", "Shallow water")
 add("ship.rest", "停靠补给中……", "Resupplying alongside...")
 local SW = {
   g130 = { "130 毫米主炮", "130 mm main gun" }, g127 = { "Mk 45 127 毫米舰炮", "Mk 45 5-inch gun" }, g76 = { "76 毫米舰炮", "76 mm gun" },
@@ -6855,7 +6858,7 @@ add("menu.maxRank", "{1}   ·   最高军衔", "{1}   ·   MAX RANK")
 add("menu.xp", "{1} / {2} 经验", "{1} / {2} XP")
 add("menu.c1.cat", "多人游戏", "MULTIPLAYER")
 add("menu.c1.title", "开始游戏", "PLAY")
-add("menu.c1.sub", "投票选地图 · 自动分队 · 直接上前线（回车）", "VOTE FOR A MAP · AUTO TEAM · STRAIGHT TO THE FRONT (ENTER)")
+add("menu.c1.sub", "自动分队 · 机库挑车出击（回车）", "AUTO TEAM · PICK A VEHICLE IN THE HANGAR (ENTER)")
 add("menu.c1.tag", "立即开打", "PLAY NOW")
 add("menu.c1.subtag", "{1} 名玩家在线", "{1} ONLINE")
 add("menu.c2.cat", "阵营", "FACTION")
@@ -6864,7 +6867,7 @@ add("menu.c2.sub", "登陆联军 · 岛屿守备军", "COALITION · GARRISON")
 add("menu.c2.none", "未选择", "NOT CHOSEN")
 add("menu.c3.cat", "操作", "CONTROLS")
 add("menu.c3.title", "操作说明", "HOW TO PLAY")
-add("menu.c3.sub", "步兵 · 载具 · 飞机 · 直升机", "INFANTRY · VEHICLES · JETS · HELICOPTERS")
+add("menu.c3.sub", "坦克 · 战机 · 直升机 · 舰艇", "TANKS · JETS · HELICOPTERS · SHIPS")
 add("menu.c4.cat", "制作人员", "CREDITS")
 add("menu.c4.title", "模型与授权", "MODELS & LICENSES")
 add("menu.c4.sub", "Sketchfab 作者署名（CC-BY）", "SKETCHFAB AUTHORS (CC-BY)")
@@ -6961,7 +6964,7 @@ add("hud.goalFlank", "侧翼 {1}", "FLANK {1}")
 add("hud.markAtk", "进攻", "ATTACK")
 add("hud.markDef", "防守", "DEFEND")
 add("hud.flank", "侧翼", "FLANK")
-add("ui.ticketsLow", "攻方兵力只剩 {1}！", "Attackers down to {1} reinforcements!")
+add("ui.ticketsLow", "攻方兵力只剩 {1}", "Attackers down to {1} reinforcements")
 add("ui.noTickets", "攻方兵力已经打光，不能再出生", "Out of reinforcements: cannot redeploy")
 add("ui.flankTaken", "拿下侧翼 {1}：攻方兵力 +{2}", "Flank {1} taken: +{2} reinforcements")
 add("deploy.rec", "推荐", "RECOMMENDED")
@@ -7053,7 +7056,7 @@ add("tac.kSel", "选择", "SELECT")
 add("tac.kCall", "呼叫", "CALL")
 add("tac.kClose", "收起", "CLOSE")
 add("uav.weak", "信号弱", "WEAK SIGNAL")
-add("uav.hit", "操作员遭到攻击！", "OPERATOR UNDER FIRE!")
+add("uav.hit", "操作员遭到攻击", "OPERATOR UNDER FIRE")
 add("uav.relink", "按 T 重新连接无人机（{1}）", "Press T to reconnect UAV ({1})")
 add("uav.relinkAir", "按 T 重新连接无人机（{1} · 自动盘旋 {2} 秒）", "Press T to reconnect UAV ({1} · loitering {2}s)")
 add("uav.relinkTouch", "点这里重新连接无人机（{1}）", "Tap to reconnect UAV ({1})")
@@ -7151,7 +7154,7 @@ add("gar.vmax", "公路最大速度 {1} 公里 / 时", "Road speed {1} km/h")
 add("gar.cells", "爆反 {1} 格", "ERA {1} tiles")
 add("kit.slatDud", "火箭弹打在栅栏装甲上，没炸", "Your rocket hit slat armour and failed to detonate")
 add("kit.slatSaved", "栅栏装甲卡住了一发火箭弹", "Slat armour stopped a rocket")
-add("kit.lwsWarn", "激光告警！{1} 点方向", "LASER WARNING! {1} o'clock")
+add("kit.lwsWarn", "激光告警，{1} 点方向", "LASER WARNING. {1} o'clock")
 add("ui.plowHint", "J 扫雷犁", "J Mine plough")
 add("vh.m", "{1} 米", "{1} m")
 add("vh.rdy", "已就绪", "READY")
@@ -7245,7 +7248,7 @@ add("vh.penNo", "打不穿", "NO PENETRATION")
 add("vh.penWeak", "伤害低", "LOW DAMAGE")
 add("ship.locking", "锁定中", "LOCKING")
 add("ship.locked", "已锁定", "LOCKED")
-add("hit.ric", "跳弹！", "RICOCHET!")
+add("hit.ric", "跳弹", "Ricochet")
 add("hit.ricIn", "炮弹被装甲弹开了", "Shell bounced off your armor")
 
 -- 改枪（GunMods.lua / Gunsmith.lua，用户 11-20：对标三角洲行动）
@@ -7450,8 +7453,8 @@ add("wt.broken", "损毁", " destroyed")
 add("wt.damaged", "受损", " damaged")
 add("wt.blowout", "尾舱弹药殉爆（泄压板泄压）", "bustle ammo cooked off (blow-out panels)")
 add("wt.onFire", "起火", "set on fire")
-add("wt.kill", "已击毁！", "TARGET DESTROYED!")
-add("wt.killAmmo", "已击毁——弹药殉爆！", "DESTROYED — AMMO DETONATION!")
+add("wt.kill", "已击毁", "Target destroyed")
+add("wt.killAmmo", "已击毁——弹药殉爆", "Destroyed — ammo detonation")
 add("wt.killFire", "已击毁——烧毁", "DESTROYED — BURNED OUT")
 add("wt.pen", "击穿", "PENETRATION")
 add("wt.ric", "跳弹", "RICOCHET")
@@ -7462,7 +7465,7 @@ add("wt.xrTitle", "命中回放 · {1} · {2} 米", "HIT CAMERA · {1} · {2} m"
 add("wt.xrJetB", "金属射流弹 · 穿深 {1} / 等效 {2} 毫米", "METAL JET · pen {1} / eff {2} mm")
 add("wt.xrJet", "聚能射流 · 穿深 {1} / 等效 {2} 毫米", "SHAPED-CHARGE JET · pen {1} / eff {2} mm")
 add("wt.xrSlow", "慢放 ×0.01", "SLOW-MO ×0.01")
-add("wt.tipFire", "起火！按 Y 灭火", "ON FIRE! Press Y to extinguish")
+add("wt.tipFire", "起火，按 Y 灭火", "ON FIRE. Press Y to extinguish")
 add("wt.tipFixing", "维修中 {1}%（按 Y 取消）", "Repairing {1}% (Y to cancel)")
 add("wt.tipFix", "有部件损坏：按 Y 维修", "Parts damaged: press Y to repair")
 add("wt.youPen", "被击穿", "Penetrated")
@@ -7577,8 +7580,8 @@ add("wta.e.wingLOff", "左翼断了", "left wing off")
 add("wta.e.overspeed", "超速：机翼撕掉了", "overspeed: wing torn off")
 add("wta.e.overG", "过载过大：机翼断了", "over-G: wing broke")
 add("wta.e.gearOff", "起落架超速：坏了", "gear overspeed: broken")
-add("wta.warnSpeed", "超速！收油门", "OVERSPEED! throttle back")
-add("wta.warnG", "过载过大！松杆", "OVER-G! ease off")
+add("wta.warnSpeed", "超速，收油门", "OVERSPEED. throttle back")
+add("wta.warnG", "过载过大，松杆", "OVER-G. ease off")
 add("wta.e.wingROff", "右翼断了", "right wing off")
 add("wta.e.tailOff", "尾翼打断", "tail destroyed")
 add("wta.e.engOff", "发动机打坏", "engine destroyed")
@@ -7589,7 +7592,7 @@ add("wta.e.rotorOff", "旋翼打断", "rotor destroyed")
 add("wta.e.fire", "起火", "set on fire")
 add("wta.e.leak", "漏油", "fuel leak")
 add("wta.e.fireOut", "火灭了", "fire is out")
-add("wta.tFire", "起火！", "ON FIRE!")
+add("wta.tFire", "起火", "On fire")
 add("wta.tLeak", "漏油", "Fuel leak")
 add("wta.tWing", "断翼——飞机要掉了", "Wing lost — going down")
 add("wta.tRotor", "旋翼打断", "Rotor lost")
@@ -13578,6 +13581,149 @@ return TT
     </Item>
     <Item class="ModuleScript" referent="107">
       <Properties>
+        <string name="Name">Theme</string>
+        <ProtectedString name="Source"><![CDATA[-- 全游戏统一外观（用户 11-25：「整个游戏风格极其割裂……四不像」，定下来统一成我们自己的一套写实军事风格，不照搬别的游戏的样子）。
+--   规范写在 docs/style.md；所有界面的颜色、字体、字号、面板从这里取，新界面也一样（不要再在模块里自己定一套白、灰、绿、红）。
+--   原则：底子是黑白灰（深色半透明面板、白字），颜色只用来表示意思——绿 = 自己人 / 完好 / 可以，红 = 敌人 / 危险 / 坏了，
+--   琥珀 = 注意 / 进行中 / 受伤 / 金币；车上、飞机上的瞄准和飞行符号统一一种亮绿（Theme.C.HUD）。不用蓝色（用户 11-21：蓝色全部改成绿色）。
+local Theme = {}
+local RGB = Color3.fromRGB
+
+Theme.C = {
+  -- 底色、面板
+  BG = RGB(8, 10, 12),        -- 整屏的底（机库、科技树、结算页）
+  PANEL = RGB(14, 17, 20),    -- 面板、卡片
+  RAISE = RGB(32, 36, 40),    -- 次要按钮、悬停
+  LINE = RGB(255, 255, 255),  -- 细线、描边（配 Theme.A.line / lineHi 的透明度）
+  INK = RGB(0, 0, 0),         -- 字的描边
+  -- 字
+  TEXT = RGB(236, 238, 236),  -- 正文、数字
+  MUTE = RGB(160, 166, 164),  -- 次要说明、标签
+  FAINT = RGB(104, 110, 110), -- 不能点的、没解锁的
+  -- 意思
+  GOOD = RGB(110, 214, 124),  -- 自己人、完好、已拥有、能打穿
+  BAD = RGB(236, 74, 60),     -- 敌人、危险、坏了、打不穿
+  WARN = RGB(240, 182, 72),   -- 注意、受伤、进行中、金币
+  NEUTRAL = RGB(200, 204, 204), -- 中立据点
+  HUD = RGB(128, 255, 152),   -- 车上 / 飞机上的瞄准与飞行符号（亮绿：天空、沙地上都看得清）
+}
+Theme.C.FRIEND = Theme.C.GOOD
+Theme.C.FOE = Theme.C.BAD
+
+-- 透明度
+Theme.A = {
+  panel = 0.18,   -- 面板底
+  bar = 0.35,     -- 屏幕边上的信息条（比面板淡，不挡战场）
+  line = 0.82,    -- 普通细线
+  lineHi = 0.45,  -- 选中、悬停的细线
+  stroke = 0.45,  -- 战场上的字的描边
+}
+
+-- 字体：正文 GothamMedium、强调 GothamBold、大标题 GothamBlack、数字和仪表 RobotoMono（Code 字体缺字形，不用）
+Theme.F = {
+  body = Enum.Font.GothamMedium,
+  bold = Enum.Font.GothamBold,
+  title = Enum.Font.GothamBlack,
+  mono = Enum.Font.RobotoMono,
+}
+
+-- 字号
+Theme.S = { tiny = 11, small = 12, body = 14, sub = 16, title = 20, big = 28, huge = 40 }
+Theme.R = 2   -- 圆角（像素）：方正、硬朗
+
+-- 自己这一边 / 对面：一律按看的人算（不按攻守方的固定颜色）
+function Theme.side(side, mine)
+  if side == nil or side == "" then return Theme.C.NEUTRAL end
+  if mine == nil or mine == "" then
+    local ok, pl = pcall(function() return game:GetService("Players").LocalPlayer end)
+    mine = ok and pl and pl:GetAttribute("Side") or nil
+  end
+  return (side == mine) and Theme.C.FRIEND or Theme.C.FOE
+end
+
+-- 状态比例（1 完好 → 0 坏了）：绿 → 琥珀 → 红
+function Theme.state(k)
+  if k >= 0.66 then return Theme.C.GOOD end
+  if k >= 0.33 then return Theme.C.WARN end
+  return Theme.C.BAD
+end
+
+---------------------------------------------------------------- 小工具（新界面直接用；老界面只换颜色字体时用不到）
+function Theme.stroke(o, strong, col)
+  local s = o:FindFirstChildOfClass("UIStroke") or Instance.new("UIStroke")
+  s.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+  s.Color = col or Theme.C.LINE
+  s.Transparency = strong and Theme.A.lineHi or Theme.A.line
+  s.Thickness = 1
+  s.Parent = o
+  return s
+end
+
+function Theme.corner(o, r)
+  local c = o:FindFirstChildOfClass("UICorner") or Instance.new("UICorner")
+  c.CornerRadius = UDim.new(0, r or Theme.R)
+  c.Parent = o
+  return c
+end
+
+-- 面板：深色半透明底 + 一圈细线
+function Theme.panel(parent, size, pos, anchor)
+  local f = Instance.new("Frame")
+  f.Size, f.Position, f.AnchorPoint = size, pos or UDim2.new(), anchor or Vector2.new(0, 0)
+  f.BackgroundColor3, f.BackgroundTransparency, f.BorderSizePixel = Theme.C.PANEL, Theme.A.panel, 0
+  Theme.corner(f)
+  Theme.stroke(f)
+  f.Parent = parent
+  return f
+end
+
+-- 字：kind = "body" | "bold" | "title" | "mono"
+function Theme.label(parent, text, size, kind, col)
+  local l = Instance.new("TextLabel")
+  l.BackgroundTransparency = 1
+  l.Text = text
+  l.Font = Theme.F[kind or "body"] or Theme.F.body
+  l.TextSize = size or Theme.S.body
+  l.TextColor3 = col or Theme.C.TEXT
+  l.TextXAlignment = Enum.TextXAlignment.Left
+  l.Size = UDim2.new(1, 0, 0, (size or Theme.S.body) + 4)
+  l.Parent = parent
+  return l
+end
+
+-- 按钮：primary（白底黑字，一屏最多一个：出击、开始）/ 默认（灰底白字）
+function Theme.button(parent, text, size, pos, primary)
+  local b = Instance.new("TextButton")
+  b.AutoButtonColor = true
+  b.Size, b.Position = size, pos or UDim2.new()
+  b.BackgroundColor3 = primary and Theme.C.TEXT or Theme.C.RAISE
+  b.BackgroundTransparency = primary and 0 or 0.1
+  b.BorderSizePixel = 0
+  b.Text = text
+  b.Font = Theme.F.bold
+  b.TextSize = Theme.S.body
+  b.TextColor3 = primary and Theme.C.BG or Theme.C.TEXT
+  Theme.corner(b)
+  if not primary then Theme.stroke(b) end
+  b.Parent = parent
+  return b
+end
+
+-- 选中 / 没选中（页签、分段按钮）：选中白底黑字，没选中灰底白字
+function Theme.setSelected(b, on)
+  b.BackgroundColor3 = on and Theme.C.TEXT or Theme.C.RAISE
+  b.BackgroundTransparency = on and 0 or 0.1
+  if b:IsA("TextButton") or b:IsA("TextLabel") then
+    b.TextColor3 = on and Theme.C.BG or Theme.C.TEXT
+  end
+end
+
+return Theme
+]]></ProtectedString>
+      </Properties>
+    </Item>
+    <Item class="ModuleScript" referent="108">
+      <Properties>
         <string name="Name">VehDefs</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具的型号数据（服务器、客户端共用）：尺寸、速度、炮塔、武器、车轮 / 负重轮、烟幕弹发射筒、瞄准镜
 --   单位：格（1 米约 2.8 格，和 Roblox 的人一样比例）。车的坐标系：原点在车底中心（着地），X 右、Y 上、−Z 朝前
@@ -14069,7 +14215,7 @@ return VehDefs
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="108">
+    <Item class="ModuleScript" referent="109">
       <Properties>
         <string name="Name">WeaponModels</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机载武器的外形（服务器、客户端共用）：按型号拼零件
@@ -14369,7 +14515,7 @@ return WM
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="109">
+    <Item class="ModuleScript" referent="110">
       <Properties>
         <string name="Name">WtCrew</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场——乘员（用户 11-25「都要做」：照战雷）：每个系的出击阵容每个位置一组乘员（换车不换人），
@@ -14426,7 +14572,7 @@ return C
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="110">
+    <Item class="ModuleScript" referent="111">
       <Properties>
         <string name="Name">WtDamage</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——战雷式的车辆伤害模型（服务器、客户端共用：服务器算伤害，客户端画 X 光命中回放、准星的穿深指示）
@@ -14843,7 +14989,7 @@ return W
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="111">
+    <Item class="ModuleScript" referent="112">
       <Properties>
         <string name="Name">WtMods</string>
         <ProtectedString name="Source"><![CDATA[-- 全面大战场——科技树每辆车的改装（用户 11-25「都要做」：照战雷那样，车买来是「原厂」状态，打仗挣研究点一项项研究改装）
@@ -14951,7 +15097,7 @@ return M
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="ModuleScript" referent="112">
+    <Item class="ModuleScript" referent="113">
       <Properties>
         <string name="Name">WtSkins</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（共用）——涂装、贴花（用户 11-25「全部都做」⑯：战雷里每辆车能换涂装、贴战术号码和国徽）
@@ -14985,17 +15131,17 @@ return S
 ]]></ProtectedString>
       </Properties>
     </Item>
-    <Item class="Folder" referent="113">
+    <Item class="Folder" referent="114">
       <Properties>
         <string name="Name">UnitModels</string>
       </Properties>
     </Item>
   </Item>
-  <Item class="ServerScriptService" referent="114">
+  <Item class="ServerScriptService" referent="115">
     <Properties>
       <string name="Name">ServerScriptService</string>
     </Properties>
-    <Item class="Script" referent="115">
+    <Item class="Script" referent="116">
       <Properties>
         <string name="Name">Main</string>
         <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——服务器主脚本（ServerScriptService.Main）
@@ -15326,7 +15472,7 @@ end)
 print("[全面大战场] " .. Config.Version .. "（脚本构建 " .. tostring(Config.Build) .. "）服务器启动" .. ((#G.bootErrors > 0) and ("（有 " .. #G.bootErrors .. " 处出错，见上面的警告）") or ""))
 ]]></ProtectedString>
       </Properties>
-      <Item class="ModuleScript" referent="116">
+      <Item class="ModuleScript" referent="117">
         <Properties>
           <string name="Name">AIVeh</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——AI 开的地面载具（用户：AI 会自己找载具开）
@@ -15913,7 +16059,7 @@ return AIVeh
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="117">
+      <Item class="ModuleScript" referent="118">
         <Properties>
           <string name="Name">Air</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——飞机、直升机（服务器）：生成（名额、挂载）、飞行同步（位置由开飞机的客户端算，服务器查速度、查撞地）、
@@ -17038,7 +17184,7 @@ return Air
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="118">
+      <Item class="ModuleScript" referent="119">
         <Properties>
           <string name="Name">Aps</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——主动防护系统（硬杀伤拦截，用户 11-19：给坦克实现主动拦截系统；用户 11-22 晚：改装体系照真实的系统做）
@@ -17176,7 +17322,7 @@ return Aps
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="119">
+      <Item class="ModuleScript" referent="120">
         <Properties>
           <string name="Name">Armor</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地面载具（坦克、装甲车、防空、火炮）：部署（名额、冷却）、开车（位置由开车的客户端算，服务器查速度、查下水）、
@@ -17947,7 +18093,7 @@ return Armor
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="120">
+      <Item class="ModuleScript" referent="121">
         <Properties>
           <string name="Name">Battle</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——战场氛围（服务器）。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -18438,7 +18584,7 @@ return Battle
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="121">
+      <Item class="ModuleScript" referent="122">
         <Properties>
           <string name="Name">Bots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——机器人：真人不够时补人（每队保底 Config.Bots.minPerTeam 人，全服最多 maxTotal 个；真人多了，多出来的机器人阵亡后不再复活）
@@ -19662,7 +19808,7 @@ return Bots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="122">
+      <Item class="ModuleScript" referent="123">
         <Properties>
           <string name="Name">Depots</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（车场、停机位）
@@ -20169,7 +20315,7 @@ return Depots
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="123">
+      <Item class="ModuleScript" referent="124">
         <Properties>
           <string name="Name">Economy</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——金币（用户 11-23：「把很多坦克飞机直升机搞成金币解锁吧 然后两边都可以用对方的载具 然后金币 pvp 或者打 pve 来……改枪配件也是需要解锁」）
@@ -20320,7 +20466,7 @@ return Economy
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="124">
+      <Item class="ModuleScript" referent="125">
         <Properties>
           <string name="Name">Ents</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——实体与伤害
@@ -20766,7 +20912,7 @@ return Ents
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="125">
+      <Item class="ModuleScript" referent="126">
         <Properties>
           <string name="Name">Era</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——爆炸反应装甲（用户 11-19：给坦克实现爆反；这些坦克都自带爆反，99A 炮塔正面原模型没有、补贴一片）
@@ -20902,7 +21048,7 @@ return Era
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="126">
+      <Item class="ModuleScript" referent="127">
         <Properties>
           <string name="Name">FOB</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——沙海两边的主基地（前进作战基地 FOB + 机场，围在一起）
@@ -22117,7 +22263,7 @@ return FOB
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="127">
+      <Item class="ModuleScript" referent="128">
         <Properties>
           <string name="Name">Forts</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图自带的工事和障碍（服务器）：每局开局时系统照 FortDefs 摆好，玩家不用自己部署
@@ -23345,7 +23491,7 @@ return Forts
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="128">
+      <Item class="ModuleScript" referent="129">
         <Properties>
           <string name="Name">Gunsmith</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——改枪（服务器，用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -23552,7 +23698,7 @@ return Gunsmith
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="129">
+      <Item class="ModuleScript" referent="130">
         <Properties>
           <string name="Name">Imports</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
@@ -23690,7 +23836,7 @@ return Imports
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="130">
+      <Item class="ModuleScript" referent="131">
         <Properties>
           <string name="Name">Kit</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——坦克加装件（TankMods 的 slat / belly / eng / ew / cam，用户 11-22 晚：「要能有一整套的坦克改装体系」「用现实中的标准」）
@@ -23844,7 +23990,7 @@ return Kit
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="131">
+      <Item class="ModuleScript" referent="132">
         <Properties>
           <string name="Name">Nav</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——寻路（机器人、AI 车辆用）：陆地按 CELL 格一格做网格，每个目的地（5 个据点、守方营地）算一张流场——
@@ -24076,7 +24222,7 @@ return Nav
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="132">
+      <Item class="ModuleScript" referent="133">
         <Properties>
           <string name="Name">Navy</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——舰艇（服务器）：码头和生成点、开船（位置由开船的客户端算，服务器查航速、水深、地图边）、主炮（炮弹有弹道）、
@@ -25081,7 +25227,7 @@ return Navy
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="133">
+      <Item class="ModuleScript" referent="134">
         <Properties>
           <string name="Name">Nuke</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（服务器）——高超音速战术核导弹（用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -25386,7 +25532,7 @@ return Nuke
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="134">
+      <Item class="ModuleScript" referent="135">
         <Properties>
           <string name="Name">Passes</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——R 币解锁（游戏通行证 Game Pass）。用户：B-2 199 R 币、战术平板（副武器）99 R 币（歼-36 后来不做了）
@@ -25470,7 +25616,7 @@ return Passes
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="135">
+      <Item class="ModuleScript" referent="136">
         <Properties>
           <string name="Name">Pve</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——PvE 关卡（用户 11-23：「金币 pvp 或者打 pve 来 你搞一些关卡吧」）
@@ -25655,7 +25801,7 @@ return Pve
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="136">
+      <Item class="ModuleScript" referent="137">
         <Properties>
           <string name="Name">Revive</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——倒地与救援（用户 11-23：「这个游戏按你想的来弄」——补上战地那一套小队协作：被打倒不是马上死，队友能把你救起来）
@@ -25846,7 +25992,7 @@ return Revive
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="137">
+      <Item class="ModuleScript" referent="138">
         <Properties>
           <string name="Name">Rewind</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——开枪的延迟补偿：服务器记下每个实体命中盒、每个真人角色最近零点八秒的位置，
@@ -26081,7 +26227,7 @@ return Rewind
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="138">
+      <Item class="ModuleScript" referent="139">
         <Properties>
           <string name="Name">Round</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——回合：分队、部署（装备栏 + 出生点）、出生与复活、据点的占领、阶段与兵力、胜负、得分、结算
@@ -27414,6 +27560,9 @@ function Round.init(G)
     local P = { pl = pl, kills = 0, deaths = 0, score = 0, caps = 0, roundXp = 0, alive = false, canDeployAt = 0, dmgLog = {} }
     G.P[pl] = P
     setTeam(P, pickTeam())
+    -- 只开车的对局（Config.Wt.noInfantry）：进服按人数自动分队，不再弹「选择阵营」那一页（两张固定装备的阵营卡跟机库的科技树对不上，
+    --   用户 11-25：「整个游戏风格极其割裂……四不像」）
+    if (Config.Wt or {}).noInfantry and not G.pve then P.picked = true end
     pl.CharacterAdded:Connect(function(char) G.try("出生", onCharacter, P, char) end)
     if G.gunPublish then G.try("改枪属性", G.gunPublish, P) end   -- 改枪（Gunsmith.lua）：读档前先按默认写上，部署界面一进来就有
     if G.loadData then task.spawn(function() G.try("读档", G.loadData, P) end) end
@@ -27444,7 +27593,7 @@ return Round
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="139">
+      <Item class="ModuleScript" referent="140">
         <Properties>
           <string name="Name">Squads</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场——小队（用户 11-23「这个游戏按你想的来弄」：战地的小队——四个人一组，能在队友身边出生，倒了先找自己的小队救）
@@ -27576,7 +27725,7 @@ return Squads
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="140">
+      <Item class="ModuleScript" referent="141">
         <Properties>
           <string name="Name">Store</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——存档：经验、军衔、总击杀 / 阵亡 / 胜场 / 场次（DataStore；读不到就这一次不存）
@@ -27683,7 +27832,7 @@ return Store
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="141">
+      <Item class="ModuleScript" referent="142">
         <Properties>
           <string name="Name">Tactical</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——单兵战术平板（服务器）。用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须有次数限制
@@ -27909,7 +28058,7 @@ return Tactical
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="142">
+      <Item class="ModuleScript" referent="143">
         <Properties>
           <string name="Name">Tech</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场（服务器）——科技树：研究、购买、出击阵容、出击（用户 11-25：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」
@@ -28628,7 +28777,7 @@ return Tech
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="143">
+      <Item class="ModuleScript" referent="144">
         <Properties>
           <string name="Name">Vehicles</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——载具：登陆艇（攻方选海滩出生、机器人成班坐艇）、伞降；开载具的操作在后面的版本里接
@@ -28924,7 +29073,7 @@ return Vehicles
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="144">
+      <Item class="ModuleScript" referent="145">
         <Properties>
           <string name="Name">Weapons</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——步兵武器（背包里的工具）：发武器（按兵种）、开火（服务器校验射速、弹匣、备弹、射程、拿着的是不是这把）、
@@ -29675,7 +29824,7 @@ return Weapons
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="145">
+      <Item class="ModuleScript" referent="146">
         <Properties>
           <string name="Name">World</string>
           <ProtectedString name="Source"><![CDATA[-- 全面大战场：地图——光影、地形（Map.lua 的高度按块写体素）、整片海水和海底、远海平面、
@@ -32505,7 +32654,7 @@ return World
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="146">
+      <Item class="ModuleScript" referent="147">
         <Properties>
           <string name="Name">Wt</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——战雷式的车辆伤害（服务器；用户 11-24「把整个游戏做成战雷」，四项全勾：乘员和模块伤害 + X 光回放也要）
@@ -33276,7 +33425,7 @@ return Wt
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="147">
+      <Item class="ModuleScript" referent="148">
         <Properties>
           <string name="Name">WtAir</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（服务器）——战雷式飞机受伤（用户 11-24 夜「把整个游戏做成战雷」④：飞机补齐）
@@ -33507,7 +33656,7 @@ return WtAir
 ]]></ProtectedString>
         </Properties>
       </Item>
-      <Item class="ModuleScript" referent="148">
+      <Item class="ModuleScript" referent="149">
         <Properties>
           <string name="Name">WtMatch</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（服务器）——战雷式对局（用户 11-24 夜「把整个游戏做成战雷」③：对局玩法）
@@ -33952,15 +34101,15 @@ return WtMatch
       </Item>
     </Item>
   </Item>
-  <Item class="StarterPlayer" referent="149">
+  <Item class="StarterPlayer" referent="150">
     <Properties>
       <string name="Name">StarterPlayer</string>
     </Properties>
-    <Item class="StarterPlayerScripts" referent="150">
+    <Item class="StarterPlayerScripts" referent="151">
       <Properties>
         <string name="Name">StarterPlayerScripts</string>
       </Properties>
-      <Item class="LocalScript" referent="151">
+      <Item class="LocalScript" referent="152">
         <Properties>
           <string name="Name">Client</string>
           <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——客户端（StarterPlayerScripts.Client）
@@ -33994,6 +34143,7 @@ local LocalizationService = game:GetService("LocalizationService")
 
 local Lang = require(RS:WaitForChild("Lang"))
 local G = { Config = require(RS:WaitForChild("Config")), Lang = Lang, Map = require(RS:WaitForChild("Map")), R = {}, S = nil }
+G.Theme = require(RS:WaitForChild("Theme"))   -- 全游戏统一外观（颜色、字体、字号）：各界面从 G.Theme 取，规范在 docs/style.md
 do   -- 语言：按系统语言，zh 开头中文、其余英文（界面上能切）
   local ok, id = pcall(function() return LocalizationService.RobloxLocaleId end)
   G.lang = Lang.pick(ok and id or "en")
@@ -34127,7 +34277,7 @@ RunService.RenderStepped:Connect(function(dt)
 end)
 ]]></ProtectedString>
         </Properties>
-        <Item class="ModuleScript" referent="152">
+        <Item class="ModuleScript" referent="153">
           <Properties>
             <string name="Name">AaFcs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——防空火控显示（用户 11-22：「高射炮加一个电子屏标记点位然后打」）
@@ -34155,7 +34305,7 @@ function AaFcs.init(G)
   pcall(function() AD = require(RS:WaitForChild("AirDefs", 5)) end)
 
   local HOST, AMBER, LOCKC, GOOD, INK = RGB(255, 84, 70), RGB(255, 196, 60), RGB(255, 60, 60), RGB(110, 255, 140), RGB(230, 236, 232)
-  local FONT, FONTB = Enum.Font.Code, Enum.Font.GothamBold
+  local FONT, FONTB = Enum.Font.RobotoMono, Enum.Font.GothamBold
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "AaFcs"
@@ -34495,7 +34645,7 @@ return AaFcs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="153">
+        <Item class="ModuleScript" referent="154">
           <Properties>
             <string name="Name">AirAudio</string>
             <ProtectedString name="Source"><![CDATA[-- 开飞机的提示音、告警音（用户 11-24：「把开飞机的各种 ui 声音做成战雷」）
@@ -34716,7 +34866,7 @@ return M
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="154">
+        <Item class="ModuleScript" referent="155">
           <Properties>
             <string name="Name">AirFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机机动的云雾和音爆（用户：飞机机动的云雾效果和音爆）
@@ -34896,7 +35046,7 @@ return AirFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="155">
+        <Item class="ModuleScript" referent="156">
           <Properties>
             <string name="Name">AirHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——开飞机的界面（用户 11-19：「飞机操作界面也改成参考这个」，给了几张手机空战游戏的截图；
@@ -34929,8 +35079,9 @@ function AirHud.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local HOLO, TXT, MUTE, INK = RGB(118, 240, 140), RGB(238, 243, 245), RGB(156, 176, 160), RGB(6, 9, 12)   -- 全息绿（用户 11-21：蓝色全部改成绿色，原来青色 110, 226, 240）
-  local YEL, BAD = RGB(255, 204, 58), RGB(255, 64, 52)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local HOLO, TXT, MUTE, INK = TH.C.HUD, TH.C.TEXT, TH.C.MUTE, TH.C.BG   -- 全息绿（用户 11-21：蓝色全部改成绿色，原来青色 110, 226, 240）
+  local YEL, BAD = TH.C.WARN, TH.C.BAD
   local METAL, METAL_EDGE, METAL_ICON = RGB(138, 146, 152), RGB(200, 206, 210), RGB(226, 230, 232)
   local BOLD, MONO = Enum.Font.GothamBold, Enum.Font.RobotoMono
   local WHITE = Color3.new(1, 1, 1)
@@ -35151,7 +35302,7 @@ function AirHud.init(G)
     A.ret = { frame = ret, ring = rs, glow = gs, ticks = ticks, dot = dot }
   end
   A.holoPart, A.holoGui = holoPart, hsg
-  A.boreFall = label(gui, "+", UDim2.fromOffset(40, 40), UD2(0.5, 0, 0.5, 0), 34, HOLO, Enum.Font.Code, V2(0.5, 0.5))   -- 用不了 EditableImage
+  A.boreFall = label(gui, "+", UDim2.fromOffset(40, 40), UD2(0.5, 0, 0.5, 0), 34, HOLO, Enum.Font.RobotoMono, V2(0.5, 0.5))   -- 用不了 EditableImage
   A.boreFall.Name = "BoreMark"
   A.boreFall.Visible = false
 
@@ -35185,7 +35336,7 @@ function AirHud.init(G)
   A.leadT.Name = "LeadRange"
   A.leadT.BackgroundTransparency = 1
   A.leadT.Size, A.leadT.Position, A.leadT.AnchorPoint = UDim2.fromOffset(80, 14), UD2(1, 4, 0.5, 0), V2(0, 0.5)
-  A.leadT.Font, A.leadT.TextSize, A.leadT.TextXAlignment = Enum.Font.Code, 12, Enum.TextXAlignment.Left
+  A.leadT.Font, A.leadT.TextSize, A.leadT.TextXAlignment = Enum.Font.RobotoMono, 12, Enum.TextXAlignment.Left
   A.leadT.TextColor3, A.leadT.TextStrokeTransparency = Color3.fromRGB(255, 214, 110), 0.4
   A.leadT.Parent = A.lead
   A.lead.Visible = false
@@ -35194,7 +35345,7 @@ function AirHud.init(G)
   A.leadLine.Visible = false
 
   ---------------------------------------------------------------- 锁定（战雷式）：细的绿方框、框上型号、右边距离和接近速度；红外弹的导引头圈
-  local WT = RGB(86, 255, 118)   -- 战雷平显的绿（比全息绿更亮、更纯）
+  local WT = TH.C.HUD   -- 战雷平显的绿（比全息绿更亮、更纯）
   local LK = 40
   A.lock = frame(gui, UDim2.fromOffset(LK, LK), UD2(0.5, 0, 0.5, 0), INK, 1, V2(0.5, 0.5))
   A.lock.Name = "LockMark"
@@ -35555,7 +35706,7 @@ return AirHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="156">
+        <Item class="ModuleScript" referent="157">
           <Properties>
             <string name="Name">AirModels</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机的零件模型和动画：按 AirDefs 的外形参数拼
@@ -37174,7 +37325,7 @@ return AM
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="157">
+        <Item class="ModuleScript" referent="158">
           <Properties>
             <string name="Name">ArmorFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爆反起爆、主动防御拦截的特效（用户 11-19：给坦克实现爆反和主动拦截，画质要惊艳）
@@ -37372,7 +37523,7 @@ return ArmorFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="158">
+        <Item class="ModuleScript" referent="159">
           <Properties>
             <string name="Name">Bodycam</string>
             <ProtectedString name="Source"><![CDATA[-- 步兵第一人称记录仪。瞄准时交还镜头，夜视时保留原画面，跟随 Roblox 的减少动态效果设置。
@@ -37469,7 +37620,7 @@ function Bodycam.init(G)
     text.BackgroundTransparency = 1
     text.Position = UDim2.fromOffset(0, offset)
     text.Size = UDim2.new(1, 0, 0, 18)
-    text.Font = Enum.Font.Code
+    text.Font = Enum.Font.RobotoMono
     text.TextSize = size
     text.TextColor3 = color
     text.TextStrokeTransparency = 0.36
@@ -37662,7 +37813,7 @@ return Bodycam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="159">
+        <Item class="ModuleScript" referent="160">
           <Properties>
             <string name="Name">Bombsight</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式轰炸瞄准镜的画面（F7「轰炸机视角」）和 CCRP 目标点的标记
@@ -37707,7 +37858,7 @@ function Bombsight.init(G)
     return f
   end
   local function text(parent, name, size, pos, ts, anchor, align)
-    local l = ui.label(parent, "", size, pos, ts, LIGHT, Enum.Font.Code, anchor, align)
+    local l = ui.label(parent, "", size, pos, ts, LIGHT, Enum.Font.RobotoMono, anchor, align)
     l.Name = name
     l.TextStrokeTransparency = 0.25
     l.TextStrokeColor3 = INK
@@ -37881,7 +38032,7 @@ return Bombsight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="160">
+        <Item class="ModuleScript" referent="161">
           <Properties>
             <string name="Name">Chute</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——降落伞（客户端）：跳伞的人（服务器给角色设属性 Chute = true：飞机弹射、直升机上跳下去、伞降出生点），
@@ -38038,7 +38189,7 @@ return Chute
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="161">
+        <Item class="ModuleScript" referent="162">
           <Properties>
             <string name="Name">Coach</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——新手指导（用户：照你给的建议优化上手；不加「简单 / 真实」切换）
@@ -38621,7 +38772,7 @@ return Coach
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="162">
+        <Item class="ModuleScript" referent="163">
           <Properties>
             <string name="Name">Coins</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——金币（服务器 Economy.lua；用户 11-23：载具、配件拿金币解锁，金币打 PvP、PvE 挣）
@@ -38751,7 +38902,7 @@ return Coins
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="163">
+        <Item class="ModuleScript" referent="164">
           <Properties>
             <string name="Name">DayNight</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——昼夜更替（用户：改成昼夜更替吧，一直黑天玩起来有点怪；11-18 又说把白天模式去掉、锁定晚上：Config.DayNight.lockNight；
@@ -38920,7 +39071,7 @@ return DayNight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="164">
+        <Item class="ModuleScript" referent="165">
           <Properties>
             <string name="Name">DeathFx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——阵亡效果（用户 11-23：「死亡不要瞬间切到部署画面，加一个 GTA5 的死亡效果」）
@@ -39252,7 +39403,7 @@ return DeathFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="165">
+        <Item class="ModuleScript" referent="166">
           <Properties>
             <string name="Name">Depot</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图里的载具生成点（客户端）：Depots.lua 摆的终端柱
@@ -39750,7 +39901,7 @@ return Depot
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="166">
+        <Item class="ModuleScript" referent="167">
           <Properties>
             <string name="Name">Downed</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——倒地与救援（服务器 Revive.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -40204,7 +40355,7 @@ return Downed
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="167">
+        <Item class="ModuleScript" referent="168">
           <Properties>
             <string name="Name">Drive</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开地面载具：位置在本地算（按地形贴地、坡太陡上不去、不会游的不下水、撞房子停），每秒 15 次报给服务器；
@@ -40351,11 +40502,11 @@ function Drive.init(G)
   local dc = Instance.new("UICorner")
   dc.CornerRadius = UDim.new(0.5, 0)
   dc.Parent = dot
-  local rangeText = ui.label(sight, "", UDim2.fromOffset(200, 30), UDim2.new(0.5, 0, 0.5, 150), 26, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
-  local modeText = ui.label(sight, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.5, -180), 16, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
-  local zoomText = ui.label(sight, "", UDim2.fromOffset(120, 22), UDim2.new(0.5, 200, 0.5, 150), 16, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local rangeText = ui.label(sight, "", UDim2.fromOffset(200, 30), UDim2.new(0.5, 0, 0.5, 150), 26, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
+  local modeText = ui.label(sight, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.5, -180), 16, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
+  local zoomText = ui.label(sight, "", UDim2.fromOffset(120, 22), UDim2.new(0.5, 200, 0.5, 150), 16, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
   -- 火控显示（照钢铁猛兽 / 真车主瞄准镜下沿那一行）：弹种、测距（没测距是战斗瞄准距离，前面写 BS；没回波 ----）、待发方块（装好弹是实心）
-  local ammoText = ui.label(sight, "", UDim2.fromOffset(150, 24), UDim2.new(0.5, -190, 0.5, 150), 18, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local ammoText = ui.label(sight, "", UDim2.fromOffset(150, 24), UDim2.new(0.5, -190, 0.5, 150), 18, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
   ammoText.Name = "FcsAmmo"
   rangeText.Name = "FcsRange"
   local readyBox = ui.frame(sight, UDim2.fromOffset(15, 15), UDim2.new(0.5, 118, 0.5, 150), RET, 0, Vector2.new(0.5, 0.5))
@@ -40365,7 +40516,7 @@ function Drive.init(G)
   multiBar.Name = "FcsMulti"
   multiBar.Visible = false
   -- 火控状态（方式不是正常、稳定器关、激光保险、炮口基准该更新了）：分划上方一行
-  local fcsText = ui.label(sight, "", UDim2.fromOffset(420, 20), UDim2.new(0.5, 0, 0.5, 118), 15, RET, Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local fcsText = ui.label(sight, "", UDim2.fromOffset(420, 20), UDim2.new(0.5, 0, 0.5, 118), 15, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
   fcsText.Name = "FcsStatus"
   local readyStroke = Instance.new("UIStroke")
   readyStroke.Color = RET
@@ -42003,7 +42154,7 @@ return Drive
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="168">
+        <Item class="ModuleScript" referent="169">
           <Properties>
             <string name="Name">FPSView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——第一人称持枪：镜头前一个只有自己看得见的「视图模型」（枪 + Roblox 方块手臂）
@@ -43017,7 +43168,7 @@ return FPSView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="169">
+        <Item class="ModuleScript" referent="170">
           <Properties>
             <string name="Name">Faction</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——选阵营（客户端）：进服先看这个（服务器的 S.picked 还没定）；部署界面顶上「换阵营」也能回来（没出生的时候）
@@ -43031,7 +43182,8 @@ function Faction.init(G)
   local me = Players.LocalPlayer
   local RGB = Color3.fromRGB
   local function T(k, ...) return G.T(k, ...) end
-  local TEXT, MUTE, LINE = RGB(238, 240, 242), RGB(138, 146, 154), RGB(255, 255, 255)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local TEXT, MUTE, LINE = TH.C.TEXT, TH.C.MUTE, TH.C.LINE
   local COL = { atk = RGB(214, 58, 46), def = RGB(64, 186, 92) }   -- 守方：绿（用户 11-21 蓝色全改绿，同 Config.Teams.def）
 
   local gui = Instance.new("ScreenGui")
@@ -43185,6 +43337,7 @@ function Faction.init(G)
   function G.refreshFaction(S)
     if not S then return end
     local show = (not S.alive) and ((not S.picked) or G.factionOpen == true) and (S.progress or 1) >= 1
+      and not (G.hangarActive and G.hangarActive())   -- 机库（只开车的对局）：自动分队，不显示选阵营页（E 11-25 统一外观）
       and not (G.quickAt and os.clock() - G.quickAt < 4 and G.factionOpen ~= true)   -- 主菜单点了「快速加入」：服务器正在分队、出生，别闪出来
       and not (G.menuShown and G.menuShown())   -- 主菜单开着：等点了「进入战斗」
     gui.Enabled = show and not (G.menuShown and G.menuShown())   -- 主菜单开着（背景是透明的 3D 场景）：先不画，免得透上来
@@ -43232,7 +43385,7 @@ return Faction
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="170">
+        <Item class="ModuleScript" referent="171">
           <Properties>
             <string name="Name">Fly</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——飞机、直升机：样子和驾驶
@@ -43549,7 +43702,7 @@ function Fly.init(G)
   gui.Parent = me:WaitForChild("PlayerGui")
   local HUD = RGB(118, 240, 140)   -- 绿色全息（用户 11-19：飞机操作界面照 MWT 改，跟开坦克的界面一套颜色，那时是青色；用户 11-21：蓝色全部改成绿色）
   local function hud(text, size, pos, ts, anchor, align)
-    local l = ui.label(gui, text, size, pos, ts or 16, HUD, Enum.Font.Code, anchor, align)
+    local l = ui.label(gui, text, size, pos, ts or 16, HUD, Enum.Font.RobotoMono, anchor, align)
     l.TextStrokeTransparency = 0.5
     l.TextStrokeColor3 = RGB(0, 24, 10)
     l.Visible = false
@@ -43601,7 +43754,7 @@ function Fly.init(G)
       segs[i] = ui.frame(holder, UDim2.fromOffset(10, 2), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0.5))
     end
     local ticks = { ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)), ui.frame(holder, UDim2.fromOffset(2, 9), UDim2.new(), HUD, 0.15, Vector2.new(0.5, 0)) }
-    local labs = { ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)), ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.Code, Vector2.new(0.5, 0.5)) }
+    local labs = { ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5)), ui.label(holder, "", UDim2.fromOffset(30, 14), UDim2.new(), 12, HUD, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5)) }
     for _, l in ipairs(labs) do l.TextStrokeTransparency, l.TextStrokeColor3 = 0.5, RGB(0, 24, 10) end
     return { f = holder, segs = segs, ticks = ticks, labs = labs }
   end
@@ -43667,7 +43820,7 @@ function Fly.init(G)
     l.Parent, l.Size, l.Position, l.AnchorPoint = it[2], UDim2.new(1, -8, 1, 0), UDim2.fromScale(0.5, 0.5), Vector2.new(0.5, 0.5)
     l.TextSize, l.TextXAlignment, l.Visible = 30, Enum.TextXAlignment.Center, true
   end
-  local hdgText = ui.label(hdgBox, "", UDim2.fromScale(1, 1), nil, 18, HUD, Enum.Font.Code)
+  local hdgText = ui.label(hdgBox, "", UDim2.fromScale(1, 1), nil, 18, HUD, Enum.Font.RobotoMono)
   local spdCap = hud(T("hud.spd"), UDim2.fromOffset(120, 16), UDim2.new(0.5, -420, 0.5, -34), 13, Vector2.new(0, 0.5), Enum.TextXAlignment.Left)
   local altCap = hud(T("hud.alt"), UDim2.fromOffset(120, 16), UDim2.new(0.5, 300, 0.5, -34), 13, Vector2.new(0, 0.5), Enum.TextXAlignment.Left)
   thrText.Position, vsText.Position, fuelText.Position = UDim2.new(0.5, -300, 0.5, 36), UDim2.new(0.5, 300, 0.5, 36), UDim2.new(0.5, -300, 0.5, 56)
@@ -43751,7 +43904,7 @@ function Fly.init(G)
     ui.stroke(edge, RGB(90, 94, 90), 1, 0.2)
   end
   local function mfd(text, pos, anchor, size, col, align)
-    local l = ui.label(disp, text, UDim2.fromOffset(150, (size or 16) + 4), pos, size or (MOB and 12 or 16), col or MFD, Enum.Font.Code, anchor or Vector2.new(0.5, 0.5), align)
+    local l = ui.label(disp, text, UDim2.fromOffset(150, (size or 16) + 4), pos, size or (MOB and 12 or 16), col or MFD, Enum.Font.RobotoMono, anchor or Vector2.new(0.5, 0.5), align)
     l.TextStrokeTransparency, l.TextStrokeColor3 = 0.55, RGB(0, 0, 0)
     l.ZIndex = 12
     return l
@@ -43830,14 +43983,14 @@ function Fly.init(G)
   side.Name = "TgpSide"
   side.ZIndex = 12
   local function sl(text, y, size, col, font)
-    local l = ui.label(side, text, UDim2.new(1, 0, 0, (size or 12) + 4), UDim2.fromOffset(0, y), size or 12, col or MFD, font or Enum.Font.Code, nil, Enum.TextXAlignment.Left)
+    local l = ui.label(side, text, UDim2.new(1, 0, 0, (size or 12) + 4), UDim2.fromOffset(0, y), size or 12, col or MFD, font or Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left)
     l.ZIndex = 12
     l.TextWrapped = true
     return l
   end
   TG.rel = sl("", 0, MOB and 10 or 11, MFD_DIM)
-  ui.label(side, "TTI", UDim2.fromOffset(30, 14), UDim2.fromOffset(0, MOB and 36 or 52), MOB and 10 or 11, MFD_DIM, Enum.Font.Code, nil, Enum.TextXAlignment.Left).ZIndex = 12
-  TG.ttiBig = ui.label(side, "-:--", UDim2.fromOffset(160, 34), UDim2.fromOffset(34, MOB and 22 or 34), MOB and 22 or 32, MFD, Enum.Font.Code, nil, Enum.TextXAlignment.Left)
+  ui.label(side, "TTI", UDim2.fromOffset(30, 14), UDim2.fromOffset(0, MOB and 36 or 52), MOB and 10 or 11, MFD_DIM, Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left).ZIndex = 12
+  TG.ttiBig = ui.label(side, "-:--", UDim2.fromOffset(160, 34), UDim2.fromOffset(34, MOB and 22 or 34), MOB and 22 or 32, MFD, Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left)
   TG.ttiBig.ZIndex = 12
   local barBg = ui.frame(side, UDim2.new(0.86, 0, 0, 3), UDim2.fromOffset(0, MOB and 58 or 76), RGB(70, 72, 70), 0)
   barBg.ZIndex = 12
@@ -43847,7 +44000,7 @@ function Fly.init(G)
   TG.away = sl("", y0, MOB and 10 or 11, MFD)
   TG.arm = sl("", y0 + (MOB and 15 or 20), MOB and 10 or 11, RGB(236, 200, 120))
   TG.lst = sl("", y0 + (MOB and 30 or 40), MOB and 10 or 11, MFD)
-  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 16, MFD, Enum.Font.Garamond)
+  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 16, MFD, Enum.Font.GothamMedium)
   TG.say.Size = UDim2.new(1, 0, 0, MOB and 40 or 56)
   local eoHint = sl("", y0 + (MOB and 96 or 140), MOB and 9 or 10, MFD_DIM)
   eoHint.Size = UDim2.new(1, 0, 0, 90)
@@ -43956,7 +44109,7 @@ function Fly.init(G)
       local sk = ui.stroke(f, HUD, 1, 0.7)
       local kb = ui.frame(f, UDim2.fromOffset(24, 24), UDim2.new(0, 6, 0.5, 0), RGB(0, 0, 0), 0.4, Vector2.new(0, 0.5))
       ui.stroke(kb, HUD, 1, 0.2)
-      local kl = ui.label(kb, it.key, UDim2.fromScale(1, 1), nil, 15, HUD, Enum.Font.Code)
+      local kl = ui.label(kb, it.key, UDim2.fromScale(1, 1), nil, 15, HUD, Enum.Font.RobotoMono)
       kl.Name = "Key"
       local ic = ui.frame(f, UDim2.fromOffset(60, 20), UDim2.new(0, 38, 0.5, 0), RGB(0, 0, 0), 1, Vector2.new(0, 0.5))
       ic.Name = "Icon"
@@ -43964,7 +44117,7 @@ function Fly.init(G)
       local nm = ui.label(f, it.flare and T("air.flareName") or T("aw." .. it.wid), UDim2.new(1, -164, 1, 0), UDim2.fromOffset(104, 0), 14, HUD, Enum.Font.GothamMedium, nil, Enum.TextXAlignment.Left)
       nm.TextWrapped = false
       nm.Name = "Name"
-      local cnt = ui.label(f, "", UDim2.fromOffset(58, H), UDim2.new(1, -6, 0, 0), 17, HUD, Enum.Font.Code, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+      local cnt = ui.label(f, "", UDim2.fromOffset(58, H), UDim2.new(1, -6, 0, 0), 17, HUD, Enum.Font.RobotoMono, Vector2.new(1, 0), Enum.TextXAlignment.Right)
       cnt.Name = "Count"
       wRows[i] = { f = f, s = sk, cnt = cnt, nm = nm, it = it }
     end
@@ -46223,7 +46376,7 @@ return Fly
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="171">
+        <Item class="ModuleScript" referent="172">
           <Properties>
             <string name="Name">FortView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图自带工事的样子：机枪碉堡、岸防炮、高炮、M777 榴弹炮，零件拼的；
@@ -46586,7 +46739,7 @@ return FortView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="172">
+        <Item class="ModuleScript" referent="173">
           <Properties>
             <string name="Name">Fx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——特效与音效：曳光、枪口火光、弹着点（钢甲火花、跳弹、土、沙、水）、飞行中的火箭弹 / 导弹 / 手雷（照服务器给的初速本地算弹道）、炮弹落下的呼啸、爆炸、溅水、
@@ -48149,7 +48302,7 @@ return Fx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="173">
+        <Item class="ModuleScript" referent="174">
           <Properties>
             <string name="Name">Garage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克改装界面（用户 11-19：可以改坦克，像给飞机选导弹那样选装）
@@ -48559,7 +48712,7 @@ return Garage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="174">
+        <Item class="ModuleScript" referent="175">
           <Properties>
             <string name="Name">GearView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——装备的 3D 小图（部署界面的装备格、右边的大图）
@@ -48691,7 +48844,7 @@ return GearView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="175">
+        <Item class="ModuleScript" referent="176">
           <Properties>
             <string name="Name">GunKit</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪的配件（用户 11-20：做一整套改枪系统，对标三角洲行动；数据和算法在 ReplicatedStorage.GunMods）
@@ -48970,7 +49123,7 @@ return GunKit
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="176">
+        <Item class="ModuleScript" referent="177">
           <Properties>
             <string name="Name">Gunner</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——操作地图自带的工事（走到跟前按 E 接手，F 离开）
@@ -49027,7 +49180,7 @@ function Gunner.init(G)
   local leadMark = ui.label(gui, "◇", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 24, RGB(255, 90, 70), Enum.Font.GothamBold, Vector2.new(0.5, 0.5))
   leadMark.TextStrokeTransparency = 0.3
   leadMark.Visible = false
-  local rangeText = ui.label(gui, "", UDim2.fromOffset(320, 24), UDim2.new(0.5, 0, 0.5, 34), 16, RGB(255, 236, 170), Enum.Font.Code, Vector2.new(0.5, 0))
+  local rangeText = ui.label(gui, "", UDim2.fromOffset(320, 24), UDim2.new(0.5, 0, 0.5, 34), 16, RGB(255, 236, 170), Enum.Font.RobotoMono, Vector2.new(0.5, 0))
   rangeText.TextStrokeTransparency = 0.4
   rangeText.Visible = false
   local scopeBox = ui.frame(gui, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
@@ -49524,7 +49677,7 @@ return Gunner
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="177">
+        <Item class="ModuleScript" referent="178">
           <Properties>
             <string name="Name">Gunsmith</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——改枪界面（用户 11-20：「做一整套改枪系统，对标三角洲行动」；数据、算法在 ReplicatedStorage.GunMods）
@@ -49751,7 +49904,7 @@ function Gunsmith.init(G)
   local codeBox = Instance.new("TextBox")
   codeBox.Size, codeBox.Position = UD2(0, 186, 0, 34), UD2(0, 640, 0, 48)
   codeBox.BackgroundColor3, codeBox.BackgroundTransparency, codeBox.BorderSizePixel = RGB(4, 5, 6), 0.1, 0
-  codeBox.TextColor3, codeBox.TextSize, codeBox.Font = ACC, 16, Enum.Font.Code
+  codeBox.TextColor3, codeBox.TextSize, codeBox.Font = ACC, 16, Enum.Font.RobotoMono
   codeBox.ClearTextOnFocus = false
   codeBox.TextEditable = true
   codeBox.PlaceholderText = "M4A1-XXXXXX"
@@ -50475,7 +50628,7 @@ return Gunsmith
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="178">
+        <Item class="ModuleScript" referent="179">
           <Properties>
             <string name="Name">Hangar</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
@@ -50938,7 +51091,7 @@ return Hangar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="179">
+        <Item class="ModuleScript" referent="180">
           <Properties>
             <string name="Name">Hatch</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——地面车的舱盖、车门、跳板开合，车长探出舱口，上车的人爬上车钻进舱口 / 从尾门走进去
@@ -51651,7 +51804,7 @@ return Hatch
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="180">
+        <Item class="ModuleScript" referent="181">
           <Properties>
             <string name="Name">Hud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战斗中的界面，照用户给的截图做，要比截图更精致、更简洁（用户：现在这个太卡通）：
@@ -51678,14 +51831,16 @@ function Hud.init(G)
   local V2 = Vector2.new
   local W = G.W or Config.Weapons   -- 自己的枪按装的配件（init.client.lua 的 G.W）
   local WHITE = Color3.new(1, 1, 1)
-  local TEXT, MUTE, FAINT = RGB(232, 236, 238), RGB(160, 166, 170), RGB(110, 116, 120)
-  local NUM = Enum.Font.Jura   -- 细的数字（弹药、距离、朝向）
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local TEXT, MUTE, FAINT = TH.C.TEXT, TH.C.MUTE, TH.C.FAINT
+  local NUM = Enum.Font.RobotoMono   -- 数字（弹药、距离、朝向）：统一用等宽（docs/style.md）
   local M_PER = 2.8            -- 1 米多少格（同 AirDefs.M）
   local function T(k, ...) return G.T(k, ...) end
-  local NEUTRAL = Color3.fromRGB(200, 200, 200)   -- 征服模式的中立据点
+  local NEUTRAL = TH.C.NEUTRAL   -- 征服模式的中立据点
   local function teamColor(t)
-    local T0 = Config.Teams[t or "atk"]
-    return T0 and T0.color or NEUTRAL
+    -- 队伍的颜色按看的人算：自己这一边绿、对面红、中立灰（统一外观 docs/style.md，不再攻方一律红、守方一律绿）
+    if t ~= "atk" and t ~= "def" then return NEUTRAL end
+    return TH.side(t)
   end
   local function other(t) return (t == "atk") and "def" or "atk" end
   local function hex(c) return string.format("rgb(%d,%d,%d)", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)) end
@@ -51822,7 +51977,7 @@ function Hud.init(G)
 
   local RC = Config.Radar or { range = 520, ping = 3 }
   local LINE, LINE_DIM = RGB(244, 246, 248), RGB(214, 220, 226)   -- 框、网格、字：白（原来是雷达绿）
-  local FRIEND, FOE = RGB(88, 214, 110), RGB(255, 64, 52)
+  local FRIEND, FOE = TH.C.FRIEND, TH.C.FOE
   local MS = mobile and 122 or 216   -- 手机：左上，往下是开车的方向键，小一点免得压着
   local box = P.miniBox
   box.AnchorPoint = mobile and V2(0, 0) or V2(1, 0)
@@ -52478,7 +52633,17 @@ function Hud.init(G)
   ---------------------------------------------------------------- 准星下面弹一行（击杀、占领）：一两秒淡出，新的把旧的往上顶（用户：感受不到激烈对抗）
   local pops = {}
   function G.pop(text, kind)
-    local col = (kind == "kill") and RGB(255, 214, 120) or (kind == "ric") and RGB(255, 178, 64) or (kind == "ricIn") and RGB(200, 220, 255) or RGB(140, 230, 160)
+    -- 击毁：WtHud（开车打中的结果）刚报过「击毁」就不再弹这一条（服务器的击杀消息和命中结果几乎同时到，两边都弹就叠成两行）
+    if kind == "kill" and G.wtKillShownAt and math.abs(os.clock() - G.wtKillShownAt) < 1.6 then return end
+    if kind == "kill" and G.drive ~= nil then   -- 开着车：命中结果可能晚一点到，等 0.25 秒再看
+      task.delay(0.25, function()
+        if not (G.wtKillShownAt and math.abs(os.clock() - G.wtKillShownAt) < 1.6) then G.pop(text, "killNow") end
+      end)
+      return
+    end
+    if kind == "killNow" then kind = "kill" end
+    -- 统一外观：击杀白、跳弹琥珀、被跳弹灰、其他绿（不用蓝）
+    local col = (kind == "kill") and TEXT or (kind == "ric") and TH.C.WARN or (kind == "ricIn") and MUTE or TH.C.GOOD
     local l = txt(G.gui, text, UDim2.fromOffset(420, 22), UDim2.fromScale(0.5, 0.6), mobile and 15 or 17, col, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 0.45)
     l.ZIndex = 25
     table.insert(pops, 1, l)
@@ -52501,7 +52666,7 @@ return Hud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="181">
+        <Item class="ModuleScript" referent="182">
           <Properties>
             <string name="Name">HudArt</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——驾驶界面的图标（用户 11-19：「像素感太强，我要 3A 级别的 UI」「每个坦克侧面截个图，做成全息颜色的 icon，
@@ -52615,7 +52780,7 @@ return HudArt
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="182">
+        <Item class="ModuleScript" referent="183">
           <Properties>
             <string name="Name">Interior</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰：车里按真实布局拼出来的乘员舱，坐在乘员位上看（对标 Steel Beasts），也能拿来拍电影
@@ -52808,7 +52973,17 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     c._rot, c._chest, c._eyeOff = rot, chest, eyeInLT
   end
 
+  -- 第一人称只给白名单里的型号（Config.FirstPerson.only：用户 11-25 只留 M1A1、M1A2；nil = 全开）
+  local function fpAllowed(id)
+    local FP = G.Config.FirstPerson
+    local only = FP and FP.only
+    if not only then return true end
+    return only[id] == true
+  end
+  G.interiorAllowed = fpAllowed
+
   local function build(st, v)
+    if not fpAllowed(v.def.id) then return nil end
     local key = ALIAS[v.def.id] or v.def.id
     local fn = Defs[key]
     if not fn then return nil end
@@ -53993,7 +54168,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     local fst = G.fly
     if fst and fst.d then   -- 开飞机：座舱（下面 stepAir）；坐后座不开飞机的、遥控无人机的没有
       if cur and not cur.spec.air then teardown() end
-      if fst.pilot and not fst.uav and Defs[fst.d.id] then return stepAir(dt, fst) end
+      if fst.pilot and not fst.uav and Defs[fst.d.id] and fpAllowed(fst.d.id) then return stepAir(dt, fst) end
       if cur then teardown() end
       return
     end
@@ -54325,7 +54500,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   ret.Parent = og
   local oName = Instance.new("TextLabel")
   oName.BackgroundTransparency = 1
-  oName.Font = Enum.Font.Code
+  oName.Font = Enum.Font.RobotoMono
   oName.TextSize = 16
   oName.TextXAlignment = Enum.TextXAlignment.Left
   oName.Parent = og
@@ -54402,7 +54577,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     l.Text = txt
     l.TextSize = size
     l.TextColor3 = col
-    l.Font = Enum.Font.Code
+    l.Font = Enum.Font.RobotoMono
     l.TextXAlignment = (align == "r") and Enum.TextXAlignment.Right or ((align == "l") and Enum.TextXAlignment.Left or Enum.TextXAlignment.Center)
     l.Parent = ret
     return l
@@ -55311,7 +55486,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   UIS.InputBegan:Connect(function(io, gp)
     if gp then return end
     local fst = G.fly
-    if fst and fst.d and fst.pilot and not fst.uav and not fst.eo and not fst.bsight and Defs[fst.d.id] then   -- 飞机：V 进出座舱、F2 / F3 前后座、B / L / U 同坦克
+    if fst and fst.d and fst.pilot and not fst.uav and not fst.eo and not fst.bsight and Defs[fst.d.id] and fpAllowed(fst.d.id) then   -- 飞机：V 进出座舱、F2 / F3 前后座、B / L / U 同坦克
       local k = io.KeyCode
       if io.UserInputType == Enum.UserInputType.MouseButton1 and hover and mode == "seat" and cur then
         if hover.mov then movPress(cur, hover.mov) return end
@@ -55457,7 +55632,7 @@ return Interior
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="183">
+        <Item class="ModuleScript" referent="184">
           <Properties>
             <string name="Name">InteriorAFV</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——步战车、装甲车、突击炮、自行火炮、自行高炮、轮式车、卡车的内饰（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -56171,7 +56346,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="184">
+        <Item class="ModuleScript" referent="185">
           <Properties>
             <string name="Name">InteriorAbrams</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——M1A1 原模型自带的炮塔内饰搬进各车（InteriorDefs 末尾调：require(...)(Defs, 共用件)）
@@ -56715,7 +56890,7 @@ end
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="185">
+        <Item class="ModuleScript" referent="186">
           <Properties>
             <string name="Name">InteriorCav</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——从原车模型挖出来的内腔（tools/models/carve.py 写的 ReplicatedStorage.CavityMeta）给内饰代码查：
@@ -56867,7 +57042,7 @@ return Cav
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="186">
+        <Item class="ModuleScript" referent="187">
           <Properties>
             <string name="Name">InteriorDefs</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——各型载具的内饰（真实布局、真实尺寸，米）。InteriorKit 拼零件，Interior.lua 让它动起来
@@ -59002,7 +59177,7 @@ return Defs
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="187">
+        <Item class="ModuleScript" referent="188">
           <Properties>
             <string name="Name">InteriorKit</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——载具内饰的零件库（Interior.lua、InteriorDefs.lua 用）
@@ -60077,7 +60252,7 @@ return K
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="188">
+        <Item class="ModuleScript" referent="189">
           <Properties>
             <string name="Name">InteriorScreens</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——内饰里各块屏幕的页面（SurfaceGui），由 Interior.lua 按实时数据刷新
@@ -60091,7 +60266,7 @@ local RGB = Color3.fromRGB
 local UD2 = UDim2.new
 local V3 = Vector3.new
 local PI = math.pi
-local FONT = Enum.Font.Code
+local FONT = Enum.Font.RobotoMono
 local FONTB = Enum.Font.GothamBold
 local function clamp(x, a, b) return x < a and a or (x > b and b or x) end
 
@@ -62814,7 +62989,7 @@ return Screens
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="189">
+        <Item class="ModuleScript" referent="190">
           <Properties>
             <string name="Name">Juice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——爽感（用户：同时想办法增加玩家体验感和爽感）
@@ -62866,9 +63041,10 @@ function Juice.init(G)
   ticker.Name = "Ticker"
   ticker.BackgroundTransparency = 1
   ticker.Size = UDim2.fromOffset(260, 150)
-  ticker.Position = UDim2.new(0.5, 64, 0.5, -42)
+  ticker.Position = UDim2.new(0.5, 120, 0.5, -76)   -- 准星右上：让开准星右边坦克的测距字（WtTank「R 测距」）
   ticker.Parent = gui
-  local total = label(ticker, "", UDim2.fromOffset(240, 34), UDim2.fromOffset(0, 16), 28, RGB(255, 222, 120), Enum.Font.GothamBlack)
+  local TH = G.Theme   -- 统一外观（docs/style.md）：加分数字琥珀、说明白字，字号不再 28 号黑体大字
+  local total = label(ticker, "", UDim2.fromOffset(240, 26), UDim2.fromOffset(0, 18), 20, TH.C.WARN, TH.F.bold)
   total.Name = "Total"
   local tScale = Instance.new("UIScale")
   tScale.Parent = total
@@ -62879,7 +63055,7 @@ function Juice.init(G)
     end
   end
   local function addLine(text, color)
-    local l = label(ticker, text, UDim2.fromOffset(240, 20), UDim2.fromOffset(2, 40), 16, color or Color3.new(1, 1, 1))
+    local l = label(ticker, text, UDim2.fromOffset(240, 20), UDim2.fromOffset(2, 40), 14, color or TH.C.TEXT, TH.F.body)
     l.Name = "Line"
     table.insert(lines, 1, l)
     while #lines > 4 do table.remove(lines):Destroy() end
@@ -62892,28 +63068,30 @@ function Juice.init(G)
     lastT = now()
     total.Text = (sum > 0) and ("+" .. sum) or ""
     total.TextTransparency, total.TextStrokeTransparency = 0, 0.45
-    tScale.Scale = 1.35
+    tScale.Scale = 1.12
     TweenService:Create(tScale, TweenInfo.new(0.25, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
     addLine(((pts or 0) > 0 and ("+" .. pts .. "  ") or "") .. text, color)
   end
 
   ---------------------------------------------------------------- ③ 连杀横幅
 
-  local banner = label(gui, "", UDim2.fromOffset(700, 60), UDim2.fromScale(0.5, 0.24), 44, RGB(255, 236, 170), Enum.Font.GothamBlack, V2(0.5, 0.5), Enum.TextXAlignment.Center)
+  local banner = label(gui, "", UDim2.fromOffset(700, 40), UDim2.fromScale(0.5, 0.24), 28, TH.C.TEXT, TH.F.bold, V2(0.5, 0.5), Enum.TextXAlignment.Center)
   banner.Name = "Banner"
   banner.TextStrokeTransparency = 0.2
   banner.TextTransparency = 1
-  local sub = label(gui, "", UDim2.fromOffset(500, 26), UDim2.new(0.5, 0, 0.24, 38), 18, RGB(255, 200, 120), Enum.Font.GothamBold, V2(0.5, 0.5), Enum.TextXAlignment.Center)
+  local sub = label(gui, "", UDim2.fromOffset(500, 22), UDim2.new(0.5, 0, 0.24, 30), 14, TH.C.MUTE, TH.F.body, V2(0.5, 0.5), Enum.TextXAlignment.Center)
   sub.Name = "BannerSub"
   sub.TextTransparency = 1
   local bScale = Instance.new("UIScale")
   bScale.Parent = banner
   local bannerT = -1e9
   local function showBanner(text, small)
+    -- 只开车的对局（机库）：连杀由 WtBattle 的战场奖章报，这里不再弹第二条（用户 11-25：「四不像」——屏幕中间叠了四套击杀提示）
+    if G.hangarActive and G.hangarActive() then return end
     banner.Text, sub.Text = text, small or ""
     banner.TextTransparency, banner.TextStrokeTransparency = 0, 0.2
     sub.TextTransparency, sub.TextStrokeTransparency = 0, 0.5
-    bScale.Scale = 1.6
+    bScale.Scale = 1.2
     TweenService:Create(bScale, TweenInfo.new(0.3, Enum.EasingStyle.Back, Enum.EasingDirection.Out), { Scale = 1 }):Play()
     bannerT = now()
     if G.sfx then G.sfx("streak", nil, { vol = 0.9 }) end
@@ -62935,7 +63113,7 @@ function Juice.init(G)
     elseif kind == "vkill" then pts, what = SC.vehicleKill, T("juice.vkill")
     elseif kind == "fkill" then pts, what = SC.fortKill, T("juice.fkill") end
     G.juiceScore(pts, what)
-    if head then G.juiceScore(0, T("juice.head"), RGB(255, 205, 80)) end
+    if head then G.juiceScore(0, T("juice.head"), TH.C.WARN) end
     -- 连杀：4.5 秒内接着打死的算一串
     local t = now()
     for i = #kills, 1, -1 do if t - kills[i] > 4.5 then table.remove(kills, i) end end
@@ -63080,7 +63258,7 @@ return Juice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="190">
+        <Item class="ModuleScript" referent="191">
           <Properties>
             <string name="Name">Mantle</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——翻越 / 攀爬（用户 11-23「这个游戏按你想的来弄」：沙袋、矮墙、栏杆、窗台、集装箱边不该把人挡死，跟战地一样按空格翻过去）
@@ -63242,7 +63420,7 @@ return Mantle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="191">
+        <Item class="ModuleScript" referent="192">
           <Properties>
             <string name="Name">MapPick</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——选地图（用户 11-22：「界面就不要写 switch side 了，直接写 play，然后进入界面点地图」）
@@ -63264,8 +63442,9 @@ function MapPick.init(G)
   local V2 = Vector2.new
   local function T(k, ...) return G.T(k, ...) end
   local Map = G.Map
-  local WHITE, MUTE, FAINT = Color3.new(1, 1, 1), RGB(156, 162, 168), RGB(104, 110, 116)
-  local ACCENT = { sands = RGB(222, 116, 70) }
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, MUTE, FAINT = Color3.new(1, 1, 1), TH.C.MUTE, TH.C.FAINT
+  local ACCENT = { sands = TH.C.WARN }
   local touch = UIS.TouchEnabled and not UIS.KeyboardEnabled   -- 手机：整体缩到一半多，字放大一点
 
   local gui = Instance.new("ScreenGui")
@@ -63736,7 +63915,7 @@ return MapPick
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="192">
+        <Item class="ModuleScript" referent="193">
           <Properties>
             <string name="Name">MapUI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——地图界面：按 Map.lua 的高度画出群岛（每行相邻的同色格并成一块，几百个方块），标据点、海滩、舰队、出生点、自己、被标记的敌人
@@ -64138,13 +64317,15 @@ function MapUI.init(G)
         local d = pointDots[s.id]
         if d then
           local col
+          -- 据点颜色按看的人算：自己这边绿、对面红、中立灰（统一外观 docs/style.md）
+          local TH = G.Theme
+          local cA, cD, N0 = TH.side("atk"), TH.side("def"), TH.C.NEUTRAL
           if S.mode == "conquest" then   -- 征服：中立灰，往哪边推就往那边的颜色渐变
             local c = s.cap or 0
-            local N0 = RGB(200, 200, 200)
-            col = (c >= 0) and N0:Lerp(Config.Teams.atk.color, c) or N0:Lerp(Config.Teams.def.color, -c)
+            col = (c >= 0) and N0:Lerp(cA, c) or N0:Lerp(cD, -c)
           else
-            col = (Config.Teams[s.owner] and Config.Teams[s.owner].color) or RGB(200, 200, 200)
-            if s.owner == "def" and s.prog > 0 then col = col:Lerp(Config.Teams.atk.color, s.prog) end
+            col = (s.owner == "atk" and cA) or (s.owner == "def" and cD) or N0
+            if s.owner == "def" and s.prog > 0 then col = col:Lerp(cA, s.prog) end
           end
           d.BackgroundColor3 = col
         end
@@ -64222,7 +64403,7 @@ return MapUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="193">
+        <Item class="ModuleScript" referent="194">
           <Properties>
             <string name="Name">Marks</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——炸弹落点标记（用户：飞机空投炸弹在地面要有标记，方便查看投到哪）
@@ -64398,7 +64579,7 @@ return Marks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="194">
+        <Item class="ModuleScript" referent="195">
           <Properties>
             <string name="Name">Menu</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单：照用户给的第一张截图，比截图更精致、更简洁
@@ -64417,7 +64598,8 @@ function Menu.init(G)
   local RGB = Color3.fromRGB
   local V2 = Vector2.new
   local function T(k, ...) return G.T(k, ...) end
-  local WHITE, TEXT, MUTE, FAINT = Color3.new(1, 1, 1), RGB(236, 238, 240), RGB(156, 162, 168), RGB(104, 110, 116)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, TEXT, MUTE, FAINT = Color3.new(1, 1, 1), TH.C.TEXT, TH.C.MUTE, TH.C.FAINT
   local Stage = require(script.Parent:WaitForChild("MenuStage"))   -- 背后的 3D 场景（废墟、火光、火星、全副武装的士兵）
 
   local gui = Instance.new("ScreenGui")
@@ -64711,7 +64893,7 @@ return Menu
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="195">
+        <Item class="ModuleScript" referent="196">
           <Properties>
             <string name="Name">MenuStage</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——主菜单背后的场景（用户给了《坠落》主菜单的截图：「初始界面用这种背景图改一下」）：
@@ -65033,7 +65215,7 @@ return Stage
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="196">
+        <Item class="ModuleScript" referent="197">
           <Properties>
             <string name="Name">MslCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹视角小窗（用户：继续做导弹视角小窗）
@@ -65108,7 +65290,7 @@ function MslCam.init(G)
     l.BackgroundTransparency = 1
     l.Size = UDim2.fromOffset(150, 18)
     l.Position, l.AnchorPoint = pos, anchor
-    l.Font = Enum.Font.Code
+    l.Font = Enum.Font.RobotoMono
     l.TextSize = size or 13
     l.TextColor3 = color or GREEN
     l.TextXAlignment = align
@@ -65250,7 +65432,7 @@ return MslCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="197">
+        <Item class="ModuleScript" referent="198">
           <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
@@ -65384,7 +65566,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="198">
+        <Item class="ModuleScript" referent="199">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -65671,7 +65853,7 @@ function Night.init(G)
   virTag.BackgroundTransparency = 1
   virTag.Position = UDim2.fromOffset(18, 64)
   virTag.Size = UDim2.fromOffset(160, 18)
-  virTag.Font = Enum.Font.Code
+  virTag.Font = Enum.Font.RobotoMono
   virTag.TextSize = 14
   virTag.TextXAlignment = Enum.TextXAlignment.Left
   virTag.TextColor3 = RGB(235, 238, 238)
@@ -65937,7 +66119,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="199">
+        <Item class="ModuleScript" referent="200">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——高超音速战术核导弹：警报、红圈、核爆（服务器 Nuke.lua；用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -66556,7 +66738,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="200">
+        <Item class="ModuleScript" referent="201">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -66843,7 +67025,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="201">
+        <Item class="ModuleScript" referent="202">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -67100,7 +67282,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="202">
+        <Item class="ModuleScript" referent="203">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
@@ -67144,7 +67326,7 @@ function Perf.init(G)
   box.BackgroundColor3 = Color3.new(0, 0, 0)
   box.BackgroundTransparency = 0.35
   box.BorderSizePixel = 0
-  box.Font = Enum.Font.Code
+  box.Font = Enum.Font.RobotoMono
   box.TextSize = 13
   box.TextColor3 = Color3.fromRGB(224, 232, 236)
   box.TextXAlignment = Enum.TextXAlignment.Left
@@ -67255,7 +67437,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="203">
+        <Item class="ModuleScript" referent="204">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -67961,7 +68143,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="204">
+        <Item class="ModuleScript" referent="205">
           <Properties>
             <string name="Name">Radar</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式机载雷达
@@ -68049,8 +68231,9 @@ function Radar.init(G)
   gui.Parent = me:WaitForChild("PlayerGui")
   local UIS = game:GetService("UserInputService")
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
-  local GRN, LINE, FILL, BEAM = RGB(140, 255, 160), RGB(110, 230, 140), RGB(24, 120, 56), RGB(170, 255, 190)
-  local AMB, RED = RGB(255, 200, 80), RGB(255, 80, 64)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local GRN, LINE, FILL, BEAM = TH.C.HUD, TH.C.HUD:Lerp(TH.C.INK, 0.12), TH.C.HUD:Lerp(TH.C.INK, 0.55), TH.C.HUD:Lerp(Color3.new(1, 1, 1), 0.3)
+  local AMB, RED = TH.C.WARN, TH.C.BAD
   local function frame(parent, size, pos, col, tr, anchor)
     local f = Instance.new("Frame")
     f.Size, f.Position = size, pos or U2.new()
@@ -68064,7 +68247,7 @@ function Radar.init(G)
     l.Name = name
     l.BackgroundTransparency = 1
     l.Size, l.Position, l.AnchorPoint = U2.fromOffset(90, 14), pos, anchor or V2(0, 0)
-    l.Font, l.TextSize, l.TextColor3 = Enum.Font.Code, ts or 13, GRN
+    l.Font, l.TextSize, l.TextColor3 = Enum.Font.RobotoMono, ts or 13, GRN
     l.TextXAlignment = align or Enum.TextXAlignment.Left
     l.TextStrokeTransparency, l.TextStrokeColor3 = 0.45, RGB(0, 20, 8)
     l.Text = ""
@@ -68383,7 +68566,7 @@ return Radar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="205">
+        <Item class="ModuleScript" referent="206">
           <Properties>
             <string name="Name">Ride</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——坐在别人开的地面车后面当乘客（用户 11-24：「运载车步战车要真的能载人」）
@@ -68511,7 +68694,7 @@ return Ride
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="206">
+        <Item class="ModuleScript" referent="207">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -68594,7 +68777,7 @@ function Sail.init(G)
   bs.Transparency = 0.25
   bs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
   bs.Parent = binoIn
-  local binoText = ui.label(bino, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.85, 0), 16, RGB(230, 230, 230), Enum.Font.Code, Vector2.new(0.5, 0.5))
+  local binoText = ui.label(bino, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.85, 0), 16, RGB(230, 230, 230), Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
 
   ---------------------------------------------------------------- 开船
 
@@ -69108,7 +69291,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="207">
+        <Item class="ModuleScript" referent="208">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -69610,7 +69793,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="208">
+        <Item class="ModuleScript" referent="209">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -69939,7 +70122,7 @@ function Scope.init(G)
     local l = Instance.new("TextLabel")
     l.AnchorPoint = V2(0.5, 0.5)
     l.BackgroundTransparency = 1
-    l.Font = Enum.Font.Code
+    l.Font = Enum.Font.RobotoMono
     l.TextColor3 = color
     l.TextSize = size
     l.ZIndex = z
@@ -70557,7 +70740,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="209">
+        <Item class="ModuleScript" referent="210">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -71356,7 +71539,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="210">
+        <Item class="ModuleScript" referent="211">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -72108,7 +72291,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="211">
+        <Item class="ModuleScript" referent="212">
           <Properties>
             <string name="Name">Shock</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——震荡（用户 11-23「这个游戏按你想的来弄」：近处爆炸要有被震到的感觉，跟战地、使命召唤一样）
@@ -72192,7 +72375,7 @@ return Shock
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="212">
+        <Item class="ModuleScript" referent="213">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -72942,7 +73125,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="213">
+        <Item class="ModuleScript" referent="214">
           <Properties>
             <string name="Name">SquadHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——小队（服务器 Squads.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -72957,7 +73140,7 @@ function SquadHud.init(G)
   local T = G.T or function(k) return k end
   local player = Players.LocalPlayer
   local RGB, V = Color3.fromRGB, Vector3.new
-  local GREEN = RGB(116, 232, 120)
+  local GREEN = G.Theme.C.GOOD
   local function clamp(x, a, b) return x < a and a or (x > b and b or x) end
 
   local gui = Instance.new("ScreenGui")
@@ -73102,7 +73285,9 @@ function SquadHud.init(G)
     local myHrp = myCh and myCh:FindFirstChild("HumanoidRootPart")
     -- 开飞机、战雷式界面（WtFlight.lua）开着时左上是参数表：小队名单先收起来
     local flying = G.wtFlightOn and G.fly ~= nil and G.fly.pilot == true
-    panel.Visible = sq ~= nil and not menu and myHrp ~= nil and not flying
+    -- 只开车的对局（机库）：没有步兵小队这回事，「等队友加入」那一块不画（统一外观：左上是击杀栏 / 飞行参数）
+    local vehOnly = G.hangarActive ~= nil and G.hangarActive() == true
+    panel.Visible = sq ~= nil and not menu and myHrp ~= nil and not flying and not vehOnly
     title.Text = sq and T("squad.title", sq) or ""
     local seen = {}
     for i, pl in ipairs(list) do
@@ -73154,7 +73339,7 @@ return SquadHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="214">
+        <Item class="ModuleScript" referent="215">
           <Properties>
             <string name="Name">Stream</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——流式加载（Workspace.StreamingEnabled）的配套：用户 11-24 晚「streaming 优化」「各种 3A 游戏的那种优化」
@@ -73227,7 +73412,7 @@ return Stream
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="215">
+        <Item class="ModuleScript" referent="216">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -73306,7 +73491,7 @@ function Tablet.init(G)
     l.Text = text
     l.TextSize = ts
     l.TextColor3 = col
-    l.Font = font or Enum.Font.Code
+    l.Font = font or Enum.Font.RobotoMono
     l.TextXAlignment = ax or AL
     l.TextStrokeTransparency = 0.6
     l.TextStrokeColor3 = RGB(0, 0, 0)
@@ -73388,7 +73573,7 @@ function Tablet.init(G)
   for i = 1, 5 do sig[i] = fr(bar, UD(0, 166 + (i - 1) * 6, 1, -5 - i * 2.4), UDo(4, i * 2.4), WHITE) end
   local linkType = txt(bar, "", UDo(202, 0), UD(0, 80, 1, 0), 14, WHITE)
   local title = txt(bar, "", UDs(0.5, 0), UD(0, 420, 1, 0), 14, WHITE, Enum.Font.GothamBold, AC, V2(0.5, 0))
-  local batText = txt(bar, "", UD(1, -12, 0, 0), UD(0, 230, 1, 0), 14, WHITE, Enum.Font.Code, AR, V2(1, 0))
+  local batText = txt(bar, "", UD(1, -12, 0, 0), UD(0, 230, 1, 0), 14, WHITE, Enum.Font.RobotoMono, AR, V2(1, 0))
   -- 航向带：每 10° 一格，看得见左右 30°
   local tape = fr(osd, UD(0.5, 0, 0, 32), UD(0.4, 0, 0, 22), RGB(0, 0, 0), 0.65)
   tape.AnchorPoint = V2(0.5, 0)
@@ -73402,7 +73587,7 @@ function Tablet.init(G)
     marks[i].Visible = false
   end
   fr(tape, UD(0.5, -1, 0, 0), UD(0, 2, 0, 5), AMBER)
-  local hdgText = txt(osd, "", UD(0.5, 0, 0, 56), UDo(70, 18), 14, AMBER, Enum.Font.Code, AC, V2(0.5, 0))
+  local hdgText = txt(osd, "", UD(0.5, 0, 0, 56), UDo(70, 18), 14, AMBER, Enum.Font.RobotoMono, AC, V2(0.5, 0))
   -- 左下：遥测
   local tele = fr(osd, UD(0, 14, 1, -138), UDo(220, 120), RGB(0, 0, 0), 0.6)
   corner(tele, 6)
@@ -73436,7 +73621,7 @@ function Tablet.init(G)
   local hurtText = txt(osd, "", UD(0.5, 0, 0, 104), UDo(420, 24), 18, RED, Enum.Font.GothamBold, AC, V2(0.5, 0))
   -- 开机：黑屏 + 「建立数据链…」+ 进度条
   local boot = fr(osd, UDs(0, 0), UDs(1, 1), RGB(4, 6, 6), 0)
-  local bootT = txt(boot, "", UDs(0.5, 0.46), UDo(420, 24), 18, RGB(150, 230, 170), Enum.Font.Code, AC, V2(0.5, 0.5))
+  local bootT = txt(boot, "", UDs(0.5, 0.46), UDo(420, 24), 18, RGB(150, 230, 170), Enum.Font.RobotoMono, AC, V2(0.5, 0.5))
   local bootBg = fr(boot, UD(0.5, -130, 0.52, 0), UDo(260, 4), RGB(40, 60, 46))
   local bootBar = fr(bootBg, UDs(0, 0), UDs(0, 1), RGB(120, 230, 150))
 
@@ -73682,7 +73867,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="216">
+        <Item class="ModuleScript" referent="217">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -73886,8 +74071,8 @@ function TacPad.init(G)
   -- 状态栏
   local bar = fr(scr, UDs(0, 0), UD(1, 0, 0, TOP), RGB(0, 0, 0), 0.45)
   local title = txt(bar, "", UDo(14, 0), UD(0, 320, 1, 0), mob and 12 or 13, TEXT, Enum.Font.GothamBold)
-  local coord = txt(bar, "", UDs(0.5, 0), UD(0, 300, 1, 0), mob and 11 or 12, DIM, Enum.Font.Code, AC, V2(0.5, 0))
-  local clock = txt(bar, "", UD(1, -14, 0, 0), UD(0, 280, 1, 0), mob and 11 or 12, TEXT, Enum.Font.Code, AR, V2(1, 0))
+  local coord = txt(bar, "", UDs(0.5, 0), UD(0, 300, 1, 0), mob and 11 or 12, DIM, Enum.Font.RobotoMono, AC, V2(0.5, 0))
+  local clock = txt(bar, "", UD(1, -14, 0, 0), UD(0, 280, 1, 0), mob and 11 or 12, TEXT, Enum.Font.RobotoMono, AR, V2(1, 0))
   fr(scr, UDo(0, TOP), UD(1, 0, 0, 1), RGB(255, 255, 255), 0.92)
   local bat = math.random(72, 96)
 
@@ -73987,7 +74172,7 @@ function TacPad.init(G)
   local det = fr(scr, UDo(12, DY), UDo(LW - 24, SH - DY - 12), RGB(0, 0, 0), 1)
   local dName = txt(det, "", UDo(2, 0), UD(1, -4, 0, 22), 18, TEXT, Enum.Font.GothamBold)
   local dInfo = txt(det, "", UDo(2, 26), UD(1, -4, 0, 16), 12, DIM, Enum.Font.Gotham)
-  local dTgt = txt(det, "", UDo(2, mob and 0 or 50), UD(1, -4, 0, 16), mob and 12 or 13, TEXT, Enum.Font.Code)
+  local dTgt = txt(det, "", UDo(2, mob and 0 or 50), UD(1, -4, 0, 16), mob and 12 or 13, TEXT, Enum.Font.RobotoMono)
   local dWarn = txt(det, "", UDo(2, mob and 17 or 70), UD(1, -4, 0, 14), 11, RED, Enum.Font.GothamMedium)
   dName.Visible, dInfo.Visible = not mob, not mob
   local BTN_H = mob and 40 or 46
@@ -74045,7 +74230,7 @@ function TacPad.init(G)
     local t = fr(mark, UD(0.5, v[1] * 19 - ((v[1] ~= 0) and 4 or 1), 0.5, v[2] * 19 - ((v[2] ~= 0) and 4 or 1)), UDo((v[1] ~= 0) and 8 or 2, (v[2] ~= 0) and 8 or 2), AMBER)
     ticks[i] = t
   end
-  local markL = txt(over, "", UDs(0.5, 0.5), UDo(220, 16), 12, AMBER, Enum.Font.Code, AL, V2(0, 0.5))
+  local markL = txt(over, "", UDs(0.5, 0.5), UDo(220, 16), 12, AMBER, Enum.Font.RobotoMono, AL, V2(0, 0.5))
   markL.TextStrokeTransparency = 0.4
   -- 北、比例尺、操作提示、状态
   local north = txt(over, "N", UD(1, -14, 0, 10), UDo(20, 16), 13, TEXT, Enum.Font.GothamBold, AC, V2(1, 0))
@@ -74056,7 +74241,7 @@ function TacPad.init(G)
   local sbarL = fr(sbar, UDo(0, -4), UDo(1.5, 6), TEXT)
   local sbarR = fr(sbar, UD(1, -1.5, 0, -4), UDo(1.5, 6), TEXT)
   local _ = sbarL, sbarR
-  local sText = txt(over, "", UD(0, 14, 1, -36), UDo(120, 14), 11, TEXT, Enum.Font.Code)
+  local sText = txt(over, "", UD(0, 14, 1, -36), UDo(120, 14), 11, TEXT, Enum.Font.RobotoMono)
   local hint = txt(over, "", UD(1, -14, 1, -12), UDo(360, 14), 11, DIM, Enum.Font.Gotham, AR, V2(1, 1))
   local pill = fr(over, UD(0.5, 0, 0, 12), UDo(360, 26), RGB(0, 0, 0), 0.25)
   pill.AnchorPoint = V2(0.5, 0)
@@ -74902,7 +75087,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="217">
+        <Item class="ModuleScript" referent="218">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -74926,7 +75111,8 @@ function TankHud.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local CYAN, RED = RGB(118, 240, 140), RGB(255, 78, 64)   -- CYAN 现在是全息绿（用户 11-21：蓝色全部改成绿色，名字没改）
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local CYAN, RED = TH.C.HUD, TH.C.BAD   -- CYAN 现在是全息绿（用户 11-21：蓝色全部改成绿色，名字没改）
   local MONO, BOLD = Enum.Font.RobotoMono, Enum.Font.GothamBold
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
 
@@ -74975,7 +75161,7 @@ function TankHud.init(G)
   -- 「被发现!」：照 MWT 的样子（用户 11-19：和 MWT 的被发现一模一样的效果，换个颜色）——
   --   左边一道白光拖过来、一个发光的小太阳（圆 + 八道光芒、外面一圈光晕）、后面一块实心的小牌子写「被发现!」（深色字）；
   --   MWT 是橙黄的，这里是红的。刚被发现时整块从左边滑进来、光拖得长一点，之后光晕一呼一吸
-  local SPOT = RGB(255, 86, 74)
+  local SPOT = TH.C.BAD
   local spot = Instance.new("Frame")
   spot.Name = "Spotted"
   spot.Size = UDim2.fromOffset(110, 22)
@@ -75111,18 +75297,18 @@ function TankHud.init(G)
     c.CornerRadius = UDim.new(0.5, 0)
     c.Parent = edge
     local s = Instance.new("UIStroke")
-    s.Color, s.Thickness, s.Transparency = CYAN, 1.5, 0.35
+    s.Color, s.Thickness, s.Transparency = TH.C.TEXT, 1.4, 0.35   -- 小地图的框是导航用的：中性白（统一外观，平显绿只给瞄准、飞行符号）
     s.Parent = edge
     ringStroke = s
     for _, b in ipairs({ { 0, "0" }, { 90, "90" }, { 180, "180" }, { 270, "270" } }) do
       local a = math.rad(b[1])
-      table.insert(ringLabs, label(ring, b[2], UDim2.fromOffset(30, 12), UD2(0.5, math.sin(a) * (MS / 2 + 10), 0.5, -math.cos(a) * (MS / 2 + 10)), 9, CYAN, MONO, V2(0.5, 0.5)))
+      table.insert(ringLabs, label(ring, b[2], UDim2.fromOffset(30, 12), UD2(0.5, math.sin(a) * (MS / 2 + 10), 0.5, -math.cos(a) * (MS / 2 + 10)), 9, TH.C.MUTE, MONO, V2(0.5, 0.5)))
     end
   end
   local function ringLook(air)
-    ringStroke.Color, ringStroke.Thickness, ringStroke.Transparency = air and Color3.new(1, 1, 1) or CYAN, air and 1.4 or 1.5, air and 0.15 or 0.35
+    ringStroke.Color, ringStroke.Thickness, ringStroke.Transparency = TH.C.TEXT, 1.4, air and 0.15 or 0.35
     for _, l in ipairs(ringLabs) do
-      l.TextColor3, l.TextSize = air and Color3.new(1, 1, 1) or CYAN, air and 10 or 9
+      l.TextColor3, l.TextSize = air and TH.C.TEXT or TH.C.MUTE, air and 10 or 9
     end
   end
 
@@ -75422,7 +75608,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="218">
+        <Item class="ModuleScript" referent="219">
           <Properties>
             <string name="Name">TechUI</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——机库（出击阵容、出击）和科技树界面（用户 11-25：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」
@@ -75460,8 +75646,9 @@ function TechUI.init(G)
     return (t and t ~= "veh." .. id) and t or string.upper(tostring(id))
   end
   local RGB = Color3.fromRGB
-  local WHITE, DIM, FAINT = Color3.new(1, 1, 1), RGB(150, 156, 160), RGB(96, 102, 106)
-  local GOOD, GOLD, BAD = RGB(140, 210, 140), RGB(230, 196, 110), RGB(232, 120, 100)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, DIM, FAINT = Color3.new(1, 1, 1), TH.C.MUTE, TH.C.FAINT
+  local GOOD, GOLD, BAD = TH.C.GOOD, TH.C.WARN, TH.C.BAD
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
 
   local tree = { res = {}, own = {}, rp = {}, cur = {}, lineup = {}, nat = "cn", free = {} }
@@ -75628,7 +75815,7 @@ function TechUI.init(G)
       local N = TT.NAT[nat]
       local b = button(bar, zh and N.name or N.en, UDim2.new(0, mobile and 64 or 92, 1, 0), nil, nat == tree.nat)
       b.Name = "Nat_" .. nat
-      local stripe = frame(b, UDim2.new(1, 0, 0, 3), UDim2.new(0, 0, 1, -3), N.col, 0)
+      local stripe = frame(b, UDim2.new(1, 0, 0, 2), UDim2.new(0, 0, 1, -2), TH.C.LINE, (nat == tree.nat) and 1 or 0.8)   -- 国家不再各一种颜色（统一外观：颜色只表示意思）
       stripe.Name = "Stripe"
       b.MouseButton1Click:Connect(function() onPick(nat) end)
     end
@@ -75857,7 +76044,8 @@ function TechUI.init(G)
     if TT.canResearch(tree, it.key) then return "can" end
     return "lock"
   end
-  local COL = { own = RGB(46, 86, 58), res = RGB(46, 72, 110), cur = RGB(120, 98, 34), can = RGB(44, 48, 54), lock = RGB(22, 24, 27) }
+  -- 科技树格子：已拥有深绿、研究完没买灰绿、正在研究深琥珀、能研究灰、没解锁更暗（不用蓝：用户 11-21）
+  local COL = { own = RGB(40, 80, 52), res = RGB(52, 66, 58), cur = RGB(110, 86, 34), can = RGB(40, 44, 48), lock = RGB(20, 22, 25) }
 
   ---------------------------------------------------------------- 改装（WtMods）：三列（机动 / 防护 / 火力）× 四级，点一项设成研究目标
   local modsP = frame(gui, UDim2.fromScale(1, 1), nil, RGB(2, 3, 4), 0.35)
@@ -76408,7 +76596,7 @@ return TechUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="219">
+        <Item class="ModuleScript" referent="220">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -76521,7 +76709,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="220">
+        <Item class="ModuleScript" referent="221">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -76554,7 +76742,8 @@ function UI.init(G)
 
   ---------------------------------------------------------------- 小工具
 
-  local PANEL, LINE, TEXT, MUTE = RGB(16, 20, 24), RGB(255, 255, 255), RGB(236, 240, 236), RGB(160, 170, 166)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local PANEL, LINE, TEXT, MUTE = TH.C.PANEL, TH.C.LINE, TH.C.TEXT, TH.C.MUTE
   local function frame(parent, size, pos, color, alpha, anchor)
     local f = Instance.new("Frame")
     f.Size = size
@@ -76630,8 +76819,9 @@ function UI.init(G)
   G.ui = { frame = frame, round = round, stroke = stroke, label = label, button = button, flatPanel = flatPanel, hpColor = hpColor }
 
   local function teamColor(t)   -- 征服模式的中立据点（owner = "none"）：灰
-    local T0 = Config.Teams[t or "atk"]
-    return T0 and T0.color or RGB(200, 200, 200)
+    -- 队伍的颜色按看的人算：自己这一边绿、对面红、中立灰（统一外观 docs/style.md，不再攻方一律红、守方一律绿）
+    if t ~= "atk" and t ~= "def" then return TH.C.NEUTRAL end
+    return TH.side(t)
   end
   local function fmtTime(s)
     s = math.max(0, math.floor(s or 0))
@@ -76665,7 +76855,7 @@ function UI.init(G)
   --   要比参考图精致、简洁（用户：现在这个太卡通）：黑底半透明、细线、直角、小字，只有主按钮是白底黑字
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled   -- G.mobile 要到 Play.lua 才有：这里自己判断
   local M0 = mobile and 18 or 48   -- 左右边距
-  local WHITE, DIM, FAINT = Color3.new(1, 1, 1), RGB(150, 156, 160), RGB(96, 102, 106)
+  local WHITE, DIM, FAINT = Color3.new(1, 1, 1), TH.C.MUTE, TH.C.FAINT
   local deploy = frame(gui, UDim2.fromScale(1, 1), nil, RGB(4, 6, 8), 0.08)
   deploy.Name = "Deploy"
   deploy.Visible = false
@@ -77405,7 +77595,7 @@ function UI.init(G)
   toastList.Parent = toasts
   local order = 0
   -- 跟新界面一个样子（深色、直角、细线）：底是深色，左边一道颜色细条分好消息、坏消息、击杀
-  local KIND_COL = { good = RGB(96, 200, 124), bad = RGB(232, 84, 72), info = RGB(160, 170, 166), kill = RGB(232, 184, 76) }
+  local KIND_COL = { good = TH.C.GOOD, bad = TH.C.BAD, info = TH.C.MUTE, kill = TH.C.WARN }
   function G.toast(text, kind)
     order += 1
     local l = label(toasts, text, UDim2.fromOffset(420, 28), nil, 14, TEXT, Enum.Font.GothamMedium)
@@ -77460,6 +77650,7 @@ function UI.init(G)
     if G.pop and (kind == "kill" or key == "ui.capturedYou") then G.pop(text, kind) end
     if kind == "center" then G.centerMsg(text)
     elseif kind == "feed" then feedAdd(text)
+    elseif kind == "kill" then   -- 击杀：准星下面那一行（或开车时命中结果的「已击毁」）+ 左边击杀栏已经有了，不再在下面弹第三条（统一外观：一件事只报一处）
     else G.toast(text, kind) end
   end
 
@@ -77685,7 +77876,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="221">
+        <Item class="ModuleScript" referent="222">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -77789,7 +77980,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="222">
+        <Item class="ModuleScript" referent="223">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -77830,8 +78021,9 @@ function VehHud.init(G)
     GuiService:GetPropertyChangedSignal("ReducedMotionEnabled"):Connect(updateMotion)
   end)
 
-  local INK, TXT, MUTE = RGB(6, 9, 12), RGB(232, 238, 236), RGB(174, 187, 186)
-  local AMBER, OK, BAD, CYAN = RGB(255, 184, 72), RGB(110, 228, 150), RGB(240, 82, 66), RGB(132, 236, 152)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local INK, TXT, MUTE = TH.C.BG, TH.C.TEXT, TH.C.MUTE
+  local AMBER, OK, BAD, CYAN = TH.C.WARN, TH.C.GOOD, TH.C.BAD, TH.C.HUD
   local MONO, BOLD, MED = Enum.Font.RobotoMono, Enum.Font.GothamBold, Enum.Font.GothamMedium
   local WHITE = Color3.new(1, 1, 1)
 
@@ -78044,7 +78236,7 @@ function VehHud.init(G)
   --   准星（下面 placeTank）：镜头准心一个小圈里「+」、左右两道短刻度；准心左边弹药数、下面「已就绪 / 装填」，右边测距；
   --   炮现在指的地方一个「∧」（颜色 = 打不打得穿）。电脑上开坦克时原来右下两块面板、顶上的罗盘收起（触屏照旧用紧凑读数面板）
   local MW = {}
-  local HOLO = RGB(118, 240, 140)
+  local HOLO = TH.C.HUD
   MW.root = frame(hud, UD2(1, 0, 1, 0), nil, INK, 1)
   MW.root.Name = "MWT"
   MW.root.Visible = false
@@ -78431,7 +78623,7 @@ function VehHud.init(G)
     end
     return segs
   end
-  local PEN_OK, PEN_MAYBE, PEN_NO = RGB(176, 255, 84), RGB(255, 214, 72), RGB(255, 72, 60)   -- 能击穿：黄绿（界面整体改成绿以后，跟没瞄着车的绿分得开）
+  local PEN_OK, PEN_MAYBE, PEN_NO = TH.C.GOOD, TH.C.WARN, TH.C.BAD   -- 能击穿：黄绿（界面整体改成绿以后，跟没瞄着车的绿分得开）
 
   -- 坦克（MWT）：四段弧（对角留缺口）围着炮指的点，装填时顺时针一段段亮起来；弧的颜色 = 打不打得穿（绿 / 黄 / 红，没瞄着车是白的）；
   --   左、右、下三道刻度，中心一个点；下面一行「可击穿 / 可能跳弹 / 跳弹 / 打不穿」，右边测距、左边装填秒数
@@ -79306,7 +79498,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="223">
+        <Item class="ModuleScript" referent="224">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source">-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -80248,7 +80440,7 @@ end
 return VehModels</ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="224">
+        <Item class="ModuleScript" referent="225">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -81424,7 +81616,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="225">
+        <Item class="ModuleScript" referent="226">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -82373,7 +82565,7 @@ return Warfx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="226">
+        <Item class="ModuleScript" referent="227">
           <Properties>
             <string name="Name">WtAir</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式飞机受伤（用户 11-24 夜「把整个游戏做成战雷」④）
@@ -82400,7 +82592,8 @@ function WtAir.init(G)
   local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
   local FIRE = "rbxasset://textures/particles/fire_main.dds"
   local NEAR = 2500
-  local M_OK, M_HURT, M_BAD, M_DEAD = RGB(196, 204, 208), RGB(255, 210, 60), RGB(255, 140, 40), RGB(232, 48, 36)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local M_OK, M_HURT, M_BAD, M_DEAD = TH.C.NEUTRAL, TH.C.WARN, TH.C.WARN:Lerp(TH.C.BAD, 0.5), TH.C.BAD
 
   ---------------------------------------------------------------- 飞控要的数（每帧问一次，同一帧缓存）
   local cacheEm, cacheT, cache = nil, -1, nil
@@ -82632,7 +82825,7 @@ return WtAir
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="227">
+        <Item class="ModuleScript" referent="228">
           <Properties>
             <string name="Name">WtAmmo</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机库里配弹（用户 11-25「全部都做」④：战雷出车前选每种弹带几发）
@@ -82655,7 +82848,8 @@ function WtAmmo.init(G)
   local RGB, UD2, V2 = Color3.fromRGB, UDim2.new, Vector2.new
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local BOLD, MED = Enum.Font.GothamBold, Enum.Font.GothamMedium
-  local WHITE, DIM, GOLD, BAD = RGB(236, 240, 242), RGB(150, 158, 164), RGB(255, 210, 120), RGB(255, 96, 80)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, DIM, GOLD, BAD = TH.C.TEXT, TH.C.MUTE, TH.C.WARN, TH.C.BAD
   local SPLIT = { 5, 3, 2, 1, 1 }   -- 默认配弹（同服务器 Wt.lua）
 
   local gui = Instance.new("ScreenGui")
@@ -82812,7 +83006,7 @@ return WtAmmo
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="228">
+        <Item class="ModuleScript" referent="229">
           <Properties>
             <string name="Name">WtBattle</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式对局的界面（用户 11-24 夜「把整个游戏做成战雷」③：对局玩法）
@@ -82837,8 +83031,9 @@ function WtBattle.init(G)
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local BOLD, MED, BLACK = Enum.Font.GothamBold, Enum.Font.GothamMedium, Enum.Font.GothamBlack
   local LEFT, RIGHT = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right
-  local WHITE, MUTE, INK = RGB(238, 242, 244), RGB(170, 176, 182), RGB(0, 0, 0)
-  local GOOD, BAD, GOLD = RGB(120, 230, 120), RGB(255, 96, 80), RGB(255, 206, 96)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, MUTE, INK = TH.C.TEXT, TH.C.MUTE, TH.C.INK
+  local GOOD, BAD, GOLD = TH.C.GOOD, TH.C.BAD, TH.C.WARN
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "WtBattle"
@@ -82866,8 +83061,9 @@ function WtBattle.init(G)
   end
   local function hex(c) return string.format("#%02X%02X%02X", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)) end
   local function teamColor(t)
-    local T0 = Config.Teams and Config.Teams[t or "atk"]
-    return T0 and T0.color or RGB(200, 200, 200)
+    -- 队伍的颜色按看的人算：自己这一边绿、对面红、中立灰（统一外观 docs/style.md，不再攻方一律红、守方一律绿）
+    if t ~= "atk" and t ~= "def" then return TH.C.NEUTRAL end
+    return TH.side(t)
   end
 
   ---------------------------------------------------------------- SP 那一块
@@ -83121,7 +83317,7 @@ function WtBattle.init(G)
     r.Visible = false
     feedRows[i] = { f = r, l = l }
   end
-  local BLUE, RED = RGB(110, 170, 255), RGB(255, 96, 80)
+  local BLUE, RED = TH.C.FRIEND, TH.C.FOE   -- 自己这边绿、对面红（统一外观，不用蓝）
   local function vehName(id, tk)   -- tk：科技树的键（科技树出的车写科技树里的名字）
     if tk then
       local nm = T("tree." .. tk)
@@ -83175,22 +83371,14 @@ function WtBattle.init(G)
       if type(e) == "table" and e.k == "artyMark" then G.try_(artyMark, e) end
     end
   end)
-  -- 战场奖章（战雷屏幕上方弹出来的那种）：一枚金色的章 + 名字 + 加了多少分，几个一起来就排队
-  local award = frame(gui, UD2(0, 300, 0, 64), UD2(0.5, 0, 0, 150), INK, 1, V2(0.5, 0))
+  -- 战场奖章：屏幕上方一条——左边一道琥珀细条 + 名字 + 加了多少分，几个一起来就排队
+  --   （统一外观 docs/style.md：不再画金色圆章、星星、22 号金字；用户 11-25「四不像」）
+  local award = frame(gui, UD2(0, 260, 0, 44), UD2(0.5, 0, 0, 150), TH.C.PANEL, TH.A.panel, V2(0.5, 0))
   award.Name = "WtAward"
   award.Visible = false
-  local medal = frame(award, UD2(0, 44, 0, 44), UD2(0, 0, 0.5, 0), GOLD, 0.05, V2(0, 0.5))
-  do
-    local c = Instance.new("UICorner")
-    c.CornerRadius = UDim.new(0.5, 0)
-    c.Parent = medal
-    local st = Instance.new("UIStroke")
-    st.Color, st.Thickness, st.Transparency = RGB(120, 80, 20), 3, 0.1
-    st.Parent = medal
-  end
-  local medalT = label(medal, "★", UD2(1, 0, 1, 0), nil, 24, RGB(120, 70, 10), BLACK)
-  local awName = label(award, "", UD2(1, -54, 0, 28), UD2(0, 54, 0, 6), 22, GOLD, BLACK, nil, LEFT)
-  local awPts = label(award, "", UD2(1, -54, 0, 18), UD2(0, 54, 0, 36), 14, WHITE, BOLD, nil, LEFT)
+  frame(award, UD2(0, 3, 1, 0), UD2(0, 0, 0, 0), GOLD, 0)
+  local awName = label(award, "", UD2(1, -18, 0, 22), UD2(0, 14, 0, 3), 16, WHITE, BOLD, nil, LEFT)
+  local awPts = label(award, "", UD2(1, -18, 0, 16), UD2(0, 14, 0, 24), 13, GOLD, TH.F.mono, nil, LEFT)
   local awQueue, awUntil = {}, 0
   local function nextAward()
     local a = table.remove(awQueue, 1)
@@ -83212,7 +83400,7 @@ function WtBattle.init(G)
       local t = os.clock()
       local k = math.clamp(1 - (awUntil - t) / 0.25, 0, 1)   -- 刚出来的 0.25 秒：从大缩到正常
       local pop = 1 - math.clamp((t - (awUntil - 2.6)) / 0.25, 0, 1)
-      award.Size = UD2(0, 300 * (1 + 0.25 * pop), 0, 64 * (1 + 0.25 * pop))
+      award.Size = UD2(0, 260 * (1 + 0.06 * pop), 0, 44 * (1 + 0.06 * pop))
       if t > awUntil then nextAward() end
       local _ = k
     end
@@ -83272,7 +83460,7 @@ return WtBattle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="229">
+        <Item class="ModuleScript" referent="230">
           <Properties>
             <string name="Name">WtCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——观战（用户 11-25「全部都做」⑮：战雷里被打掉以后能看队友）
@@ -83298,20 +83486,26 @@ function WtCam.init(G)
   local function btn(text, pos)
     local b = Instance.new("TextButton")
     b.Size, b.Position, b.AnchorPoint = UDim2.fromOffset(150, 30), pos, Vector2.new(0.5, 0)
-    b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = RGB(30, 40, 46), 0.15, 0
-    b.Text, b.TextSize, b.Font, b.TextColor3 = text, 14, BOLD, RGB(236, 240, 242)
+    local TH = G.Theme   -- 统一外观：灰底白字、细边、2 像素圆角（docs/style.md）
+    b.BackgroundColor3, b.BackgroundTransparency, b.BorderSizePixel = TH.C.RAISE, 0.1, 0
+    b.Text, b.TextSize, b.Font, b.TextColor3 = text, TH.S.body, TH.F.bold, TH.C.TEXT
+    TH.corner(b)
+    TH.stroke(b)
     b.Visible = false
     b.Parent = gui
     return b
   end
-  local specBtn = btn(T("wt.spec"), UD2(0.5, 0, 0, 58))
+  -- 「观战队友」放在机库右下角（原来在屏幕上方正中，压着机库、科技树的标题）
+  local specBtn = btn(T("wt.spec"), UD2(1, -40, 1, -45))
+  specBtn.AnchorPoint = Vector2.new(1, 1)
+  specBtn.Size = UDim2.fromOffset(170, 36)
   specBtn.Name = "SpecBtn"
   local backBtn = btn(T("wt.specBack"), UD2(0.5, 0, 0, 92))
   backBtn.Name = "SpecBack"
   local info = Instance.new("TextLabel")
   info.BackgroundTransparency = 1
   info.Size, info.Position, info.AnchorPoint = UDim2.fromOffset(600, 24), UD2(0.5, 0, 0, 60), Vector2.new(0.5, 0)
-  info.TextSize, info.Font, info.TextColor3 = 16, BOLD, RGB(255, 214, 120)
+  info.TextSize, info.Font, info.TextColor3 = 16, BOLD, G.Theme.C.TEXT
   info.TextStrokeTransparency = 0.35
   info.Visible = false
   info.Parent = gui
@@ -83365,7 +83559,7 @@ function WtCam.init(G)
     local hangar = G.hangarActive and G.hangarActive() and not alive and S and (S.phase == "battle" or S.phase == "prep")
       and not (G.deathFxOn and G.deathFxOn())
     if on and (alive or not hangar) then stop() end
-    specBtn.Visible = hangar and not on
+    specBtn.Visible = (hangar and not on) == true   -- 开局还没有 S 时 hangar 是 nil（给 Visible 赋 nil 会报错）
     backBtn.Visible = on
     info.Visible = on
     if not on then return end
@@ -83393,7 +83587,7 @@ return WtCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="230">
+        <Item class="ModuleScript" referent="231">
           <Properties>
             <string name="Name">WtComms</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图方格、标点、无线电（用户 11-25「全部都做」⑭，B 挑刺 13）
@@ -83413,7 +83607,8 @@ function WtComms.init(G)
   local RGB, UD2, V2, V3 = Color3.fromRGB, UDim2.new, Vector2.new, Vector3.new
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local BOLD, MED = Enum.Font.GothamBold, Enum.Font.GothamMedium
-  local YEL, WHITE, DIM = RGB(255, 214, 90), RGB(236, 240, 242), RGB(160, 166, 170)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local YEL, WHITE, DIM = TH.C.WARN, TH.C.TEXT, TH.C.MUTE
   local COLS = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" }
 
   ---------------------------------------------------------------- 方格
@@ -83682,7 +83877,7 @@ return WtComms
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="231">
+        <Item class="ModuleScript" referent="232">
           <Properties>
             <string name="Name">WtFlight</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式的开飞机界面
@@ -83715,11 +83910,12 @@ function WtFlight.init(G)
   local clamp, rad, deg = math.clamp, math.rad, math.deg
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
-  local HUD = RGB(120, 255, 150)                     -- 战雷平显的绿（界面一律绿色：用户 11-21）
-  local TXT, LAB = RGB(238, 242, 238), RGB(178, 188, 180)   -- 左上：数白、标签灰白
-  local RED, ORG, WHITE = RGB(255, 72, 60), RGB(255, 168, 60), Color3.new(1, 1, 1)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local HUD = TH.C.HUD                     -- 战雷平显的绿（界面一律绿色：用户 11-21）
+  local TXT, LAB = TH.C.TEXT, TH.C.MUTE   -- 左上：数白、标签灰白
+  local RED, ORG, WHITE = TH.C.BAD, TH.C.WARN, Color3.new(1, 1, 1)
   local INK = RGB(0, 0, 0)
-  local MONO, SANS = Enum.Font.Code, Enum.Font.GothamMedium
+  local MONO, SANS = Enum.Font.RobotoMono, Enum.Font.GothamMedium
   G.wtFlightOn = true
 
   local gui = Instance.new("ScreenGui")
@@ -84221,7 +84417,7 @@ return WtFlight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="232">
+        <Item class="ModuleScript" referent="233">
           <Properties>
             <string name="Name">WtHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式伤害的界面（用户 11-24「把整个游戏做成战雷」：乘员和模块伤害 + X 光回放）
@@ -84249,8 +84445,10 @@ function WtHud.init(G)
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local BOLD, MONO = Enum.Font.GothamBold, Enum.Font.RobotoMono
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
-  local OK, HURT, DEAD, GREY = RGB(96, 230, 110), RGB(255, 206, 64), RGB(255, 70, 56), RGB(170, 176, 180)
-  local PEN, RIC, KILL = RGB(255, 150, 60), RGB(255, 214, 90), RGB(255, 64, 52)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local OK, HURT, DEAD, GREY = TH.C.GOOD, TH.C.WARN, TH.C.BAD, TH.C.MUTE
+  -- 打中的结果（站在开炮的人这边说）：击毁白、击穿琥珀、跳弹 / 没击穿灰（统一外观：红只留给「敌人、危险」）
+  local PEN, RIC, KILL = TH.C.WARN, TH.C.MUTE, TH.C.TEXT
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "WtHud"
@@ -84302,9 +84500,9 @@ function WtHud.init(G)
 
   local hitBox = frame(gui, UDim2.fromOffset(640, 52), UD2(0.5, 0, 0.5, 70), RGB(0, 0, 0), 1, V2(0.5, 0))
   hitBox.Name = "WtHitText"
-  local hitTop = label(hitBox, "", UD2(1, 0, 0, 24), UD2(0, 0, 0, 0), 20, PEN)
+  local hitTop = label(hitBox, "", UD2(1, 0, 0, 24), UD2(0, 0, 0, 0), 20, PEN, TH.F.bold)
   hitTop.Name = "Result"
-  local hitSub = label(hitBox, "", UD2(1, 0, 0, 18), UD2(0, 0, 0, 26), 14, Color3.new(1, 1, 1))
+  local hitSub = label(hitBox, "", UD2(1, 0, 0, 18), UD2(0, 0, 0, 26), 14, TH.C.TEXT)
   hitSub.Name = "Detail"
   hitBox.Visible = false
   local hitUntil = 0
@@ -84317,6 +84515,7 @@ function WtHud.init(G)
     elseif m.r == "np" then top, col = T("wt.np"), GREY
     else top, col = T("wt.hit"), PEN end
     hitTop.Text, hitTop.TextColor3 = top, col
+    if m.kill then G.wtKillShownAt = os.clock() end   -- Hud.lua 的 G.pop 看到就不再弹第二条「击毁 XX」（屏幕中间只留一处）
     local sub = details(m)
     if (m.r == "np" or m.r == "ric") and m.pen and m.arm then sub = T("wt.mm", m.arm, m.pen) .. ((sub ~= "") and ("   " .. sub) or "") end
     hitSub.Text = sub
@@ -84424,7 +84623,7 @@ function WtHud.init(G)
   xSlow.Name = "XrSlow"
   xSlow.ZIndex = 3
   local xStroke = xr:FindFirstChildOfClass("UIStroke")
-  local VP_BG, XR_LINE, INFO = RGB(14, 22, 30), RGB(120, 200, 140), RGB(200, 236, 255)
+  local VP_BG, XR_LINE, INFO = TH.C.BG, TH.C.HUD, TH.C.TEXT
   local TI, JD = 0.7, 0.95   -- 弹飞进来 0.7 秒；射流钻进去 0.95 秒（都是慢放的）
   local xa = nil
   local function ease(q) q = math.clamp(q, 0, 1) return 1 - (1 - q) ^ 2.4 end
@@ -85026,7 +85225,7 @@ return WtHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="233">
+        <Item class="ModuleScript" referent="234">
           <Properties>
             <string name="Name">WtTank</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式坦克界面（用户 11-24 夜「把整个游戏做成战雷」②：坦克战雷化）
@@ -85057,11 +85256,12 @@ function WtTank.init(G)
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local BOLD, MED = Enum.Font.GothamBold, Enum.Font.GothamMedium
   local LEFT, RIGHT = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right
-  local WHITE, INK = RGB(240, 244, 244), RGB(0, 0, 0)
-  local PEN_OK, PEN_MAYBE, PEN_NO = RGB(84, 236, 72), RGB(255, 214, 48), RGB(255, 58, 44)
-  local AMBER = RGB(255, 186, 64)
-  local M_OK, M_HURT, M_DEAD = RGB(196, 204, 208), RGB(255, 196, 40), RGB(232, 48, 36)
-  local C_OK, C_HURT, C_DEAD = RGB(236, 242, 242), RGB(255, 150, 40), RGB(90, 92, 94)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, INK = TH.C.TEXT, TH.C.INK
+  local PEN_OK, PEN_MAYBE, PEN_NO = TH.C.GOOD, TH.C.WARN, TH.C.BAD
+  local AMBER = TH.C.WARN
+  local M_OK, M_HURT, M_DEAD = TH.C.NEUTRAL, TH.C.WARN, TH.C.BAD
+  local C_OK, C_HURT, C_DEAD = TH.C.TEXT, TH.C.WARN, TH.C.FAINT
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "WtTank"
@@ -85680,7 +85880,7 @@ return WtTank
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="234">
+        <Item class="ModuleScript" referent="235">
           <Properties>
             <string name="Name">WtVoice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——车组语音（用户 11-25「全部都做」⑬：战雷的「击穿！」「跳弹」「着火了」「炮长阵亡」「装填完毕」）
@@ -85789,7 +85989,7 @@ return WtVoice
       </Item>
     </Item>
   </Item>
-  <Item class="Workspace" referent="235">
+  <Item class="Workspace" referent="236">
     <Properties>
       <string name="Name">Workspace</string>
       <token name="ModelStreamingBehavior">2</token>
@@ -85799,7 +85999,7 @@ return WtVoice
       <int name="StreamingMinRadius">512</int>
       <int name="StreamingTargetRadius">4096</int>
     </Properties>
-    <Item class="Terrain" referent="236">
+    <Item class="Terrain" referent="237">
       <Properties>
         <string name="Name">Terrain</string>
         <bool name="Decoration">true</bool>
@@ -85808,7 +86008,7 @@ return WtVoice
       </Properties>
     </Item>
   </Item>
-  <Item class="Lighting" referent="237">
+  <Item class="Lighting" referent="238">
     <Properties>
       <string name="Name">Lighting</string>
       <float name="Brightness">2.2</float>

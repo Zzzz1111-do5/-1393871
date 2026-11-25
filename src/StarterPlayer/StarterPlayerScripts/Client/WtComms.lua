@@ -15,7 +15,8 @@ function WtComms.init(G)
   local RGB, UD2, V2, V3 = Color3.fromRGB, UDim2.new, Vector2.new, Vector3.new
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local BOLD, MED = Enum.Font.GothamBold, Enum.Font.GothamMedium
-  local YEL, WHITE, DIM = RGB(255, 214, 90), RGB(236, 240, 242), RGB(160, 166, 170)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local YEL, WHITE, DIM = TH.C.WARN, TH.C.TEXT, TH.C.MUTE
   local COLS = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" }
 
   ---------------------------------------------------------------- 方格

@@ -1328,6 +1328,9 @@ function Round.init(G)
     local P = { pl = pl, kills = 0, deaths = 0, score = 0, caps = 0, roundXp = 0, alive = false, canDeployAt = 0, dmgLog = {} }
     G.P[pl] = P
     setTeam(P, pickTeam())
+    -- 只开车的对局（Config.Wt.noInfantry）：进服按人数自动分队，不再弹「选择阵营」那一页（两张固定装备的阵营卡跟机库的科技树对不上，
+    --   用户 11-25：「整个游戏风格极其割裂……四不像」）
+    if (Config.Wt or {}).noInfantry and not G.pve then P.picked = true end
     pl.CharacterAdded:Connect(function(char) G.try("出生", onCharacter, P, char) end)
     if G.gunPublish then G.try("改枪属性", G.gunPublish, P) end   -- 改枪（Gunsmith.lua）：读档前先按默认写上，部署界面一进来就有
     if G.loadData then task.spawn(function() G.try("读档", G.loadData, P) end) end

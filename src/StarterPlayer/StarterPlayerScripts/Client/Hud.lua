@@ -22,14 +22,16 @@ function Hud.init(G)
   local V2 = Vector2.new
   local W = G.W or Config.Weapons   -- 自己的枪按装的配件（init.client.lua 的 G.W）
   local WHITE = Color3.new(1, 1, 1)
-  local TEXT, MUTE, FAINT = RGB(232, 236, 238), RGB(160, 166, 170), RGB(110, 116, 120)
-  local NUM = Enum.Font.Jura   -- 细的数字（弹药、距离、朝向）
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local TEXT, MUTE, FAINT = TH.C.TEXT, TH.C.MUTE, TH.C.FAINT
+  local NUM = Enum.Font.RobotoMono   -- 数字（弹药、距离、朝向）：统一用等宽（docs/style.md）
   local M_PER = 2.8            -- 1 米多少格（同 AirDefs.M）
   local function T(k, ...) return G.T(k, ...) end
-  local NEUTRAL = Color3.fromRGB(200, 200, 200)   -- 征服模式的中立据点
+  local NEUTRAL = TH.C.NEUTRAL   -- 征服模式的中立据点
   local function teamColor(t)
-    local T0 = Config.Teams[t or "atk"]
-    return T0 and T0.color or NEUTRAL
+    -- 队伍的颜色按看的人算：自己这一边绿、对面红、中立灰（统一外观 docs/style.md，不再攻方一律红、守方一律绿）
+    if t ~= "atk" and t ~= "def" then return NEUTRAL end
+    return TH.side(t)
   end
   local function other(t) return (t == "atk") and "def" or "atk" end
   local function hex(c) return string.format("rgb(%d,%d,%d)", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)) end
@@ -166,7 +168,7 @@ function Hud.init(G)
 
   local RC = Config.Radar or { range = 520, ping = 3 }
   local LINE, LINE_DIM = RGB(244, 246, 248), RGB(214, 220, 226)   -- 框、网格、字：白（原来是雷达绿）
-  local FRIEND, FOE = RGB(88, 214, 110), RGB(255, 64, 52)
+  local FRIEND, FOE = TH.C.FRIEND, TH.C.FOE
   local MS = mobile and 122 or 216   -- 手机：左上，往下是开车的方向键，小一点免得压着
   local box = P.miniBox
   box.AnchorPoint = mobile and V2(0, 0) or V2(1, 0)
@@ -822,7 +824,17 @@ function Hud.init(G)
   ---------------------------------------------------------------- 准星下面弹一行（击杀、占领）：一两秒淡出，新的把旧的往上顶（用户：感受不到激烈对抗）
   local pops = {}
   function G.pop(text, kind)
-    local col = (kind == "kill") and RGB(255, 214, 120) or (kind == "ric") and RGB(255, 178, 64) or (kind == "ricIn") and RGB(200, 220, 255) or RGB(140, 230, 160)
+    -- 击毁：WtHud（开车打中的结果）刚报过「击毁」就不再弹这一条（服务器的击杀消息和命中结果几乎同时到，两边都弹就叠成两行）
+    if kind == "kill" and G.wtKillShownAt and math.abs(os.clock() - G.wtKillShownAt) < 1.6 then return end
+    if kind == "kill" and G.drive ~= nil then   -- 开着车：命中结果可能晚一点到，等 0.25 秒再看
+      task.delay(0.25, function()
+        if not (G.wtKillShownAt and math.abs(os.clock() - G.wtKillShownAt) < 1.6) then G.pop(text, "killNow") end
+      end)
+      return
+    end
+    if kind == "killNow" then kind = "kill" end
+    -- 统一外观：击杀白、跳弹琥珀、被跳弹灰、其他绿（不用蓝）
+    local col = (kind == "kill") and TEXT or (kind == "ric") and TH.C.WARN or (kind == "ricIn") and MUTE or TH.C.GOOD
     local l = txt(G.gui, text, UDim2.fromOffset(420, 22), UDim2.fromScale(0.5, 0.6), mobile and 15 or 17, col, Enum.Font.GothamBold, V2(0.5, 0.5), nil, 0.45)
     l.ZIndex = 25
     table.insert(pops, 1, l)

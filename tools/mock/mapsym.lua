@@ -3,6 +3,7 @@
 --   坐进 M1A2，周围摆一圈敌人：坦克、装甲车、自行火炮、防空车、直升机、战斗机、步兵、工事；车长的指挥地图（JBC-P）上：
 --   每个都画成军标（敌军红菱形框，框里的图形分兵种），友军蓝长方框；兵种认得对
 local T = dofile(MOCK_DIR .. "/common.lua")
+T.fpAll = true   -- 测的是别的车 / 飞机的车内、座舱（默认只有 M1A1、M1A2 有第一人称）
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 local VEH = TEST_ARGS:match("veh=(%w+)") or "m1a2"

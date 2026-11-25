@@ -397,13 +397,15 @@ function MapUI.init(G)
         local d = pointDots[s.id]
         if d then
           local col
+          -- 据点颜色按看的人算：自己这边绿、对面红、中立灰（统一外观 docs/style.md）
+          local TH = G.Theme
+          local cA, cD, N0 = TH.side("atk"), TH.side("def"), TH.C.NEUTRAL
           if S.mode == "conquest" then   -- 征服：中立灰，往哪边推就往那边的颜色渐变
             local c = s.cap or 0
-            local N0 = RGB(200, 200, 200)
-            col = (c >= 0) and N0:Lerp(Config.Teams.atk.color, c) or N0:Lerp(Config.Teams.def.color, -c)
+            col = (c >= 0) and N0:Lerp(cA, c) or N0:Lerp(cD, -c)
           else
-            col = (Config.Teams[s.owner] and Config.Teams[s.owner].color) or RGB(200, 200, 200)
-            if s.owner == "def" and s.prog > 0 then col = col:Lerp(Config.Teams.atk.color, s.prog) end
+            col = (s.owner == "atk" and cA) or (s.owner == "def" and cD) or N0
+            if s.owner == "def" and s.prog > 0 then col = col:Lerp(cA, s.prog) end
           end
           d.BackgroundColor3 = col
         end

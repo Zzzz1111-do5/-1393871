@@ -12,6 +12,7 @@
 --   ⑥ V 出座舱：外模型放回来；下飞机：座舱拆掉
 --   dump=<目录>：写出 interior_<型号>.json，tools/mock/interior_view.cjs 画成图
 local T = dofile(MOCK_DIR .. "/common.lua")
+T.fpAll = true   -- 测的是别的车 / 飞机的车内、座舱（默认只有 M1A1、M1A2 有第一人称）
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 local dumpDir = TEST_ARGS:match("dump=(%S+)")

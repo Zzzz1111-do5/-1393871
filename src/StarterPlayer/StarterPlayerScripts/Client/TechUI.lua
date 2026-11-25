@@ -33,8 +33,9 @@ function TechUI.init(G)
     return (t and t ~= "veh." .. id) and t or string.upper(tostring(id))
   end
   local RGB = Color3.fromRGB
-  local WHITE, DIM, FAINT = Color3.new(1, 1, 1), RGB(150, 156, 160), RGB(96, 102, 106)
-  local GOOD, GOLD, BAD = RGB(140, 210, 140), RGB(230, 196, 110), RGB(232, 120, 100)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, DIM, FAINT = Color3.new(1, 1, 1), TH.C.MUTE, TH.C.FAINT
+  local GOOD, GOLD, BAD = TH.C.GOOD, TH.C.WARN, TH.C.BAD
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
 
   local tree = { res = {}, own = {}, rp = {}, cur = {}, lineup = {}, nat = "cn", free = {} }
@@ -201,7 +202,7 @@ function TechUI.init(G)
       local N = TT.NAT[nat]
       local b = button(bar, zh and N.name or N.en, UDim2.new(0, mobile and 64 or 92, 1, 0), nil, nat == tree.nat)
       b.Name = "Nat_" .. nat
-      local stripe = frame(b, UDim2.new(1, 0, 0, 3), UDim2.new(0, 0, 1, -3), N.col, 0)
+      local stripe = frame(b, UDim2.new(1, 0, 0, 2), UDim2.new(0, 0, 1, -2), TH.C.LINE, (nat == tree.nat) and 1 or 0.8)   -- 国家不再各一种颜色（统一外观：颜色只表示意思）
       stripe.Name = "Stripe"
       b.MouseButton1Click:Connect(function() onPick(nat) end)
     end
@@ -430,7 +431,8 @@ function TechUI.init(G)
     if TT.canResearch(tree, it.key) then return "can" end
     return "lock"
   end
-  local COL = { own = RGB(46, 86, 58), res = RGB(46, 72, 110), cur = RGB(120, 98, 34), can = RGB(44, 48, 54), lock = RGB(22, 24, 27) }
+  -- 科技树格子：已拥有深绿、研究完没买灰绿、正在研究深琥珀、能研究灰、没解锁更暗（不用蓝：用户 11-21）
+  local COL = { own = RGB(40, 80, 52), res = RGB(52, 66, 58), cur = RGB(110, 86, 34), can = RGB(40, 44, 48), lock = RGB(20, 22, 25) }
 
   ---------------------------------------------------------------- 改装（WtMods）：三列（机动 / 防护 / 火力）× 四级，点一项设成研究目标
   local modsP = frame(gui, UDim2.fromScale(1, 1), nil, RGB(2, 3, 4), 0.35)

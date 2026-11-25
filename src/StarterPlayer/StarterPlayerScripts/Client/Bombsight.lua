@@ -40,7 +40,7 @@ function Bombsight.init(G)
     return f
   end
   local function text(parent, name, size, pos, ts, anchor, align)
-    local l = ui.label(parent, "", size, pos, ts, LIGHT, Enum.Font.Code, anchor, align)
+    local l = ui.label(parent, "", size, pos, ts, LIGHT, Enum.Font.RobotoMono, anchor, align)
     l.Name = name
     l.TextStrokeTransparency = 0.25
     l.TextStrokeColor3 = INK

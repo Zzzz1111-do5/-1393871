@@ -199,8 +199,8 @@ function TacPad.init(G)
   -- 状态栏
   local bar = fr(scr, UDs(0, 0), UD(1, 0, 0, TOP), RGB(0, 0, 0), 0.45)
   local title = txt(bar, "", UDo(14, 0), UD(0, 320, 1, 0), mob and 12 or 13, TEXT, Enum.Font.GothamBold)
-  local coord = txt(bar, "", UDs(0.5, 0), UD(0, 300, 1, 0), mob and 11 or 12, DIM, Enum.Font.Code, AC, V2(0.5, 0))
-  local clock = txt(bar, "", UD(1, -14, 0, 0), UD(0, 280, 1, 0), mob and 11 or 12, TEXT, Enum.Font.Code, AR, V2(1, 0))
+  local coord = txt(bar, "", UDs(0.5, 0), UD(0, 300, 1, 0), mob and 11 or 12, DIM, Enum.Font.RobotoMono, AC, V2(0.5, 0))
+  local clock = txt(bar, "", UD(1, -14, 0, 0), UD(0, 280, 1, 0), mob and 11 or 12, TEXT, Enum.Font.RobotoMono, AR, V2(1, 0))
   fr(scr, UDo(0, TOP), UD(1, 0, 0, 1), RGB(255, 255, 255), 0.92)
   local bat = math.random(72, 96)
 
@@ -300,7 +300,7 @@ function TacPad.init(G)
   local det = fr(scr, UDo(12, DY), UDo(LW - 24, SH - DY - 12), RGB(0, 0, 0), 1)
   local dName = txt(det, "", UDo(2, 0), UD(1, -4, 0, 22), 18, TEXT, Enum.Font.GothamBold)
   local dInfo = txt(det, "", UDo(2, 26), UD(1, -4, 0, 16), 12, DIM, Enum.Font.Gotham)
-  local dTgt = txt(det, "", UDo(2, mob and 0 or 50), UD(1, -4, 0, 16), mob and 12 or 13, TEXT, Enum.Font.Code)
+  local dTgt = txt(det, "", UDo(2, mob and 0 or 50), UD(1, -4, 0, 16), mob and 12 or 13, TEXT, Enum.Font.RobotoMono)
   local dWarn = txt(det, "", UDo(2, mob and 17 or 70), UD(1, -4, 0, 14), 11, RED, Enum.Font.GothamMedium)
   dName.Visible, dInfo.Visible = not mob, not mob
   local BTN_H = mob and 40 or 46
@@ -358,7 +358,7 @@ function TacPad.init(G)
     local t = fr(mark, UD(0.5, v[1] * 19 - ((v[1] ~= 0) and 4 or 1), 0.5, v[2] * 19 - ((v[2] ~= 0) and 4 or 1)), UDo((v[1] ~= 0) and 8 or 2, (v[2] ~= 0) and 8 or 2), AMBER)
     ticks[i] = t
   end
-  local markL = txt(over, "", UDs(0.5, 0.5), UDo(220, 16), 12, AMBER, Enum.Font.Code, AL, V2(0, 0.5))
+  local markL = txt(over, "", UDs(0.5, 0.5), UDo(220, 16), 12, AMBER, Enum.Font.RobotoMono, AL, V2(0, 0.5))
   markL.TextStrokeTransparency = 0.4
   -- 北、比例尺、操作提示、状态
   local north = txt(over, "N", UD(1, -14, 0, 10), UDo(20, 16), 13, TEXT, Enum.Font.GothamBold, AC, V2(1, 0))
@@ -369,7 +369,7 @@ function TacPad.init(G)
   local sbarL = fr(sbar, UDo(0, -4), UDo(1.5, 6), TEXT)
   local sbarR = fr(sbar, UD(1, -1.5, 0, -4), UDo(1.5, 6), TEXT)
   local _ = sbarL, sbarR
-  local sText = txt(over, "", UD(0, 14, 1, -36), UDo(120, 14), 11, TEXT, Enum.Font.Code)
+  local sText = txt(over, "", UD(0, 14, 1, -36), UDo(120, 14), 11, TEXT, Enum.Font.RobotoMono)
   local hint = txt(over, "", UD(1, -14, 1, -12), UDo(360, 14), 11, DIM, Enum.Font.Gotham, AR, V2(1, 1))
   local pill = fr(over, UD(0.5, 0, 0, 12), UDo(360, 26), RGB(0, 0, 0), 0.25)
   pill.AnchorPoint = V2(0.5, 0)

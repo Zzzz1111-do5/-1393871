@@ -29,6 +29,7 @@ local LocalizationService = game:GetService("LocalizationService")
 
 local Lang = require(RS:WaitForChild("Lang"))
 local G = { Config = require(RS:WaitForChild("Config")), Lang = Lang, Map = require(RS:WaitForChild("Map")), R = {}, S = nil }
+G.Theme = require(RS:WaitForChild("Theme"))   -- 全游戏统一外观（颜色、字体、字号）：各界面从 G.Theme 取，规范在 docs/style.md
 do   -- 语言：按系统语言，zh 开头中文、其余英文（界面上能切）
   local ok, id = pcall(function() return LocalizationService.RobloxLocaleId end)
   G.lang = Lang.pick(ok and id or "en")

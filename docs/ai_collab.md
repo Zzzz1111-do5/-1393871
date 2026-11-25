@@ -25,6 +25,25 @@
 
 ## 正在做
 
+- E（11-25 晚，**正在做**；用户：「现在整个游戏风格极其割裂 我需要完全还原战雷 现在这游戏就是一个四不像」——
+  E 说明了不照搬别的游戏的样子，用户选「全游戏统一成一套自己的写实军事风格」，**分工：E 管外观，C 管玩法**）：
+  · **新：`ReplicatedStorage/Theme.lua` + `docs/style.md`**——颜色、字体、字号、面板都从 `G.Theme`（客户端 init 里挂的）取，新界面也一样；
+    颜色只表示意思（绿 = 自己人 / 完好、红 = 敌人 / 危险、琥珀 = 注意 / 进行中 / 金币、亮绿 HUD = 瞄准和飞行符号），**不用蓝**；
+    敌我颜色按看的人算（`Theme.side(side)`：自己这边绿、对面红）——UI / Hud / WtBattle 的 teamColor、MapUI 的据点颜色都改了，
+    不再攻方一律红、守方一律绿；Code、Jura、Garamond 字体全换成 RobotoMono / GothamMedium。
+  · 各模块顶上的颜色常量换成 Theme 的（UI、Menu、TechUI、WtBattle、WtTank、WtHud、WtAmmo、WtComms、WtAir、TankHud、VehHud、AirHud、WtFlight、
+    Radar、Hud、SquadHud、MapPick、Faction）；**C 改这些文件时颜色请用 `TH.C.*`**。
+  · 屏幕中间打掉车时原来叠着四套提示（金色圆章奖章、28 号「+200」、黄条提示框、红字「已击毁！」）：奖章改成一条细条（WtBattle），
+    加分字缩小（Juice），只开车的对局里 Juice 的连杀横幅不弹（奖章已经报了），击杀不再弹提示框（UI.lua），
+    WtHud 报了「已击毁」Hud.lua 的 G.pop 就不再弹第二行（G.wtKillShownAt）；提示语去掉感叹号。
+  · 只开车的对局（Config.Wt.noInfantry）：进服自动分队、不弹「选择阵营」页（它原来叠在机库、结算页后面透出来）；SquadHud 的小队面板不画；
+    「观战队友」挪到机库右下角（WtCam，顺手修了开局 Visible 赋 nil 的报错）。
+  · **第一人称只留 M1A1、M1A2**（用户 11-25「除了m1a1和a2 其他载具不要做第一人称模式」）：`Config.FirstPerson.only` 白名单，
+    Interior.lua 的 build / 飞机座舱都先问 `G.interiorAllowed(id)`；测别的车内饰的老测试在 join 前设 `T.fpAll = true`；新测试 tools/mock/fponly.lua。
+  · 测试工具：tools/mock/uidump.lua（hudshot 的排版、写 JSON 拆出来共用）、tools/mock/uishots.lua（一次开服连拍主菜单、机库、科技树、坦克、计分板、结算）。
+  · **接下来（E 在做）：机库、科技树按用户发的截图重排**（中间 3D 车、底下阵容卡点选、右下一个大「出击」、科技树等级横排 + 左边国家旗 + 没开的等级上锁），
+    TechUI.lua 会大改——**D / C 这段时间别动 TechUI.lua 的机库和科技树部分**。
+
 - C（11-25 下午，**正在做**，用户对 C 说「全部都做」——B 挑刺 15 条 + C 查出来的几条，一共 18 条）：
   ①敌人标记照历史模式（名牌、小地图只给看得见 / 被侦察的）②残骸整局留着 ③炮弹飞到落地 ④出车前配弹 + 待发弹架 ⑤测距按键（有激光测距的才准）
   ⑥步战车反坦克导弹 + 炮射导弹 ⑦车速、加速照真车 ⑧据点里补弹、补乘员 ⑨弹孔、烧黑 ⑩空战速度射程照真（A 的飞行手感那块，C 只改速度 / 射程 / 空域的数）

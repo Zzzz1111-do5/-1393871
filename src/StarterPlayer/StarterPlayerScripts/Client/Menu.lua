@@ -14,7 +14,8 @@ function Menu.init(G)
   local RGB = Color3.fromRGB
   local V2 = Vector2.new
   local function T(k, ...) return G.T(k, ...) end
-  local WHITE, TEXT, MUTE, FAINT = Color3.new(1, 1, 1), RGB(236, 238, 240), RGB(156, 162, 168), RGB(104, 110, 116)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local WHITE, TEXT, MUTE, FAINT = Color3.new(1, 1, 1), TH.C.TEXT, TH.C.MUTE, TH.C.FAINT
   local Stage = require(script.Parent:WaitForChild("MenuStage"))   -- 背后的 3D 场景（废墟、火光、火星、全副武装的士兵）
 
   local gui = Instance.new("ScreenGui")

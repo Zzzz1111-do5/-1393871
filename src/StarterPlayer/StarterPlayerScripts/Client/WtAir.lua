@@ -22,7 +22,8 @@ function WtAir.init(G)
   local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
   local FIRE = "rbxasset://textures/particles/fire_main.dds"
   local NEAR = 2500
-  local M_OK, M_HURT, M_BAD, M_DEAD = RGB(196, 204, 208), RGB(255, 210, 60), RGB(255, 140, 40), RGB(232, 48, 36)
+  local TH = G.Theme   -- 统一外观（docs/style.md）
+  local M_OK, M_HURT, M_BAD, M_DEAD = TH.C.NEUTRAL, TH.C.WARN, TH.C.WARN:Lerp(TH.C.BAD, 0.5), TH.C.BAD
 
   ---------------------------------------------------------------- 飞控要的数（每帧问一次，同一帧缓存）
   local cacheEm, cacheT, cache = nil, -1, nil

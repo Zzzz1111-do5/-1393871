@@ -39,7 +39,7 @@ function Perf.init(G)
   box.BackgroundColor3 = Color3.new(0, 0, 0)
   box.BackgroundTransparency = 0.35
   box.BorderSizePixel = 0
-  box.Font = Enum.Font.Code
+  box.Font = Enum.Font.RobotoMono
   box.TextSize = 13
   box.TextColor3 = Color3.fromRGB(224, 232, 236)
   box.TextXAlignment = Enum.TextXAlignment.Left
