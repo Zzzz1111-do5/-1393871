@@ -464,11 +464,27 @@ function Tech.init(G)
   end
   G.treePadFor = padFor
 
-  -- 「下车」= 回机库（战雷：离开载具就是这辆没了）：车留下变残骸，人阵亡回出击界面；PvE、测试里的步兵（G.allowInfantry）照旧能下车
-  function G.treeLeave(P)
+  -- 「下车」= 回机库（战雷：离开载具就是这辆没了）；PvE、测试里的步兵（G.allowInfantry）照旧能下车。
+  --   用户 11-25「在车上按空格也不要自动阵亡了」：只认长按 H 的「回机库」（hangar = true），别的下车请求吞掉（返回 true，不让下车）；
+  --   回机库：车收走、人回机库，不放阵亡（同 Round.lua 的 redeploy）；10 秒内挨过打的照老办法判毁（打的人拿分，不能拿来躲击杀）
+  function G.treeLeave(P, hangar)
     if not (W.noInfantry and not G.allowInfantry) then return false end
     local e = P.vehicle
-    if not e or not e.alive or e.driver ~= P then return false end
+    if not e or not e.alive or e.driver ~= P then return not hangar and e ~= nil end
+    if not hangar then return true end
+    if e.testDrive or not e.lastHitT or now() - e.lastHitT > 10 then
+      local char = P.char
+      P.char, P.alive, P.vehicle = nil, false, nil   -- 先断开：角色的 Died 不再算阵亡（Round.lua onDied 只认 P.char）
+      P.canDeployAt = now()
+      P.dmgLog = {}
+      if e.testDrive and G.testClean then pcall(G.testClean, P) end
+      pcall(G.removeEnt, e)
+      if char and char.Parent then char:Destroy() end
+      pcall(function() P.pl.Character = nil end)
+      G.msg(P.pl, "info", "tree.backHangar")
+      if G.pushOne then G.pushOne(P) end
+      return true
+    end
     local hum = P.char and P.char:FindFirstChildOfClass("Humanoid")
     -- 直接判毁（G.wtRaw：不走战雷的乘员 / 模块伤害，Ents.damageEnt 照老办法扣血；车被毁，里面的人跟着阵亡）
     G.wtRaw = true
@@ -646,29 +662,10 @@ function Tech.init(G)
       P.padT = 0
       P.treeSpawn, P.wtKey = true, key
       local okS, e
-      -- 空中出生：街机（D）；C 11-25「全部都做」⑫：历史、全真也是（战雷陆战的固定翼都在空中出生，直升机才在停机坪）——
-      --   历史 / 全真高一半、往本队后方退 1500 格（离战场远一点，爬升、找目标要时间）
-      local adef = air and AD.get(vid) or nil
-      local mode = G.wtModeNow and G.wtModeNow() or "ab"
-      if air and G.spawnAircraftAir and not (adef and adef.kind == "heli") then
-        okS, e = pcall(function()
-          local c = p.base.Position
-          local mx, mz, n = 0, 0, 0
-          for _, pt in ipairs((G.Map and G.Map.POINTS) or {}) do mx += pt.x mz += pt.z n += 1 end
-          local look = (n > 0) and Vector3.new(mx / n - c.X, 0, mz / n - c.Z) or Vector3.new(p.base.LookVector.X, 0, p.base.LookVector.Z)
-          if look.Magnitude < 1 then look = Vector3.new(0, 0, -1) end
-          local far = (mode == "ab") and 0 or 1500
-          local hK = (mode == "ab") and 1 or 1.5
-          local pos = Vector3.new(c.X, c.Y + (W.airSpawnH or 1200) * hK, c.Z) - look.Unit * far
-          if G.wtSpawnOk and not G.wtSpawnOk(P, vid, "air") then return nil end
-          local d = AD.get(vid)
-          local ee = G.spawnAircraftAir(P.team, vid, CFrame.lookAt(pos, pos + look.Unit), nil, P, nil, ((d and d.vMil) or 200) * 0.8)
-          if ee and G.wtSpawned then G.wtSpawned(P, vid, "air", ee) end
-          return ee
-        end)
-      else
-        okS, e = pcall(function() return G.padSpawnAt and G.padSpawnAt(P, p, nil, vid) end)
-      end
+      -- 飞机（用户 11-25「召唤飞机就从机场跑道开始 然后自己起飞 包括回跑道降落补给也做出来」）：不再空中出生（原来街机在机场上空、
+      --   历史 / 全真退后 1500 格再高一半，C 11-25 ⑫）——停在自己机场的跑道上（Depots.lua runwayPads：顺着跑道、机头朝起飞方向），
+      --   起落架放着、发动机慢车，自己推油门滑跑起飞；落回自己的跑道停稳就加油、补弹、维修（Air.lua 落地补给）
+      okS, e = pcall(function() return G.padSpawnAt and G.padSpawnAt(P, p, nil, vid) end)
       P.treeSpawn, P.wtKey = nil, nil
       if not okS then warn("[科技树] 出击出错：" .. tostring(e)) e = nil end
       if not e then return end

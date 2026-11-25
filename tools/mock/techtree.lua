@@ -167,12 +167,17 @@ check(nTools == 0, "身上没有枪（背包里 " .. nTools .. " 样）")
 R.run(1)
 check(hg and not hg.Visible, "出击了：机库收起来")
 
-print("④ 「下车」= 回机库")
-T.remoteAs(me, "Drive", { op = "exit" })
-R.run(3)
+print("④ 「下车」= 回机库（用户 11-25「在车上按空格也不要自动阵亡了」：空格不下车，长按 H 才回机库，也不放阵亡）")
+T.remoteAs(me, "Drive", { op = "exit" })   -- 空格 / F / E 的老「下车」
+R.run(2)
+check(e ~= nil and e.alive and P.alive and P.vehicle == e, "老的「下车」请求不理：车还在、人还在车里")
+local fxOn = false
+T.remoteAs(me, "Drive", { op = "exit", hangar = true })   -- 长按 H
+T.runUntil(function() if C.deathFxOn and C.deathFxOn() then fxOn = true end return false end, 3)
 check(e ~= nil and not e.alive, "车没了")
 T.runUntil(function() return not P.alive end, 10)
-check(not P.alive, "人阵亡（回出击界面）")
+check(not P.alive, "人回机库")
+check(not fxOn, "回机库不放阵亡效果")
 T.runUntil(function() return hg and hg.Visible end, 15)
 check(hg and hg.Visible, "机库又出来了")
 

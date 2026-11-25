@@ -26,6 +26,7 @@ local d = AD.get("j20")
 local hrp = P.char:FindFirstChild("HumanoidRootPart")
 local x, z = hrp.Position.X + 60, hrp.Position.Z
 local gy = G.airSurface(x, z)
+G.wtaNoRepair = true   -- 飞机停在自己营地边上：落地补给会把打坏的部件修回来（Air.lua），这个测试只测挨打
 local e = G.spawnAircraft(P.team, "j20", CF(x, gy + d.gearH + 0.5, z), nil, P)
 check(e ~= nil and e.wta ~= nil, "放了一架歼-20，有部件血")
 if not e then T.summary() return end
@@ -55,6 +56,29 @@ print("  左翼 " .. e.wta.p.wingL .. "，WtaWing " .. tostring(e.model:GetAttri
 check(e.wta.p.wingL <= 0 and e.model:GetAttribute("WtaWing") == "L", "左翼断了")
 local fl = C.wtaFlight and C.wtaFlight(st.em)
 check(fl ~= nil and fl.wing == "L", "飞控知道断了左翼")
+-- 用户 11-25「飞机如果断了机翼 那机翼应该要能掉下去」「机翼应该会消失才对」：模型上那截外翼藏掉、甩出去一截往下掉
+R.run(0.5)
+local M = st.v and st.v.M or nil
+if not M then for _, v in pairs(C.views or {}) do if v.kind == "air" and v.M and v.root and st.em and v.root:IsDescendantOf(st.em) then M = v.M end end end
+if not M then for em2, v in pairs(C.views or {}) do if em2 == st.em and v.M then M = v.M end end end
+local nWing, nHid, nRight = 0, 0, 0
+for _, it in ipairs(M and M.items or {}) do
+  if it.wing == "L" then
+    nWing = nWing + 1
+    if it.p.Transparency >= 0.99 then nHid = nHid + 1 end
+  elseif it.wing == "R" and it.p.Transparency < 0.99 and not it.wingGone then nRight = nRight + 1 end
+end
+check(M ~= nil and nWing > 0 and nHid == nWing, string.format("左边外翼从模型上消失（%d / %d 块藏了）", nHid, nWing))
+check(nRight > 0, "右翼还在（" .. nRight .. " 块）")
+local stub = M and M.model and M.model:FindFirstChild("WingStubL")
+check(stub ~= nil, "断口有一块烧黑的截面")
+local dbr = R.workspace:FindFirstChild("WingDebris")
+local dp = dbr and dbr:FindFirstChildWhichIsA("BasePart")   -- 量零件本身（模型的 Pivot 不跟着 BulkMoveTo 动）
+local y0 = dp and dp.Position.Y
+check(C.wtaDebris and C.wtaDebris() > 0 and dbr ~= nil, "断下来的那截外翼甩出去了（" .. tostring(C.wtaDebris and C.wtaDebris()) .. " 截）")
+R.run(1.5)
+local y1 = dp and dp.Parent and dp.Position.Y
+check(y0 and y1 and y1 < y0 - 2, string.format("往下掉（%.1f → %.1f）", y0 or 0, y1 or 0))
 e.hp = e.wta.maxHp   -- 后面接着打：机身血补满（不然先炸了）
 print("③ 发动机、油箱")
 hitAt(0, 0, d.L * 0.17, 0.15)   -- 机身中后段（发动机：机身后一半里靠前的那段）

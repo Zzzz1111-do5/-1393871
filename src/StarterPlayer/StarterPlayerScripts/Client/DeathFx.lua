@@ -1,15 +1,14 @@
--- 全面大战场（客户端）——阵亡效果（用户 11-23：「死亡不要瞬间切到部署画面，加一个 GTA5 的死亡效果」）
---   自己死了：部署界面先不出来（UI.lua 看 G.deathFxOn()），先放四秒多的阵亡效果，跟 GTA5 的「WASTED」一个路数——
---   ① 一下低沉的闷响加呼的一声、画面一白；之后新响起的声音都发闷（接在 Shock.lua 的 G.muffle 上）、心跳两下
---   ② 画面一秒里褪成黑白，对比加大、一点模糊、四边压暗
---   ③ 镜头留在倒下的地方：从死的那一刻的位置慢慢升高、往后拉，一直看着身体（越来越慢，像慢动作）；在车里死的看着那辆车
---   ④ 屏幕正中一道暗的横条，红色大字「阵亡」从稍大缩回原大、淡进来；下面一行小字：被谁打死、多远（服务器 Battle.lua 的 killcam 消息，
---      阵亡效果开着时这条消息归这里用，原来转镜头看凶手的那一段让给它）
---   ⑤ 最后半秒淡黑，部署界面出来以后黑幕再淡开
---   系统设置里开了「减少动态效果」：不动镜头，只有褪色、字和淡出；主菜单打开、新角色出生、回合结束都马上停
+-- 全面大战场（客户端）——阵亡效果
+--   用户 11-23：「死亡不要瞬间切到部署画面」——自己死了，部署界面 / 机库先不出来（UI.lua 看 G.deathFxOn()），先放四秒左右的阵亡画面；
+--   用户 11-25：「包括死亡也别再用之前那个gta的动画了」——原来照 GTA5 的「WASTED」做的（画面褪成黑白、模糊、四边压暗、正中一道横条红色大字、
+--     心跳、声音发闷、慢动作往后拉）整套去掉，改成战雷那样：
+--   ① 画面颜色照旧，镜头留在被打掉的车 / 倒下的人旁边，稍微往后、往上退开一点（不是慢动作）；
+--   ② 一秒后转去看打你的那辆（WtHud 收到 wtKilled 记下的 G.wtKiller；步兵是 killcam 消息里的凶手）；
+--   ③ 屏幕下方一块牌子（统一外观 docs/style.md：深色面板、细线）：「被击毁」/「阵亡」，下面一行凶手、距离；
+--   ④ 最后半秒淡黑，机库 / 部署界面出来以后黑幕再淡开
+--   系统设置里开了「减少动态效果」：不动镜头，只有牌子和淡出；主菜单打开、新角色出生、回合结束都马上停
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local Lighting = game:GetService("Lighting")
 local GuiService = game:GetService("GuiService")
 
 local DeathFx = {}
@@ -48,48 +47,36 @@ function DeathFx.init(G)
     f.Parent = parent
     return f
   end
-  local edges = {}
-  for _, e in ipairs({ { UDim2.fromScale(1, 0.34), UDim2.fromScale(0, 0), 90 }, { UDim2.fromScale(1, 0.34), UDim2.fromScale(0, 0.66), -90 },
-    { UDim2.fromScale(0.26, 1), UDim2.fromScale(0, 0), 0 }, { UDim2.fromScale(0.26, 1), UDim2.fromScale(0.74, 0), 180 } }) do
-    local f = frame(gui, e[1], e[2], RGB(0, 0, 0), 0)
-    local g = Instance.new("UIGradient")
-    g.Rotation = e[3]
-    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
-    g.Parent = f
-    table.insert(edges, f)
-  end
-  local band = frame(gui, UDim2.new(1, 0, 0, 132), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
-  band.Name = "Band"
-  local bandG = Instance.new("UIGradient")   -- 横条两头淡掉
-  bandG.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.18, 0), NumberSequenceKeypoint.new(0.82, 0), NumberSequenceKeypoint.new(1, 1) })
-  bandG.Parent = band
+  -- 下方的牌子：深色面板、上边一道红线（被打掉）、标题、凶手一行
+  local TH = G.Theme or { C = {} }
+  local plate = frame(gui, UDim2.fromOffset(440, 66), UDim2.new(0.5, 0, 0.8, 0), TH.C.PANEL or RGB(14, 17, 20), 1, Vector2.new(0.5, 0.5))
+  plate.Name = "Plate"
+  local plateLine = frame(plate, UDim2.new(1, 0, 0, 2), UDim2.new(0, 0, 0, 0), TH.C.BAD or RGB(220, 70, 60), 1)
+  plateLine.Name = "Line"
   local title = Instance.new("TextLabel")
   title.Name = "Title"
-  title.AnchorPoint = Vector2.new(0.5, 0.5)
-  title.Position = UDim2.fromScale(0.5, 0.5)
-  title.Size = UDim2.fromOffset(900, 110)
+  title.AnchorPoint = Vector2.new(0.5, 0)
+  title.Position = UDim2.new(0.5, 0, 0, 9)
+  title.Size = UDim2.new(1, -24, 0, 24)
   title.BackgroundTransparency = 1
-  title.Font = Enum.Font.GothamBlack
-  title.TextSize = 92
-  title.TextColor3 = RGB(196, 26, 22)
-  title.TextStrokeColor3 = RGB(0, 0, 0)
-  title.TextStrokeTransparency = 0.15
+  title.Font = Enum.Font.GothamBold
+  title.TextSize = 20
+  title.TextColor3 = TH.C.TEXT or RGB(236, 238, 236)
+  title.TextTransparency = 1
   title.Text = ""
-  title.Parent = gui
-  local titleScale = Instance.new("UIScale")
-  titleScale.Parent = title
+  title.Parent = plate
   local sub = Instance.new("TextLabel")
   sub.Name = "Sub"
   sub.AnchorPoint = Vector2.new(0.5, 0)
-  sub.Position = UDim2.new(0.5, 0, 0.5, 74)
-  sub.Size = UDim2.fromOffset(900, 28)
+  sub.Position = UDim2.new(0.5, 0, 0, 37)
+  sub.Size = UDim2.new(1, -24, 0, 20)
   sub.BackgroundTransparency = 1
   sub.Font = Enum.Font.GothamMedium
-  sub.TextSize = 20
-  sub.TextColor3 = RGB(236, 232, 226)
-  sub.TextStrokeTransparency = 0.5
+  sub.TextSize = 15
+  sub.TextColor3 = TH.C.MUTE or RGB(160, 166, 164)
+  sub.TextTransparency = 1
   sub.Text = ""
-  sub.Parent = gui
+  sub.Parent = plate
   -- 黑幕单独一层：效果结束以后还要盖在部署界面上淡开
   local blackGui = Instance.new("ScreenGui")
   blackGui.Name = "DeathFade"
@@ -106,19 +93,7 @@ function DeathFx.init(G)
   local S = { on = false, n = 0 }
   G.deathFxOn = function() return S.on end
   G.deathFxState = function() return S end   -- 测试用
-  local cc, blur = nil, nil
   local killer = nil   -- 这次是谁打死的（killcam 消息：name、d 距离）
-
-  -- 声音发闷：接在 Shock.lua 的 G.muffle 上（Fx.lua 新放的声音按它切高频、压音量）
-  local muffle0 = G.muffle
-  G.muffle = function()
-    local m = muffle0 and muffle0() or 0
-    if S.on then
-      local u = os.clock() - S.t0
-      m = math.max(m, 0.85 * (1 - smooth((u - (S.dur - 1.2)) / 1.2)))
-    end
-    return m
-  end
 
   local function subText()
     S.killerName = (type(killer) == "table" and type(killer.name) == "string") and killer.name or nil   -- 测试用
@@ -140,8 +115,6 @@ function DeathFx.init(G)
     if not S.on then return end
     S.on = false
     pcall(function() RunService:UnbindFromRenderStep("DeathFxCam") end)
-    if cc then cc:Destroy() cc = nil end
-    if blur then blur:Destroy() blur = nil end
     gui.Enabled = false
     local cam = workspace.CurrentCamera
     if cam and S.camType0 and cam.CameraType == Enum.CameraType.Scriptable then
@@ -160,9 +133,9 @@ function DeathFx.init(G)
     local u = os.clock() - S.t0
     if reducedMotion then return end
     local f = focusPoint() + V(0, 0.8, 0)
-    -- 越来越慢地升高、往后拉（像慢动作）：从死的那一刻的镜头位置出发
-    local k = easeOut(u / (S.dur * 0.95))
-    local want = S.from:Lerp(f + S.back * (S.dist + 9 * k) + V(0, 3 + 7 * k, 0), smooth(u / 0.9) * 0.35 + 0.65 * k)
+    -- 往后、往上退开一点（一秒里退好，之后不动；不做慢动作）：从死的那一刻的镜头位置出发
+    local k = easeOut(u / 1.0)
+    local want = S.from:Lerp(f + S.back * (S.dist + 6) + V(0, 4 + (S.veh and 4 or 1), 0), k)
     -- 战雷式击杀镜头（C 11-25「全部都做」⑮）：车被打掉的，先看一秒自己的车，再转去看打你的那辆（WtHud 收到 wtKilled 记下 G.wtKiller）——
     --   镜头在凶手和你之间、离凶手三十几格、稍高，看着它
     local K = G.wtKiller
@@ -201,7 +174,6 @@ function DeathFx.init(G)
     local okR, hit = pcall(function() return workspace:Raycast(f, want - f, rp) end)
     if okR and hit then want = f + (want - f).Unit * math.max(2, (hit.Position - f).Magnitude - 0.8) end
     cam.CFrame = CFrame.lookAt(want, f)
-    cam.FieldOfView = S.fov0 + (S.fov0 * 0.78 - S.fov0) * smooth(u / S.dur)   -- 慢慢推近一点
   end
 
   local function start(ch, wasDown)
@@ -211,7 +183,6 @@ function DeathFx.init(G)
     if G.S and G.S.phase == "end" then return end
     S.n += 1
     S.on, S.t0, S.char, S.dur = true, os.clock(), ch, wasDown and DUR_DOWN or DUR
-    S.beat = 0
     S.camType0, S.fov0 = cam.CameraType, cam.FieldOfView
     local hrp = ch and (ch:FindFirstChild("HumanoidRootPart") or ch:FindFirstChild("Head"))
     S.focus0 = (hrp and hrp:IsA("BasePart") and hrp.Position) or cam.Focus.Position
@@ -229,22 +200,12 @@ function DeathFx.init(G)
     S.dist = clamp((S.from - S.focus0).Magnitude, 4, S.veh and 40 or 14)
     if G.killcamStop then pcall(G.killcamStop) end   -- 原来那段转镜头看凶手的（Warfx.lua）先停掉，凶手写在小字里
     if not reducedMotion then pcall(function() cam.CameraType = Enum.CameraType.Scriptable end) end
-    -- 褪色、模糊
-    cc = Instance.new("ColorCorrectionEffect")
-    cc.Name = "DeathGrade"
-    cc.Parent = Lighting
-    blur = Instance.new("BlurEffect")
-    blur.Name = "DeathBlur"
-    blur.Size = 0
-    blur.Parent = Lighting
     title.Text = (G.hangarActive and G.hangarActive()) and T("wt.kcTitle") or T("death.title")   -- 战雷式（开车、不当步兵）：「被击毁」
     sub.Text = subText()
     gui.Enabled = true
     blackGui.Enabled = true
     black.BackgroundTransparency = 1
     fadeOutT = nil
-    -- 一下闷响加呼的一声
-    if G.sfx then pcall(G.sfx, "death", nil, { must = true, dry = true }) end
     pcall(function() RunService:BindToRenderStep("DeathFxCam", Enum.RenderPriority.Camera.Value + 40, camStep) end)
   end
 
@@ -261,30 +222,13 @@ function DeathFx.init(G)
     if (G.menuShown and G.menuShown()) or (ch and ch ~= S.char) or (G.S and G.S.phase == "end") then finish(true) return end
     if G.S and G.S.alive and ch and ch ~= S.char then finish(true) return end
     if u >= S.dur then finish(false) return end
-    -- 画面：一白 → 黑白、对比、模糊
-    if cc then
-      cc.Saturation = -1 * smooth(u / 1.0)
-      cc.Contrast = 0.28 * smooth(u / 1.0)
-      cc.Brightness = 0.35 * math.exp(-u * 7) - 0.06 * smooth(u / 1.5)
-      cc.TintColor = RGB(255, 255, 255)
-    end
-    if blur then blur.Size = 2 + 4 * smooth(u / 1.4) + 10 * math.exp(-u * 9) end
-    for _, e in ipairs(edges) do e.BackgroundTransparency = 1 - 0.85 * smooth(u / 0.8) end
-    -- 横条、大字（0.55 秒起淡进来、从 1.25 倍缩回）、小字
-    local a = smooth((u - 0.55) / 0.3)
-    band.BackgroundTransparency = 1 - 0.55 * a
+    -- 牌子：0.4 秒起淡进来（面板、红线、标题），凶手那一行随后
+    local a = smooth((u - 0.4) / 0.35)
+    plate.BackgroundTransparency = 1 - 0.85 * a
+    plateLine.BackgroundTransparency = 1 - a
     title.TextTransparency = 1 - a
-    title.TextStrokeTransparency = 1 - 0.85 * a
-    titleScale.Scale = 1 + 0.25 * (1 - easeOut((u - 0.55) / 0.45))
     if sub.Text == "" then sub.Text = subText() end
-    local b = smooth((u - 1.0) / 0.4)
-    sub.TextTransparency = 1 - b
-    sub.TextStrokeTransparency = 1 - 0.5 * b
-    -- 心跳两下
-    if S.beat < 2 and u > 0.5 + S.beat * 0.9 then
-      S.beat += 1
-      if G.sfx then pcall(G.sfx, "heart", nil, { vol = 1.2, must = true }) end
-    end
+    sub.TextTransparency = 1 - smooth((u - 0.7) / 0.35)
     -- 最后半秒淡黑
     black.BackgroundTransparency = 1 - smooth((u - (S.dur - FADE)) / FADE)
   end

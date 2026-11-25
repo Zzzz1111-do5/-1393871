@@ -53,7 +53,9 @@ function Fx.init(G)
     local shadows = range > 20 and liveShadow < 2
     local h = part(nil, V(0.2, 0.2, 0.2), CFrame.new(p), color, Enum.Material.SmoothPlastic, 1)
     local pl = Instance.new("PointLight")
-    pl.Color, pl.Range, pl.Brightness, pl.Shadows = color, range, bright, shadows
+    -- 白天（昼夜更替）照到四周的光要亮一倍半才看得出来（太阳底下原来这点光基本看不见：炮口焰、爆炸照不亮车身和地面）
+    local dk = G.dayK and G.dayK() or 0
+    pl.Color, pl.Range, pl.Brightness, pl.Shadows = color, range, bright * (1 + 1.5 * dk), shadows
     pl.Parent = h
     tween(pl, t, { Brightness = 0 })
     Debris:AddItem(h, t + 0.05)

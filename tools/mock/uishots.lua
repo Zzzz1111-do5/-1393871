@@ -112,7 +112,7 @@ if P.vehicle then
   shot("05", "board")
   T.key(Enum.KeyCode.Tab, false)
   R.run(0.2)
-  T.remoteAs(me, "Drive", { op = "exit" })
+  T.remoteAs(me, "Drive", { op = "exit", hangar = true })
   T.runUntil(function() return P.vehicle == nil end, 10)
   R.run(2)
 end

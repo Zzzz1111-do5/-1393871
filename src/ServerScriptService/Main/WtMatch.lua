@@ -265,7 +265,7 @@ function WtMatch.init(G)
       G.msg(sc.P.pl, "good", "wt.scoutKill", { k = "veh." .. (e.def and e.def.id or "") })
     end
     -- 战场奖章（战雷屏幕上方弹出来的那种）：首杀、双杀 / 三杀、坦克狂暴者（不死连杀 5 辆）、复仇者、神射手（1.5 公里外）
-    if K and K.pl and G.P[K.pl] == K and e.cat ~= "inf" and e.cat ~= "fort" and e.team ~= K.team then
+    if K and K.pl and G.P[K.pl] == K and e.cat ~= "inf" and e.cat ~= "fort" and e.team ~= K.team and not e.noScore then   -- 试驾场的靶车不发奖章（原来首杀奖章照发 80 分）
       local t = now()
       local s = S(K)
       local aw = {}

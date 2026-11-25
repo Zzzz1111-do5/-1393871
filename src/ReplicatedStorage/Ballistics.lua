@@ -57,6 +57,8 @@ B.AMMO = {
   -- 科技树换真模型的几型车（用户 11-25「需要模型自己找」）按真车的弹：
   bm42 = { cls = "ap", name = "3BM42 Mango", sym = "穿甲", v0 = 1715, k = 3.6e-5, bs = 1200, tr = true,      -- T-80U：「芒果」钨合金长杆尾翼稳定脱壳穿甲弹
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  bm15 = { cls = "ap", name = "3BM15", sym = "穿甲", v0 = 1785, k = 4.4e-5, bs = 1200, tr = true,           -- T-64A：钢弹体 + 碳化钨弹芯的尾翼稳定脱壳穿甲弹
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
   bm22 = { cls = "ap", name = "3BM22 Zakolka", sym = "穿甲", v0 = 1710, k = 4.0e-5, bs = 1200, tr = true,    -- T-80B：「别针」尾翼稳定脱壳穿甲弹
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
   bk18m = { cls = "heat", name = "3BK18M HEAT", sym = "破甲", v0 = 905, k = 1.0e-4, bs = 900, tr = true, ce = true,   -- 125 毫米破甲弹
@@ -87,7 +89,8 @@ B.GUN = {
   gun125r = { "bm60", "bk31", "of26", "refleks", "jet125" },   -- T-90M：3BM60、3BK31、3OF26（炮射导弹 9M119M「反射」游戏里没有）
   gun105 = { "m900", "m456", "jet105" },
   gun125u = { "bm42", "bk18m", "of26", "refleks", "jet125" },    -- T-80U（9M119「反射」炮射导弹游戏里没有）
-  gun125b = { "bm22", "bk18m", "of26", "jet125" },    -- T-80B
+  gun125b = { "bm22", "bk18m", "of26", "jet125" },    -- T-80B、T-64B
+  gun125a = { "bm15", "bk18m", "of26", "jet125" },    -- T-64A
   gun120l55 = { "dm53", "dm12", "jet120" },           -- 豹 2A6
   gun120l44 = { "dm33", "dm12", "jet120" },           -- 豹 2A4
   gun105l7 = { "dm13", "dm12h", "jet105" },           -- 豹 1

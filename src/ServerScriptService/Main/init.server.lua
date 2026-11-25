@@ -120,7 +120,8 @@ end)
 G.R.Drive.OnServerEvent:Connect(function(pl, d)
   local P = G.P[pl]
   -- 战雷式（Config.Wt.noInfantry，用户 11-25「不要让玩家作为个体活动」）：自己开的车不能下车——要「下车」就是回机库（这辆算没了，Tech.lua）
-  if P and type(d) == "table" and d.op == "exit" and G.treeLeave and G.treeLeave(P) then return end
+  --   用户 11-25「在车上按空格也不要自动阵亡了」：只有客户端明说「回机库」（长按 H，d.hangar）才走 treeLeave；别的「下车」（老客户端的空格、F / E）不理
+  if P and type(d) == "table" and d.op == "exit" and G.treeLeave and G.treeLeave(P, d.hangar == true) then return end
   if P and type(d) == "table" and G.driveInput then G.try("开载具", G.driveInput, P, d) end
 end)
 

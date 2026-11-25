@@ -28,6 +28,7 @@ AirDefs.W = {
   m61 = { kind = "gun", rate = 0.012, dmg = 11, speed = 2100, range = 1800, splash = 2, vs = VS_GUN, cal = 0.16 },     -- M61A2 20 毫米
   gau22 = { kind = "gun", rate = 0.018, dmg = 15, speed = 2100, range = 1800, splash = 2.5, vs = VS_GUN, cal = 0.17 },  -- GAU-22/A 25 毫米
   gsh23 = { kind = "gun", rate = 0.018, dmg = 15, speed = 1900, range = 1700, splash = 2.5, vs = VS_GUN, cal = 0.17 },  -- 23-3 型双管 23 毫米（歼-8II 机腹）
+  nr30 = { kind = "gun", rate = 0.024, dmg = 30, speed = 1900, range = 1700, splash = 3, vs = VS_GUN, cal = 0.2 },     -- 30-1 型（НР-30）30 毫米 ×3（歼-6：两门在翼根、一门在机头右下，合起来每分钟两千五百发）
   gau8 = { kind = "gun", rate = 0.017, dmg = 22, speed = 1900, range = 2000, splash = 3, cal = 0.22,                      -- GAU-8 30 毫米贫铀穿甲弹
     vs = { inf = 1, light = 1.2, armor = 0.55, air = 1.4, ship = 0.5, fort = 0.7 } },
   m230 = { kind = "gun", rate = 0.095, dmg = 42, speed = 1500, range = 1600, splash = 4, cal = 0.2, turret = true,       -- M230 30 毫米链式炮（机头炮塔）
@@ -37,6 +38,9 @@ AirDefs.W = {
   m134 = { kind = "gun", rate = 0.025, dmg = 9, speed = 1700, range = 1100, splash = 0, cal = 0.08, door = true,          -- 舱门机枪
     vs = { inf = 1, light = 0.3, armor = 0.01, air = 0.5, ship = 0.02, fort = 0.05 } },
 
+  -- 霹雳-2（K-13 / AIM-9B 那一代）：只能从后面咬尾、导引头视场窄、过载小，发动机烧两秒多、尾烟浓；歼-6 后期型翼下挂两枚
+  pl2 = { kind = "aam", seeker = "ir", dmg = 380, splash = 11, speed = 520, range = 1100, lockTime = 1.5, cone = 20, turn = 30, burn = 2.2, life = 5, vs = VS_AAM,
+    shape = { L = 7.9, d = 0.36, fin = 1.0 } },
   pl10 = { kind = "aam", seeker = "ir", dmg = 520, splash = 14, speed = 640, range = 1900, lockTime = 1.0, cone = 45, turn = 75, burn = 3.5, life = 6.5, vs = VS_AAM,
     shape = { L = 8.2, d = 0.45, fin = 1.0 } },
   pl15 = { kind = "aam", seeker = "radar", dmg = 560, splash = 16, speed = 760, range = 3800, lockTime = 2.0, cone = 22, turn = 55, burn = 5, life = 8.5, vs = VS_AAM,
@@ -123,6 +127,7 @@ end
 --   g 满速时最大过载（慢了按速度² 少：后段的弹转不动）；bleed 烧完以后掉速快慢（满速时每秒掉几成，越大的弹越小）；
 --   smoke 尾烟：low 低烟发动机（细、淡）/ med / heavy（老式发动机、助推器：又粗又浓）
 local MOTOR = {
+  pl2 = { burn = 2.2, g = 11, bleed = 0.24, smoke = "heavy" },
   pl10 = { burn = 3.0, g = 55, bleed = 0.17, smoke = "low" },
   aim9x = { burn = 3.4, g = 55, bleed = 0.16, smoke = "low" },
   ty90 = { burn = 2.2, g = 25, bleed = 0.22, smoke = "med" },
@@ -386,6 +391,25 @@ D.j36 = { kind = "jet", cat = "jet", L = 64, W = 68, H = 12, gearH = 7.0, hp = 8
   }),
   presets = { preset("aa", { bayM1 = "pl15", bayM2 = "pl15", bayS = "pl10" }), preset("ag", { bayM1 = "ls6", bayM2 = "pl15", bayS = "pl10" }),
     preset("strike", { bayM1 = "lt2", bayM2 = "kd88", bayS = "pl10" }) } }
+-- 歼-6（用户 11-25 看机库截图：「这个j6很奇怪」——原来科技树的歼-6 借歼-8II 的模型和性能）：沈飞照米格-19S 造的双发超音速战斗机（1958 年首飞），
+--   机头进气、55° 后掠中单翼带大翼刀、全动平尾、两台涡喷-6 并排；原模型 andertan 的「Shenyang J-6 "Farmer"」（CC-BY，models/air/j6.glb）。
+--   尺寸照模型量（全长 12.54 米、翼展 8.74 米、垂尾顶离地 3.9 米）；三门 30-1 型 30 毫米炮（翼根两门各 70 发、机头一门 55 发），
+--   翼下两对挂架：中段挂副油箱 / 250 公斤炸弹 / 火箭巢，内侧挂霹雳-2 / 火箭巢；没有雷达、没有热诱弹；
+--   速度按真机（最大 1452 千米/时、马赫 1.35）在这张表里的比例：比歼-8II 慢三成，转得比它灵
+D.j6 = { kind = "jet", cat = "jet", L = 35.1, W = 24.5, H = 10.9, gearH = 4.7, hp = 520, stall = 86, vMil = 268, vAB = 328, accel = 40, abAccel = 34,
+  pitch = 40, roll = 150, yaw = 15, g = 8, flares = 0, gun = "nr30", gunAmmo = 195, gunPos = V(0, -0.5, -11.5), ab = true,
+  fus = { len = 34, w = 3.8, h = 3.8, y = 0 }, nose = 1.5, canopy = { z = -9.1, len = 4.6, w = 1.9, h = 0.95, y = 2.1 },
+  intake = "nose",
+  wing = { xr = 1.3, zr0 = -9.5, zr1 = 2.6, xt = 12.2, zt0 = 5.4, zt1 = 9.4, y = -0.6, dihedral = -4.5 },
+  htail = { xr = 0.3, zr0 = 6.4, zr1 = 13.1, xt = 6.0, zt0 = 13.4, zt1 = 16.2, y = 0.8 },
+  vt = { x = 0, zr0 = 4, zr1 = 14, zt0 = 13.2, zt1 = 17.5, h = 6.2, cant = 0 },
+  eng = { { x = 0.5, y = 0, z = 12.8, r = 0.5 }, { x = -0.5, y = 0, z = 12.8, r = 0.5 } },
+  gear = { nose = { z = -10.8, len = 3.7 }, main = { x = 5.8, z = 1.0, len = 3.5 }, r = 0.95 },
+  st = mirror({
+    { name = "outer", pos = V(6.92, -2.25, 1.2), opts = { "tk800", "b250", "fl90" } },   -- 翼刀下面那对挂架：副油箱 / 炸弹 / 火箭巢
+    { name = "inner", pos = V(3.67, -1.45, -3.8), opts = { "pl2", "fl90" } },            -- 内侧挂架：霹雳-2 / 火箭巢
+  }),
+  presets = { preset("aa", { outer = "tk800", inner = "pl2" }), preset("ag", { outer = "b250", inner = "fl90" }), preset("strike", { outer = "fl90", inner = "fl90" }) } }
 -- 歼-8II（用户 11-23：「你再把 j8 和 f16 f15 f14 都做进去」）：沈飞的双发高空高速截击机（1984 年首飞），机头雷达罩 + 两侧进气道、
 --   60° 三角翼、全动平尾、单垂尾加一片机腹折叠腹鳍；原模型 Rhine_Lab_Muelsyse 的「Shenyang J-8II/B」（CC-BY，models/air/j8.glb）：
 --   全长 21.59 米、翼展 9.34 米、全高 5.41 米；副翼、襟翼、全动平尾、方向舵、座舱盖、起落架都是原模型单独的节点；
@@ -819,7 +843,7 @@ end
 
 -- 内油：按「军用推力（油门 100、不开加力）一直开能飞几秒」算，直升机按满速爬升算（一局 30 分钟：战斗机满内油军推八九分钟、
 --   一直开加力四分钟、巡航十七分钟上下，一局里要回去加一两次油；侧卫系、F-35 内油多一点，无人机、轰炸机能飞一整局）
-local FUEL = { j20 = 520, j35 = 480, j15t = 540, j16 = 600, j11 = 640, j10 = 460, j36 = 760, j8 = 520, f22 = 500, f35 = 500, f16 = 460, f15 = 620, f14 = 700,
+local FUEL = { j20 = 520, j35 = 480, j15t = 540, j16 = 600, j11 = 640, j10 = 460, j36 = 760, j8 = 520, j6 = 380, f22 = 500, f35 = 500, f16 = 460, f15 = 620, f14 = 700,
   a10c = 600, h6k = 1300, b2 = 1600,
   gj11 = 1200, gj2 = 2400, mq9 = 2400, z10 = 600, ah64e = 600, z20 = 720, uh60 = 720, ch47 = 900 }
 function AirDefs.fuelCap(d) return d.fuel or FUEL[d.id] or 360 end

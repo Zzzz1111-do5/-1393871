@@ -108,6 +108,7 @@ function Ents.init(G)
     if not e or not e.alive or amt <= 0 then return end
     if src and src.team == e.team then return end
     if e.invuln then return end
+    if src then e.lastHitT = os.clock() end   -- 回机库（Tech.lua treeLeave）：刚挨过打的不让悄悄走，照判毁算（打的人拿分）
     local dk = G.dmgK and G.dmgK[e]   -- 爆反挡下的这一发（Era.lua）：直接命中、爆炸都只剩几成
     if dk then amt *= dk end
     -- 战雷式飞机（WtAir.lua）：按打在哪伤机翼、尾翼、发动机、油箱、飞行员（机身血照扣）

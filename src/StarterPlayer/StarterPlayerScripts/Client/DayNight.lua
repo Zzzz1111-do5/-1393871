@@ -22,12 +22,16 @@ function DayNight.init(G)
   -- 夜里 / 白天两套（夜里照 World.lighting 原来那套）
   -- 大气（用户 11-22：「视野给我改成无限远好了，然后远处模糊这样」）：原来夜里 0.21、白天 0.17，几公里外就灰成一片；
   --   放淡到 0.085 / 0.07、霾减半，远处的山、岛、舰队看得见，远处的「看不清」改成下面的景深模糊（FarBlur）
+  -- 用户 11-25「目前整个画质都一般 提高一下」「光效」：白天原来环境光、天光太亮（暗处 132 灰），阳光照的一面和背光的一面差不多亮，
+  --   影子又虚（ShadowSoftness 0.3），整个画面平、发灰。改成：太阳更强、天光压低（背光面、车底、影子里暗下来，立体感出来），
+  --   影子收紧（白天 0.12：车、房子、石头的影子边缘清楚）；泛光门槛降低（爆炸、曳光、炮口焰、太阳照到的金属白天也泛光），
+  --   调色对比、饱和略加、暖一点；太阳光束（SunRays：对着太阳看时从云边、车边透出来的光，黄昏最明显）
   local NIGHT = { bright = 2.2, amb = RGB(14, 17, 24), oamb = RGB(38, 45, 62), top = RGB(140, 160, 210), bot = RGB(8, 10, 16), diff = 0.35, spec = 0.9, exp = 0.55,
     fog = RGB(16, 20, 30), dens = 0.085, acol = RGB(44, 54, 76), adec = RGB(12, 15, 24), glare = 0.15, haze = 0.5,
-    bloomI = 1.1, bloomT = 1.05, ccSat = -0.12, ccCon = 0.14, ccTint = RGB(222, 232, 255) }
-  local DAY = { bright = 3.0, amb = RGB(78, 80, 86), oamb = RGB(132, 134, 140), top = RGB(255, 248, 236), bot = RGB(42, 38, 32), diff = 1, spec = 1, exp = 0,
-    fog = RGB(176, 194, 214), dens = 0.07, acol = RGB(196, 208, 224), adec = RGB(96, 112, 136), glare = 0.25, haze = 0.3,
-    bloomI = 0.35, bloomT = 1.6, ccSat = 0.04, ccCon = 0.07, ccTint = RGB(255, 255, 255) }
+    bloomI = 1.1, bloomT = 1.05, bloomS = 36, ccSat = -0.12, ccCon = 0.14, ccTint = RGB(222, 232, 255), shadow = 0.3, rays = 0 }
+  local DAY = { bright = 3.3, amb = RGB(56, 58, 64), oamb = RGB(104, 108, 116), top = RGB(255, 246, 230), bot = RGB(42, 38, 32), diff = 1, spec = 1, exp = 0.05,
+    fog = RGB(176, 194, 214), dens = 0.07, acol = RGB(196, 208, 224), adec = RGB(96, 112, 136), glare = 0.35, haze = 0.3,
+    bloomI = 0.6, bloomT = 1.3, bloomS = 26, ccSat = 0.08, ccCon = 0.12, ccTint = RGB(255, 251, 244), shadow = 0.12, rays = 0.055 }
   -- 夜视增亮多少档曝光（用户 11-22：「夜视仪视角沙漠的地面全是白色的」）：海岛的地面是草（亮度约 0.23），沙漠全是沙（约 0.5，亮一倍多），
   --   同样 +2.7 档沙地直接过曝成一片白（车里的昼光观瞄镜里就是一片黄）；沙漠少加 1.2 档，沙地落在跟海岛草地差不多的亮度
   local Map = require(RS:WaitForChild("Map"))
@@ -46,9 +50,9 @@ function DayNight.init(G)
     -- 沙海白天（用户 11-25 昼夜更替）：原来这套是给删掉的「沙漠风暴」调的（大气 0.22、霾 1.4，几公里外就黄成一片）；
     --   沙海坦克一两公里对射、飞机十几公里外交战：淡一点的暖黄沙尘霾，太阳刺眼一点，沙地反光把暗处抬暖
     DAY.fog, DAY.acol, DAY.adec, DAY.dens, DAY.haze = RGB(214, 198, 172), RGB(226, 212, 186), RGB(170, 138, 104), 0.11, 0.9
-    DAY.glare, DAY.amb, DAY.oamb, DAY.bot = 0.4, RGB(86, 80, 72), RGB(150, 140, 124), RGB(64, 50, 34)
-    DAY.top, DAY.exp = RGB(255, 244, 222), -0.1
-    DAY.ccTint, DAY.ccSat = RGB(255, 247, 236), 0
+    DAY.glare, DAY.amb, DAY.oamb, DAY.bot = 0.45, RGB(66, 60, 54), RGB(120, 112, 100), RGB(64, 50, 34)   -- 沙地反光把暗处抬暖一点（比原来暗：影子要看得出来）
+    DAY.top, DAY.exp = RGB(255, 242, 218), -0.05
+    DAY.ccTint, DAY.ccSat = RGB(255, 246, 232), 0.05
   end
   desertPalette()
   if G.onMap then G.onMap(desertPalette) end
@@ -128,15 +132,32 @@ function DayNight.init(G)
       if bloom then
         put(bloom, "Intensity", lerp(NIGHT.bloomI, DAY.bloomI, dayK))
         put(bloom, "Threshold", lerp(NIGHT.bloomT, DAY.bloomT, dayK))
+        put(bloom, "Size", lerp(NIGHT.bloomS, DAY.bloomS, dayK))
       end
       local cc = Lighting:FindFirstChild("NightGrade")
       if cc then
-        put(cc, "Saturation", lerp(NIGHT.ccSat, DAY.ccSat, dayK))
+        put(cc, "Saturation", lerp(NIGHT.ccSat, DAY.ccSat, dayK) + 0.06 * dusk)   -- 黄昏、清晨：颜色浓一点（金色的那一阵）
         put(cc, "Contrast", lerp(NIGHT.ccCon, DAY.ccCon, dayK))
         put(cc, "TintColor", lc(NIGHT.ccTint, DAY.ccTint, dayK))
       end
+      -- 影子：白天收紧、夜里（月光、灯光）软一点；太阳光束：太阳在天上才有，黄昏、清晨太阳低的时候最明显
+      put(Lighting, "ShadowSoftness", lerp(NIGHT.shadow, DAY.shadow, dayK))
+      local rays = Lighting:FindFirstChild("SunShafts")
+      if rays then
+        put(rays, "Intensity", (lerp(NIGHT.rays, DAY.rays, dayK) + 0.09 * dusk) * (nv and 0.3 or 1))
+        put(rays, "Spread", 0.55 + 0.3 * dusk)
+      end
     end)
   end
+  -- 太阳光束（客户端自己的后期效果：每个人本地加，服务器的 Lighting 里没有）
+  pcall(function()
+    if not Lighting:FindFirstChild("SunShafts") then
+      local r = Instance.new("SunRaysEffect")
+      r.Name = "SunShafts"
+      r.Intensity, r.Spread = 0, 0.6
+      r.Parent = Lighting
+    end
+  end)
   G.stepDayNight = step
   step(1)
 
@@ -144,7 +165,9 @@ function DayNight.init(G)
   --   要看清远处的时候关掉：步兵开镜 / 举枪瞄准、望远镜、坦克瞄准镜、车里的观瞄设备、飞机光电吊舱、阵亡镜头（它自己有景深）；画面卡（自动画质低）也关
   local far = Instance.new("DepthOfFieldEffect")
   far.Name = "FarBlur"
-  far.FocusDistance, far.InFocusRadius, far.NearIntensity, far.FarIntensity = 200, 50, 0, 0.2
+  -- 用户 11-25「画质一般」：原来远处糊 0.2——两百五十格（九十米）以外整片发糊，一两公里外的坦克、房子、山都是一团，画面看着「低清」；
+  --   压到 0.06（只把很远的地平线柔一点，远近的层次靠大气），开飞机 0.03
+  far.FocusDistance, far.InFocusRadius, far.NearIntensity, far.FarIntensity = 200, 50, 0, 0.06
   far.Parent = Lighting
   G.farBlur = far   -- 测试用
   G.frameConn("FarBlur", function()
@@ -154,7 +177,7 @@ function DayNight.init(G)
     local want = not sharp
     if far.Enabled ~= want then far.Enabled = want end
     if want then
-      local k = fl and 0.1 or 0.2   -- 开飞机看的本来就是几公里外：糊得轻一点
+      local k = fl and 0.03 or 0.06   -- 开飞机看的本来就是几公里外：糊得更轻
       if math.abs(far.FarIntensity - k) > 0.005 then far.FarIntensity = k end
     end
   end)

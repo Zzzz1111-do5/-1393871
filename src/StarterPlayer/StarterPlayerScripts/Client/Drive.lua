@@ -847,6 +847,10 @@ function Drive.init(G)
       if math.abs(v) > 0.5 or thr ~= 0 then a -= 18 * slope end   -- 上坡往后拉、下坡往前推（停着不溜）
       if tracked then a -= math.abs(st.yr or 0) * v * 0.35 end      -- 履带车转弯吃速度
     end
+    -- 空格：刹车（战雷坦克的「急停」，比反着推油门停得还快；松开照常走）
+    if not st.airS and key(Enum.KeyCode.Space) and G.hangarActive and G.hangarActive() then
+      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), accel * 3.2)
+    end
     local old = v
     v += a * dt
     if thr == 0 and math.abs(v) < 0.4 then v = 0 end
@@ -1502,7 +1506,9 @@ function Drive.init(G)
       if st.aimPt then G.R.Act:FireServer("wtArty", st.aimPt) end
     elseif k == Enum.KeyCode.J and st.em and st.em:GetAttribute("Plow") ~= nil then   -- 扫雷犁（坦克改装）：放下 / 升起（升起要 11 秒）
       G.R.Drive:FireServer({ op = "plow", down = (st.em:GetAttribute("Plow") or 0) < 1 })
-    elseif k == Enum.KeyCode.F or k == Enum.KeyCode.E or k == Enum.KeyCode.Space then   -- 用户：空格键脱离载具（F / E 也还能用）
+    elseif (k == Enum.KeyCode.F or k == Enum.KeyCode.E or k == Enum.KeyCode.Space) and not (G.hangarActive and G.hangarActive()) then   -- 用户：空格键脱离载具（F / E 也还能用）
+      -- 战雷式（不当步兵）：没有「下车」——原来按空格下车 = 这辆车判毁、人阵亡（用户 11-25「在车上按空格也不要自动阵亡了」）；
+      --   空格改成刹车（physics），回机库是长按 H（Hud.lua）
       G.R.Drive:FireServer({ op = "exit" })
     end
   end)

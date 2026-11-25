@@ -182,7 +182,7 @@ add("ui.downedBy", "你被 {1} 击倒了", "Downed by {1}")
 add("ui.youRevived", "救起了 {1}", "Revived {1}")
 add("ui.revivedBy", "{1} 把你救起来了", "{1} revived you")
 add("down.title", "倒地 · 等待救援", "DOWNED · WAITING FOR REVIVE")
-add("death.title", "阵　亡", "WASTED")
+add("death.title", "阵亡", "Killed in action")
 add("death.by", "被 {1} 击杀 · {2} 米", "Killed by {1} · {2} m")
 add("death.byNear", "被 {1} 击杀", "Killed by {1}")
 add("down.bleed", "{1} 秒后阵亡", "Bleeding out in {1} s")
@@ -295,7 +295,9 @@ local VEH = {
   leo2a7v = { "豹 2A7V 主战坦克", "Leopard 2A7V MBT" }, type10 = { "10 式主战坦克", "Type 10 MBT" },
   t72ural = { "T-72 乌拉尔 主战坦克", "T-72 Ural MBT" }, t72a = { "T-72A 主战坦克", "T-72A MBT" }, t72b = { "T-72B 主战坦克", "T-72B MBT" },
   t80u = { "T-80U 主战坦克", "T-80U MBT" }, t80b = { "T-80B 主战坦克", "T-80B MBT" }, t80bvm = { "T-80BVM 主战坦克", "T-80BVM MBT" },
-  bmp1 = { "BMP-1 步兵战车", "BMP-1 IFV" },
+  t64a = { "T-64A 主战坦克", "T-64A MBT" }, t64b = { "T-64B 主战坦克", "T-64B MBT" }, type74 = { "74 式主战坦克", "Type 74 MBT" }, type74g = { "74 式改主战坦克", "Type 74 (G) MBT" },
+  gepard1a1 = { "猎豹 1A1 自行高炮", "Gepard 1A1 SPAAG" }, gepard1a2 = { "猎豹 1A2 自行高炮", "Gepard 1A2 SPAAG" },
+  bmp1 = { "BMP-1 步兵战车", "BMP-1 IFV" }, bmp2 = { "BMP-2 步兵战车", "BMP-2 IFV" }, bmp2m = { "BMP-2M 步兵战车", "BMP-2M IFV" },
   leo2a6 = { "豹 2A6 主战坦克", "Leopard 2A6 MBT" }, leo2a4 = { "豹 2A4 主战坦克", "Leopard 2A4 MBT" },
   leo1 = { "豹 1 主战坦克", "Leopard 1 MBT" }, leo1a5 = { "豹 1A5 主战坦克", "Leopard 1A5 MBT" },
   m60a3 = { "M60A3 TTS 主战坦克", "M60A3 TTS MBT" }, m60a1 = { "M60A1 主战坦克", "M60A1 MBT" },
@@ -309,7 +311,7 @@ local VEH = {
   plz07 = { "PLZ-07 自行榴弹炮", "PLZ-07 SPH" }, m109a7 = { "M109A7 帕拉丁", "M109A7 Paladin" }, m270 = { "M270 火箭炮", "M270 MLRS" }, m777 = { "M777 榴弹炮", "M777 Howitzer" },
   z10 = { "直-10 武装直升机", "Z-10 Attack Helicopter" }, z20 = { "直-20 运输直升机", "Z-20 Transport Helicopter" },
   ah64e = { "AH-64E 阿帕奇", "AH-64E Apache" }, uh60 = { "UH-60 黑鹰", "UH-60 Black Hawk" }, ch47 = { "CH-47 支奴干", "CH-47 Chinook" },
-  j15t = { "歼-15T", "J-15T" }, j35 = { "歼-35", "J-35" }, j20 = { "歼-20", "J-20" }, j16 = { "歼-16", "J-16" }, j11 = { "歼-11B", "J-11B" }, j10 = { "歼-10C", "J-10C" }, j36 = { "歼-36", "J-36" }, j8 = { "歼-8II", "J-8II" },
+  j15t = { "歼-15T", "J-15T" }, j35 = { "歼-35", "J-35" }, j20 = { "歼-20", "J-20" }, j16 = { "歼-16", "J-16" }, j11 = { "歼-11B", "J-11B" }, j10 = { "歼-10C", "J-10C" }, j36 = { "歼-36", "J-36" }, j8 = { "歼-8II", "J-8II" }, j6 = { "歼-6", "J-6" },
   h6k = { "轰-6K", "H-6K" }, gj11 = { "攻击-11", "GJ-11" }, gj2 = { "攻击-2", "GJ-2" },
   a10c = { "A-10C 雷电", "A-10C Thunderbolt" }, f35 = { "F-35", "F-35" }, f22 = { "F-22 猛禽", "F-22 Raptor" }, f16 = { "F-16C 战隼", "F-16C Fighting Falcon" }, f15 = { "F-15C 鹰", "F-15C Eagle" }, f14 = { "F-14A 雄猫", "F-14A Tomcat" },
   mq9 = { "MQ-9 死神", "MQ-9 Reaper" }, b2 = { "B-2 幽灵", "B-2 Spirit" },
@@ -489,9 +491,9 @@ local PRESET = {
 }
 for k, v in pairs(PRESET) do add("preset." .. k, v[1], v[2]) end
 local AW = {
-  gsh30 = { "30 毫米航炮", "30 mm cannon" }, m61 = { "20 毫米航炮", "20 mm cannon" }, gsh23 = { "23 毫米双管航炮", "23 mm twin cannon" }, gau22 = { "25 毫米航炮", "25 mm cannon" }, gau8 = { "GAU-8 30 毫米机炮", "GAU-8 30 mm" },
+  gsh30 = { "30 毫米航炮", "30 mm cannon" }, m61 = { "20 毫米航炮", "20 mm cannon" }, gsh23 = { "23 毫米双管航炮", "23 mm twin cannon" }, nr30 = { "30 毫米航炮 ×3", "30 mm cannon ×3" }, gau22 = { "25 毫米航炮", "25 mm cannon" }, gau8 = { "GAU-8 30 毫米机炮", "GAU-8 30 mm" },
   m230 = { "30 毫米链式炮", "30 mm chain gun" }, zh23 = { "23 毫米炮", "23 mm turret" }, m134 = { "舱门机枪", "Door gun" },
-  pl10 = { "霹雳-10", "PL-10" }, pl15 = { "霹雳-15", "PL-15" }, aim9x = { "AIM-9X", "AIM-9X" }, aim120 = { "AIM-120", "AIM-120" }, aim54 = { "AIM-54 不死鸟", "AIM-54 Phoenix" },
+  pl2 = { "霹雳-2", "PL-2" }, pl10 = { "霹雳-10", "PL-10" }, pl15 = { "霹雳-15", "PL-15" }, aim9x = { "AIM-9X", "AIM-9X" }, aim120 = { "AIM-120", "AIM-120" }, aim54 = { "AIM-54 不死鸟", "AIM-54 Phoenix" },
   ty90 = { "天燕-90", "TY-90" }, aim92 = { "毒刺（机载）", "Stinger (air)" }, akd10 = { "AKD-10", "AKD-10" }, agm114 = { "地狱火", "Hellfire" },
   kd88 = { "KD-88", "KD-88" }, agm65 = { "小牛", "Maverick" }, ls6 = { "雷石-6", "LS-6" }, gbu12 = { "GBU-12", "GBU-12" }, gbu31 = { "GBU-31", "GBU-31" },
   mk82 = { "Mk 82 炸弹", "Mk 82 bomb" }, b250 = { "250 公斤炸弹", "250 kg bomb" }, hydra = { "九头蛇火箭", "Hydra rockets" }, fl90 = { "90 毫米火箭", "90 mm rockets" },
@@ -559,9 +561,9 @@ add("air.stall", "失速", "STALL")
 add("air.pullup", "拉起", "PULL UP")
 add("air.tooFast", "太快 · 收油门再落", "TOO FAST · CUT THROTTLE")
 add("air.apc", "自动油门", "A/THR")
-add("air.restWait", "停稳了 · {1} 秒后加油补弹", "Holding · resupply in {1}s")
+add("air.restWait", "停稳了 · {1} 秒后地勤开始补给", "Holding · ground crew in {1}s")
 add("air.restRoll", "己方机场 · 停稳就加油补弹、维修", "Friendly field · stop to refuel, rearm and repair")
-add("air.restFix", "加满油、补满弹 · 维修中 {1}%", "Refueled and rearmed · repairing {1}%")
+add("air.restFix", "补给中 {1}% · 加油、挂弹、维修", "Resupplying {1}% · refuel, rearm, repair")
 add("air.restDone", "补给、维修完毕 · 可以起飞", "Resupplied and repaired · ready for takeoff")
 add("air.restNo", "这里不能补给 · 回己方机场 / 甲板", "No resupply here · return to a friendly field or deck")
 add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
@@ -631,6 +633,10 @@ add("coach.reload", "换弹", "Reload")
 add("coach.board", "上车 / 操作", "Enter / use")
 add("coach.allKeys", "全部按键", "All keys")
 add("coach.redeploy", "重新部署（目标太远，不算阵亡）", "Redeploy (objective far away, no death)")
+add("coach.brake", "刹车", "Brake")
+add("coach.hangar", "长按：回机库", "Hold: back to hangar")
+add("ui.holdHangar", "按住 H：回机库", "Hold H: back to hangar")
+add("tree.backHangar", "回到机库", "Back in the hangar")
 add("coach.drive", "前进 / 后退", "Drive")
 add("coach.steer", "转向", "Steer")
 add("coach.sight", "瞄准镜", "Sight")
@@ -1017,6 +1023,7 @@ add("vw.gun120", "120 毫米炮", "120 mm gun")
 add("vw.gun105", "105 毫米炮", "105 mm gun")
 add("vw.gun125u", "125 毫米炮（2A46M-1）", "125 mm 2A46M-1")
 add("vw.gun125b", "125 毫米炮（2A46-2）", "125 mm 2A46-2")
+add("vw.gun125a", "125 毫米炮（2A26M2）", "125 mm 2A26M2")
 add("vw.gun120l55", "120 毫米炮（Rh-120 L/55）", "120 mm Rh-120 L/55")
 add("vw.gun120l44", "120 毫米炮（Rh-120 L/44）", "120 mm Rh-120 L/44")
 add("vw.gun105l7", "105 毫米炮（L7A3）", "105 mm L7A3")
@@ -1024,6 +1031,8 @@ add("vw.gun105a5", "105 毫米炮（L7A3）", "105 mm L7A3")
 add("vw.gun105m68", "105 毫米炮（M68E1）", "105 mm M68E1")
 add("vw.gun105m60", "105 毫米炮（M68）", "105 mm M68")
 add("vw.gun73", "73 毫米炮（2A28）", "73 mm 2A28 Grom")
+add("vw.konkurs", "9M113「竞技」反坦克导弹", "9M113 Konkurs ATGM")
+add("vw.kornet", "9M133「短号」反坦克导弹", "9M133 Kornet ATGM")
 add("vw.gau8", "30 毫米加特林", "30 mm Gatling")
 -- 坦克改装、爆反、主动防御（用户 11-19）
 add("aps.hit", "主动防御拦截了来袭弹（剩 {1} 发）", "APS intercepted the threat ({1} left)")

@@ -117,7 +117,7 @@ print("④ 装上以后重新出击")
 md.done.parts, md.done.tracks, md.done.susp, md.done.fpe, md.done.engine, md.done.smoke = true, true, true, true, true, true
 G.treePublish(P)
 if G.wtState then G.wtState(P).sp = 5000 end   -- 第二次出车要 SP（第一辆才免费）
-if P.vehicle then T.remoteAs(me, "Drive", { op = "exit" }) end
+if P.vehicle then T.remoteAs(me, "Drive", { op = "exit", hangar = true }) end
 T.runUntil(function() return not P.alive end, 15)
 R.run(3)
 local e2 = deploy("cn_59")

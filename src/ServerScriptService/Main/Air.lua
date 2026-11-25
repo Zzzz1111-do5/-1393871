@@ -26,6 +26,8 @@ function Air.init(G)
 
   -- (x, z) 处能落地的面多高：地形、甲板
   local function surface(x, z) return AD.ground(Map, x, z) end
+  local REST_WAIT = 3   -- 落地补给：停稳几秒地勤上来
+  local SUP_T = ((Config.Wt or {}).airSupT) or 15   -- 加油、挂弹要多久（秒）
   G.airSurface = surface
 
   ---------------------------------------------------------------- 名额
@@ -1063,40 +1065,57 @@ function Air.init(G)
           G.removeEnt(e)
         end
       end
-      -- 落在自己的地方停稳：5 秒后加油、补满弹药和热诱弹，接着修（每秒一成，十秒修满）
-      --   Rest 属性给平显看（Fly.lua）：1～5 停稳倒计时、10 在自己的机场 / 甲板上还在滑、−1 修理中、−2 全好了、−3 这里补不了
-      local rest = 0
+      -- 落地补给（用户 11-25「回跑道降落补给也做出来」，照战雷）：落在自己的机场 / 甲板上停稳 3 秒，地勤开始干活——
+      --   油按时间加（SUP_T 秒加到出发时选的油量），弹药、热诱弹、副油箱到时候一起挂上；同时修：机身血每秒一成，
+      --   战雷式部件（WtAir.lua wtaRepair：发动机、机翼、尾翼、油箱、操纵面、飞行员，灭火、堵漏、修起落架）每秒修 8 点多；
+      --   Rest 属性给平显看（Fly.lua）：1～3 停稳倒计时、10 在自己的机场 / 甲板上还在滑、−1 补给 / 维修中（RestK 进度 0～1）、−2 全好了、−3 这里补不了
+      local rest, restK = 0, nil
       if e.alive and e.onGround then
+        local fixed0 = (not G.wtaFixK or G.wtaFixK(e) >= 1) and e.hp >= e.maxHp
         if not landedHome(e) then
           rest = -3
-          e.restT, e.rearmed = 0, false
+          e.restT = 0
         elseif e.vel and e.vel.Magnitude < 4 then
           e.restT = (e.restT or 0) + dt
-          if e.restT > 5 then
+          if e.restT > REST_WAIT then
             if not e.rearmed then
-              e.rearmed = true
-              e.fuel = math.max(e.fuel or 0, e.fuelSel or 1)   -- 加油：加到出发时选的油量（副油箱在 fillStores 里挂回去加满）
-              fillStores(e)
-              if e.driver then
-                G.msg(e.driver.pl, "good", "ui.rearmed")
-                G.pushOne(e.driver)
+              if not e.supK then e.supK, e.fuel0 = 0, e.fuel or 0 end
+              e.supK = math.min(1, e.supK + dt / SUP_T)
+              e.fuel = e.fuel0 + math.max(0, (e.fuelSel or 1) - e.fuel0) * e.supK
+              pushFuel(e)
+              if e.supK >= 1 then
+                e.rearmed, e.supK = true, nil
+                e.fuel = math.max(e.fuel or 0, e.fuelSel or 1)   -- 加油：加到出发时选的油量（副油箱在 fillStores 里挂回去加满）
+                fillStores(e)
+                if e.driver then
+                  G.msg(e.driver.pl, "good", "ui.rearmed")
+                  G.pushOne(e.driver)
+                end
               end
             end
+            local partsOk = true
+            if G.wtaRepair and not G.wtaNoRepair then partsOk = G.wtaRepair(e, dt) end   -- G.wtaNoRepair：测部件伤害的测试（停在自己营地边上挨打）
             if e.hp < e.maxHp then
               e.hp = math.min(e.maxHp, e.hp + e.maxHp * 0.1 * dt)
               e.model:SetAttribute("Hp", math.floor(e.hp))
             end
-            rest = (e.hp < e.maxHp) and -1 or -2
+            local done = e.rearmed and partsOk and e.hp >= e.maxHp
+            rest = done and -2 or -1
+            if not done then
+              restK = math.min(e.rearmed and 1 or (e.supK or 0), e.hp / math.max(1, e.maxHp), (G.wtaFixK and G.wtaFixK(e)) or 1)
+              restK = math.floor(restK * 100) / 100
+            end
           else
-            rest = math.max(1, math.ceil(5 - e.restT))
+            rest = math.max(1, math.ceil(REST_WAIT - e.restT))
           end
         else
-          rest = 10
-          e.restT, e.rearmed = 0, false
+          rest = (e.rearmed and fixed0) and 0 or 10   -- 补好了的在跑道上滑（起飞滑跑）：不写字
+          e.restT = 0
         end
       else
-        e.restT, e.rearmed = 0, false
+        e.restT, e.rearmed, e.supK = 0, false, nil   -- 飞起来了：下次落地再补
       end
+      if e.alive and e.model and e.model:GetAttribute("RestK") ~= restK then e.model:SetAttribute("RestK", restK) end
       if e.alive and e.model and e.model:GetAttribute("Rest") ~= rest then e.model:SetAttribute("Rest", rest) end
     end
   end)

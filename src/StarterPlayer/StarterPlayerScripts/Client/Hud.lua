@@ -781,10 +781,46 @@ function Hud.init(G)
     end
     return best
   end
+  -- 战雷式（不当步兵，TechUI.lua G.hangarActive）：在车里 / 飞机里长按 H 1.2 秒 = 回机库（Tech.lua treeLeave：车收走、人回机库，不放阵亡）；
+  --   用户 11-25「在车上按空格也不要自动阵亡了」——原来空格就是下车 = 判毁阵亡，现在只有这一下有意的长按才离开载具
+  local HOLD = 1.2
+  local holdT = nil
+  local holdBox = ui.frame(G.gui, UDim2.fromOffset(220, 34), UDim2.new(0.5, 0, 0.7, 0), TH.C.PANEL, 0.2, Vector2.new(0.5, 0.5))
+  holdBox.Name = "HangarHold"
+  holdBox.Visible = false
+  local holdFill = ui.frame(holdBox, UDim2.new(0, 0, 0, 2), UDim2.new(0, 0, 1, -2), TEXT, 0)
+  local holdT2 = Instance.new("TextLabel")
+  holdT2.BackgroundTransparency = 1
+  holdT2.Size = UDim2.fromScale(1, 1)
+  holdT2.Font = TH.F and TH.F.bold or Enum.Font.GothamBold
+  holdT2.TextSize = 14
+  holdT2.TextColor3 = TEXT
+  holdT2.Text = T("ui.holdHangar")
+  holdT2.Parent = holdBox
+  local function inVehWt() return G.hangarActive and G.hangarActive() and (G.drive ~= nil or G.fly ~= nil) end
   UIS.InputBegan:Connect(function(io, gp)
     if gp or io.KeyCode ~= Enum.KeyCode.H then return end
     local S = G.S
+    if inVehWt() then
+      holdT = os.clock()
+      return
+    end
     if S and S.alive and S.phase == "battle" then G.R.Act:FireServer("redeploy") end
+  end)
+  G.frameConn("HangarHold", function()
+    if not holdT then
+      if holdBox.Visible then holdBox.Visible = false end
+      return
+    end
+    if not UIS:IsKeyDown(Enum.KeyCode.H) or not inVehWt() then holdT = nil holdBox.Visible = false return end
+    local u = (os.clock() - holdT) / HOLD
+    holdBox.Visible = true
+    holdFill.Size = UDim2.new(math.clamp(u, 0, 1), 0, 0, 2)
+    if u >= 1 then
+      holdT = nil
+      holdBox.Visible = false
+      G.R.Drive:FireServer({ op = "exit", hangar = true })
+    end
   end)
 
   ---------------------------------------------------------------- 压制（Fx.lua 子弹擦身时调 G.suppress）：屏幕四边往里渐暗、微微模糊，两三秒退掉；越近、越密越重

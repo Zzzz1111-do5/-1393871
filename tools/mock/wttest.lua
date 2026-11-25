@@ -75,7 +75,7 @@ if dummies[1] then
 end
 
 print("③ 下车回机库")
-T.remoteAs(me, "Drive", { op = "exit" })
+T.remoteAs(me, "Drive", { op = "exit", hangar = true })
 T.runUntil(function() return not P.alive end, 15)
 R.run(1)
 local left = 0

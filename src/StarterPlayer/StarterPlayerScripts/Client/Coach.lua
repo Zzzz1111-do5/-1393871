@@ -112,9 +112,15 @@ function Coach.init(G)
     return math.floor(((f and f.d and f.d.vRot) or 0) / M_PER * 3.6 + 0.5)
   end
   local function keyText(k) return k and (KEYN[k] and T(KEYN[k]) or k) or nil end
+  -- 战雷式（不当步兵）：车里没有「下车」——空格是刹车，长按 H 回机库（Hud.lua）
+  local WT_HINTS = {
+    veh = { { "W/S", "coach.drive" }, { "A/D", "coach.steer" }, { "LMB", "coach.fire" }, { "Shift", "coach.sight" }, { "Space", "coach.brake" }, { "H", "coach.hangar" } },
+    jetGround = { { "Shift", "coach.throttleUp" }, { "A/D", "coach.taxi" }, { "S", "coach.rotate" }, { "Space", "coach.brake" }, { "H", "coach.hangar" } },   -- 跑道上出发：空格刹车，回机库长按 H
+  }
   local function hintList(sub)
     local out = {}
-    for _, h in ipairs(HINTS[sub] or {}) do
+    local list = (G.hangarActive and G.hangarActive() and WT_HINTS[sub]) or HINTS[sub] or {}
+    for _, h in ipairs(list) do
       local txt = (h[2] == "coach.rotate") and T(h[2], vRotKmh(G.fly)) or T(h[2])
       table.insert(out, { keyText(h[1]), txt })
     end

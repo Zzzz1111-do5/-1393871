@@ -182,6 +182,43 @@ function WtAir.init(G)
     sendMsg(e, nil, out)
   end
 
+  -- 落地补给的维修（Air.lua：停在自己的机场 / 甲板上）：灭火、堵漏、修起落架，部件每秒修 FIX 点；断了的机翼修回来就不再按断翼算。
+  --   返回 true = 部件全好了
+  local FIX = 100 / 12
+  function G.wtaRepair(e, dt)
+    local S = e.wta
+    if not S then return true end
+    local dirty, all = false, true
+    if S.fireT then S.fireT = nil dirty = true end
+    if S.leak > 0 then S.leak = 0 dirty = true end
+    if S.gearBroken then
+      S.gearBroken = nil
+      e.model:SetAttribute("WtaGear", nil)
+      dirty = true
+    end
+    for _, k in ipairs(S.list) do
+      local v = S.p[k]
+      if v < 100 then
+        S.p[k] = math.min(100, v + FIX * dt)
+        dirty = true
+        if S.p[k] < 100 then all = false end
+      end
+    end
+    if S.wing and S.p.wingL > 0 and S.p.wingR > 0 then S.wing, S.wingT = nil, nil dirty = true end
+    if S.wingT and (S.p.rotor or 100) > 0 and not S.wing then S.wingT = nil end
+    if S.koT and S.p.pilot > 0 then S.koT = nil end
+    if dirty then push(e) end
+    return all
+  end
+  -- 部件修到几成（最差的那一块，0～1）：平显的补给进度
+  function G.wtaFixK(e)
+    local S = e.wta
+    if not S then return 1 end
+    local m = 100
+    for _, k in ipairs(S.list) do m = math.min(m, S.p[k]) end
+    return m / 100
+  end
+
   -- 漏油（Air.lua burnFuel 每秒多烧这么多内油）
   function G.wtaLeak(e) return (e.wta and e.wta.leak) or 0 end
 

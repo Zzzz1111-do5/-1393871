@@ -224,6 +224,7 @@ local function newPart(m, size, color, mat, shape, tr, cls)
 end
 
 function AM.build(d, team, load)
+  local wingOf = nil   -- [零件] = "L" / "R"：原模型外翼上的块
   local m = Instance.new("Model")
   m.Name = d.id
   local items = {}
@@ -492,11 +493,29 @@ function AM.build(d, team, load)
 
   ---------------------------------------------------------------- 起落架
 
+  -- 用户 11-25「飞机很多起落架都很假」：原来是方条当支柱、一个黑圆柱套一个灰圆柱当轮子。照真飞机的样子拼：
+  --   支柱是圆的、浅灰白漆（真飞机起落架多是白 / 浅灰），下半截是亮的镀铬活塞杆（油气减震器）；前面一副剪刀式扭力臂；
+  --   斜撑杆从支柱中段撑到舱顶；轮叉、轮轴；机轮 = 黑轮胎 + 浅灰轮毂 + 深色刹车盘 + 轮毂盖；
+  --   舱顶一块深色轮舱（放下时从舱门缝里看是黑的，不是一片蒙皮）；主起落架支柱外侧带一块随支柱收放的舱门
+  local GEARW, CHROME, BRAKE = RGB(206, 208, 204), RGB(214, 220, 226), RGB(52, 50, 48)
+  local function cylAlongY(len, dia, cf, col, mat, kind, extra)
+    local p = newPart(m, V(len, dia, dia), col, mat, CYL)
+    return add(p, cf * UPRIGHT, kind, extra)
+  end
+  local function rod(a, b, dia, col, mat, kind, extra)   -- 两点之间一根圆杆（斜撑、扭力臂）
+    local mid, d = (a + b) / 2, b - a
+    local p = newPart(m, V(d.Magnitude, dia, dia), col, mat, CYL)
+    local cf = CFrame.lookAt(mid, mid + d) * CFrame.Angles(0, math.pi / 2, 0)   -- 圆柱的轴（X）转到连线方向
+    return add(p, cf, kind, extra)
+  end
   local function wheel(cf, r, w, kind, extra)
     local t0 = TAG
     TAG = "gear"
-    local it = add(newPart(m, V(w, r * 2, r * 2), TIRE, MAT.SmoothPlastic, CYL), cf, kind, extra)
-    add(newPart(m, V(w * 1.04, r * 1.1, r * 1.1), STEEL, MAT.Metal, CYL), cf, kind, extra and table.clone(extra))
+    local it = add(newPart(m, V(w, r * 2, r * 2), TIRE, MAT.Rubber, CYL), cf, kind, extra)   -- 轮胎
+    add(newPart(m, V(w * 0.72, r * 2.02, r * 2.02), RGB(36, 36, 38), MAT.Rubber, CYL), cf, kind, extra and table.clone(extra))   -- 胎面（中间一圈略凸，侧面看出胎肩）
+    add(newPart(m, V(w * 1.04, r * 1.18, r * 1.18), RGB(178, 180, 178), MAT.Metal, CYL), cf, kind, extra and table.clone(extra))   -- 轮毂
+    add(newPart(m, V(w * 1.1, r * 0.82, r * 0.82), BRAKE, MAT.Metal, CYL), cf, kind, extra and table.clone(extra))   -- 刹车盘（轮毂里看得见的那圈深色）
+    add(newPart(m, V(w * 1.16, r * 0.38, r * 0.38), RGB(150, 152, 150), MAT.Metal, CYL), cf, kind, extra and table.clone(extra))   -- 轮毂盖、轮轴头
     TAG = t0
     return it
   end
@@ -506,20 +525,62 @@ function AM.build(d, team, load)
     TAG = "gear"
     local f = fixed and function() return 0 end or function(c) return (1 - (c.gear or 1)) * ang end
     local ex = { hp = top, ax = ax, f = f }
-    box(V(0.5, len, 0.5), CF(top - V(0, len / 2, 0)), STEEL, MAT.Metal, "h", table.clone(ex))
-    box(V(0.75, len * 0.35, 0.75), CF(top - V(0, len * 0.2, 0)), STEEL:Lerp(Color3.new(1, 1, 1), 0.3), MAT.Metal, "h", table.clone(ex))   -- 减震筒
+    local function e() return table.clone(ex) end
+    local sd = math.clamp(r * 0.42, 0.42, 1.3)   -- 支柱粗细按机轮大小
     local bottom = top - V(0, len, 0)
+    local yUp = top.Y - len * 0.58                 -- 外筒下沿（往下是镀铬活塞杆）
+    -- 外筒、活塞杆、外筒下沿的密封圈
+    cylAlongY(top.Y - yUp, sd, CF(top.X, (top.Y + yUp) / 2, top.Z), GEARW, MAT.SmoothPlastic, "h", e())
+    local pist = sd * 0.66
+    local axY = bottom.Y + r * 0.1
+    local pistop = (bogie or twin) and bottom.Y or axY
+    local chrome = cylAlongY(yUp - pistop, pist, CF(top.X, (yUp + pistop) / 2, top.Z), CHROME, MAT.Metal, "h", e())
+    chrome.p.Reflectance = 0.25
+    cylAlongY(0.16, sd * 1.12, CF(top.X, yUp, top.Z), RGB(64, 66, 68), MAT.Metal, "h", e())
+    -- 剪刀式扭力臂（前面）：上臂从外筒下沿斜下、下臂从轮叉斜上，交在前方一点
+    local fz = -1   -- 前面（−z 是机头）
+    local kneeY = (yUp + pistop) / 2
+    local knee = V(top.X, kneeY, top.Z + fz * (sd * 0.9 + 0.25))
+    rod(V(top.X, yUp - 0.05, top.Z + fz * sd * 0.45), knee, 0.16, GEARW, MAT.Metal, "h", e())
+    rod(knee, V(top.X, pistop + 0.1, top.Z + fz * pist * 0.5), 0.16, GEARW, MAT.Metal, "h", e())
+    -- 斜撑杆：从外筒中段撑到舱顶（收起方向的反面，放下时把支柱顶住）
+    local up = ax:Cross(V(0, -1, 0)) * ((ang < 0) and -1 or 1)   -- 收起时支柱往哪边倒（绕 ax 转 ang）
+    if up.Magnitude > 0.1 then
+      local back = -up.Unit
+      rod(V(top.X, top.Y - len * 0.38, top.Z), top + back * (len * 0.42) + V(0, -0.15, 0), sd * 0.42, GEARW, MAT.SmoothPlastic, "h", e())
+    end
+    -- 轮叉、轮轴、机轮
     if bogie then
-      box(V(0.5, 0.5, r * 4.6), CF(bottom), STEEL, MAT.Metal, "h", table.clone(ex))
+      box(V(0.5, 0.5, r * 4.6), CF(bottom), STEEL, MAT.Metal, "h", e())
       for _, dz in ipairs({ -r * 1.2, r * 1.2 }) do
-        for _, dx in ipairs({ -0.7, 0.7 }) do wheel(CF(bottom + V(dx * r * 1.1, 0, dz)), r, r * 0.9, "h", table.clone(ex)) end
+        box(V(r * 1.8, 0.28, 0.32), CF(bottom + V(0, 0, dz)), STEEL, MAT.Metal, "h", e())   -- 前后两根轮轴
+        for _, dx in ipairs({ -0.7, 0.7 }) do wheel(CF(bottom + V(dx * r * 1.1, 0, dz)), r, r * 0.9, "h", e()) end
       end
     elseif twin then
-      for _, dx in ipairs({ -0.55, 0.55 }) do wheel(CF(bottom + V(dx * r * 1.2, 0, 0)), r, r * 0.8, "h", table.clone(ex)) end
+      box(V(r * 2.2, 0.32, 0.4), CF(bottom), STEEL, MAT.Metal, "h", e())   -- 横轴
+      for _, dx in ipairs({ -0.55, 0.55 }) do wheel(CF(bottom + V(dx * r * 1.2, 0, 0)), r, r * 0.8, "h", e()) end
     else
-      wheel(CF(bottom + V(0, 0, 0)), r, r * 0.9, "h", table.clone(ex))
+      local w = r * 0.9
+      -- 单轮：轮叉从活塞杆下端两边夹住轮轴（前起落架那种），机轮在支柱正下方
+      for sx = -1, 1, 2 do
+        box(V(0.14, r * 0.9, 0.36), CF(top.X + sx * (w / 2 + 0.12), axY + r * 0.45, top.Z), GEARW, MAT.Metal, "h", e())
+      end
+      box(V(w + 0.38, 0.2, 0.4), CF(top.X, axY + r * 0.9, top.Z), GEARW, MAT.Metal, "h", e())
+      wheel(CF(V(top.X, axY, top.Z)), r, w, "h", e())
     end
     TAG = t0
+    -- 轮舱：舱顶往收起方向一块深色凹槽（不跟着转）
+    if not fixed and up.Magnitude > 0.1 then
+      local u = up.Unit
+      local c = top + u * (len * 0.5) + V(0, 0.25, 0)
+      local wv = (math.abs(u.X) > 0.5) and V(len * 0.95, 0.3, sd * 3 + r) or V(sd * 3 + r, 0.3, len * 0.95)
+      local well = newPart(m, wv, RGB(30, 32, 34), MAT.SmoothPlastic)
+      well.CastShadow = false
+      local t1 = TAG
+      TAG = "gear"
+      add(well, CF(c), "b")
+      TAG = t1
+    end
   end
 
   ---------------------------------------------------------------- 灯
@@ -629,8 +690,15 @@ function AM.build(d, team, load)
       ball(V(w * 0.82, h * 0.78, L * 0.4), CF(0, y0, L * 0.3), skinD)      -- 尾锥
       box(V(w * 0.5, h * 0.32, L * 0.46), CF(0, y0 + h * 0.36, -L * 0.02), skin)   -- 背脊
       box(V(w * 0.86, h * 0.42, L * 0.5), CF(0, y0 - h * 0.22, L * 0.04), skin)    -- 平的机腹（弹舱、挂架）
-      ball(V(w * 0.52, h * 0.58, (d.nose or 8) * 2), CF(0, y0 - h * 0.05, noseZ + (d.nose or 8)), d.stealth and skin or RADOME)   -- 雷达罩
-      if not d.stealth then cylZ(2.2, 0.18, CF(0, y0 - h * 0.05, noseZ - 0.6), STEEL, MAT.Metal) end   -- 空速管
+      if d.intake == "nose" then   -- 机头进气（歼-6、米格-21 那一代）：机头是一圈进气口，里面黑的，中间一块分流板；空速管在机头上面
+        cylZ(1.0, w * 0.9, CF(0, y0, noseZ + 0.5), skin)
+        cylZ(0.3, w * 0.74, CF(0, y0, noseZ + 0.12), DARK, MAT.SmoothPlastic)
+        box(V(0.16, h * 0.7, 0.6), CF(0, y0, noseZ + 0.35), skinD)
+        cylZ(2.0, 0.16, CF(0, y0 + h * 0.36, noseZ - 0.4), STEEL, MAT.Metal)
+      else
+        ball(V(w * 0.52, h * 0.58, (d.nose or 8) * 2), CF(0, y0 - h * 0.05, noseZ + (d.nose or 8)), d.stealth and skin or RADOME)   -- 雷达罩
+        if not d.stealth then cylZ(2.2, 0.18, CF(0, y0 - h * 0.05, noseZ - 0.6), STEEL, MAT.Metal) end   -- 空速管
+      end
     end
     -- 座舱盖（停机打开：后铰链）、飞行员
     local Cn = d.canopy
@@ -854,6 +922,26 @@ function AM.build(d, team, load)
             NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.12), NumberSequenceKeypoint.new(0.6, 0.55), NumberSequenceKeypoint.new(1, 1) }),
             r * (flat and 0.9 or 1.45), r * (flat and 0.4 or 0.7), 1)
           it.dia = {}   -- 原来的马赫环菱形光：这版不画（截图里看不到）
+          -- ④ 焰身的体积（用户 11-25「尾喷焰火也假」：光带正对镜头，从后面、斜后方看是扁的一条）：喷口往后一股锁在喷口上的发光火焰粒子，
+          --    很密、很短命（零点一秒左右走完焰长），从粗到细、从黄白到橙红到透明——哪个角度看都是一团有厚度、在跳的火；跟着加力变长变密
+          local pe = Instance.new("ParticleEmitter")
+          pe.Name = "AbBody"
+          pe.Texture = "rbxasset://textures/particles/fire_main.dds"
+          pe.LockedToPart = true
+          pe.EmissionDirection = Enum.NormalId.Back   -- +z：往机尾喷
+          pe.SpreadAngle = Vector2.new(3, 3)
+          pe.LightEmission, pe.LightInfluence = 1, 0
+          pe.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 236, 200)), ColorSequenceKeypoint.new(0.3, RGB(255, 170, 90)),
+            ColorSequenceKeypoint.new(0.7, RGB(255, 110, 60)), ColorSequenceKeypoint.new(1, RGB(200, 60, 40)) })
+          pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, r * (flat and 1.1 or 1.5)), NumberSequenceKeypoint.new(0.5, r * (flat and 0.9 or 1.2)), NumberSequenceKeypoint.new(1, r * 0.45) })
+          pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(0.4, 0.55), NumberSequenceKeypoint.new(1, 1) })
+          pe.Lifetime = NumberRange.new(0.08, 0.12)
+          pe.Rotation = NumberRange.new(0, 360)
+          pe.RotSpeed = NumberRange.new(-200, 200)
+          pe.Rate = 0
+          pe.Enabled = false
+          pe.Parent = src
+          it.pe = pe
           table.insert(M.flames, it)
         end
         -- 热浪不画了（用户 11-18：飞机喷口有怪异的泡泡——气流粒子是一团团烟雾贴图，从后面看就是一串半透明的圆泡；
@@ -1254,6 +1342,7 @@ function AM.build(d, team, load)
     for i = #items, n + 1, -1 do items[i] = nil end
     M.blades, M.discs = {}, {}
     local I, O = imp.info, imp.O
+    wingOf = {}
     for name, p in pairs(I.parts) do
       local src = imp.folder:FindFirstChild("A_" .. imp.key .. "__" .. name)
       if src and src:IsA("BasePart") then
@@ -1278,6 +1367,7 @@ function AM.build(d, team, load)
           mp.Color, mp.Material, mp.CastShadow = RGB(gl[1], gl[2], gl[3]), MAT.Neon, false
         end
         mp.Parent = m
+        if p.w then wingOf[mp] = p.w end   -- 外翼上的块（tools/models/wingcut.py 切出来的）：断翼时藏掉、掉下去
         local c = V(p.c[1], p.c[2], p.c[3]) + O
         local cc0 = CF(c) * TURN   -- 这块在机体坐标里的样子（补回导入时转掉的半圈）
         local g = p.g
@@ -1345,6 +1435,24 @@ function AM.build(d, team, load)
     local F = I.fold and I.fold.Fold
     if F then M.foldH = { x = F.x, y = F.y + O.Y, A = F.A } end
     M.imported = imp.key
+  end
+
+  -- 断翼（用户 11-25「飞机如果断了机翼 那机翼应该要能掉下去」「机翼应该会消失才对」）：每块零件记它在哪边外翼上（it.wing = "L" / "R"）——
+  --   原模型按 wingcut.py 切的（元数据 w）；挂在外翼下的弹、挂架、翼尖灯，零件拼的飞机的机翼零件按位置（翼展一半以外）
+  do
+    local wc = imp and imp.info.wcut
+    local xr = (wc and wc.x) or ((not imp) and (d.W or 20) * 0.25) or nil
+    M.wcut = wc
+    M.wingX = xr
+    for _, it in ipairs(items) do
+      local w = wingOf and wingOf[it.p]
+      if w then
+        it.wing = w
+      elseif xr and it.tag ~= "pilot" and it.kind ~= "ab" and it.cf0 then
+        local x = it.cf0.Position.X
+        if math.abs(x) > xr + 0.2 and (not imp or it.tag == "store" or it.tag == "lamp" or it.st or it.lamp) then it.wing = (x < 0) and "L" or "R" end
+      end
+    end
   end
 
   -- 血条、名字挂的点（机顶）
@@ -1481,11 +1589,23 @@ function AM.pose(M, cf, c, now, world)
           it.on = on
           it.fill.Enabled = on
           if it.coreB then it.coreB.Enabled = on end
+          if it.pe then it.pe.Enabled = on and M.near ~= false end
         end
         if on then   -- 光柱：满加力约七个喷口直径长；焰芯一个半
           local fl = 1 + 0.05 * math.sin((now or 0) * 37 + r) + 0.03 * math.sin((now or 0) * 61)
-          it.fillEnd.Position = V(0, 0, r * 2 * (2.2 + 4.8 * ab) * fl)
+          local L = r * 2 * (2.2 + 4.8 * ab) * fl
+          it.fillEnd.Position = V(0, 0, L)
           if it.coreEnd then it.coreEnd.Position = V(0, 0, r * 2 * (0.6 + 0.9 * ab) * (2 - fl)) end
+          if it.pe then   -- 火焰粒子：0.1 秒走完焰长的八成（后两成是光带淡出去的尾巴）；远处的不放（M.near：700 格以内）
+            local want = M.near ~= false
+            if it.pe.Enabled ~= want then it.pe.Enabled = want end
+            local sp = L * 0.8 / 0.1
+            if math.abs((it.peSp or 0) - sp) > sp * 0.08 then
+              it.peSp = sp
+              it.pe.Speed = NumberRange.new(sp * 0.9, sp * 1.1)
+            end
+            it.pe.Rate = 70 + 90 * ab
+          end
         end
         for i, dm in ipairs(it.dia) do
           local th0 = 0.2 + 0.15 * (i - 1)
@@ -1532,7 +1652,7 @@ function AM.pose(M, cf, c, now, world)
   -- 灯：航行灯常亮；防撞灯一秒闪一下（机背、机腹错开半拍）；翼尖频闪双闪；着陆灯随起落架；被击毁 / 关灯（M.dark）全灭
   local gearDown = (c.gear or 0) > 0.6
   for _, it in ipairs(M.lamps) do
-    local on = not M.dark
+    local on = not M.dark and not it.wingGone   -- 断掉的那边翼尖灯跟着没了
     if on then
       if it.lamp == "beacon" then on = ((now + it.phase) % 1.0) < 0.12
       elseif it.lamp == "strobe" then local u = now % 1.3 on = u < 0.05 or (u > 0.16 and u < 0.21)
@@ -1540,7 +1660,7 @@ function AM.pose(M, cf, c, now, world)
     end
     if it.on ~= on then
       it.on = on
-      it.p.Transparency = on and 0 or 0.92
+      it.p.Transparency = on and 0 or (it.wingGone and 1 or 0.92)   -- 断掉那边的翼尖灯：整个没了
       if it.lamp ~= "land" then it.bb.Enabled = on end
       it.pl.Enabled = on
     end
@@ -1596,6 +1716,100 @@ function AM.eject(M, cf)
   M.pilotsOn = nil
   AM.setPilots(M, false)
   return caps
+end
+
+-- 每台发动机的喷口出口（机体坐标，+z 朝机尾）和半径：发动机冒烟、起火从这里出来（WtAir.lua）。
+--   原模型按它自己的喷口（ImportedAir 的 noz），零件拼的按 AirDefs 的 eng；都没有就机尾正中
+function AM.nozzles(M)
+  local d = M.def
+  local out = {}
+  if M.imp and M.imp.info.noz then
+    local oy = M.imp.O.Y
+    for _, nz in ipairs(M.imp.info.noz) do table.insert(out, { p = V(nz[1], nz[2] + oy, nz[3]), r = nz[4] or 0.6 }) end
+  end
+  if #out == 0 then
+    for _, E in ipairs(d.eng or {}) do
+      if E.x and E.z then table.insert(out, { p = V(E.x, E.y or 0, E.z), r = E.r or 0.6 }) end
+    end
+  end
+  if #out == 0 then table.insert(out, { p = V(0, 0, (d.L or 20) * 0.4), r = 0.8 }) end
+  return out
+end
+
+-- 断翼：side（"L" / "R"）那边外翼上的零件藏起来（原模型切出来的外翼块、挂在上面的弹和挂架、翼尖灯），断口补一块烧黑的截面；
+--   返回藏掉的那些零件的复制品和它们现在的世界位置（WtAir.lua 让它们翻滚着掉下去）。再调一次同一边不重复
+function AM.breakWing(M, side)
+  M.wingGone = M.wingGone or {}
+  if M.wingGone[side] then return {} end
+  M.wingGone[side] = true
+  local out = {}
+  for i, it in ipairs(M.items) do
+    if it.wing == side and not it.wingGone then
+      it.wingGone = true
+      it.trW = it.tr0
+      if it.p.Transparency < 0.98 then
+        local ok, q = pcall(function() return it.p:Clone() end)
+        if ok and q then
+          q.Anchored, q.CanCollide, q.CanQuery, q.CanTouch = true, false, false, false
+          for _, ch in ipairs(q:GetChildren()) do
+            if ch:IsA("Light") or ch:IsA("BillboardGui") or ch:IsA("Beam") or ch:IsA("Trail") or ch:IsA("ParticleEmitter") then ch:Destroy() end
+          end
+          table.insert(out, { p = q, cf = (M.clist and M.clist[i]) or it.p.CFrame })
+        end
+      end
+      it.tr0 = 1
+      it.p.Transparency = 1
+      if it.bb then it.bb.Enabled = false end
+      if it.pl then it.pl.Enabled = false end
+    end
+  end
+  -- 断口：烧黑的一块截面（原模型按切面量的截面范围；零件拼的按翼根大概的厚度、弦长）
+  local sx = (side == "L") and -1 or 1
+  local wc = M.wcut and M.wcut[side]
+  local O = (M.imp and M.imp.O) or V()
+  local pos, size
+  if wc and M.wcut.x then
+    pos = V(sx * M.wcut.x, (wc[1] + wc[2]) / 2 + O.Y, (wc[3] + wc[4]) / 2)
+    size = V(0.35, math.max(0.25, wc[2] - wc[1]), math.max(0.6, (wc[4] - wc[3]) * 0.85))
+  elseif M.wingX then
+    local w = M.def.wing or {}
+    pos = V(sx * M.wingX, w.y or 0, (w.z0 and w.z1) and (w.z0 + w.z1) / 2 or 0)
+    size = V(0.35, 0.6, math.max(1, (M.def.L or 20) * 0.22))
+  end
+  if pos then
+    local stub = Instance.new("Part")
+    stub.Name = "WingStub" .. side
+    stub.Size = size
+    stub.Color = RGB(34, 30, 28)
+    stub.Material = MAT.CorrodedMetal
+    stub.Anchored, stub.CanCollide, stub.CanQuery, stub.CanTouch = true, false, false, false
+    stub.CastShadow = false
+    local it = AM.attach(M, stub, CF(pos))
+    it.stubOf = side
+  end
+  return out
+end
+-- 修好了（落地补给，Air.lua / WtAir.lua wtaRepair）：外翼回来，断口那块去掉
+function AM.restoreWing(M, side)
+  if not (M.wingGone and M.wingGone[side]) then return end
+  M.wingGone[side] = nil
+  for i = #M.items, 1, -1 do
+    local it = M.items[i]
+    if it.wing == side and it.wingGone then
+      it.wingGone = nil
+      it.tr0 = it.trW or 0
+      it.p.Transparency = it.tr0
+      it.visOn, it.goneSeen, it.on = nil, nil, nil   -- 下一帧按起落架、挂弹、灯的状态重新摆
+      if it.pl then it.pl.Enabled = true end
+    elseif it.stubOf == side then
+      it.p:Destroy()
+      table.remove(M.items, i)
+    end
+  end
+  M.plist = {}
+  for i, it in ipairs(M.items) do M.plist[i] = it.p end
+  M.clist = {}
+  M.n = #M.items
 end
 
 -- 左右翼尖后缘（机体坐标；翼尖涡流从这里拖出去）
