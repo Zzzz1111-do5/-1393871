@@ -305,6 +305,22 @@ function Wt.init(G)
     G.wtLast = payload
   end
 
+  -- 弹孔（用户 11-25「全部都做」⑨）：客户端 View.lua 在命中点贴一个焦黑的孔（击穿）/ 灰坑（没击穿）/ 擦痕（跳弹），跟着车体 / 炮塔走
+  --   坐标按车自己的：车体上的按底座系，炮塔上的按炮塔系（W.toTur）——特效晚到零点几秒，车开着也贴得准
+  local function hole(e, res, vel, r, zone)
+    local n = res.Normal
+    if typeof(n) ~= "Vector3" or n.Magnitude < 0.1 then n = -vel end
+    local base = baseOf(e)
+    local lp, ln, ld = base:PointToObjectSpace(res.Position), base:VectorToObjectSpace(n), base:VectorToObjectSpace(vel)
+    local tur = zone == "tur" and e.def.turret ~= nil
+    if tur then
+      local yaw = e.ty or 0
+      lp, ln, ld = W.toTur(e.def, lp, yaw), W.toTurDir(ln, yaw), W.toTurDir(ld, yaw)
+    end
+    local function a3(v3) return { math.floor(v3.X * 100) / 100, math.floor(v3.Y * 100) / 100, math.floor(v3.Z * 100) / 100 } end
+    G.fx({ k = "wtHole", id = e.id, lp = a3(lp), ln = a3(ln), ld = a3(ld), r = r, z = tur or nil })
+  end
+
   -- 炮弹、火箭弹、导弹直接打在车上：返回 "ric"（调用方按原来那套弹开）、true（这一发管完了，别再按血量扣）、nil（不是这套管的车）
   function G.wtShellHit(e, s, res)
     local S = e and e.wt
@@ -334,6 +350,7 @@ function Wt.init(G)
       core = 0, zone = zone, face = face }
     local rp = W.ricochet(a.t, ang)
     if rp > 0 and math.random() < rp then
+      hole(e, res, vel, a.t == "ce" and "np" or "ric", zone)
       if a.t == "ce" then   -- 破甲弹太斜：引信不发火 / 射流打不进
         rr.r = "np"
         external(e, p, 30, out, s.src)
@@ -347,6 +364,7 @@ function Wt.init(G)
     end
     if pen < eff then
       rr.r = "np"
+      hole(e, res, vel, "np", zone)
       external(e, p, (a.t == "he") and 60 or 45, out, s.src)
       if a.t == "he" and a.blast then   -- 杀爆弹没打穿：冲击波伤车外的零件，装甲很薄时也震伤里面的人
         for _, c in ipairs(S.mods) do
@@ -363,6 +381,7 @@ function Wt.init(G)
       return true
     end
     rr.r = "pen"
+    hole(e, res, vel, "pen", zone)
     external(e, p, 60, out, s.src)
     local flags = {}
     inside(e, a, p, dir, pen - eff, out, flags, s.src, seed)

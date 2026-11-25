@@ -96,6 +96,57 @@ function View.init(G)
   G.views = views
   local byId = {}    -- [实体编号] = view（开炮后坐要按编号找）
   G.viewById = function(id) return byId[id] end
+  -- 弹孔、擦痕（用户 11-25「全部都做」⑨）：服务器 Wt.lua 炮弹打中车时发 fx wtHole（命中点、表面法线、来向、pen / np / ric、在不在炮塔上）——
+  --   击穿：焦黑的孔 + 熏黑的一圈；没击穿：灰色的坑；跳弹：顺着来向的一道亮擦痕。零件接到这辆车的零件表后面，跟着车体 / 炮塔走；
+  --   每辆最多 24 个（再多就不贴了）
+  local HOLE_MAX = 24
+  G.viewHole = function(e)
+    local v = byId[e.id]
+    if not v or not v.M or not v.hullF or not v.plist or type(e.lp) ~= "table" then return end
+    if (v.nHoles or 0) >= HOLE_MAX then return end
+    v.nHoles = (v.nHoles or 0) + 1
+    local M = v.M
+    local function v3(t, dflt) return (type(t) == "table" and #t == 3) and Vector3.new(t[1], t[2], t[3]) or dflt end
+    local P = v3(e.lp, Vector3.new())
+    local n = v3(e.ln, Vector3.new(0, 1, 0))
+    n = (n.Magnitude > 0.1) and n.Unit or Vector3.new(0, 1, 0)
+    local grp = (e.z and v.tF) and "turret" or "hull"
+    local frame = (grp == "turret") and v.tF or v.hullF
+    local function put(size, off, color, tr, cyl)   -- off：在车体 / 炮塔坐标系里
+      local p = Instance.new("Part")
+      p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+      p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
+      if cyl then p.Shape = Enum.PartType.Cylinder end
+      p.Size, p.Color, p.Material, p.Transparency = size, color, Enum.Material.SmoothPlastic, tr or 0
+      p.CFrame = frame * off
+      p.Parent = M.model
+      table.insert(M.parts, { p, grp, off })
+      v.plist[#v.plist + 1] = p
+      v.putH = nil   -- 新接了零件：这一帧一定要摆
+    end
+    local base = CFrame.lookAt(P + n * 0.02, P + n * 1.02) * CFrame.Angles(0, math.pi / 2, 0)   -- 圆柱的轴（X）朝外
+    if e.r == "ric" then
+      local d = v3(e.ld, Vector3.new(0, 0, -1))
+      d = (d.Magnitude > 0.1) and d.Unit or Vector3.new(0, 0, -1)
+      local tg = d - n * d:Dot(n)
+      if tg.Magnitude < 0.05 then tg = n:Cross(Vector3.new(0, 1, 0)) end
+      if tg.Magnitude < 0.05 then tg = Vector3.new(1, 0, 0) end
+      local c0 = P + n * 0.03
+      put(Vector3.new(0.2, 0.03, 1.2), CFrame.lookAt(c0, c0 + tg.Unit, n), Color3.fromRGB(176, 176, 170), 0)   -- 擦掉漆露出的钢
+    elseif e.r == "np" then
+      put(Vector3.new(0.04, 0.62, 0.62), base, Color3.fromRGB(96, 94, 90), 0.1, true)
+      put(Vector3.new(0.05, 0.28, 0.28), base * CFrame.new(0.005, 0, 0), Color3.fromRGB(58, 56, 52), 0, true)
+    else
+      put(Vector3.new(0.04, 1.25, 1.25), base, Color3.fromRGB(36, 32, 28), 0.45, true)   -- 熏黑的一圈
+      put(Vector3.new(0.05, 0.46, 0.46), base * CFrame.new(0.005, 0, 0), Color3.fromRGB(12, 11, 10), 0, true)   -- 孔
+    end
+  end
+  G.R.Fx.OnClientEvent:Connect(function(list)
+    if type(list) ~= "table" then return end
+    for _, e in ipairs(list) do
+      if type(e) == "table" and e.k == "wtHole" then G.try_(G.viewHole, e) end
+    end
+  end)
   local function bar(m, adornee, h)
     local bb = Instance.new("BillboardGui")
     bb.Size = UDim2.fromOffset(46, 6)
@@ -770,6 +821,22 @@ function View.init(G)
       end
       for _, pe in ipairs(M.dust) do pe.Enabled = false end
       for _, pe in ipairs(M.exhaust or {}) do pe.Enabled = false end
+    end
+    -- 烧痕（⑨）：着火（服务器属性 WtF）超过 5 秒，车身熏黑一层（只改没贴图的零件；一辆车最多熏两次）
+    if em:GetAttribute("WtF") == true and not v.wrecked then
+      v.fireT0 = v.fireT0 or os.clock()
+      if os.clock() - v.fireT0 > 5 and (v.scorch or 0) < 2 then
+        v.scorch = (v.scorch or 0) + 1
+        v.fireT0 = os.clock()
+        for _, it in ipairs(M.parts) do
+          local part = it[1]
+          if part:IsA("BasePart") and not (part:IsA("MeshPart") and part.TextureID ~= "") and not part:FindFirstChildOfClass("SurfaceAppearance") then
+            part.Color = part.Color:Lerp(Color3.new(0.06, 0.06, 0.06), 0.22)
+          end
+        end
+      end
+    else
+      v.fireT0 = nil
     end
     -- 残骸整局留着（服务器 Armor.lua keepWreck）：烧四十秒火小下去，七十秒只剩一缕黑烟、火光灭——几十辆车壳一直大火客户端吃不消
     if v.wreckT and not v.burnt2 then
