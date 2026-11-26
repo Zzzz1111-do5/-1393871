@@ -53,6 +53,7 @@
     HudIcons veh_type59（侧面明暗图 → hudicons.py）、Lang、VehPics；起步车照规则变成 59 式（96 式不再白送）。测试 techtree 过、wttank veh=type59 只有「两种弹颜色不一样」不过
     （59 式哪种弹都打不穿 T-90M 正面，都是红的——测试的假设是现代炮）。还能找到的：德国 Marder 1A3（scout.，19.9 万面、白模，同 Gepard / BMP-2 一个作者）、
     豹 2A5（scout.）、Type-90 低模；F-104（helijah / Mikhail_Zelenov）、MiG-21（NETRUNNER_pl）、Tornado（manilov.ap）给德 / 俄空中树。69 式「最后一炮」那个是扒的，不收。
+    scout. 的 Marder 1A3 下下来看了节点名：ger_marder_1a3、ex_armor_*、bone_turret_*、材质 *_c——战雷那套命名，十有八九是从游戏里扒的，简介没写也不收。
 - E（11-26，用户：「改地图……这个图不适合对抗」「做一个两边带机场的城市地图吧」「要有可以撞倒的树 也可以被打倒」「所有地图开局默认白天 一天48分钟」
   「点开战先匹配 匹配一分钟后人不够就补人机 两边的人机的车辆要符合我匹配时带的最高权重的载具 跟战雷一样 人机的分数也要出现在记分板」）：
   · 新地图「钢城」ReplicatedStorage/MapCity.lua（id city，Map.ids 只剩它；沙海进 Map.extra，Studio / 测试台给 Workspace 设 MapName = "sands" 还能开）：
