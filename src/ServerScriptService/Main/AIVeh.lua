@@ -443,8 +443,9 @@ function AIVeh.init(G)
     local base = G.vehBaseOf(e)
     local mz = VD.muzzle(d, base, e.ty, e.gp, VD.mgWhich(d, wid), e.my, e.mp)
     local S = { team = e.team, name = e.ai.crew.name, bot = e.ai.crew }
+    local optK = G.wtOptK and G.wtOptK(e) or 1   -- 观瞄受损 / 打坏（Wt.lua，11-26）：打得不准
     if w.kind == "shell" then
-      local dir = spread(mz.LookVector, 0.25)
+      local dir = spread(mz.LookVector, 0.25 * optK)
       local ww, a = w, nil
       if G.tankWeaponOf then ww, a = G.tankWeaponOf(wid, w, e.ai.ammo) end
       if a then   -- 坦克炮：真实初速、重力、空气阻力（Ballistics.lua），带曳光
@@ -457,7 +458,7 @@ function AIVeh.init(G)
       end
       G.fx({ k = "vfire", p = mz.Position, d = dir, f = w.fx, id = e.id })
     else
-      G.botShot(mz.Position, mz.Position + spread(mz.LookVector, (w.spread or 0.5) * 1.6) * (w.range or 600), w, S, { e.model }, 0)
+      G.botShot(mz.Position, mz.Position + spread(mz.LookVector, (w.spread or 0.5) * 1.6 * optK) * (w.range or 600), w, S, { e.model }, 0)
     end
     st.mag -= 1
     local rk = (G.wtReloadK and w.kind == "shell") and G.wtReloadK(e) or 1   -- 装填手没了：装填慢（Wt.lua）

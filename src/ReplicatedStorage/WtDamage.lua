@@ -288,9 +288,36 @@ function W.layout(d)
       add("troops", "mod", V(-Wd * 0.38, fl, front + L * 0.45), V(Wd * 0.38, hH - 0.3, back - L * 0.06), { troop = true })
     end
   end
+  -- 观瞄（用户 11-26「不同部位被击中也要有不同效果……观瞄受损」）：炮长主瞄准镜的镜头（炮塔顶上 d.sight 那里，车外的）——
+  --   破片、榴弹、机炮、大口径机枪都打得坏；受损：镜里裂纹、发糊；打坏：只剩最低倍率、热成像没了、裂成一片（客户端 SightDmg.lua），
+  --   电脑开的车打坏了观瞄打得不准、发现得慢（AIVeh 按 G.wtOptK）。放在模块表最后（WtM 原来那些位不挪）
+  if T and d.sight then
+    local sp = d.sight
+    add("optics", "mod", V(sp.X - 0.75, sp.Y - 0.45, sp.Z - 0.8), V(sp.X + 0.75, sp.Y + 0.8, sp.Z + 0.8), { tur = true, ext = true })
+  end
   hit = { list = list, nCrew = nCrew, prof = P, hH = hH, tp = tp, ts = ts }
   cache[d] = hit
   return hit
+end
+
+-- 模块 k 在 WtM（服务器写的模块状态串，按布局里模块的顺序一位一位）里是第几位；没有这个模块 nil
+function W.modIndex(d, k)
+  local i = 0
+  for _, it in ipairs(W.layout(d).list) do
+    if it.kind ~= "crew" then
+      i += 1
+      if it.k == k then return i end
+    end
+  end
+  return nil
+end
+-- 车上模块 k 现在的状态：2 好、1 受损、0 毁了（没有这个模块、还没写属性：2）
+function W.modState(em, d, k)
+  local i = em and d and W.modIndex(d, k)
+  if not i then return 2 end
+  local wm = em:GetAttribute("WtM")
+  if type(wm) ~= "string" then return 2 end
+  return tonumber(string.sub(wm, i, i)) or 2
 end
 
 ---------------------------------------------------------------- 打在哪、多厚
@@ -436,6 +463,6 @@ function W.cone(axis, half, n, seed)
 end
 
 -- 名字（客户端界面）：模块 / 乘员的中文名用 Lang 的 wt.<k>
-W.MODS = { "engine", "trans", "trackL", "trackR", "barrel", "breech", "tdrive", "ammo", "ammoH", "fuelL", "fuelR", "troops" }
+W.MODS = { "engine", "trans", "trackL", "trackR", "barrel", "breech", "tdrive", "ammo", "ammoH", "fuelL", "fuelR", "troops", "optics" }
 W.M = M
 return W

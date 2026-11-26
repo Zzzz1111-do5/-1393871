@@ -1,0 +1,13 @@
+钢城的写实楼房（models/bld/city.glb）——都是 Sketchfab 上 CC-BY-4.0 授权的模型（http://creativecommons.org/licenses/by/4.0/），
+改动：按真高缩放、换成 Roblox 的格、按材质切块（有的减了面）、贴图缩到最长边 1024；游戏里按街坊的大小可能再整体缩放 0.72～1.2 倍。
+
+· 三层砖楼：Soviet brick apartment building，作者 VovaRice（https://sketchfab.com/models/f1e2390239c347a4b0128ce6b5c06810），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 两层小楼：Small Soviet Apartment Building - Khrushchevka，作者 AnatolApsik（https://sketchfab.com/models/feb9bd78483a4b71a13f3a6327aa0e2b），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 砖面写字楼：Game Ready City Building，作者 mireubay1（https://sketchfab.com/models/2bd7122c0f774cb48565187848154436），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 砖面高楼：Game Ready City Buildings，作者 mireubay1（https://sketchfab.com/models/12ac98aa701548adbfa463157f05f6cf），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 五层板楼：Soviet Panel Brutal building (Baked)，作者 narighillya（https://sketchfab.com/models/deb2133873534b8ebec4c97e5c7f6c3b），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、减面到 19000 个三角形、按材质切块、贴图缩到 1024
+· 九层板楼：LOW POLY - SOVIET APARTMENT BUILDING 8K，作者 Colin.Greenall（https://sketchfab.com/models/05229ac1d1f94e6c8cacaad91110c602），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 炸塌的楼：Ruined Building，作者 grox777（https://sketchfab.com/models/14c79f1a4d8548acb6592072549569ff），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 街角铺面楼：Game ready building 5，作者 mireubay1（https://sketchfab.com/models/73b1d5fc97ca46bab7f80b7c95001e79），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 老式住宅楼：Soviet building from the Stalin era，作者 VovaRice（https://sketchfab.com/models/2dcb233ae2fb44b089871c2169a09648），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 商务高楼：Game Ready Mid Poly Building，作者 mireubay1（https://sketchfab.com/models/dc4f6a49d8a7462b9349936b8dc7256e），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024

@@ -871,6 +871,14 @@ end
 --   尺寸都照 BuildingMeta（导没导入占地一样，出生点、停车位、掩体的判断都一样）
 local BM, TURN = nil, CFrame.new()
 pcall(function() BM = require(RS:WaitForChild("BuildingMeta", 5)) end)
+-- 钢城的写实楼房（CityMeta，models/bld/city.glb；用户 11-26「地图建模要精细 3a」）：一样的格式，并进同一张表（键不重名）
+pcall(function()
+  local cm = RS:FindFirstChild("CityMeta") and require(RS.CityMeta)
+  if type(cm) == "table" then
+    BM = BM or {}
+    for k, v in pairs(cm) do if BM[k] == nil then BM[k] = v end end
+  end
+end)
 pcall(function() TURN = require(RS:WaitForChild("ImportTurn", 5)).TURN end)
 World.BM = BM
 
@@ -1155,7 +1163,8 @@ local function building(f, key, x, z, rot, opt)
   opt = opt or {}
   local info = BM and BM[key]
   local spec = BLD[key] or BLD.conc1
-  local w, h, d = (info and info.w) or opt.w or 24, (info and info.h) or opt.h or 16, (info and info.d) or opt.d or 24
+  local sc = opt.scale or 1   -- 整体缩放（钢城按街坊大小把楼缩放 0.72～1.2 倍凑进去）
+  local w, h, d = ((info and info.w) or opt.w or 24) * sc, ((info and info.h) or opt.h or 16) * sc, ((info and info.d) or opt.d or 24) * sc
   local y = footY(x, z, w * 0.9, d * 0.9, rot) - 0.25
   local base = CF(x, y, z) * CFrame.Angles(0, rot or 0, 0)
   local m = Instance.new("Model")
@@ -1170,8 +1179,8 @@ local function building(f, key, x, z, rot, opt)
         local mp = s0:Clone()
         mp.Anchored = true
         mp.CanCollide, mp.CanQuery, mp.CanTouch = false, false, false
-        mp.Size = V(p.s[1], p.s[2], p.s[3])
-        mp.CFrame = base * CF(p.c[1], p.c[2], p.c[3]) * TURN
+        mp.Size = V(p.s[1], p.s[2], p.s[3]) * sc
+        mp.CFrame = base * CF(p.c[1] * sc, p.c[2] * sc, p.c[3] * sc) * TURN
         if p.col then
           local okT, tid = pcall(function() return mp.TextureID end)
           if not mp:FindFirstChildOfClass("SurfaceAppearance") and (not okT or (tid or "") == "") then mp.Color = RGB(p.col[1], p.col[2], p.col[3]) end
@@ -1669,8 +1678,8 @@ local function carrierHull(m, base)
         local mp = s0:Clone()
         mp.Anchored = true
         mp.CanCollide, mp.CanQuery, mp.CanTouch = false, false, false
-        mp.Size = V(p.s[1], p.s[2], p.s[3])
-        mp.CFrame = base * CF(p.c[1], p.c[2], p.c[3]) * TURN
+        mp.Size = V(p.s[1], p.s[2], p.s[3]) * sc
+        mp.CFrame = base * CF(p.c[1] * sc, p.c[2] * sc, p.c[3] * sc) * TURN
         mp.Color = RGB(p.col[1], p.col[2], p.col[3])
         mp.Material = MAT[p.mat] or MAT.Metal
         mp.Parent = m

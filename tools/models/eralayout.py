@@ -22,6 +22,9 @@ SPEC = {
     # T-80U（用户 11-25「需要模型自己找」，javanilga 的模型）：炮塔正面、首上挂「接触-5」重型爆反，原模型上就有；炮塔侧面、侧裙板能补贴
     't80u': {'kind': 'fy4', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['tf', 'gl'], 'brick': (1.2, 0.75, 0.3), 'skirt': (1.8, 1.1, 0.34), 'dep': 6, 'more': ['tback', 'skirt2', 'lfp']},
     't90m': {'kind': 'fy4', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['tf', 'ts', 'gl', 'sk'], 'brick': (1.2, 0.75, 0.3), 'skirt': (1.8, 1.1, 0.34), 'dep': 6, 'more': ['tback', 'skirt2', 'lfp']},
+    # T-72B3（用户 11-26「很多载具自带爆反，识别并实现它们的效果」）：原模型炮塔正面一对「眉毛」（接触-5）、首上、侧裙板（「遗物」侧屏）都挂着，
+    #   原来没登记、挨打不起作用——三个区都用模型自带的；炮塔侧面能补贴。同一个模型的 T-72A / B / 乌拉尔也一样（看得见的就管用）
+    't72b3': {'kind': 'fy4', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['tf', 'gl', 'sk'], 'brick': (1.2, 0.75, 0.3), 'skirt': (1.8, 1.1, 0.34), 'dep': 6, 'more': ['tback', 'skirt2', 'lfp']},
     'ztz96': {'kind': 'fy2', 'zones': ['tfront', 'tside', 'glacis', 'skirt'], 'own': ['tf', 'ts', 'gl', 'sk'], 'brick': (1.2, 0.75, 0.3), 'skirt': (1.9, 1.15, 0.32), 'dep': 6, 'more': ['tback', 'skirt2', 'lfp']},
     # 15 式轻坦 11-19 删掉了（用户：建模非常粗糙）
     # M1A2 SEPv2、M1A1 这两个模型侧裙板本来就挂着 ARAT 爆反块（TUSK）：own = 用模型自带的，游戏里平时不另画砖，炸掉了才补焦黑的空位

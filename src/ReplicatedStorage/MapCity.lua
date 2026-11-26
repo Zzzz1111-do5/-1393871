@@ -642,6 +642,129 @@ do
   end
 end
 
+---------------------------------------------------------------- 写实楼
+-- 用户 11-26「地图建模要精细 3a」：城里的楼换成 Sketchfab 上 CC-BY 的写实楼房（CityMeta / models/bld/city.glb，tools/models/sfbld.py 转的）——
+--   沿街的楼（block）、板楼（slab）、塔楼（tower）、铺面（low）、废墟（ruin）这几种：在那块地的长边上一座挨一座排，
+--   每座按地块的进深整体缩放（0.85～1.15 倍；塔楼、废墟 0.72～1.2），正面朝最近的那条街、贴着街那一侧（街面整齐，后面留院子）；
+--   排到头剩下的一截照旧零件拼一座；塔楼地块小，原大放得下（不压别的楼、不压路）就按原大。
+--   换成模型的楼按模型转过、缩放过的外接矩形登记（k = "model"：碰撞、寻路、视线、炸塌都照它）；没导入 city.glb 时 CityBuild 照同样的长宽高用零件拼，
+--   所以服务器、客户端、导没导入，地图上哪里能走、哪里挡视线都一样
+local CM = nil
+pcall(function()
+  local RS = game:GetService("ReplicatedStorage")
+  local m = RS:FindFirstChild("CityMeta")
+  if m then CM = require(m) end
+end)
+Map.CITY_META = CM
+if CM then
+  local POOL = {
+    old = { "stalin", "office1", "shop1", "brick3", "stalin", "office1" },   -- 老城：老式住宅楼、砖面写字楼、街角铺面、砖楼
+    mid = { "stalin", "panel5", "brick3", "office2", "shop1", "office1" },
+    out = { "panel9", "panel5", "stalin", "brick3", "panel9" },               -- 外圈：板楼为主
+    slab = { "panel9", "panel5", "panel9" },
+    tower = { "tower1", "office2", "tower1" },
+    low = { "shop1", "khrush", "shop1", "brick3" },
+    ruin = { "ruin1" },
+  }
+  local KINDS = { block = true, slab = true, tower = true, low = true, ruin = true }
+  local function poolOf(b)
+    if b.k == "slab" then return POOL.slab, 0.85, 1.15, 10 end
+    if b.k == "tower" then return POOL.tower, 0.72, 1.2, 0 end
+    if b.k == "low" then return POOL.low, 0.85, 1.15, 8 end
+    if b.k == "ruin" then return POOL.ruin, 0.72, 1.2, 0 end
+    local r = max(abs(b.x), abs(b.z))
+    if r < 1100 then return POOL.old, 0.85, 1.15, 0 end   -- 老城沿街一座挨一座（连着的街面）
+    if r < 2100 then return POOL.mid, 0.85, 1.15, 3 end
+    return POOL.out, 0.85, 1.15, 8
+  end
+  local OUT = {}   -- 新的楼表（换完以后重新编号）
+  local function put(b) OUT[#OUT + 1] = b end
+  -- 一块矩形 [x, z, w, d] 有没有压到别的楼（除了 skip）、压到路
+  local function free(x, z, w, d, skip)
+    for _, o in ipairs(BLD) do
+      if o ~= skip and abs(o.x - x) < (o.w + w) / 2 + 4 and abs(o.z - z) < (o.d + d) / 2 + 4 then return false end
+    end
+    for _, c in ipairs({ { -0.5, -0.5 }, { 0.5, -0.5 }, { -0.5, 0.5 }, { 0.5, 0.5 }, { 0, -0.5 }, { 0, 0.5 }, { -0.5, 0 }, { 0.5, 0 } }) do
+      if onRoad(x + c[1] * w, z + c[2] * d, 4) then return false end
+    end
+    return true
+  end
+  local function model(b, key, s, cx, cz, alongX, front)
+    local m = CM[key]
+    local lm, dm = m.w * s, m.d * s
+    -- 正面（模型的 −Z）朝 front：沿 x 排的朝 −z（0）/ +z（π）；沿 z 排的朝 −x（π/2）/ +x（−π/2）
+    local rot = alongX and ((front < 0) and 0 or math.pi) or ((front < 0) and (math.pi / 2) or (-math.pi / 2))
+    local h = m.h * s
+    put({ x = cx, z = cz, w = alongX and lm or dm, d = alongX and dm or lm, h = h, fl = max(1, floor((h - 2) / FH)), st = b.st, k = "model",
+      model = key, rot = rot, scale = s, sd = b.sd + #OUT * 13 })
+  end
+  local function fill(b)
+    local pool, smin, smax, gap = poolOf(b)
+    local R = rng(b.sd + 911)
+    local alongX = b.w >= b.d
+    local L, D = alongX and b.w or b.d, alongX and b.d or b.w
+    -- 正面朝长边两侧里离路近的那边
+    local o = D / 2 + 30
+    local d1 = alongX and Map.roadDist(b.x, b.z - o) or Map.roadDist(b.x - o, b.z)
+    local d2 = alongX and Map.roadDist(b.x, b.z + o) or Map.roadDist(b.x + o, b.z)
+    local front = (d1 <= d2) and -1 or 1
+    -- 塔楼：原大放得下就原大
+    if b.k == "tower" then
+      for _ = 1, 4 do
+        local key = pool[1 + floor(R() * #pool)]
+        local m = CM[key]
+        if m and free(b.x, b.z, m.w, m.d, b) then
+          model(b, key, 1, b.x, b.z, true, front)
+          return true
+        end
+      end
+    end
+    local pos = -L / 2
+    local n0 = #OUT
+    while true do
+      local rem = L / 2 - pos
+      local pick1 = nil
+      for _ = 1, #pool * 2 do
+        local key = pool[1 + floor(R() * #pool)]
+        local m = CM[key]
+        if m then
+          local s = math.min(smax, D / m.d)
+          if m.w * s > rem then s = rem / m.w end   -- 长度放不下：缩到正好
+          if s >= smin and m.d * s <= D + 0.01 then pick1 = { key = key, s = s, m = m } break end
+        end
+      end
+      if not pick1 then break end
+      local lm, dm = pick1.m.w * pick1.s, pick1.m.d * pick1.s
+      local along = pos + lm / 2
+      local across = front * (D / 2 - dm / 2)
+      local cx, cz
+      if alongX then cx, cz = b.x + along, b.z + across else cx, cz = b.x + across, b.z + along end
+      model(b, pick1.key, pick1.s, cx, cz, alongX, front)
+      pos = pos + lm + gap
+    end
+    if #OUT == n0 then return false end
+    -- 排到头剩下的一截：够宽就照旧零件拼一座（进深跟街面那排差不多）
+    local rem = L / 2 - pos
+    if rem >= 30 and (b.k == "block" or b.k == "low") then
+      local dd = math.min(D, 60)
+      local along = pos + rem / 2
+      local across = front * (D / 2 - dd / 2)
+      local cx, cz
+      if alongX then cx, cz = b.x + along, b.z + across else cx, cz = b.x + across, b.z + along end
+      put({ x = cx, z = cz, w = alongX and rem or dd, d = alongX and dd or rem, h = b.h, fl = b.fl, st = b.st, k = b.k, sd = b.sd + 17 })
+    end
+    return true
+  end
+  for _, b in ipairs(BLD) do
+    if not (KINDS[b.k] and fill(b)) then put(b) end
+  end
+  table.clear(BLD)
+  for i, b in ipairs(OUT) do
+    b.id = i
+    BLD[i] = b
+  end
+end
+
 -- 楼按 128 格的格子登记
 local BCELL = 128
 local bgrid = {}

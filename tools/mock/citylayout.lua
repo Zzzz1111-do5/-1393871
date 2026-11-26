@@ -12,7 +12,7 @@ local Map = R.require(RS:FindFirstChild("Map"))
 check(Map.id == "city" and Map.CITY == true, "默认地图是钢城（" .. tostring(Map.id) .. "）")
 local B, TR, S = Map.BLD, Map.TREES, Map.SEGS
 print(string.format("  楼 / 设施 %d 座、路段 %d 段、树 %d 棵", #B, #S, #TR))
-check(#B > 250 and #B < 900, "楼的数量合适（" .. #B .. "）")
+check(#B > 250 and #B < 2000, "楼的数量合适（" .. #B .. "）")
 check(#TR > 1500 and #TR < 7000, "树的数量合适（" .. #TR .. "）")
 
 -- 楼和楼不重叠（外接矩形；车厢只看和楼重不重）

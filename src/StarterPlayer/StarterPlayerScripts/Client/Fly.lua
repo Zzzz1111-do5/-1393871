@@ -64,6 +64,12 @@ function Fly.init(G)
     return out
   end
 
+  -- 转的东西（旋翼、尾桨、螺旋桨、风扇、涡轮）每帧转多少：一帧最多转过叶片间隔的四成（用户 11-26「飞机发动机有 bug」）——
+  --   一帧转过半个间隔以上，眼睛看到的就是停住、倒着转（车轮效应）：原来涡轮满油门一帧转 40°（18 片叶片正好两个间隔），
+  --   推满油门涡轮反而不动、往回转；A-10 的风扇一帧 54°（14 片，两个间隔多）也是；帧率低时旋翼、尾桨也会这样
+  local function spinStep(cur, rate, nBlades, dt)
+    return ((cur or 0) + math.min(rate * dt, 0.4 * (2 * math.pi / math.max(nBlades, 1)))) % (math.pi * 2)
+  end
   local CH = { thr = "Thr", gear = "Gear", flap = "Flap", pit = "Pit", rol = "Rol", yaw = "Yaw", bay = "Bay", bayS = "BayS", rpm = "Rpm", col = "Col", can = "Can",
     hook = "Hook", brk = "Brk", ty = "Ty", gp = "Gp", fold = "Fold" }
 
@@ -234,7 +240,8 @@ function Fly.init(G)
       end
       -- 发动机打坏了（WtAir WtaEng = 0）、油烧干了（Fuel = 0）、成了残骸：喷口里不再发亮、没有尾焰（原来照着油门一直喷）
       local engK = em:GetAttribute("WtaEng")
-      if (engK ~= nil and engK <= 0) or em:GetAttribute("Fuel") == 0 or em:GetAttribute("Wreck") == true then c.thr = 0 end
+      local engDead = (engK ~= nil and engK <= 0) or em:GetAttribute("Fuel") == 0 or em:GetAttribute("Wreck") == true
+      if engDead then c.thr = 0 end
       v.canS = approach(v.canS or c.can, c.can, dt * 0.7)   -- 座舱盖开关是 0 / 1：显示时一秒多一点慢慢掀开、合上
       c.can = v.canS
       v.foldS = approach(v.foldS or c.fold, c.fold, dt / 4.5)   -- 折叠机翼（用户：折叠机翼没有动画）：也是 0 / 1，显示时四秒多慢慢折起、展开
@@ -244,13 +251,17 @@ function Fly.init(G)
       c.ramp = (d.ramp and onGround) and 1 or 0
       -- 旋翼、螺旋桨转（看着慢一点，免得一格一格跳）
       local rpm = c.rpm or 0
-      if d.rotor then v.spin1 = (v.spin1 + rpm / 100 * d.rotor.rpm / 60 * math.pi * 2 * 0.3 * dt) % (math.pi * 2) end
-      if d.rotor2 then v.spin2 = (v.spin2 + rpm / 100 * d.rotor2.rpm / 60 * math.pi * 2 * 0.3 * dt) % (math.pi * 2) end
-      if d.tail then v.spinT = (v.spinT + rpm / 100 * 18 * dt) % (math.pi * 2) end
-      if d.prop then v.spinP = (v.spinP + (c.thr or 0) / 100 * 30 * dt) % (math.pi * 2) end
-      if d.fanEng then v.spinF = ((v.spinF or 0) + (0.25 + (c.thr or 0) / 100) * 45 * dt) % (math.pi * 2) end   -- 涡扇风扇（A-10）：慢车也转
-      -- 喷气发动机的涡轮（AirModels 的发动机后段）：跟着转速，慢车也转；看着慢一点（真的一分钟上万转，画出来只会一格格跳）
-      if d.kind == "jet" and not d.prop then v.spinJ = ((v.spinJ or 0) + (0.12 + math.clamp(rpm, 0, 110) / 100) * 34 * dt) % (math.pi * 2) end
+      if d.rotor then v.spin1 = spinStep(v.spin1, rpm / 100 * d.rotor.rpm / 60 * math.pi * 2 * 0.3, d.rotor.blades or 4, dt) end
+      if d.rotor2 then v.spin2 = spinStep(v.spin2, rpm / 100 * d.rotor2.rpm / 60 * math.pi * 2 * 0.3, d.rotor2.blades or 4, dt) end
+      if d.tail then v.spinT = spinStep(v.spinT, rpm / 100 * 18, (type(d.tail) == "table" and d.tail.blades) or 4, dt) end
+      if d.prop then v.spinP = spinStep(v.spinP, (c.thr or 0) / 100 * 30, 3, dt) end
+      if d.fanEng then v.spinF = spinStep(v.spinF, (0.25 + (c.thr or 0) / 100) * 9, 14, dt) end   -- 涡扇风扇（A-10）：慢车也转
+      -- 喷气发动机的涡轮（AirModels 的发动机后段，18 片叶片）：跟着转速，慢车也转；
+      --   发动机打坏 / 没油 / 成了残骸：转速几秒里掉到只剩风车转（原来照着油门接着转）
+      if d.kind == "jet" and not d.prop then
+        v.rpmJ = approach(v.rpmJ or rpm, engDead and 0 or math.clamp(rpm, 0, 110), (engDead and 25 or 70) * dt)
+        v.spinJ = spinStep(v.spinJ, (0.12 + v.rpmJ / 100) * 7.6, 18, dt)
+      end
       c.spin1, c.spin2, c.spinT, c.spinP, c.spinF, c.spinJ = v.spin1, v.spin2, v.spinT, v.spinP, v.spinF, v.spinJ
       AM.setStores(M, em:GetAttribute("Stores"))
       -- 远的少摆几次（一架几百个零件）

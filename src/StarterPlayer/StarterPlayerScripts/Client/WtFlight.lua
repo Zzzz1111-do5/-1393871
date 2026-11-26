@@ -319,25 +319,33 @@ function WtFlight.init(G)
     end
     put("", T("wt.fuel"), info.fuelT or "--:--", nil, nil, info.fuelCol or TXT)
     gap()
-    -- 发动机：每台一组油温、引擎温度
+    -- 发动机：每台一组油温、引擎温度——跟着发动机真实的状态走（用户 11-26「飞机发动机有 bug」）：
+    --   原来开加力一分钟油温过 105 °C 就挂一个橙色的「还能撑多久」倒计时，可油温最高只到 116 °C，倒计时永远停在 0:33 走不完
+    --   （喷气机在这里不会过热坏掉，战雷的喷气机也不过热）——倒计时去掉；
+    --   发动机受伤：排气温度高、发涩（橙）；打坏 / 没油熄火：两个温度一路往下掉（红，写「熄火」）
     local k = clamp(thr / 100, 0, 1.3)
+    local wae = G.wtaFlight and G.wtaFlight(st.em)
+    local engK = wae and wae.eng or 1
+    local dead = st.out == true or engK <= 0
     if jet then
-      local ab = thr > 100.5
-      eng.abT = ab and (eng.abT + dt) or math.max(0, eng.abT - dt * 0.5)
-      local oilT = 86 + 16 * math.min(k, 1) + math.min(eng.abT, 120) / 120 * 14
-      eng.oil += (oilT - eng.oil) * math.min(1, dt * 0.4)
-      eng.egt += ((520 + 330 * math.min(k, 1) + (ab and 100 or 0)) - eng.egt) * math.min(1, dt * 1.5)
+      local ab = thr > 100.5 and not dead
+      eng.abT = ab and math.min(eng.abT + dt, 120) or math.max(0, eng.abT - dt * 0.5)
+      local oilT = dead and 45 or (84 + 14 * math.min(k, 1) + eng.abT / 120 * 6)
+      local egtT = dead and 160 or (520 + 330 * math.min(k, 1) + (ab and 100 or 0) + (1 - engK) * 160)
+      eng.oil += (oilT - eng.oil) * math.min(1, dt * (dead and 0.08 or 0.4))
+      eng.egt += (egtT - eng.egt) * math.min(1, dt * (dead and 0.35 or 1.5))
     else
-      eng.oil += ((80 + 20 * clamp((st.rpm or 0) / 100, 0, 1)) - eng.oil) * math.min(1, dt * 0.4)
-      eng.egt += ((480 + 260 * clamp((st.rpm or 0) / 100, 0, 1)) - eng.egt) * math.min(1, dt * 1.5)
+      local r = clamp((st.rpm or 0) / 100, 0, 1)
+      eng.oil += (((dead and 45) or (80 + 20 * r)) - eng.oil) * math.min(1, dt * (dead and 0.08 or 0.4))
+      eng.egt += (((dead and 160) or (480 + 260 * r + (1 - engK) * 140)) - eng.egt) * math.min(1, dt * (dead and 0.35 or 1.5))
     end
     local nEng = (d.eng and #d.eng > 0) and #d.eng or 1
-    local hot = eng.oil > 105
-    local leftS = hot and math.max(0, (120 - eng.oil) / 0.12) or nil   -- 还能撑多久（看的）
+    local hurt = not dead and engK < 1
+    local col = (dead and RED) or (hurt and ORG) or TXT
     for _ = 1, math.min(nEng, 3) do
-      put("", T("wt.oil"), string.format("%d°C%s", math.floor(eng.oil + 0.5), leftS and string.format(" %d:%02d", math.floor(leftS / 60), math.floor(leftS % 60)) or ""), nil,
-        hot and ORG or nil, hot and ORG or TXT)
-      put("", T("wt.eng"), string.format("%d°C", math.floor(eng.egt + 0.5)))
+      put("", T("wt.oil"), string.format("%d°C", math.floor(eng.oil + 0.5)), nil, (dead or hurt) and col or nil, col)
+      put("", T("wt.eng"), dead and string.format("%d°C %s", math.floor(eng.egt + 0.5), T("wt.engOff")) or string.format("%d°C", math.floor(eng.egt + 0.5)),
+        nil, (dead or hurt) and col or nil, col)
     end
     for i = nRows + 1, #rows do
       local r = rows[i]

@@ -605,6 +605,13 @@ function View.init(G)
       v.ty = v.ty + angDiff(v.ty, ty) * math.min(1, dt * 10)
       v.gp = v.gp + (gp - v.gp) * math.min(1, dt * 10)
     end
+    -- 炮管打坏了（战雷式伤害 Wt.lua 的 barrel 模块，用户 11-26「炮管损毁……对应效果」）：炮管慢慢耷拉到俯角 5°（谁的车都这样画）
+    if G.wtModState and d.gun and G.wtModState(em, d, "barrel") == 0 then
+      v.droop = math.min(1, (v.droop or 0) + dt * 0.8)
+      v.gp = v.gp + (-5 - v.gp) * v.droop
+    else
+      v.droop = nil
+    end
     if v.recoilT then
       v.recoilT += dt
       v.recoil = (v.recoilA or 0) * recoilCurve(v.recoilT, v.recoilBig)
@@ -667,8 +674,10 @@ function View.init(G)
     local tPitch = ((nF > 0 and sF / nF or 0) - (nB > 0 and sB / nB or 0)) / wb * 0.7 + math.clamp((v.accel or 0) * 0.0022, -0.06, 0.06)
     local tRoll = ((nR > 0 and sR / nR or 0) - (nL > 0 and sL / nL or 0)) / trk * 0.7 + math.clamp(v.steer * v.speed * 0.0006, -0.04, 0.04)
     v.bob, v.bobV = spring(v.bob, v.bobV, tBob, 160, 14, dt)
-    v.pitch, v.pitchV = spring(v.pitch, v.pitchV, tPitch, 120, 12, dt)
-    v.roll, v.rollV = spring(v.roll, v.rollV, tRoll, 120, 12, dt)
+    -- 车身俯仰、侧倾：战雷那样约 1.3 赫兹、阻尼小一点（一刹车车头往下一点头、停住往回弹一下再稳住，1.5～2 秒晃完）——
+    --   原来 1.7 赫兹、阻尼大，车身硬邦邦的没分量（用户 11-26「坦克驾驶感跟战雷还是有差别」）
+    v.pitch, v.pitchV = spring(v.pitch, v.pitchV, tPitch, 70, 6.5, dt)
+    v.roll, v.rollV = spring(v.roll, v.rollV, tRoll, 80, 7.5, dt)
     local hh = d.hullH
     local hullF = base * CF(0, v.bob, 0) * CF(0, hh / 2, 0) * CFrame.Angles(v.pitch, 0, v.roll) * CF(0, -hh / 2, 0)
     local tF = hullF * CF(M.tpiv or d.turret.pivot) * CFrame.Angles(0, -math.rad(v.ty), 0)
@@ -680,7 +689,7 @@ function View.init(G)
     local rF = M.rpiv and (tF * CF(M.rpiv) * CFrame.Angles(0, -math.rad(v.my or 0), 0)) or nil
     local rgF = (rF and M.rgpiv) and (rF * CF(M.rgpiv) * CFrame.Angles(math.rad(v.mp or 0), 0, 0)) or nil
     v.hullF, v.tF, v.gF, v.rF, v.rgF = hullF, tF, gF, rF, rgF
-    if G.tracksStep and M.imported then G.tracksStep(v, M, hullF, dt, far) end   -- 会转的履带（Tracks.lua，用户 11-25「坦克履带也要能动」）
+    if G.tracksStep and M.imported then G.tracksStep(v, M, hullF, dt, far, base) end   -- 会转的履带（Tracks.lua，用户 11-25「坦克履带也要能动」；车速按没加晃动的 base 算）
     local steerA = math.rad(28) * math.clamp(v.steer, -1, 1)
     local now = os.clock()
     -- 爆反块被炸掉（服务器写 EraX："3,7,12"）：那一块换成焦黑的空位（VehModels.eraBlown 新加的零件接到零件表后面）

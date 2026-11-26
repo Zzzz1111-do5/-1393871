@@ -378,11 +378,28 @@ function CityBuild.build(World, root, G)
     m.Parent = bf
   end
 
+  -- 写实楼（MapCity 的 k = "model"，用户 11-26「地图建模要精细 3a」）：导入了 models/bld/city.glb 就摆 Sketchfab 的原模型
+  --   （World.building：按街坊缩放、正面朝街，看不见的碰撞盒挡人挡车挡子弹，炸多了照样塌）；没导入按同样的长宽高用零件拼
+  local nModel = 0
+  local function cityModel(b)
+    if World.importedBld and World.importedBld(b.model) then
+      local _, m = World.building(bf, b.model, b.x, b.z, b.rot or 0, { scale = b.scale or 1 })
+      if m then
+        m:SetAttribute("CityIdx", b.id)
+        nModel += 1
+        return
+      end
+    end
+    block(b)
+  end
+  G.cityModels = function() return nModel end   -- 测试用
+
   local nB = 0
   for _, b in ipairs(Map.BLD) do
     local k = b.k
     local ok, err = pcall(function()
-      if k == "shed" or k == "barn" then shed(b)
+      if k == "model" then cityModel(b)
+      elseif k == "shed" or k == "barn" then shed(b)
       elseif k == "ruin" then ruin(b)
       elseif k == "house" then house(b)
       elseif k == "station" then station(b)

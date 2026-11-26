@@ -179,6 +179,9 @@ if side == "def" then
   print("③ 瞄准镜（用户：Shift 开镜，镜里写着按 V 切换光电模式、按 M 释放烟雾弹）：默认夜视 → 热成像白热 → 黑热 → 昼光")
   setClock(2.3)   -- 昼夜更替：前面测了天亮、天黑，这一段要在夜里（镜里默认热成像、夜视仪让出画面）
   R.run(0.5)
+  -- 一天 48 分钟（11-26）：上一段跑了几分钟，钟点可能走到了天亮（夜视自己收起、镜里夜视增亮也跟着变小）——这一段要的是深夜，钟点钉在半夜（DayFix）
+  R.workspace:SetAttribute("DayFix", 0)
+  R.run(0.5)
   if C.nvgOn and not C.nvgOn() then T.tap(Enum.KeyCode.N) R.run(1) end   -- 上一段跑了几分钟，钟点可能走过了天亮（夜视自己收起）：像玩家一样再按 N
   T.tap(Enum.KeyCode.LeftShift)
   R.run(0.3)

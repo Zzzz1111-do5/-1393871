@@ -25,12 +25,13 @@ function XrayOwn.init(G)
     breech = { RGB(185, 120, 230), "xr.breech", "炮闩" },
     barrel = { RGB(150, 140, 205), "xr.barrel", "炮管" },
     tdrive = { RGB(120, 200, 190), "xr.tdrive", "炮塔驱动" },
+    optics = { RGB(90, 190, 255), "xr.optics", "观瞄" },   -- 11-26：炮长主瞄准镜（打坏了镜里裂、只剩最低倍率）
     era = { RGB(235, 95, 175), "xr.era", "爆反" },
     other = { RGB(170, 170, 165), "xr.other", "其他" },
     hurt = { RGB(255, 225, 60), "xr.hurt", "受损" },
     dead = { RGB(120, 20, 20), "xr.dead", "坏了 / 阵亡" },
   }
-  local ORDER = { "crew", "engine", "trans", "fuel", "ammo", "breech", "barrel", "tdrive", "era", "hurt", "dead" }
+  local ORDER = { "crew", "engine", "trans", "fuel", "ammo", "breech", "barrel", "tdrive", "optics", "era", "hurt", "dead" }
   local function catOf(it)
     if it.kind == "crew" then return "crew" end
     local k = it.k or ""
@@ -41,6 +42,7 @@ function XrayOwn.init(G)
     if k == "breech" then return "breech" end
     if k == "barrel" then return "barrel" end
     if k == "tdrive" then return "tdrive" end
+    if k == "optics" then return "optics" end
     return "other"
   end
 

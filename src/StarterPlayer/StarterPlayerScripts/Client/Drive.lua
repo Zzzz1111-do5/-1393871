@@ -253,6 +253,8 @@ function Drive.init(G)
     sight.Visible = true
     syncZooms()
     local m = MODES[st.mode]
+    -- 观瞄打坏了（WtVfx.lua，服务器 Wt.lua 的 optics 模块，11-26）：热成像通道没了，只剩昼光 / 微光
+    if G.opticsDead and G.opticsDead() and (m == "whot" or m == "bhot") then m = "day" end
     G.sightNv = m == "nv"   -- 镜里的夜视档：昼夜（DayNight.lua）照夜视仪那样增亮（夜视仪开着镜时让出画面，增亮原来也跟着撤了）
     local thermal = m == "whot" or m == "bhot"
     eyepiece.Visible = not thermal
@@ -630,6 +632,7 @@ function Drive.init(G)
     G.sightPref[nightNow() and "night" or "day"] = st.mode
     applyMode()
   end
+  G.sightReapply = function() applyMode() end   -- WtVfx.lua：观瞄打坏 / 修好时重新套光电模式
   local function smoke() G.R.Drive:FireServer({ op = "smoke" }) end
 
   local function begin(vs)
@@ -871,9 +874,10 @@ function Drive.init(G)
         g = 0, cut = 0, rpm = 0.2, shiftT = tracked and 0.42 or 0.3 }
       st.gb = GB
     end
-    local function bandTop(g)   -- 第 g 档（负的是倒挡）能开到多快：低档管的速度段短
-      if g > 0 then return maxF * (g / GB.nf) ^ 0.8 end
-      return maxR * (-g / GB.nr) ^ 0.8
+    local function bandTop(g)   -- 第 g 档（负的是倒挡）能开到多快：低档管的速度段短（11-26：0.8 → 0.72，一档管到 23 公里 / 时上下，
+      --   起步不在 20 公里 / 时前头先断一下动力；配上下面的出力，豹 2A6 0–20 / 40 / 60 公里 / 时 1.7 / 6.7 / 16 秒，战雷 1.6 / 6.1 / 16）
+      if g > 0 then return maxF * (g / GB.nf) ^ 0.72 end
+      return maxR * (-g / GB.nr) ^ 0.72
     end
     local av = math.abs(v)
     if GB.cut > 0 then
@@ -913,27 +917,43 @@ function Drive.init(G)
       a = -v * 0.05
     elseif thr ~= 0 and (math.abs(v) < 1 or (thr > 0) == (v > 0)) then
       local vmax = (thr > 0) and maxF or maxR
-      local frac = math.clamp(math.abs(v) / math.max(vmax, 1), 0, 1.3)
+      local av = math.abs(v)
+      st.brkK = 0
       if GB.cut > 0 then
         a = -math.sign(v) * accel * 0.12   -- 离合断开：没有动力，只剩一点阻力（战雷换档那一下）
       else
-        local tq = 0.82 + 0.36 * math.sin(math.pi * math.clamp(GB.rpm, 0, 1)) ^ 0.8   -- 转速中段劲最足
-        a = thr * accel * math.max(0.12, 1.35 - 1.1 * frac ^ 1.6) * tq * 1.04
+        -- 战雷式出力（用户 11-26「坦克驾驶感跟战雷还是有差别」，查了战雷的数据：豹 2A6 0–20 公里 / 时 1.6 秒、0–40 6.1 秒、
+        --   0–60 16 秒、到 68 要 22 秒——起步一脚就冲（约 0.4 g），越快越使不上劲，最后十几公里磨很久。原来正好反过来：
+        --   起步 2.5 秒才到 20（肉），0–60 只要 10 秒（后段太快、没分量））：
+        --   牵引 = min(起步上限 0.41 g × 抓地, 功率 ÷ 车速) − 滚动阻力 0.05 g；功率按 accel（≈ 0.22 × 马力 / 吨）折，传动效率 0.85：
+        --   0.85 × 0.7457 ÷ 0.22 × 2.8² ≈ 22.6 × accel（格² / 秒³）；档里转速中段劲足一点（± 一成）；快到极速（最后 3%）调速器收油
+        local tq = 0.9 + 0.2 * math.sin(math.pi * math.clamp(GB.rpm, 0, 1)) ^ 0.8
+        local launch = 11.3 * math.clamp(sf.grip or 1, 0.4, 1.1)
+        local pull = math.min(launch, 22.6 * accel * tq / math.max(av, 0.5))
+        local gov = math.clamp((1 - av / math.max(vmax, 1)) / 0.03, 0, 1)
+        local dir = (av > 0.05) and math.sign(v) or thr
+        a = thr * pull * gov - dir * 1.37
+        if av < 0.5 and a * thr < 0 then a = 0 end   -- 起步那一下推不动（顶着坡、陷在软地里）：不往后溜
       end
-      if math.abs(v) > vmax then a = -math.sign(v) * accel * 0.7 end   -- 下坡冲过极速、开进软地：发动机拖住
+      if av > vmax then a = -math.sign(v) * accel * 0.7 end   -- 下坡冲过极速、开进软地：发动机拖住
     elseif thr ~= 0 then
-      a = thr * accel * 3.2   -- 刹车（反着推油门：干脆停住）
+      -- 刹车（反着推油门）：战雷约 0.5 g、0.1 秒多一点踩到底（原来按发动机 accel 的 3.2 倍——马力大的车刹得也猛，0.5～0.7 g 不等）
+      st.brkK = math.min(1, (st.brkK or 0) + dt / 0.12)
+      a = thr * 15.1 * math.clamp(sf.grip or 1, 0.4, 1.1) * st.brkK
     else
+      st.brkK = 0
       -- 用户 11-25 晚「没有战雷那种纸片的脆感」：松油门履带车很快收住（原来 1.1 倍加速度，滑得肉）
       a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), accel * (tracked and 1.7 or 0.7))
     end
     if not st.airS then
       if math.abs(v) > 0.5 or thr ~= 0 then a -= 18 * slope end   -- 上坡往后拉、下坡往前推（停着不溜）
-      if tracked then a -= math.abs(st.yr or 0) * v * 0.35 end      -- 履带车转弯吃速度
+      -- 履带车转弯吃速度：一侧离合 + 刹车（战雷现在的转向机构），高速打满一个 90° 掉 5～10 公里 / 时（原来 0.35，一个弯掉三十多公里 / 时）
+      if tracked then a -= math.abs(st.yr or 0) * v * 0.14 end
     end
     -- 空格：刹车（战雷坦克的「急停」，比反着推油门停得还快；松开照常走）
     if not st.airS and key(Enum.KeyCode.Space) and G.hangarActive and G.hangarActive() then
-      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), accel * 3.2)
+      st.brkK = math.min(1, (st.brkK or 0) + dt / 0.1)
+      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), 16.5 * math.clamp(sf.grip or 1, 0.4, 1.1) * st.brkK)
     end
     local old = v
     v += a * dt
@@ -947,7 +967,9 @@ function Drive.init(G)
       st.yr = approach(st.yr or 0, 0, math.rad(d.turn) * dt)
     elseif tracked then
       local k = 1 - 0.38 * math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
-      st.yr = approach(st.yr or 0, str * math.rad(d.turn * mTurn) * k, math.rad(d.turn * mTurn) * ((str ~= 0) and 4.6 or 9) * dt)   -- 起转、收住都利落（脆感）
+      -- 车身转动有惯量（战雷：起转 0.4～0.6 秒）：起转 0.32 秒、收住 0.18 秒——比战雷利落一点（用户 11-25 要的脆感），
+      --   原来 0.22 / 0.11 秒，几十吨的车身像没有重量
+      st.yr = approach(st.yr or 0, str * math.rad(d.turn * mTurn) * k, math.rad(d.turn * mTurn) * ((str ~= 0) and 3.1 or 5.5) * dt)
     else
       local frac = math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
       st.steerA = approach(st.steerA or 0, str * math.rad(38 - 26 * frac), math.rad(75) * dt)
@@ -1822,7 +1844,8 @@ function Drive.init(G)
       local gcf = VD.gunCF(d, base, st.ty, st.gp)
       local tcf = VD.turretCF(d, base, st.ty)
       local eye = (tcf * CF(d.sight)).Position
-      cam.FieldOfView = cam.FieldOfView + (ZOOMS[st.zoom] - cam.FieldOfView) * math.min(1, dt * 10)
+      local zi = (G.opticsDead and G.opticsDead()) and 1 or st.zoom   -- 观瞄打坏了：只剩最低倍率
+      cam.FieldOfView = cam.FieldOfView + (ZOOMS[zi] - cam.FieldOfView) * math.min(1, dt * 10)
       local am = fcsAmmo()
       if am then
         -- 坦克炮（火控）：分划中心是瞄准线——鼠标给的方向；炮跟着瞄准线走、再抬超高角、加提前量。
@@ -1897,7 +1920,8 @@ function Drive.init(G)
       st.lastP3 = p3
       local rough = (st.surf and st.surf.rough or 0.7) * (st.hv and 0.35 or 1) * (st.airS and 0.2 or 1)
       local camCF, camShake, fov = G.vehCam({ key = "drive", pivot = center, dir = dirCam, dist = dist, up = up, vel = st.vel3, dt = dt,
-        rough = rough, speedK = spd, up3 = st.root.UpVector, params = camParams, fov0 = G.fov3 or 70, fovK = 7, pushK = 0.035, maxPush = 2,
+        -- 战雷的坦克镜头：不跟着车身歪（侧倾 0）、视野不随车速变（原来歪两成、全速宽 7°）——画面稳，车在镜头底下晃（11-26）
+        rough = rough, speedK = spd, up3 = nil, params = camParams, fov0 = G.fov3 or 70, fovK = 1.5, pushK = 0.035, maxPush = 2,
         follow = 14, maxLag = 1.4 })   -- 脆感：镜头跟紧车（原来跟随弹簧 9、最多落后 2.5 格，开起来发飘）   -- 第三人称视野：设置里调
       cam.CFrame = camCF
       cam.FieldOfView = fov
