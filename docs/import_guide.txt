@@ -36,6 +36,10 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日起 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～八包、E 第一～七包，新的在上面）
+  E 11-26 夜这一包：新导入两个文件（别的不用动）——
+    · veh/type59.glb：59 式中型坦克（科技树中国地面一级 59 式、二级 69-II 式都用它；Sketchfab CC-BY，署名在 veh/credits.txt）
+    · bld/city.glb：钢城的写实楼房（10 种楼，14 MB；署名在 bld/city_credits.txt）。没导入的话城里照旧用零件拼的楼
+    导法同下面「一、导入」：「导入 3D」选文件、导进 Workspace，开服自动收好
   11 月 25 日 D 第十一包（火控计算机升级、履带会转、坦克世界式镜头和炮兵视角、首发地面车、科技树等级底色、导弹抛射、弹着点……）：只换游戏文件（或者「三、只换脚本」），不用导模型。
     - 机库：一进服就是机库（没有「开始游戏」那一页）；上面中间「加入战斗」、底下国旗条和阵容卡；「科技树」从底下弹上来；
       科技树每一级一种底色（灰绿、橄榄、沙褐、铜褐、砖红、紫褐、暗金），车卡车图底板、阵容卡也按等级上色；空着的等级收成一条窄的
