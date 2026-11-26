@@ -81,6 +81,15 @@ B.AMMO = {
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
   m409 = { cls = "heat", name = "M409 HEAT-MP", sym = "HEAT", v0 = 683, k = 1.4e-4, bs = 700, tr = true, ce = true,   -- M551：152 毫米多用途破甲弹，初速低、弹道弯
     vs = { inf = 1.1, light = 1.3, armor = 0.9, fort = 1.4 }, splash = 1.3 },
+  -- 59 式 / 69-II 式的 100 毫米线膛炮（11-26）：
+  br412d = { cls = "ap", name = "BR-412D APBC", sym = "穿甲", v0 = 887, k = 1.1e-4, bs = 1000, tr = true,            -- 59 式：钝头被帽穿甲弹（全口径，掉速快）
+    vs = { inf = 0.6, light = 1.1, armor = 1.0, fort = 0.9 }, splash = 0.8 },
+  bk5m = { cls = "heat", name = "BK-5M HEAT", sym = "破甲", v0 = 900, k = 1.0e-4, bs = 900, tr = true, ce = true,      -- 100 毫米破甲弹
+    vs = { inf = 0.9, light = 1.3, armor = 0.9, fort = 1.3 }, splash = 1.0 },
+  of412 = { cls = "he", name = "OF-412 HE-FRAG", sym = "榴弹", v0 = 900, k = 1.0e-4, bs = 800, tr = false,             -- 100 毫米杀爆榴弹
+    vs = { inf = 1.4, light = 1.0, armor = 0.5, fort = 1.6 }, splash = 1.5 },
+  apfsds69 = { cls = "ap", name = "100mm APFSDS", sym = "穿甲", v0 = 1415, k = 4.4e-5, bs = 1200, tr = true,           -- 69-II 式：尾翼稳定脱壳穿甲弹
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
 }
 -- 每门炮能打的弹（第一个是默认），以及车里炮长控制面板上的弹种键（InteriorScreens 的 gcdp 页）对到哪种弹
 B.GUN = {
@@ -98,6 +107,8 @@ B.GUN = {
   gun105m68 = { "m833", "m456", "jet105" },           -- M60A3
   gun105m60 = { "m392", "m456", "jet105" },           -- M60A1
   gun152 = { "m409" },                                 -- M551（MGM-51 导弹游戏里没有）
+  gun100d = { "br412d", "bk5m", "of412" },            -- 59 式
+  gun100d69 = { "apfsds69", "bk5m", "of412" },        -- 69-II 式
 }
 -- 面板上的键 → 弹种（这门炮没有这一种就挑它同一类 cls 的：T-90M 借 99A 的面板，「穿甲」键打 3BM60）
 function B.panelAmmo(kind, wid)

@@ -306,6 +306,7 @@ local VEH = {
   leo2a7v = { "豹 2A7V 主战坦克", "Leopard 2A7V MBT" }, type10 = { "10 式主战坦克", "Type 10 MBT" },
   t72ural = { "T-72 乌拉尔 主战坦克", "T-72 Ural MBT" }, t72a = { "T-72A 主战坦克", "T-72A MBT" }, t72b = { "T-72B 主战坦克", "T-72B MBT" },
   t80u = { "T-80U 主战坦克", "T-80U MBT" }, t80b = { "T-80B 主战坦克", "T-80B MBT" }, t80bvm = { "T-80BVM 主战坦克", "T-80BVM MBT" },
+  type59 = { "59 式中型坦克", "Type 59 Medium Tank" }, type69 = { "69-II 式中型坦克", "Type 69-II Medium Tank" },
   t64a = { "T-64A 主战坦克", "T-64A MBT" }, t64b = { "T-64B 主战坦克", "T-64B MBT" }, type74 = { "74 式主战坦克", "Type 74 MBT" }, type74g = { "74 式改主战坦克", "Type 74 (G) MBT" },
   gepard1a1 = { "猎豹 1A1 自行高炮", "Gepard 1A1 SPAAG" }, gepard1a2 = { "猎豹 1A2 自行高炮", "Gepard 1A2 SPAAG" },
   bmp1 = { "BMP-1 步兵战车", "BMP-1 IFV" }, bmp2 = { "BMP-2 步兵战车", "BMP-2 IFV" }, bmp2m = { "BMP-2M 步兵战车", "BMP-2M IFV" },

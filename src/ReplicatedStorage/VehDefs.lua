@@ -38,6 +38,12 @@ VehDefs.W = {
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },   -- M60A3 的 M68E1：M833 贫铀尾翼稳定脱壳穿甲弹
   gun105m60 = { kind = "shell", dmg = 460, speed = 4138, drop = 0.14, splash = 6, rate = 6.5, mag = 1, reload = 0, reserve = 63, range = 2400,
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },   -- M60A1 的 M68：M392A2 脱壳穿甲弹
+  -- 59 式 / 69-II 式的 100 毫米线膛炮（用户 11-26「各系各阶段缺少的载具」：中国地面树一、二级）：59 式是 D-10T 的仿制（59 式 100 毫米坦克炮），
+  --   手动装填 7～8 秒一发；69-II 式换了稳定器和激光测距、有尾翼稳定脱壳穿甲弹（Ballistics.GUN 里各自的弹）
+  gun100d = { kind = "shell", dmg = 400, speed = 2484, drop = 0.18, splash = 6, rate = 7.5, mag = 1, reload = 0, reserve = 34, range = 2200,
+    vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.34 },
+  gun100d69 = { kind = "shell", dmg = 430, speed = 3962, drop = 0.16, splash = 6, rate = 7.0, mag = 1, reload = 0, reserve = 44, range = 2400,
+    vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.34 },
   gun152 = { kind = "shell", dmg = 520, speed = 1912, drop = 0.3, splash = 8, rate = 7.5, mag = 1, reload = 0, reserve = 29, range = 2000,
     vs = { inf = 1.0, light = 1.3, armor = 0.9, air = 0.7, ship = 0.8, fort = 1.4 }, fx = "tank", cal = 0.43 },   -- M551 的 M81 152 毫米炮：M409 多用途破甲弹（683 米 / 秒，弹道弯）
   -- BMP-3 的 2A70 100 毫米低膛压线膛炮（用户 11-24 找的俄系）：3OF32 杀伤爆破榴弹，初速 250 米 / 秒、弹道很弯，打步兵、工事、轻装甲（炮射导弹 9M117 游戏里没有）
@@ -124,6 +130,20 @@ D.ztz99a = tracked({ cat = "tank", L = 22, W = 10.2, H = 7.4, hullH = 4.2, clear
   sight = V(-1.9, 2.1, -2.6), cupola = V(1.7, 2.3, 0.6),   -- 车顶车长舱口一挺手动的 12.7 毫米重机枪（用户 11-21 晚：照真车加回，元数据 rws.mk = "manual"）
   smoke = { banks = { { at = V(3.3, 1.5, -1.6), yaw = 40 }, { at = V(-3.3, 1.5, -1.6), yaw = -40 } }, n = 4 },
   weapons = { "gun125", "coax" } })
+-- 59 式中型坦克（用户 11-26「给各系各阶段缺少的载具都从 sketchfeb 上搞出来」：中国地面树一、二级原来空着；原模型 MMD_SonicNewYear，
+--   tools/models/blveh.json type59）：T-54A 的国产型，36 吨、12150L 柴油机 520 马力（14.4 马力 / 吨）、公路 50 公里 / 时，倒车只有 6 公里 / 时上下；
+--   59 式 100 毫米线膛炮（D-10T），手动装填；没有稳定器（行进间打不准）、没有夜视以外的观瞄；四人车组（装填手在右、舱口上一挺 12.7 高射机枪）。
+--   尺寸、负重轮（五对，前后大间隔）、炮塔转轴、炮耳轴照模型量的（ImportedMeta type59）
+D.type59 = tracked({ cat = "tank", L = 17.0, W = 9.2, H = 6.9, hullH = 3.9, clear = 1.2, speed = 38.9, accel = 3.2, rev = 4.7, turn = 30,
+  rw = { n = 5, r = 1.15, x = 3.69, z0 = -5.9, z1 = 3.55 }, skirt = false,
+  turret = { pivot = V(0.04, 3.87, -1.58), size = V(7.1, 2.3, 8.1), style = "round", trav = 16, elev = { -5, 17 }, bustle = 0 },
+  gun = { pivot = V(0.1, 1.56, -1.71), len = 12.7, cal = 0.34, fume = true }, coax = V(0.9, 1.5, -2.2),
+  sight = V(-1.1, 1.85, -2.0), cupola = V(1.3, 2.35, 0.3),
+  smoke = { banks = { { at = V(3.0, 1.3, -1.6), yaw = 40 }, { at = V(-3.0, 1.3, -1.6), yaw = -40 } }, n = 2 },   -- 真车是发动机喷烟（TDA），游戏里按两组烟幕弹算
+  sightZoom = { day = { 3.5, 7 }, th = { 3.5 } },   -- TSh-2B-32 炮长瞄准镜 3.5 / 7 倍；夜里主动红外
+  weapons = { "gun100d", "coax" } })
+-- 69-II 式（1982 出口型）：同一个车体、580 马力，炮控稳定器、激光测距、尾翼稳定脱壳穿甲弹；同一个模型（ImportedMeta 的 alias）
+D.type69 = variant(D.type59, { accel = 3.5, speed = 38.9, weapons = { "gun100d69", "coax" }, sightZoom = { day = { 3.5, 7 }, th = { 4 } } })
 D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear = 1.3, speed = 50.6, accel = 5.2, rev = 14.0, turn = 36,
   rw = { n = 6, r = 1.1, x = 3.85, z0 = -7.0, z1 = 6.7 }, era = true, skirt = true,
   turret = { pivot = V(0, 4.0, 0.4), size = V(6.8, 2.2, 7.0), style = "round", trav = 38, elev = { -6, 16 }, bustle = 1.2 },

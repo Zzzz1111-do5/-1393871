@@ -6627,5 +6627,28 @@
    "wheel_l_back_bmp_2_body_c_0": 0.5,
    "bone_rocket_02_9m113_rocket_c_0": 0.4
   }
+ },
+ "type59": {
+  "_说明": "59 式中型坦克（MMD_SonicNewYear，Sketchfab 42f0905d069b4c48bafa28dc7382e00f，CC-BY-4.0，简介只写了 Tank）；用户 11-26「给各系各阶段缺少的载具都从 sketchfeb 上搞出来」——中国地面树一～三级原来空着。原模型按米、车头朝 +Y（Blender 里就是正前），不用转、不用缩；炮塔一整块（vertices.001）、炮管一块（gun_01Shape），负重轮和履带、车体连着（履带板 Tracks.lua 照 TrackLoops 另套一圈会转的）",
+  "uid": "42f0905d069b4c48bafa28dc7382e00f",
+  "credit": "59 式中型坦克：Type 59，作者 MMD_SonicNewYear（https://sketchfab.com/3d-models/type-59-42f0905d069b4c48bafa28dc7382e00f），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "title": "59 式中型坦克",
+  "creditEn": "This work is based on \"Type 59\" (https://sketchfab.com/3d-models/type-59-42f0905d069b4c48bafa28dc7382e00f) by MMD_SonicNewYear licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：换成 Roblox 的格、按部件分组（车体 / 炮塔 / 炮管）、贴图缩到 1024",
+  "alias": [
+   "type59",
+   "type69"
+  ],
+  "scale": 1.0,
+  "rotZ": 0,
+  "texMax": 1024,
+  "groups": {
+   "Turret": [
+    "vertices.001_mat_0.005_0"
+   ],
+   "Gun": [
+    "gun_01Shape_mat_0.003_0"
+   ]
+  }
  }
 }

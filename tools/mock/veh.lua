@@ -206,7 +206,8 @@ if side == "def" then
   end
   check(modes[1] == "bhot" and modes[2] == "day" and modes[3] == "nv", "瞄准镜默认白热档，V 依次切黑热、昼光、夜视：" .. table.concat(modes, " → "))
   R.run(0.3)
-  check(C.sightNv == true and lighting.ExposureCompensation > 2.5,
+  -- 夜里底子 0.55，夜视增亮：沙漠图 +1.5、别的图 +2.7（DayNight.lua nvEv：沙漠少加）——测试台开的是沙海，所以看 > 1.9
+  check(C.sightNv == true and lighting.ExposureCompensation > 1.9,
     string.format("镜里的夜视档照夜视仪那样增亮（曝光 %.2f；原来夜视仪让出画面时增亮也撤了，一片墨绿）", lighting.ExposureCompensation))
   local hv2 = shown("HintOptic")
   check(hv2 and hv2:find(C.T("sight.nv"), 1, true), "提示跟着换成现在的模式：" .. tostring(hv2))

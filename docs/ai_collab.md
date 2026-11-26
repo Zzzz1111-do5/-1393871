@@ -47,6 +47,12 @@
     WtDamage 加 optics 模块（炮长主镜头，车外、破片打得坏；在模块表最后，WtM 原来那些位不挪）、W.modIndex / W.modState；Wt.lua：弹药架中弹没殉爆时有机会起火（WtAF：7～10 秒、烧乘员快、烧完没灭四成殉爆；
     灭火器一起灭）、泄压板泄了写 WtBlow；G.wtOptK（电脑车观瞄坏了散布 × 1.8 / 3，AIVeh 用）。客户端新 WtVfx.lua：发动机受损冒烟、起火的火苗黑烟火光、弹药架起火舱口火柱火星、泄压板火柱、
     自己车观瞄受损开镜裂纹 + 模糊、打坏只剩最低倍率没热成像（Drive.lua G.opticsDead / G.sightReapply）；View.lua 炮管打坏耷拉到 −5°；XrayOwn 加「观瞄」一类。测试 tools/mock/wtvfx.lua。
+  · **科技树补车（11-26「给各系各阶段缺少的载具都从 sketchfeb 上搞出来」，接着做）**：中国地面树一、二级补上 **59 式**（MMD_SonicNewYear 的 Type 59，CC-BY，blveh.json type59：
+    原模型按米、车头 +Y，不转不缩；炮塔、炮管各一块）和 **69-II 式**（同模型 alias）——VehDefs type59 / type69（36 吨 520 马力、50 公里/时、倒车 6、炮塔 16°/秒），
+    炮 gun100d（BR-412D 钝头穿甲 / BK-5M 破甲 / OF-412 榴弹）、gun100d69（尾翼稳定脱壳穿甲），WtDamage 装甲 / 穿深、TrackLoops（trackfit 加 type59）、
+    HudIcons veh_type59（侧面明暗图 → hudicons.py）、Lang、VehPics；起步车照规则变成 59 式（96 式不再白送）。测试 techtree 过、wttank veh=type59 只有「两种弹颜色不一样」不过
+    （59 式哪种弹都打不穿 T-90M 正面，都是红的——测试的假设是现代炮）。还能找到的：德国 Marder 1A3（scout.，19.9 万面、白模，同 Gepard / BMP-2 一个作者）、
+    豹 2A5（scout.）、Type-90 低模；F-104（helijah / Mikhail_Zelenov）、MiG-21（NETRUNNER_pl）、Tornado（manilov.ap）给德 / 俄空中树。69 式「最后一炮」那个是扒的，不收。
 - E（11-26，用户：「改地图……这个图不适合对抗」「做一个两边带机场的城市地图吧」「要有可以撞倒的树 也可以被打倒」「所有地图开局默认白天 一天48分钟」
   「点开战先匹配 匹配一分钟后人不够就补人机 两边的人机的车辆要符合我匹配时带的最高权重的载具 跟战雷一样 人机的分数也要出现在记分板」）：
   · 新地图「钢城」ReplicatedStorage/MapCity.lua（id city，Map.ids 只剩它；沙海进 Map.extra，Studio / 测试台给 Workspace 设 MapName = "sands" 还能开）：
