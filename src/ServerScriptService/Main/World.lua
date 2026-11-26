@@ -2795,8 +2795,15 @@ function World.build(G)
   local n, chunks = World.terrain(function(p) G.worldProgress = p end, G)
   G.terrainVoxels, G.terrainChunks = n, chunks
   -- 远海改在客户端跟着镜头铺（Scenery.lua）：地图放大以后服务器这一圈不够远，飞机飞出去看得到海的尽头
-  G.try("机场", airfield, deco, Map.AIRFIELD, "def")
-  if Map.LANDONLY then   -- 沙漠图：没有港口、灯塔、岸防炮台、海滩
+  if not Map.NOMIDAF then G.try("机场", airfield, deco, Map.AIRFIELD, "def") end   -- 钢城（Map.NOMIDAF）：两边基地自己有跑道，中间没有机场
+  if Map.CITY then   -- 钢城（MapCity.lua，用户 11-26「做一个两边带机场的城市地图吧」）：两边主基地（FOB.lua）+ 中间的城（CityBuild.lua）
+    local FOB = require(script.Parent:WaitForChild("FOB"))
+    G.fobParts = {}
+    for _, side in ipairs({ "atk", "def" }) do
+      G.try("主基地 " .. side, function() G.fobParts[side] = FOB.build(World, deco, side) end)
+    end
+    G.try("城市", function() require(script.Parent:WaitForChild("CityBuild")).build(World, deco, G) end)
+  elseif Map.LANDONLY then   -- 沙漠图：没有港口、灯塔、岸防炮台、海滩
     G.try("指挥所", commandPost, deco)
     -- 两边的主基地（FOB.lua：营区 + 机场 + 车场 + 直升机坪围在一起，用户 11-24「军事基地应该在一起」）；原来的守方营地、红方前进基地、前进机场不建了
     local FOB = require(script.Parent:WaitForChild("FOB"))

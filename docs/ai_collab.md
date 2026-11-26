@@ -25,6 +25,28 @@
 
 ## 正在做
 
+- E（11-26，用户：「改地图……这个图不适合对抗」「做一个两边带机场的城市地图吧」「要有可以撞倒的树 也可以被打倒」「所有地图开局默认白天 一天48分钟」
+  「点开战先匹配 匹配一分钟后人不够就补人机 两边的人机的车辆要符合我匹配时带的最高权重的载具 跟战雷一样 人机的分数也要出现在记分板」）：
+  · 新地图「钢城」ReplicatedStorage/MapCity.lua（id city，Map.ids 只剩它；沙海进 Map.extra，Studio / 测试台给 Workspace 设 MapName = "sands" 还能开）：
+    南北两座主基地（FOB.lua 同沙海，基地中心 z ±6656，跑道在基地后面）、中间 12 × 12 街坊的城（一格 512 格；街是零件铺的柏油，地形整块平地 FillBlock，开服快）；
+    据点 A 钢厂 (-1024, 2048)、B 公园 (-2560, 0)、C 中央广场 (0, 0)、D 火车站 (2304, 0)、E 电视塔 (1024, -2048)；B / C / D 离两边基地一样远（统治那一种公平）。
+    Map.BLD（楼：x、z、w、d、h、fl 层数、st 样式、k 种类）、Map.SEGS（路段）、Map.TREES（树）、Map.RAIL（铁路）都是纯数学，服务器、客户端一样；
+    Map.bldAt / navBlocked / segBlocked / lineClear（楼挡视线；Map.BLD_DOWN 记塌了的）；Map.NOMIDAF：没有中间那座机场（World 不建、AIRFIELD 指向守方跑道）。
+  · 盖城：ServerScriptService/Main/CityBuild.lua（World.build 的 Map.CITY 分支）——一座楼十来块零件（楼身一块实心、每层一圈窗带、女儿墙、屋顶设备、老城壁柱和遮阳篷），
+    楼带 Bld / BldBase / BldSize / CityIdx：Battle.lua 照样能炸塌；郊区小楼导入了 buildings.glb 就摆原模型。一共一万出头零件（761 座楼）。
+  · 树：服务器 Main/Trees.lua（倒没倒、往哪边倒；车撞 ACT.treeHit、电脑车 G.treeTouch、爆炸 G.onExplode、炮弹 G.treeSeg（Ents.lua 每步）、机枪 G.treeRay（Weapons.lua）），
+    fx tree / treeReset，workspace 属性 TreesDown；客户端 Scenery.lua 加回 tree 层（只摆 Map.TREES）、远处阔叶树零件替身 broad_p、对象池缩放分档改成 0.45～1.15、
+    倒下动画（G.treeItemCF）、Drive.lua 车身碰到就倒（本地先倒再发）、Fx.lua 树倒的声音 treeFall。
+  · 寻路（Nav.lua）：Map.navBlocked 的格子、穿楼的边不通；navNext 往前看的格子隔着楼就不跳；AIVeh 前面是楼就停、隔着楼走流场。
+  · 匹配（WtMatch.lua 末尾 + Round.lua 的 queue 阶段）：Config.Match { wait = 60 }；ACT.matchJoin / matchCancel；G.queueStep 到点或凑满两队开准备阶段（emit matchFound：
+    排着的人坐进点的那一辆、记 P.match）；Tech.lua treeRoundBr 只看排着的 / 匹配进来的人，treePickAi 先挑 BR − 0.4～BR、两类车都试过再放宽；
+    AIVeh 每队补满 Wt.teamSize（aiMax 8，按 G.matchPlayers），开战头 40 秒一两秒一辆；电脑车组名单（AIVeh crews，名字固定、换车接着记）进记分板（G.aiBoard）：
+    击毁 vk / ak、得分、阵亡、占点。机库主按钮：匹配中「开战 / 取消匹配 + 倒计时」，打起来以后「加入战斗」。测试台默认 G.matchOff（老测试照旧），tools/mock/match.lua 测匹配。
+  · 昼夜：Config.DayNight 一圈 48 分钟（28 + 4 + 12 + 4），perRound：每局开局拨回早上 8 点（Round.lua；PvE 照关卡的钟点）。
+  · 测试：tools/mock/citylayout.lua（布局：不重叠、不压路、据点空着、对称；out= 写 JSON，tools/map/citypng.py 画俯视图）、tools/mock/city.lua（开服、撞树、炸 / 炮弹 / 机枪打树、
+    新一局立回来、流场走街不穿楼、视线）、tools/mock/match.lua。测试台默认开沙海（common.lua 设 MapName，测钢城的设 T.mapName = "city"）。
+  · 接着做（用户同一晚又要的）：楼换成 Sketchfab 上的写实模型（「地图建模要精细 3a」）；科技树各系各阶段缺的车去 Sketchfab 找；爆反识别、部位伤害效果。
+
 - D（11-25 末，用户：「然后科技树里面根据年代给有火控计算机的坦克……更新火控计算机 可以有不同等级进行升级」「坦克履带也要能动」「画面缩放……先往后 再往上……参考坦克世界」
   「部分远火高射形载具……坦克世界那种 可以把视角放到射程范围内的任何位置 但是对于敌载具的视野是要受限于我方信息的……3d的散步圈……移动很快的话 这个圈会变大 然后慢慢变小」
   「第一辆必须是地面车，飞机要攒点数才能出」「载具科技树不同等级的载具背景颜色要有区别」「烟幕改成m x改成透视自己的坦克」「炮弹和导弹 子弹击中地面……」；前面还有「部分直升机我记得发射导弹是抛射」「或许不止直升机」）：

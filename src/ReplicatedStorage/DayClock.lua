@@ -2,7 +2,8 @@
 --   用户 11-18 锁过晚上（Config.DayNight.lockNight）；用户 11-25：「给沙漠地图做个昼夜更替」——打开昼夜更替：
 --   · 一圈 day + dusk + night + dawn 分钟：白天 7:00～17:00、黄昏 17:00～19:30、夜里 19:30～次日 4:30、清晨 4:30～7:00
 --     （钟点在每段里匀速走；白天长、夜里也够打一仗，日出日落各有几分钟慢慢变）
---   · 跨局接着走，不每局从早上重来：服务器开服时按 start 点记下 workspace 属性 DayT0（这一圈从哪一刻起算）
+--   · 服务器开服时按 start 点记下 workspace 属性 DayT0（这一圈从哪一刻起算）；用户 11-26「所有地图开局默认白天，一天 48 分钟」：
+--     Config.DayNight.perRound 开着时每局开局拨回 start（早上 8 点，Round.lua），一圈 48 分钟
 --   · workspace 属性 DayFix 是数：钟点钉死在那个点（PvE 夜战关卡）；没有就按 DayT0 走
 --   DC.clock() 现在几点（0～24）；DC.dayK(钟点) 0 夜里 ～ 1 白天；DC.phase(钟点) "dawn" / "day" / "dusk" / "night"；
 --   DC.t0For(钟点, 服务器时刻) 要让「这一刻」是这个钟点，DayT0 该写多少

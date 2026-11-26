@@ -16,11 +16,15 @@ end
 function T.boot()
   T.scripts = dofile(MOCK_DIR .. "/load.lua")(R, SRC_DIR)
   R.verbose = TEST_ARGS:match("%f[%w]v%f[%W]") ~= nil
+  -- 地图（11-26 起游戏默认是钢城）：老测试的坐标都是按沙海写的，照旧开沙海；测钢城的测试在 boot 前设 T.mapName = "city"
+  R.workspace:SetAttribute("MapName", T.mapName or "sands")
   for _, s in ipairs(T.scripts.server) do R.runScript(s, "server") end
   R.run(0.5)
   T.G = R.Gs.server
   -- 战雷式「玩家不步行」（Config.Wt.noInfantry，11-25）：老测试都是先当步兵出生再上车，默认照旧能当步兵；测机库、科技树的测试在 boot 前设 T.wtMode = true
   if not T.wtMode then T.G.allowInfantry = true end
+  -- 匹配（11-26，WtMatch.lua）：老测试都是开服就进准备阶段——默认关着，测匹配的测试在 boot 前设 T.matchMode = true
+  if not T.matchMode then T.G.matchOff = true end
   -- 射线打地形用项目自己的高度函数
   R.terrainHeight = T.G.Map.height
   return T.G

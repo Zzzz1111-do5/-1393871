@@ -834,7 +834,9 @@ function View.init(G)
           local o = base.RightVector * (sgn * trackX)
           local p = mid + o
           local gy = Map.height(p.X, p.Z) + lift
-          trackMark(CFrame.lookAt(V(p.X, gy + 0.06, p.Z), V(p.X + dir.X, gy + 0.06, p.Z + dir.Z)), tw, L + 0.15)
+          if dir.X * dir.X + dir.Z * dir.Z > 0.0025 then   -- 只是上下动（车从高处落下来）：平着的方向没有，不画（lookAt 两点重合）
+            trackMark(CFrame.lookAt(V(p.X, gy + 0.06, p.Z), V(p.X + dir.X, gy + 0.06, p.Z + dir.Z)), tw, L + 0.15)
+          end
         end
         v.markPos = pos
       end

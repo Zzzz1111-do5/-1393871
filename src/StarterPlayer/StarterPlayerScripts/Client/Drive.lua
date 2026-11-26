@@ -415,6 +415,7 @@ function Drive.init(G)
   end
   G.terrainLift = terrainLift
 
+  local treeBuf = {}   -- 撞树（Map.treesNear 的结果表，每帧重用）
   local mapParams = RaycastParams.new()
   mapParams.FilterType = Enum.RaycastFilterType.Include
   local camParams = RaycastParams.new()   -- 镜头别钻进山坡、房子（地形也算）
@@ -1071,6 +1072,26 @@ function Drive.init(G)
       if pushT.Magnitude > 1e-3 then
         st.pos += pushT
         st.wallT = os.clock()
+      end
+      -- 撞树（钢城 Map.TREES，用户 11-26「要有可以撞倒的树」）：车身（按车头方向的矩形）碰到的树往车走的方向倒（擦着边撞的往外偏一点），
+      --   本地马上倒、再告诉服务器（Scenery.lua 的 G.treeKnock）；坦克几乎不掉速，轮式车、轻车掉得多，车身颠一下
+      if Map.TREES and G.treeKnock and math.abs(st.speed) > 1.2 then
+        local p = st.pos
+        local fT = V(-math.sin(st.yaw), 0, -math.cos(st.yaw))
+        local rT = V(-fT.Z, 0, fT.X)
+        for _, t in ipairs(Map.treesNear(p.X, p.Z, d.L * 0.5 + 6, treeBuf)) do
+          if not (G.treeIsDown and G.treeIsDown(t.id)) then
+            local rel = V(t.x - p.X, 0, t.z - p.Z)
+            local a, b = rel:Dot(fT), rel:Dot(rT)
+            if math.abs(a) < d.L * 0.5 + t.r and math.abs(b) < d.W * 0.5 + t.r then
+              local dir = ((st.speed >= 0) and fT or -fT) + rT * (math.clamp(b / (d.W * 0.5 + t.r), -1, 1) * 0.35)
+              G.treeKnock(t, dir.Unit, "veh")
+              local heavy = tracked or (d.cat == "tank")
+              st.speed *= heavy and (1 - 0.05 * t.s) or (1 - 0.3 * t.s)
+              if G.shake then G.shake(heavy and 0.06 or 0.16) end
+            end
+          end
+        end
       end
     end
     -- 真地形（terrainLift）：0.15 秒量一次，平滑着跟（量一下差太多就在 Output 说一声，好对照）

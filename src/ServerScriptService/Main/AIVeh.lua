@@ -101,9 +101,12 @@ function AIVeh.init(G)
     if a and a.max then return a.max end
     local W = Config.Wt or {}
     if W.on and W.aiMax and not G.pve then   -- 战雷式（用户 11-25「都要做」）：真人不够一队 teamSize 个，电脑开车补，每队最多 aiMax 辆
+      -- 用户 11-26「匹配一分钟后人不够就补人机」：按这一局真打的人数（WtMatch.lua G.matchPlayers：匹配进来的、半路加入的）补满 teamSize；
+      --   在机库里没点开战的不算（原来按在线人数算、最少也补 2 辆）
       local real = 0
-      for _, P in pairs(G.P) do if P.team == team and P.pl then real += 1 end end
-      return math.max(MAX, math.min(W.aiMax, (W.teamSize or 8) - real))
+      if G.matchPlayers then real = G.matchPlayers(team)
+      else for _, P in pairs(G.P) do if P.team == team and P.pl then real += 1 end end end
+      return math.max(0, math.min(W.aiMax, (W.teamSize or 8) - real))
     end
     return MAX
   end
@@ -118,7 +121,7 @@ function AIVeh.init(G)
     local cat = (math.random() < tankK) and "tank" or "apc"
     pickTree = nil
     if not a and G.treePickAi and (Config.Wt or {}).on and not G.pve then   -- 战雷式：按这一局的战斗等级从科技树挑，车上写科技树里的名字
-      local it = G.treePickAi(team, cat, usable) or G.treePickAi(team, (cat == "tank") and "apc" or "tank", usable)
+      local it = G.treePickAi(team, cat, usable, (cat == "tank") and "apc" or "tank")
       if it then
         pickTree = it
         return it.play
@@ -155,6 +158,39 @@ function AIVeh.init(G)
     return nil
   end
 
+  -- 电脑车组（用户 11-26「人机的分数也要出现在记分板」）：每队一份名单，一局里一直是这几个人——车被打掉了，下一辆还是他开（名字、击毁、
+  --   阵亡、占点、得分接着记），记分板、结算页照真人一样排（G.aiBoard）；新一局清空
+  local CREW_NAMES = {
+    atk = { "Wang Lei", "Li Qiang", "Zhang Wei", "Liu Yang", "Chen Jie", "Yang Fan", "Zhao Yong", "Huang Tao", "Zhou Bin", "Wu Hao",
+      "Sun Peng", "Ma Jun", "Ivanov", "Petrov", "Smirnov", "Volkov" },
+    def = { "J. Miller", "R. Davis", "T. Walker", "M. Carter", "S. Brooks", "D. Hayes", "K. Weber", "F. Becker", "L. Wagner", "H. Schulz",
+      "K. Tanaka", "Y. Sato", "A. Reed", "B. Cole", "N. Price", "P. Foster" },
+  }
+  local crews = { atk = {}, def = {} }
+  local function crewFor(team)
+    for _, c in ipairs(crews[team]) do
+      if not (c.e and c.e.alive and c.e.ai) then return c end   -- 车没了（被毁、撤回去收走了）：这个人接着开下一辆
+    end
+    local names = CREW_NAMES[team] or CREW_NAMES.atk
+    local i = #crews[team] + 1
+    local c = { team = team, name = names[(i - 1) % #names + 1] .. ((i > #names) and (" " .. i) or ""), k = 0, d = 0, s = 0, c = 0, vk = 0, ak = 0, ai = true, id = -(1000 + i + ((team == "def") and 100 or 0)) }
+    table.insert(crews[team], c)
+    return c
+  end
+  G.aiCrews = crews   -- 测试用
+  function G.aiBoard()
+    local out = {}
+    for _, team in ipairs({ "atk", "def" }) do
+      for _, c in ipairs(crews[team]) do
+        local e = c.e
+        table.insert(out, { n = c.name, id = c.id, t = team, k = c.k, d = c.d, s = c.s, c = c.c, vk = c.vk, ak = c.ak, r = "crew", bot = true,
+          veh = e and e.treeKey or nil })
+      end
+    end
+    return out
+  end
+  G.on("roundStart", function() crews.atk, crews.def = {}, {} end)
+
   local function setup(e, team, goal, home, state)
     serial += 1
     local tit = pickTree
@@ -165,9 +201,13 @@ function AIVeh.init(G)
       e.model:SetAttribute("TreeKey", tit.key)
       nm = tit.en or nm
     end
+    local crew = crewFor(team)
+    crew.e = e
     e.counts = 1   -- 占点算数（Ents.countAt；跟机器人一样按 botW 折算）
     e.ai = { state = state, goal = goal.id, land = goal.land, home = home, hold = nil, tgt = nil, seekT = 0, aimT = 0, stuckT = 0, lastP = e.root.CFrame.Position,
-      sideT = 0, holdT = 0, crew = { team = team, name = nm .. "-" .. serial, k = 0, d = 0, s = 0, c = 0 } }
+      sideT = 0, holdT = 0, crew = crew }
+    e.model:SetAttribute("Crew", crew.name)   -- 名牌写开车的人（客户端按这个显示，没有就照旧写车名）
+    local _ = nm
     e.emptyAt, e.resP = nil, nil
     e.model:SetAttribute("Driver", -1)   -- 有人开着：客户端不出「E 上车」、不标「可驾驶」
     e.model:SetAttribute("AI", true)
@@ -304,9 +344,15 @@ function AIVeh.init(G)
       end
     else
       if Map.height(np.X, np.Z) < -2 and not d.amphib then e.model:SetAttribute("Sp", 0) return 0 end   -- 前面是海：不往下开
+      -- 钢城：前面是楼（Map.bldAt，车身半宽）就停住（卡住了 think 里会往旁边倒一下）；已经卡在楼边上的让它开出来
+      if Map.bldAt then
+        local hw = (d.W or 10) * 0.5
+        if Map.bldAt(np.X, np.Z, hw) and not Map.bldAt(p.X, p.Z, hw) then e.model:SetAttribute("Sp", 0) return 0 end
+      end
       nb = G.vehBaseAt(d, np.X, np.Z, nl)
     end
     G.moveEnt(e, nb * CF(0, d.H / 2, 0))
+    if G.treeTouch then G.treeTouch(np, d, nl) end   -- 钢城：开过去撞倒树（Trees.lua）
     e.model:SetAttribute("Sp", math.floor(sp * 3.6 / 2.8 + 0.5))
     return step
   end
@@ -314,7 +360,9 @@ function AIVeh.init(G)
   -- 朝 key（据点）的下一个路点：流场（Nav）有就跟着走，没有（不在一块陆地上、还没算好）直接朝目标
   local function waypoint(e, dest)
     local p = e.root.CFrame.Position
-    if (flat(dest - p)).Magnitude > 140 and G.navNext then
+    -- 离得远、或者（钢城）中间隔着楼：跟着流场走（街道）
+    local far = (flat(dest - p)).Magnitude > 140 or (Map.segBlocked and Map.segBlocked(p.X, p.Z, dest.X, dest.Z, 10))
+    if far and G.navNext then
       local wp = G.navNext(p, e.ai.goal)
       if wp then return wp end
     end
@@ -557,6 +605,7 @@ function AIVeh.init(G)
     for i = #list, 1, -1 do
       local e = list[i]
       if not e.alive or not e.ai then
+        if not e.alive and e.ai and e.ai.crew then e.ai.crew.d += 1 end   -- 被打掉了（撤回去收走的 remove 先把 e.ai 清了，不算阵亡）
         table.remove(list, i)
         nextAt[e.team] = math.max(nextAt[e.team], now() + REDO)
       else
@@ -565,13 +614,41 @@ function AIVeh.init(G)
     end
     spawnT -= step
     if spawnT <= 0 then
-      spawnT = 3
+      spawnT = (R.battleAt and (now() - R.battleAt) < 40) and 1 or 3
       for _, team in ipairs({ "atk", "def" }) do
         local n = 0
         for _, e in ipairs(list) do if e.team == team then n += 1 end end
         if n < maxFor(team) and now() >= nextAt[team] then
           local ok, e = G.try("派 AI 车", spawn, team)
-          nextAt[team] = now() + ((ok and e) and 8 or 15)   -- 一辆一辆来；没派成（车位满、没地方）过一会儿再试
+          -- 一辆一辆来；没派成（车位满、没地方）过一会儿再试。开战头 40 秒（匹配补的人机一起出发，同战雷）两秒一辆，车位空出来就派
+          local early = R.battleAt and (now() - R.battleAt) < 40
+          nextAt[team] = now() + ((ok and e) and (early and 1 or 8) or (early and 2 or 15))
+        end
+      end
+    end
+  end)
+
+  -- 电脑车组的战绩：打掉敌方的车 / 飞机记击毁（vk / ak）、得分；车里坐着真人的那一下，真人阵亡时 Round.lua 记击杀（k），这里不重复记
+  G.on("entDied", function(e, src)
+    local c = src and src.bot
+    if not (c and c.ai) or not e or e.team == c.team or e.cat == "inf" or e.cat == "fort" or e.noScore then return end
+    if e.cat == "air" then c.ak += 1 else c.vk += 1 end
+    c.s += (Config.Score and Config.Score.vehicleKill) or 0
+    if not e.driver then c.k += 1 c.s += (Config.Score and Config.Score.kill) or 0 end
+  end)
+  -- 占点：据点归到哪一队，那一队在圈里（1.4 倍半径）的电脑车组都记一次
+  G.on("captured", function(s)
+    local p = nil
+    for _, q in ipairs(Map.POINTS) do if q.id == s.id then p = q end end
+    if not p or (s.owner ~= "atk" and s.owner ~= "def") then return end
+    local r = (Map.POINT_R or 80) * 1.4
+    for _, e in ipairs(list) do
+      local c = e.alive and e.ai and e.ai.crew
+      if c and e.team == s.owner then
+        local q = e.root.CFrame.Position
+        if (q.X - p.x) ^ 2 + (q.Z - p.z) ^ 2 < r * r then
+          c.c += 1
+          c.s += (Config.Score and Config.Score.capture) or 0
         end
       end
     end

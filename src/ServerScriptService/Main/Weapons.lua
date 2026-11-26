@@ -440,6 +440,7 @@ function Weapons.init(G)
     G.fx({ k = "gun", w = id, a = muzzleOf(tool, head), b = hit, by = P.pl.UserId, q = w.quiet, t = P.team, h = surfOf(rw, res) })
     local s = src(P)
     s.wid = id   -- 哪把枪打的（打死了加这把枪的经验）
+    if G.treeRay then G.treeRay(origin, hit, w) end   -- 钢城：打在树干上掉血，多打几下打断（Trees.lua）
     local dmg = GM.dmgAt(w, (hit - origin).Magnitude)   -- 远了伤害往下掉（改枪的「有效射程」）
     if rw then G.hitRewound(rw, w, dmg, s, w.head)
     elseif res and res.Instance then G.hitThing(res.Instance, w, dmg, s, w.head, res.Position) end
@@ -733,6 +734,7 @@ function Weapons.init(G)
     local B = srcInfo and srcInfo.bot
     G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit, t = srcInfo and srcInfo.team, ent = B and B.e and B.e.id or nil,   -- ent：哪个小兵开的（客户端画后坐、枪口焰）
       h = surfOf(rw, res) })
+    if G.treeRay then G.treeRay(from, hit, w) end   -- 钢城：车上的机枪、工事打在树干上（Trees.lua）
     if rw then
       G.hitRewound(rw, w, w.dmg, srcInfo, w.head or 1)
       return (rw.e and rw.e.root) or rw.part, rw.pos

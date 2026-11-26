@@ -352,6 +352,8 @@ function Battle.init(G)
     G.fx({ k = "collapse", p = b.center, s = b.size, cf = b.base })
     b.m.Parent = store
     b.ruin = makeRuin(b)
+    local ci = b.m:GetAttribute("CityIdx")   -- 钢城的楼（MapCity.lua）：塌了以后电脑车的视线不再算它（Map.lineClear）
+    if ci and Map.BLD_DOWN then Map.BLD_DOWN[ci] = true end
   end
   G.collapseBuilding = collapse   -- 测试用
 
@@ -385,6 +387,7 @@ function Battle.init(G)
   end
 
   G.on("roundStart", function()
+    if Map.BLD_DOWN then table.clear(Map.BLD_DOWN) end
     for _, b in ipairs(blds) do
       if b.down then
         b.m.Parent = b.parent

@@ -205,8 +205,26 @@ local function obstaclesDesert(Map)
   return { hog = hog, wire = wire, mines = mines, signs = signs }
 end
 
+-- 城市图（钢城，MapCity.lua）：两边对称，城里不摆碉堡、榴弹炮（城里的掩护是楼）；只有两边主基地各四门高炮（营区两侧、跑道两头）
+local function layoutCity(Map)
+  local out = {}
+  local n = 0
+  for side, HB in pairs(Map.BASES) do
+    for _, o in ipairs({ { -500, -100 }, { 500, 0 }, { -1500, 900 }, { 1500, 900 } }) do
+      local x, z = Map.baseW(HB, o[1], o[2])
+      local tx, tz = Map.baseW(HB, o[1], o[2] - 2000)
+      local d = FortDefs.D.aaa
+      local sx, sz = siteNear(Map, x, z, 26, d.size)
+      n += 1
+      table.insert(out, { id = "f" .. n, kind = "aaa", cf = faceCF(Map, sx, sz, tx, tz), tag = "base_" .. side, home = side })
+    end
+  end
+  return out
+end
+
 -- 全部工事：{ id, kind（bunker / coastal / aaa）, cf（底面中心，−Z 朝前）, pt（附近的据点：据点被攻方拿下后这处工事就废了）, tag（位置名） }
 function FortDefs.layout(Map)
+  if Map.CITY then return layoutCity(Map) end
   if Map.LANDONLY then return layoutDesert(Map) end
   local out = {}
   local n = 0
@@ -286,6 +304,7 @@ end
 
 -- 滩头障碍：钢刺猬（水线一带两排，留出通道和缺口）、铁丝网（两道、隔段留缺口）、雷区（滩的两翼各一片）；用固定种子，每局一样
 function FortDefs.obstacles(Map)
+  if Map.CITY then return { hog = {}, wire = {}, mines = {}, signs = {} } end   -- 钢城：没有滩头障碍、雷区（城里的掩护是楼、车厢、水泥墩）
   if Map.LANDONLY then return obstaclesDesert(Map) end   -- 沙海：边境沙墙前的钢刺猬、铁丝网、雷区
   local rng = Random.new(20240611)
   local L = FortDefs.LANE

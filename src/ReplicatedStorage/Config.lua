@@ -12,11 +12,16 @@ Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、�
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
 --   sands（海湾战争式的纯陆地沙漠「沙海」，MapSands.lua，五个阶段的突破）。原来还有 desert（「沙漠风暴」，征服）：用户 11-24 删了
 --   Config.Map 是现在这张；跟着地图变的数（阶段表）由 Config.useMap(id) 换（服务器、客户端换地图时都调）
-Config.Map = "sands"   -- 只剩沙海（用户 11-24：「全部默认沙海地图吧，登岛那个也删了」）
-Config.MapDefault = "sands"
+-- 用户 11-26「做一个两边带机场的城市地图吧」：默认换成钢城（MapCity.lua）；沙海还在（Map.extra），测试台、Studio 设 MapName 能开
+Config.Map = "city"
+Config.MapDefault = "city"
 -- 选地图投票（用户 11-23：「三张地图改成投票制，进去投票选地图」）：进服在选地图界面投票（能改票）——第一票投出后 time 秒按票数最多的开（平票随机挑），
 --   在场的人都投了就再等 grace 秒（还能改）提前开；没人投：空服几秒、有人不投 MapWaitMax 秒后按 MapDefault 开
 Config.MapVote = { time = 25, grace = 3 }
+-- 匹配（用户 11-26：「点开战先匹配，匹配一分钟后人不够就补人机，两边的人机的车辆要符合我匹配时带的最高权重的载具，跟战雷一样」，WtMatch.lua）：
+--   战雷式对局每一局先是「匹配中」（Round.lua 的 queue 阶段）——有人点「开战」起算 wait 秒，到点或者真人凑满两队（2 × Wt.teamSize）就开打；
+--   人不够一队 Wt.teamSize 的电脑开车补满（AIVeh.lua），电脑的车按匹配进来的人阵容里最高的战斗等级挑（Tech.lua treePickAi）；已经在打的一局点开战直接加入
+Config.Match = { on = true, wait = 60 }
 
 ---------------------------------------------------------------- 回合
 
@@ -44,6 +49,14 @@ Config.Stages = {   -- 用户：同一时间只开一个交战区（像 Battlefi
 --   沙漠风暴是征服模式（Round.lua conquest：据点一直都开着），阶段表不用、留岛上的
 Config.StagesByMap = {
   island = Config.Stages,
+  -- 钢城（突破那一种任务：攻方从南边打，A 钢厂 → B 公园 → C 中央广场 → D 火车站 → E 电视塔；统治、征服见 Round.lua 的 MISSIONS）
+  city = {
+    { id = "factory", points = { "A" }, time = 6 * 60 },
+    { id = "park", points = { "B" }, time = 6 * 60 },
+    { id = "square", points = { "C" }, time = 6 * 60 },
+    { id = "station", points = { "D" }, time = 6 * 60 },
+    { id = "tower", points = { "E" }, time = 7 * 60 },
+  },
   sands = {
     { id = "border", points = { "A" }, time = 6 * 60 },     -- 第一阶段：越过沙墙和反坦克壕，拿下边境哨所
     { id = "oil", points = { "B" }, time = 6 * 60 },        -- 第二阶段：油田（油井在烧）
@@ -53,10 +66,10 @@ Config.StagesByMap = {
   },
 }
 function Config.useMap(id)
-  Config.Map = id or "sands"
-  Config.Stages = Config.StagesByMap[Config.Map] or Config.StagesByMap.sands
+  Config.Map = id or "city"
+  Config.Stages = Config.StagesByMap[Config.Map] or Config.StagesByMap.city
 end
-Config.useMap("sands")
+Config.useMap("city")
 Config.FirstWave = 45   -- 只有第一波坐登陆艇抢滩：开战后这么多秒以内还能上艇，之后攻方在攻击出发阵地出生（Round.lua）
 -- 攻方兵力（门票）：攻方每阵亡一个（真人、机器人都算）扣 1，扣光了守方赢；打下一个阶段、拿下侧翼据点补兵力；人多的服多给一点
 Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraCap = 60 }   -- extraCap：阶段里拿下一个点（还没打完这一阶段）加多少秒
@@ -65,7 +78,9 @@ Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraC
 --   一圈 day + dusk + night + dawn 分钟（白天 7:00～17:00、黄昏 17:00～19:30、夜里 19:30～次日 4:30、清晨 4:30～7:00），跨局接着走；
 --   start 开服时几点（下午：进去两分钟就能看到日落、五分钟入夜）；PvE 关卡按自己的 clock 开局，fixed 的钉死（夜战关卡）
 --   （D 11-25 同时做过一版 period 的，合并时用 B 的 DayClock；D 的 Night.lua 天黑提示开夜视、天亮收起、白天关地图上的灯照样用 G.isNight / G.dayK）
-Config.DayNight = { lockNight = false, clock = 2.3, day = 14, dusk = 3, night = 12, dawn = 3, start = 15.5 }
+--   用户 11-26：「所有地图开局默认白天吧，然后一天 48 分钟这样」——一圈 28 + 4 + 12 + 4 = 48 分钟（白天 10 个钟头走 28 分钟），
+--   perRound：每局开局都拨回 start 点（早上 8 点，打满 30 分钟的一局到黄昏才天黑）；PvE 关卡照旧按关卡自己的钟点（Pve.lua 在开局之后改）
+Config.DayNight = { lockNight = false, clock = 2.3, day = 28, dusk = 4, night = 12, dawn = 4, start = 8.0, perRound = true }
 Config.RallyBack = 200   -- 守方集结点：据点后面多远（格，150～250），守方在这里出生（用户：出生点跟着战线走）
 Config.StageOff = 260    -- 攻方攻击出发阵地：据点往攻方来的方向多远（格，200～300），第一波以后攻方在这里出生（Round.lua）
 
@@ -305,37 +320,37 @@ Config.Pve = {
   --   ids 只从这几型里挑（不给就从这一方能开的里挑：友军里有 T-90M、BMP-3 这些俄系）；简报写在 Lang 的 pve.b<关号>
   -- clock 开局几点（用户 11-25 要了昼夜更替：每关自己定时间，像战雷的任务那样；DayClock.lua）、fixed 钉死不走（夜袭镇子、夜幕坦克战一直是夜里）
   levels = {
-    { map = "sands", clock = 8.5, caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
-    { map = "sands", clock = 10.0, caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
-    { map = "sands", clock = 23.5, fixed = true, caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true,
+    { map = "city", clock = 8.5, caps = 1, enemies = 10, allies = 5, skill = 0.6, reward = 300 },
+    { map = "city", clock = 10.0, caps = 2, enemies = 14, allies = 5, skill = 0.75, reward = 450 },
+    { map = "city", clock = 23.5, fixed = true, caps = 3, enemies = 18, allies = 5, skill = 0.9, reward = 650, aiVeh = true,
       ai = { def = { max = 2, tank = 0, ids = { "m2a3", "jltv", "hmmwv" } }, atk = { max = 1, tank = 0 } } },
     -- 第 4、6、8 关原来在沙漠风暴（打光兵力）、第 1、2、3、5、7、11、14 关原来在岛上；11-24 用户把两张图都删了（「全部默认沙海地图吧，登岛那个也删了」）：
     --   十六关都在沙海、按据点算（沙海 A～E 五个阶段各一个据点，caps 最多 5）
-    { map = "sands", clock = 6.0, caps = 2, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true,
+    { map = "city", clock = 6.0, caps = 2, enemies = 16, allies = 6, skill = 0.85, reward = 800, aiVeh = true,
       ai = { def = { max = 2, tank = 0.5 }, atk = { max = 2, tank = 0.5 } } },
-    { map = "sands", clock = 14.5, caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true,
+    { map = "city", clock = 14.5, caps = 4, enemies = 22, allies = 5, skill = 1.0, reward = 1000, aiVeh = true,
       ai = { def = { max = 3, tank = 0.67, ids = { "m1a1", "m2a3" } }, atk = { max = 2 } } },
-    { map = "sands", clock = 11.5, caps = 3, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true,
+    { map = "city", clock = 11.5, caps = 3, enemies = 22, allies = 6, skill = 1.1, reward = 1300, aiVeh = true,
       ai = { def = { max = 4, tank = 1, ids = { "m1a1", "m1a2" } }, atk = { max = 3, tank = 1, ids = { "t90m", "ztz99a" } } } },
-    { map = "sands", clock = 16.2, caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true,
+    { map = "city", clock = 16.2, caps = 5, enemies = 26, allies = 6, skill = 1.2, reward = 1700, aiVeh = true,
       ai = { def = { max = 3 }, atk = { max = 2 } } },
-    { map = "sands", clock = 13.0, caps = 5, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true,
+    { map = "city", clock = 13.0, caps = 5, enemies = 30, allies = 6, skill = 1.35, reward = 2500, aiVeh = true,
       ai = { def = { max = 4, tank = 0.75, ids = { "m1a2", "m1a1", "m2a3" } }, atk = { max = 3, ids = { "t90m", "ztz99a", "ztz96" } } } },
     -- 第 9～16 关（11-24 加）：沙海（突破，五个阶段）也有关卡；坦克战、机械化步兵、海岸防线、夜幕坦克战……
-    { map = "sands", clock = 5.2, caps = 2, enemies = 20, allies = 6, skill = 1.0, reward = 1500, aiVeh = true,
+    { map = "city", clock = 5.2, caps = 2, enemies = 20, allies = 6, skill = 1.0, reward = 1500, aiVeh = true,
       ai = { def = { max = 2, tank = 0.3, ids = { "m2a3", "jltv", "m1a1" } }, atk = { max = 2, tank = 0.5, ids = { "ztz96", "m2a3" } } } },
-    { map = "sands", clock = 9.0, caps = 3, enemies = 26, allies = 6, skill = 1.2, reward = 1600 },
-    { map = "sands", clock = 17.2, caps = 3, enemies = 26, allies = 6, skill = 1.25, reward = 1800, aiVeh = true,
+    { map = "city", clock = 9.0, caps = 3, enemies = 26, allies = 6, skill = 1.2, reward = 1600 },
+    { map = "city", clock = 17.2, caps = 3, enemies = 26, allies = 6, skill = 1.25, reward = 1800, aiVeh = true,
       ai = { def = { max = 3, tank = 0.5, ids = { "m1a2", "m2a3", "jltv" } }, atk = { max = 2, ids = { "t90m", "ztz99a" } } } },
-    { map = "sands", clock = 7.5, caps = 4, enemies = 26, allies = 7, skill = 1.3, reward = 2200, aiVeh = true,
+    { map = "city", clock = 7.5, caps = 4, enemies = 26, allies = 7, skill = 1.3, reward = 2200, aiVeh = true,
       ai = { def = { max = 3, tank = 0.67 }, atk = { max = 3, tank = 0.67 } } },
-    { map = "sands", clock = 1.0, fixed = true, caps = 4, enemies = 24, allies = 6, skill = 1.35, reward = 2600, aiVeh = true,
+    { map = "city", clock = 1.0, fixed = true, caps = 4, enemies = 24, allies = 6, skill = 1.35, reward = 2600, aiVeh = true,
       ai = { def = { max = 5, tank = 1, ids = { "m1a2", "m1a1" } }, atk = { max = 4, tank = 1, ids = { "t90m", "ztz99a", "ztz96" } } } },
-    { map = "sands", clock = 4.8, caps = 5, enemies = 30, allies = 6, skill = 1.4, reward = 3000, aiVeh = true,
+    { map = "city", clock = 4.8, caps = 5, enemies = 30, allies = 6, skill = 1.4, reward = 3000, aiVeh = true,
       ai = { def = { max = 4, tank = 0.5 }, atk = { max = 3 } } },
-    { map = "sands", clock = 15.0, caps = 5, enemies = 32, allies = 7, skill = 1.45, reward = 3400, aiVeh = true,
+    { map = "city", clock = 15.0, caps = 5, enemies = 32, allies = 7, skill = 1.45, reward = 3400, aiVeh = true,
       ai = { def = { max = 4, tank = 0.75, ids = { "m1a2", "m1a1", "m2a3" } }, atk = { max = 3, ids = { "t90m", "ztz96", "ztz99a" } } } },
-    { map = "sands", clock = 18.2, caps = 5, enemies = 36, allies = 7, skill = 1.6, reward = 4000, aiVeh = true,
+    { map = "city", clock = 18.2, caps = 5, enemies = 36, allies = 7, skill = 1.6, reward = 4000, aiVeh = true,
       ai = { def = { max = 5, tank = 0.7 }, atk = { max = 4, tank = 0.7 } } },
   },
 }
@@ -356,7 +371,7 @@ Config.WtVoice = { off = false, voiceId = "1", volume = 1.4 }
 --   （用户 11-25：「除了m1a1和a2 其他载具不要做第一人称模式」）；only = nil 就全开（测试内饰的老测试用）
 Config.FirstPerson = { only = { m1a1 = true, m1a2 = true } }
 Config.Wt = { on = true, noInfantry = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, lineupAir = 2, backup = 1, rise = 0.25,   -- lineupAir：阵容里飞行单位最多几个（用户 11-25）
-  br0 = 4.0, brUp = 1.0, teamSize = 8, aiMax = 5,
+  br0 = 4.0, brUp = 1.0, teamSize = 8, aiMax = 8,   -- aiMax 原来 5：用户 11-26「人不够就补人机」——每队补满 teamSize（AIVeh.lua）
   -- 三种模式（机库里投票，准备阶段按票数，开战定住；Tech.lua）：ab 街机（敌人都标、飞机空中出生）、rb 历史（只标近处看得见的）、
   --   sb 全真（不标、只能第一人称）；研究点、乘员经验按 modeK 乘
   mode0 = "rb", modeK = { ab = 1, rb = 1.3, sb = 1.6 }, airSpawnH = 1200,

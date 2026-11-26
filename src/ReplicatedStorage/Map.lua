@@ -571,18 +571,22 @@ end
 --   Map.use(id)：把那张图的字段、函数就地换进 Map 表（各模块手里拿着的 Map 表不用重新 require）；服务器开服时定一张（init.server.lua 等第一个玩家选），
 --   客户端看 ReplicatedStorage 的 MapId 属性跟着换（init.client.lua）
 Map.id = "island"
-Map.ids = { "sands" }   -- 用户 11-24：「沙漠风暴删掉」「全部默认沙海地图吧，登岛那个也删了」——只剩沙海
+-- 用户 11-24：「沙漠风暴删掉」「全部默认沙海地图吧，登岛那个也删了」——只剩沙海；11-26：「改地图……这个图不适合对抗」「做一个两边带机场的城市地图吧」——
+--   换成「钢城」（MapCity）：开服直接建（只有一张就不用投票），沙海留着（extra：Studio、测试台给 Workspace 设 MapName = "sands" 还能开）
+Map.ids = { "city" }
+Map.extra = { "sands" }
 -- 选地图界面（MapPick.lua）用的：尺寸（公里）、模式
 Map.info = {
+  city = { km = 6.2, mode = "assault", sea = false },    -- 「钢城」（MapCity）：两边基地带跑道，中间一座城，据点 A～E
   sands = { km = 27.8, mode = "assault", sea = false },   -- 「沙海」（MapSands）：海湾战争式，五个阶段一个一个打
 }
-local KEEP = { use = true, profile = true, ids = true, id = true, info = true, clamp = true, smooth = true, lerp = true, lineClear = true, rayGround = true }
+local KEEP = { use = true, profile = true, ids = true, extra = true, id = true, info = true, clamp = true, smooth = true, lerp = true, rayGround = true }
 local PROFILES = { island = {} }
 for k, v in pairs(Map) do
   if not KEEP[k] then PROFILES.island[k] = v end
 end
 function Map.profile(id)
-  if not table.find(Map.ids, id) then return nil end   -- 不在列表里的不载（删掉的岛、沙漠风暴：只换脚本的地点里 MapDesert 模块可能还在）
+  if not table.find(Map.ids, id) and not table.find(Map.extra or {}, id) then return nil end   -- 不在列表里的不载（删掉的岛、沙漠风暴：只换脚本的地点里 MapDesert 模块可能还在）
   if PROFILES[id] == nil then
     local ok, mod = pcall(function()
       local name = "Map" .. string.upper(string.sub(id, 1, 1)) .. string.sub(id, 2)
@@ -611,7 +615,7 @@ function Map.use(id)
   return true
 end
 
--- 只剩沙海（用户 11-24）：一载入就换成沙海——各模块 require 到的 Map 一开始就是沙海（上面岛图的数学还在 PROFILES.island 里，不再用）
-Map.use("sands")
+-- 一载入就换成默认那张（11-26 起是钢城）——各模块 require 到的 Map 一开始就是它（上面岛图的数学还在 PROFILES.island 里，不再用）
+Map.use("city")
 
 return Map

@@ -526,11 +526,22 @@ function Tech.init(G)
     local R = G.round
     local n = R and R.n or 0
     if roundBr and lockN == n then return roundBr end
-    local best = 0
+    -- 用户 11-26「两边的人机的车辆要符合我匹配时带的最高权重的载具」：匹配中按排着的人、开打以后按匹配进来 / 加入了的人（P.match）的阵容算，
+    --   没有这样的人才看在线的所有人
+    local best, anyIn = 0, false
     for _, P in pairs(G.P) do
-      if P.pl and P.data then
+      if P.pl and P.data and (P.queued or (R and P.match == n)) then
+        anyIn = true
         local br = TT.lineupBr(G.treeLineup(P))
         if br > best then best = br end
+      end
+    end
+    if not anyIn then
+      for _, P in pairs(G.P) do
+        if P.pl and P.data then
+          local br = TT.lineupBr(G.treeLineup(P))
+          if br > best then best = br end
+        end
       end
     end
     local v = (best > 0) and best or (W.br0 or 4.0)
@@ -584,7 +595,8 @@ function Tech.init(G)
   -- 电脑开的地面车（AIVeh.lua）：从科技树里挑这一局战斗等级 [BR − brUp, BR] 的；系优先挑队里真人用的那几个，
   --   没有真人按阵营（攻方中、俄，守方美、德、日）；cat：tank / apc（AIVeh 按三成二坦克掷的）；ok(型号)：AI 开得了（坦克 / 步战车、有武器）
   local TEAM_NAT = { atk = { "cn", "ru" }, def = { "us", "de", "jp" } }
-  function G.treePickAi(team, cat, ok)
+  -- alt：另一类（这一类在窄窗口里没有车，先拿另一类窄窗口里的，不先放宽——用户 11-26「人机的车辆要符合我匹配时带的最高权重的载具」）
+  function G.treePickAi(team, cat, ok, alt)
     local br = G.treeRoundBr()
     local nats, seen = {}, {}
     for _, P in pairs(G.P) do
@@ -592,15 +604,18 @@ function Tech.init(G)
       if t and t.nat and not seen[t.nat] then seen[t.nat] = true table.insert(nats, t.nat) end
     end
     if #nats == 0 then nats = TEAM_NAT[team] or TEAM_NAT.atk end
-    for _, span in ipairs({ W.brUp or 1.0, 2.0, 99 }) do   -- 窗口里没有就放宽
-      local cand = {}
-      for _, nat in ipairs(nats) do
-        for _, it in ipairs(TT.list[nat].ground) do
-          local d = VD.get(it.play)
-          if d and d.cat == cat and (not ok or ok(it.play)) and it.br <= br + 0.05 and it.br >= br - span - 0.05 then table.insert(cand, it) end
+    -- 先挑跟本局战斗等级差不多的（BR − 0.4 ～ BR，用户 11-26「人机的车辆要符合我匹配时带的最高权重的载具」），没有再放宽到 brUp、2、不限
+    for _, span in ipairs({ 0.4, W.brUp or 1.0, 2.0, 99 }) do
+      for _, c in ipairs(alt and { cat, alt } or { cat }) do
+        local cand = {}
+        for _, nat in ipairs(nats) do
+          for _, it in ipairs(TT.list[nat].ground) do
+            local d = VD.get(it.play)
+            if d and d.cat == c and (not ok or ok(it.play)) and it.br <= br + 0.05 and it.br >= br - span - 0.05 then table.insert(cand, it) end
+          end
         end
+        if #cand > 0 then return cand[math.random(#cand)] end
       end
-      if #cand > 0 then return cand[math.random(#cand)] end
     end
     return nil
   end
@@ -906,7 +921,22 @@ function Tech.init(G)
   G.on("left", function(P) testClean(P) end)
 
   -- 出击：key 是阵容里的一辆；人还没出生就先按出击把人生出来，生出来以后（Round.lua 的 P.after）摆车、坐进去
+  -- 匹配中排队前查（WtMatch.lua ACT.matchJoin）：买下了、在出击阵容里（战斗等级按排着的人定，不在这里拦）
+  function G.treeCanQueue(P, key)
+    local t = T(P)
+    local it = type(key) == "string" and TT.byKey[key]
+    if not t or not it then return false end
+    if not TT.owned(t, key) then G.msg(P.pl, "bad", "tree.notOwned") return false end
+    for _, k in ipairs(G.treeLineup(P)) do if k == key then return true end end
+    G.msg(P.pl, "bad", "tree.notInLineup")
+    return false
+  end
   G.ACT.deployVeh = function(P, key)
+    local R0 = G.round
+    if R0 and R0.phase == "queue" and G.matchOn and G.matchOn() and not P.testDeploy then   -- 还在匹配：先排上（用户 11-26「点开战先匹配」）
+      if G.ACT.matchJoin then G.ACT.matchJoin(P, key) end
+      return
+    end
     local t = T(P)
     local it = type(key) == "string" and TT.byKey[key]
     if not t or not it then return end
@@ -929,6 +959,7 @@ function Tech.init(G)
     local okSp = not G.wtSpawnOk or G.wtSpawnOk(P, vid, kind)
     P.wtKey = nil
     if not okSp then return end
+    if R0 and (R0.phase == "prep" or R0.phase == "battle") then P.match = R0.n end   -- 这一局真打的人（AIVeh 按每队的人数补电脑车）
     local function go()
       if not P.alive or not P.char or P.vehicle then return end
       -- 人挪到召唤台边上（召唤台按「人在终端旁边」查），再按召唤台生成、坐进去

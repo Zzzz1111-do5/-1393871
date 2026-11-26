@@ -128,6 +128,14 @@ end
 
 function Flora.cell(cx, cz, layer)
   if Map.DESERT then return desertCell(cx, cz, layer) end
+  -- 钢城（用户 11-26「要有可以撞倒的树」）：树按 Map.TREES 摆（服务器、客户端同一张表，谁撞倒了哪一棵按编号同步，Trees.lua）；
+  --   平地（城、郊区、农田、基地）上不撒石头、灌木、草丛，城外丘陵照旧撒石头
+  if Map.CITY then
+    if layer == "tree" then return Map.treesInCell(cx, cz) end
+    if layer ~= "rock" then return {} end
+    local x, z = cx * CELL, cz * CELL
+    if math.abs(x) < (Map.FLATX or 0) + CELL and math.abs(z) < (Map.FLATZ or 0) + CELL then return {} end
+  end
   local out = {}
   local step = Flora.LAYERS[layer]
   local R = rng(cx, cz, SALT[layer])

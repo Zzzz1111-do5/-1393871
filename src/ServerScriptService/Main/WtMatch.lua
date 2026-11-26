@@ -469,6 +469,79 @@ function WtMatch.init(G)
     if type(arg) ~= "string" or #arg > 6 then arg = nil end
     toTeam(P, { op = "wtRadio", k = k, arg = arg, p = okPos(pos) and pos or nil, from = P.pl.DisplayName })
   end
+
+  ---------------------------------------------------------------- 匹配（用户 11-26：「点开战先匹配，匹配一分钟后人不够就补人机，两边的人机的车辆要符合我匹配时带的
+  --   最高权重的载具，跟战雷一样，人机的分数也要出现在记分板」）
+  --   一局打完回机库，下一局先是「匹配中」（Round.lua 的 queue 阶段：世界照旧在，机库、试驾照常用）：
+  --   有人点「开战」（ACT.matchJoin，带着选中的那一辆）就起算 Config.Match.wait 秒；到点、或者真人凑满两队（2 × Wt.teamSize）就开这一局（准备阶段）——
+  --   点过开战的人自动坐进点的那一辆出现在自己基地；没点的照旧在机库，打起来以后再点「加入战斗」直接进（Tech.lua deployVeh：顶替电脑，电脑车被毁后不再补）。
+  --   这一局真打的人记 P.match = 局号：AIVeh.lua 按每队真打的人数补电脑车（补到 teamSize），Tech.lua 的本局战斗等级只看匹配进来的人的阵容（阵容里最高的那辆）
+  local MC = Config.Match or {}
+  function G.matchOn() return MC.on ~= false and on() and not G.matchOff and not G.allowInfantry end
+  local function queuedList()
+    local out = {}
+    for _, P in pairs(G.P) do
+      if P.queued and P.pl and P.pl.Parent then table.insert(out, P) end
+    end
+    return out
+  end
+  G.matchQueued = queuedList   -- 测试用
+  local function full() return 2 * (W.teamSize or 8) end
+  -- 发给客户端（Round.lua common）：排了几个人、还剩几秒（第一个人点了开战才起算）
+  function G.queueState()
+    local R = G.round
+    if not R or R.phase ~= "queue" then return nil end
+    return { n = #queuedList(), need = full(), left = R.queueEnds and math.max(0, math.ceil(R.queueEnds - now())) or nil, wait = MC.wait or 60 }
+  end
+  G.ACT.matchJoin = function(P, key)
+    local R = G.round
+    if not R or type(key) ~= "string" then return end
+    if R.phase ~= "queue" then   -- 已经在打（准备 / 战斗）：直接加入
+      if G.ACT.deployVeh then G.ACT.deployVeh(P, key) end
+      return
+    end
+    if G.treeCanQueue and not G.treeCanQueue(P, key) then return end   -- 阵容里没有、没买、超出战斗等级（Tech.lua 自己说原因）
+    P.queued = key
+    if not R.queueEnds then R.queueEnds = now() + (MC.wait or 60) end
+    G.pushAll()
+  end
+  G.ACT.matchCancel = function(P)
+    if not P.queued then return end
+    P.queued = nil
+    G.pushAll()
+  end
+  -- 匹配够了没有（Round.lua 每步问）：没人排了就停表（下一个人点了重新起算）
+  function G.queueStep(t)
+    local R = G.round
+    local n = #queuedList()
+    if n == 0 then R.queueEnds = nil return false end
+    if n >= full() then return true end
+    return R.queueEnds ~= nil and t >= R.queueEnds
+  end
+  -- 匹配到了：排着的人都算这一局的，坐进自己点的那一辆（准备阶段第一辆免费，同战雷）
+  G.on("matchFound", function()
+    local R = G.round
+    for _, P in ipairs(queuedList()) do
+      local key = P.queued
+      P.queued = nil
+      P.match = R.n
+      task.defer(function()
+        if G.P[P.pl] == P and not P.vehicle and G.ACT.deployVeh then G.try("匹配出车", G.ACT.deployVeh, P, key) end
+      end)
+    end
+    if G.treeRoundBr then pcall(G.treeRoundBr) end
+    G.msgAll("center", "match.found")
+  end)
+  G.on("left", function(P) P.queued = nil end)
+  -- 这一队这一局真打的人（匹配进来的、半路加入的；坐在车里的、活着的也算）——电脑补到 teamSize 时扣掉他们（AIVeh.lua）
+  function G.matchPlayers(team)
+    local R = G.round
+    local n = 0
+    for _, Q in pairs(G.P) do
+      if Q.team == team and Q.pl and Q.pl.Parent and ((R and Q.match == R.n) or Q.vehicle or Q.alive) then n += 1 end
+    end
+    return n
+  end
 end
 
 return WtMatch

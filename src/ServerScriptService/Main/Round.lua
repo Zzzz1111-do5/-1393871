@@ -771,7 +771,7 @@ function Round.init(G)
   -- 部署：装备栏（{ primary, launcher, gadget, throw }；老的兵种名也认）和出生点
   -- after：生出来以后接着做的（只有服务器自己调的时候给：科技树出击 Tech.lua 用它把人塞进车里；客户端发过来的参数里不会有函数）
   function G.ACT.deploy(P, choice, spawnId, after)
-    if R.phase ~= "battle" and R.phase ~= "prep" then return end
+    if R.phase ~= "battle" and R.phase ~= "prep" and not (R.phase == "queue" and P.testDeploy) then return end   -- 匹配中只能试驾（Tech.lua 置 P.testDeploy）
     if P.alive or now() < (P.canDeployAt or 0) then return end
     -- 战雷式（Config.Wt.noInfantry）：不能当步兵出去，只能从机库的出击阵容里挑车（Tech.lua deployVeh 自己调这里、带 after）
     if (Config.Wt or {}).noInfantry and type(after) ~= "function" and not G.allowInfantry then
@@ -1167,11 +1167,25 @@ function Round.init(G)
     R.phase = "prep"
     R.t0 = now()
     R.prepEnds = now() + RC.prep
+    R.queueEnds = nil
+    -- 匹配（用户 11-26「点开战先匹配，匹配一分钟后人不够就补人机」，WtMatch.lua）：战雷式对局先是「匹配中」，有人点开战起算一分钟，到点开准备阶段
+    if G.matchOn and G.matchOn() then R.phase = "queue" end
     R.winner = nil
     R.stage, R.stageAt, R.overtimeEnds = 1, now(), nil
-    -- 昼夜：跨局接着走（用户 11-25 昼夜更替；开服时 World.lighting 记了 DayT0，PvE 关卡开局按自己的钟点改，Pve.lua）
+    -- 昼夜（用户 11-25 昼夜更替；开服时 World.lighting 记了 DayT0）：用户 11-26「所有地图开局默认白天」——每局开局拨回 Config.DayNight.start（早上），
+    --   之后照 48 分钟一天往下走；PvE 关卡（G.pve）照关卡自己的钟点（Pve.lua 的 apply 在开局前后改 DayT0 / DayFix），这里不动
+    do
+      local DN = Config.DayNight or {}
+      if DN.perRound and not DN.lockNight and not G.pve then
+        pcall(function()
+          local DC = require(game:GetService("ReplicatedStorage"):WaitForChild("DayClock"))
+          workspace:SetAttribute("DayFix", nil)
+          workspace:SetAttribute("DayT0", DC.t0For(DN.start or 8))
+        end)
+      end
+    end
     -- ⑱ 这一局的任务：战雷式纯载具对战、沙海上按 突破 → 统治 → 征服 轮着来
-    if G.wtGroundOnly and G.wtGroundOnly() and Map.id == "sands" then
+    if G.wtGroundOnly and G.wtGroundOnly() and (Map.id == "sands" or Map.id == "city") then
       R.missionI = ((R.missionI or 0) % #MISSIONS) + 1
       R.mission = MISSIONS[R.missionI]
     else
@@ -1251,7 +1265,14 @@ function Round.init(G)
 
   function G.roundStep(dt)
     local t = now()
-    if R.phase == "prep" then
+    if R.phase == "queue" then   -- 匹配中：匹配够了（WtMatch.lua 的 queueStep）开准备阶段，排着的人坐进自己点的车
+      if G.queueStep and G.queueStep(t) then
+        R.phase = "prep"
+        R.t0, R.prepEnds = t, t + RC.prep
+        G.emit("matchFound")
+        G.pushAll()
+      end
+    elseif R.phase == "prep" then
       if t >= R.prepEnds then startBattle() end
     elseif R.phase == "battle" then
       capStep(dt)
@@ -1301,12 +1322,14 @@ function Round.init(G)
       table.insert(list, row)
     end
     if G.botBoard then for _, b in ipairs(G.botBoard()) do table.insert(list, b) end end
+    if G.aiBoard then for _, b in ipairs(G.aiBoard()) do table.insert(list, b) end end   -- 电脑开的车（用户 11-26「人机的分数也要出现在记分板」，AIVeh.lua）
     return list
   end
   local function common()
     local t = now()
     local left = 0
-    if R.phase == "prep" then left = R.prepEnds - t elseif R.phase == "battle" then left = R.endsAt - t elseif R.phase == "end" then left = R.nextAt - t end
+    if R.phase == "prep" then left = R.prepEnds - t elseif R.phase == "battle" then left = R.endsAt - t elseif R.phase == "end" then left = R.nextAt - t
+    elseif R.phase == "queue" then left = R.queueEnds and (R.queueEnds - t) or 0 end
     return {
       phase = R.phase, left = math.max(0, math.floor(left + 0.5)), ot = R.overtimeEnds and math.max(0, math.floor(R.overtimeEnds - t + 0.5)) or nil,
       points = pointsState(), nAtk = teamCount("atk"), nDef = teamCount("def"), winner = R.winner, mvp = R.mvp, round = R.n,
@@ -1318,6 +1341,7 @@ function Round.init(G)
       pve = G.pve and G.pve.n or nil,   -- PvE 关卡：第几关（Pve.lua）
       mapReady = G.worldReady == true,
       vote = G.mapVoteState and G.mapVoteState() or nil,   -- 还在投票：{ n = 各张票数, left = 还剩几秒（第一票投出后才有）, voters, players }
+      queue = G.queueState and G.queueState() or nil,   -- 匹配中：{ n 排了几个人, need 凑满几个, left 还剩几秒, wait }（WtMatch.lua）
     }
   end
   local function personal(P, C)
@@ -1325,6 +1349,7 @@ function Round.init(G)
     C.team = P.team
     C.round = R.n
     C.picked = P.picked == true
+    C.queued = P.queued   -- 匹配中：自己排着的那一辆（科技树的键；没排是 nil）
     C.myVote = (not G.mapId and G.mapVotes and G.mapVotes[P.pl]) or nil   -- 自己投的哪张（选地图界面高亮）
     C.rAtk, C.rDef = teamCount("atk", true), teamCount("def", true)   -- 选阵营界面：两边各有几个真人、能不能进
     C.canAtk, C.canDef = canJoin(P, "atk"), canJoin(P, "def")

@@ -55,7 +55,11 @@ function Scenery.init(G)
       local f = META[k .. "_f"] and (k .. "_f") or FAR_PROXY[k]
       if f then return (d < D.far) and f or nil end
       return (d < D.broad) and k or nil
-    elseif kind == "broad" or kind == "dead" then return (d < D.broad) and k or nil
+    elseif kind == "broad" or kind == "dead" then
+      if d < D.broad then return k end
+      -- 钢城的树（撞得倒的那些，Map.TREES）：阔叶树没有作者给的远景版本，再远到 D.far 的八成画一棵零件拼的（树干 + 一团树冠），远处的林子、行道树不会一下没了
+      if kind == "broad" and G.Map and G.Map.TREES and d < D.far * 0.8 then return "broad_p" end
+      return nil
     elseif kind == "bush" or kind == "log" then return (d < D.bush) and k or nil
     elseif kind == "rock" or kind == "outcrop" then return (d < D.rock) and k or nil
     elseif kind == "grass" then return (d < D.grass) and k or nil
@@ -164,7 +168,13 @@ function Scenery.init(G)
   local function template(k)
     local t = templates[k]
     if t == nil then
-      t = fromImport(k) or fallback(k)
+      if k == "broad_p" then   -- 远处的阔叶树：树干 + 一团树冠（两块零件）
+        t = {}
+        trunk(t, 24, 1.6)
+        ball(t, 30, V(0, 30, 0), LEAF, Enum.Material.LeafyGrass)
+      else
+        t = fromImport(k) or fallback(k)
+      end
       templates[k] = t
     end
     return t
@@ -175,11 +185,12 @@ function Scenery.init(G)
 
   local pools = {}   -- [键 .. "#" .. 档] = { 实例, … }
   local nLive, nMade = 0, 0
-  local function bucketOf(s) return math.clamp(math.floor((s - 0.85) / 0.15 + 0.5), 0, 2) end
+  -- 同一种按大小分档放进对象池（一档一个缩放）：0.45～1.15 每 0.1 一档（钢城的行道树小，原来最小 0.85 一档，画出来比撞的范围大）
+  local function bucketOf(s) return math.clamp(math.floor((s - 0.45) / 0.1 + 0.5), 0, 7) end
   local function newInst(k, b)
     local t = template(k)
     if not t then return nil end
-    local s = 0.85 + b * 0.15
+    local s = 0.45 + b * 0.1
     local kind = META[k] and META[k].kind or ""
     local shadow = (kind == "conifer" or kind == "broad" or kind == "rock" or kind == "outcrop") and quality >= 7
     local inst = { k = k, b = b, parts = {}, rels = {} }
@@ -225,7 +236,12 @@ function Scenery.init(G)
   local cells = {}   -- [格子键] = { cx, cz, [层] = { 株, … } }
   local function cellKey(cx, cz) return cx * 100003 + cz end
   -- 用户：花草树木删掉——树、灌木、草丛、花丛都不摆了，只留石头；地形自带的草叶后来也去掉了（用户 11-21：直接把草删掉——World.lua 写地形不用 Grass 材质；Terrain.Decoration 脚本改不了）
+  -- 钢城（用户 11-26「要有可以撞倒的树，也可以被打倒」）：树层回来了，只摆 Map.TREES 里的（撞倒、炸倒的按服务器同步的状态画成倒着的）
   local LAYERS = { "rock" }
+  local function layersFor()
+    LAYERS = (G.Map and G.Map.TREES) and { "rock", "tree" } or { "rock" }
+  end
+  layersFor()
   local maxR = 0
   for _, l in ipairs(LAYERS) do maxR = math.max(maxR, LAYER_R[l] or 0) end
 
@@ -334,7 +350,7 @@ function Scenery.init(G)
                   if w then
                     local inst = take(w, it.s)
                     if inst then
-                      queueMove(inst, CF(it.x, it.y, it.z) * CFrame.Angles(0, it.yaw, 0))
+                      queueMove(inst, G.treeItemCF and G.treeItemCF(it) or (CF(it.x, it.y, it.z) * CFrame.Angles(0, it.yaw, 0)))
                       it.inst = inst
                     end
                   end
@@ -386,6 +402,94 @@ function Scenery.init(G)
   end
   G.sceneryUpdate = update
 
+  ---------------------------------------------------------------- 倒下的树（钢城 Map.TREES；服务器 Trees.lua 记谁倒了、往哪边倒）
+  --   服务器发 fx { k = "tree", id, d 往哪边倒（方位角）}：这棵从直立往那边倒下去（1.3 秒，越倒越快，落地弹一下），倒完躺着（枝叶撑着，八十多度）；
+  --   后进来的人按 workspace 属性 TreesDown（"编号:方位角度数,…"）直接摆成倒着的；fx treeReset（新一局）全部立回去。
+  --   自己开的车撞上（Drive.lua 调 G.treeKnock）：先在本地倒（不等服务器，撞上那一下就倒），再告诉服务器
+  local down = {}        -- [编号] = { yaw = 往哪边倒（弧度，0 朝 +Z）, t0 = 开始倒的时刻（os.clock）}
+  local falling = {}     -- 正在倒的（每帧挪）
+  local FALL_T, LIE = 1.3, math.rad(84)
+  local function fallAngle(dn)
+    local u = (os.clock() - dn.t0) / FALL_T
+    if u >= 1 then
+      local b = u - 1   -- 落地弹一下
+      if b < 0.35 then return LIE - math.sin(b / 0.35 * math.pi) * math.rad(5) end
+      return LIE
+    end
+    return LIE * u * u   -- 越倒越快
+  end
+  local UPV = V(0, 1, 0)
+  function G.treeItemCF(it)
+    local base = CF(it.x, it.y, it.z)
+    local dn = it.id and down[it.id]
+    if not dn then return base * CFrame.Angles(0, it.yaw, 0) end
+    local dir = V(math.sin(dn.yaw), 0, math.cos(dn.yaw))
+    local axis = UPV:Cross(dir)   -- 绕它转：树顶往 dir 那边倒
+    return base * CFrame.fromAxisAngle(axis, fallAngle(dn)) * CFrame.Angles(0, it.yaw, 0)
+  end
+  function G.treeIsDown(id) return down[id] ~= nil end
+  local function fall(id, yaw, animate)
+    local M = G.Map
+    local t = M and M.TREES and M.TREES[id]
+    if not t or down[id] then return end
+    down[id] = { yaw = yaw, t0 = animate and os.clock() or (os.clock() - 10) }
+    if animate then
+      falling[id] = t
+      if G.sfx then G.sfx("treeFall", V(t.x, t.y + 4, t.z), { rmax = 700 }) end
+    elseif t.inst then
+      queueMove(t.inst, G.treeItemCF(t))
+    end
+  end
+  -- 自己的车撞上：本地先倒，再告诉服务器（服务器看车在不在旁边，认了就广播给所有人）
+  function G.treeKnock(t, dir, why)
+    if not t or down[t.id] then return end
+    local yaw = math.atan2(dir.X, dir.Z)
+    fall(t.id, yaw, true)
+    pcall(function() G.R.Act:FireServer("treeHit", t.id, dir.X, dir.Z) end)
+    local _ = why
+  end
+  function G.onTreeFx(e)
+    if e.k == "treeReset" then
+      table.clear(falling)
+      local M = G.Map
+      for id in pairs(down) do
+        down[id] = nil
+        local t = M and M.TREES and M.TREES[id]
+        if t and t.inst then queueMove(t.inst, G.treeItemCF(t)) end
+      end
+    elseif type(e.id) == "number" and type(e.d) == "number" then
+      fall(e.id, e.d, true)
+    end
+  end
+  -- 后进来的、漏了消息的：按属性补上（直接倒着摆，不播动画）
+  local function syncAttr()
+    local str = workspace:GetAttribute("TreesDown")
+    if type(str) ~= "string" then return end
+    for id, deg in string.gmatch(str, "(%d+):(%-?%d+)") do
+      local n = tonumber(id)
+      if n and not down[n] then fall(n, math.rad(tonumber(deg) or 0), false) end
+    end
+  end
+  workspace:GetAttributeChangedSignal("TreesDown"):Connect(function() pcall(syncAttr) end)
+  task.defer(function() pcall(syncAttr) end)
+  local function stepFalls()
+    if next(falling) == nil then return end
+    for id, t in pairs(falling) do
+      local dn = down[id]
+      if not dn then falling[id] = nil
+      else
+        if t.inst then queueMove(t.inst, G.treeItemCF(t)) end
+        if os.clock() - dn.t0 > FALL_T + 0.5 then falling[id] = nil end
+      end
+    end
+    if #moveP > 0 then
+      workspace:BulkMoveTo(moveP, moveC, Enum.BulkMoveMode.FireCFrameChanged)
+      table.clear(moveP)
+      table.clear(moveC)
+    end
+  end
+  G.treeDownList = function() return down end   -- 测试用
+
   ---------------------------------------------------------------- 远海
   -- 地形的海水只灌到 ±Map.R；再往外是跟着镜头走的一圈平面（11 × 11 块，每块 2048 格，镜头外一万格以上，盖过雾的尽头 8500）：飞到哪都看得到海一直铺到天边，
   --   不用在服务器上摆一大片（用户：海洋过于小了）。块按 2048 的格子对齐，地形海水那一片里的不摆（不和地形水面打架）
@@ -416,14 +520,19 @@ function Scenery.init(G)
   --   沙海（Map.DESERT）也没有海：地形一直写到 ±SEA_R（外面一圈平地），再往外这圈平面是沙地，顶面和平原一样高
   local function oceanStyle()
     local desert = Map.DESERT
+    local far = Map.FAR   -- 钢城：一圈草地（MapCity 的 FAR：颜色、材质、高度）
     RI = math.floor((Map.SEA_R or Map.R or 4096) / OS)
-    SEA_Y = Map.DESERT and ((Map.PLAIN or 12) - 0.5) or -0.6
+    SEA_Y = (far and far.y) or (Map.DESERT and ((Map.PLAIN or 12) - 0.5) or -0.6)
     local sand = (Map.DESERT and Map.COLORS and Map.COLORS.Sand) or RGB(176, 142, 100)
     for _, p in ipairs(tiles) do
-      p.Color = desert and sand or RGB(24, 84, 102)
-      p.Material = desert and Enum.Material.Sand or Enum.Material.SmoothPlastic
-      p.Reflectance = desert and 0 or 0.22
-      p.Name = desert and "FarSand" or "Sea"
+      if far then
+        p.Color, p.Material, p.Reflectance, p.Name = far.color, Enum.Material[far.mat] or Enum.Material.Grass, 0, "FarLand"
+      else
+        p.Color = desert and sand or RGB(24, 84, 102)
+        p.Material = desert and Enum.Material.Sand or Enum.Material.SmoothPlastic
+        p.Reflectance = desert and 0 or 0.22
+        p.Name = desert and "FarSand" or "Sea"
+      end
     end
     seaKey = nil
   end
@@ -473,6 +582,9 @@ function Scenery.init(G)
     G.onMap(function()
       if Flora.reset then Flora.reset() end
       resetCells()
+      layersFor()
+      maxR = 0
+      for _, l in ipairs(LAYERS) do maxR = math.max(maxR, LAYER_R[l] or 0) end
       oceanStyle()
     end)
   end
@@ -480,6 +592,7 @@ function Scenery.init(G)
   -- 每帧：镜头挪了 10 格以上、或者过了 0.3 秒，更新一次（每次最多 4 毫秒算格子、400 处换模型）
   function G.stepScenery(dt)
     stepOcean()
+    stepFalls()
     local pk = G.perfK or 1
     if math.abs(pk - curK) > 0.01 then applyK(pk) end
     timer += dt

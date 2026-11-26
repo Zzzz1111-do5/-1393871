@@ -520,7 +520,15 @@ function TechUI.init(G)
       bb.MouseEnter:Connect(function() if H.goKey then TH.grad(bb, RGB(255, 228, 150), RGB(220, 150, 40)) end end)
       bb.MouseLeave:Connect(function() TH.grad(bb, RGB(255, 214, 120), RGB(200, 132, 30)) end)
       H.goBtn = bb
-      bb.MouseButton1Click:Connect(function() if H.goKey then act("deployVeh", H.goKey) end end)
+      -- 用户 11-26「点开战先匹配」：匹配中点一下排上（带着选中的这一辆）、再点取消；已经打起来了就直接加入（WtMatch.lua）
+      bb.MouseButton1Click:Connect(function()
+        local S = G.S or {}
+        if S.phase == "queue" then
+          if S.queued then act("matchCancel") elseif H.goKey then act("matchJoin", H.goKey) end
+        elseif H.goKey then
+          act("deployVeh", H.goKey)
+        end
+      end)
       H.goT, H.goSub = bt, bs
       -- 这一局（战雷那块「陆战 · 历史性能」）：地图（点了投下一局的图）、阶段和时间、战斗等级
       local MW = mobile and 260 or 330
@@ -1182,14 +1190,31 @@ function TechUI.init(G)
       local S = G.S
       if S then
         local fmt = function(s) s = math.max(0, math.floor(s or 0)) return string.format("%d:%02d", s // 60, s % 60) end
-        H.phaseT.Text = ((S.phase == "prep") and (L("准备阶段 ", "Preparing ") .. fmt(S.left)) or (L("剩余时间 ", "Time left ") .. fmt(S.left)))
-          .. (H.brStr and ("  ·  " .. H.brStr) or "")
+        local Q = S.queue
+        if S.phase == "queue" then   -- 匹配中（用户 11-26）：还剩几秒、排了几个人（人不够补人机）
+          H.phaseT.Text = ((Q and Q.left) and (L("匹配中 ", "Matchmaking ") .. fmt(Q.left) .. "  ·  " .. tostring(Q.n or 0) .. " / " .. tostring(Q.need or 16) .. L(" 人", ""))
+            or L("点「开战」开始匹配", "Press TO BATTLE to queue")) .. (H.brStr and ("  ·  " .. H.brStr) or "")
+        else
+          H.phaseT.Text = ((S.phase == "prep") and (L("准备阶段 ", "Preparing ") .. fmt(S.left)) or (L("剩余时间 ", "Time left ") .. fmt(S.left)))
+            .. (H.brStr and ("  ·  " .. H.brStr) or "")
+        end
         -- 这一局的账（SP、免费那一辆、出过几次）、战斗等级变了：卡片上的「免费 / SP / 备用 / 用完」跟着刷新
         local w = S.wt or {}
         local sig = table.concat({ tostring(S.phase), tostring(w.sp), tostring(w.free), tostring(w.paid), tostring(#(w.order or {})), tostring(workspace:GetAttribute("WtBr")) }, "|")
         if sig ~= lastSig then
           lastSig = sig
           refreshHangar()
+        end
+        -- 主按钮：匹配中是「开战」（排着的时候「取消匹配」+ 倒计时），打起来以后「加入战斗」
+        if S.phase == "queue" then
+          H.goT.Text = S.queued and L("取消匹配", "CANCEL") or L("开战", "TO BATTLE")
+          if S.queued then
+            H.goSub.Text = L("匹配中 ", "Matching ") .. fmt((Q and Q.left) or 0) .. L("  ·  人不够补人机", "  ·  bots fill in")
+            H.goSub.TextColor3 = RGB(60, 42, 14)
+            if H.goBtn then H.goBtn.BackgroundTransparency = 0 end
+          end
+        else
+          H.goT.Text = L("加入战斗", "TO BATTLE")
         end
       end
     end

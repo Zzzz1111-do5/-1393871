@@ -1,0 +1,109 @@
+[
+ {
+  "key": "panel9",
+  "file": "panel9.glb",
+  "h": 28,
+  "tris": 16000,
+  "name": "九层板楼",
+  "title": "LOW POLY - SOVIET APARTMENT BUILDING 8K",
+  "author": "Colin.Greenall",
+  "url": "https://sketchfab.com/models/05229ac1d1f94e6c8cacaad91110c602",
+  "uid": "05229ac1d1f94e6c8cacaad91110c602"
+ },
+ {
+  "key": "panel5",
+  "file": "panel5.glb",
+  "h": 17,
+  "tris": 19000,
+  "name": "五层板楼",
+  "title": "Soviet Panel Brutal building (Baked)",
+  "author": "narighillya",
+  "url": "https://sketchfab.com/models/deb2133873534b8ebec4c97e5c7f6c3b",
+  "uid": "deb2133873534b8ebec4c97e5c7f6c3b"
+ },
+ {
+  "key": "stalin",
+  "file": "stalin.glb",
+  "tris": 16000,
+  "name": "老式住宅楼",
+  "title": "Soviet building from the Stalin era",
+  "author": "VovaRice",
+  "url": "https://sketchfab.com/models/2dcb233ae2fb44b089871c2169a09648",
+  "uid": "2dcb233ae2fb44b089871c2169a09648"
+ },
+ {
+  "key": "brick3",
+  "file": "brick3.glb",
+  "tris": 16000,
+  "name": "三层砖楼",
+  "title": "Soviet brick apartment building",
+  "author": "VovaRice",
+  "url": "https://sketchfab.com/models/f1e2390239c347a4b0128ce6b5c06810",
+  "uid": "f1e2390239c347a4b0128ce6b5c06810"
+ },
+ {
+  "key": "khrush",
+  "file": "khrush.glb",
+  "tris": 16000,
+  "name": "两层小楼",
+  "title": "Small Soviet Apartment Building - Khrushchevka",
+  "author": "AnatolApsik",
+  "url": "https://sketchfab.com/models/feb9bd78483a4b71a13f3a6327aa0e2b",
+  "uid": "feb9bd78483a4b71a13f3a6327aa0e2b"
+ },
+ {
+  "key": "office1",
+  "file": "office1.glb",
+  "h": 32,
+  "tris": 16000,
+  "name": "砖面写字楼",
+  "title": "Game Ready City Building",
+  "author": "mireubay1",
+  "url": "https://sketchfab.com/models/2bd7122c0f774cb48565187848154436",
+  "uid": "2bd7122c0f774cb48565187848154436"
+ },
+ {
+  "key": "office2",
+  "file": "office2.glb",
+  "h": 45,
+  "tris": 16000,
+  "name": "砖面高楼",
+  "title": "Game Ready City Buildings",
+  "author": "mireubay1",
+  "url": "https://sketchfab.com/models/12ac98aa701548adbfa463157f05f6cf",
+  "uid": "12ac98aa701548adbfa463157f05f6cf"
+ },
+ {
+  "key": "shop1",
+  "file": "shop1.glb",
+  "h": 13,
+  "tris": 16000,
+  "name": "街角铺面楼",
+  "title": "Game ready building 5",
+  "author": "mireubay1",
+  "url": "https://sketchfab.com/models/73b1d5fc97ca46bab7f80b7c95001e79",
+  "uid": "73b1d5fc97ca46bab7f80b7c95001e79"
+ },
+ {
+  "key": "tower1",
+  "file": "tower1.glb",
+  "h": 58,
+  "tris": 16000,
+  "name": "商务高楼",
+  "title": "Game Ready Mid Poly Building",
+  "author": "mireubay1",
+  "url": "https://sketchfab.com/models/dc4f6a49d8a7462b9349936b8dc7256e",
+  "uid": "dc4f6a49d8a7462b9349936b8dc7256e"
+ },
+ {
+  "key": "ruin1",
+  "file": "ruin1.glb",
+  "h": 7,
+  "tris": 16000,
+  "name": "炸塌的楼",
+  "title": "Ruined Building",
+  "author": "grox777",
+  "url": "https://sketchfab.com/models/14c79f1a4d8548acb6592072549569ff",
+  "uid": "14c79f1a4d8548acb6592072549569ff"
+ }
+]

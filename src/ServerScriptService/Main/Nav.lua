@@ -65,6 +65,8 @@ function Nav.init(G)
         local t = q / 4
         local h = (q == 4) and H[o] or Map.height(x0 + (x1 - x0) * t, z0 + (z1 - z0) * t)
         if h < 0.4 then worst = 99 break end   -- 中间下水
+        -- 钢城：中间穿过楼、车厢（外扩车身半宽）的边不通（格子中心都落在街中线上，顺着街的边整条在路上）
+        if Map.navBlocked and q < 4 and Map.navBlocked(x0 + (x1 - x0) * (t - 0.125), z0 + (z1 - z0) * (t - 0.125)) then worst = 99 break end
         local sl = math.abs(h - prev) / (L / 4)
         if sl > worst then worst = sl end
         sum += sl
@@ -171,7 +173,7 @@ function Nav.init(G)
         for i = 0, NX - 1 do
           local x, z = X0 + (i + 0.5) * CELL, Z0 + (k + 0.5) * CELL
           local h = Map.height(x, z)
-          if h > 0.4 then H[id(i, k)] = h end
+          if h > 0.4 and not (Map.navBlocked and Map.navBlocked(x, z)) then H[id(i, k)] = h end   -- 钢城：楼里的格子不算
           if i % 64 == 63 then yieldMaybe(64, 2000) end
         end
       end
@@ -205,13 +207,19 @@ function Nav.init(G)
     local c = landCellNear(pos.X, pos.Z)
     if not c or not F.dist[c] then return nil end
     local n = c
+    local best = nil
     for _ = 1, 3 do
       local m = F.nxt[n]
       if not m then break end
       n = m
+      -- 钢城：往前看的那一格中间隔着楼（拐弯的地方）就不跳过去——取看得见的最远那一格
+      local x, z = center(n)
+      if Map.segBlocked and Map.segBlocked(pos.X, pos.Z, x, z, 8) then break end
+      best = n
     end
-    if n == c then return nil end   -- 已经在目的地那格
-    local x, z = center(n)
+    if not best then best = F.nxt[c] end
+    if not best or best == c then return nil end   -- 已经在目的地那格
+    local x, z = center(best)
     return V(x, 0, z)
   end
   -- 从 pos 到 key 的路程（格），到不了返回 nil

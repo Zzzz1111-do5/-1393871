@@ -323,6 +323,7 @@ function Ents.init(G)
         -- 空气阻力（坦克炮弹，Ballistics.lua：a = −k·v·|v|，k 每格）：脱壳穿甲弹每公里掉五六十米 / 秒，破甲弹掉一百多
         if s.drag then s.vel -= s.vel * math.min(0.5, s.drag * s.vel.Magnitude * dt) end
         local step = s.vel * dt
+        if G.treeSeg and s.kind ~= "grenade" then G.treeSeg(s, s.pos, s.pos + step) end   -- 钢城：炮弹、火箭弹、导弹飞过树干就打断（Trees.lua）
         params.FilterDescendantsInstances = s.ignore or {}
         local res = workspace:Raycast(s.pos, step, params)
         local ricE = res and s.kind == "shell" and not s.ricocheted and res.Instance and G.entOf(res.Instance) or nil

@@ -238,6 +238,11 @@ function Fx.init(G)
     bombRel = { { id = TICK, vol = 1, s = { 0.3, 0.34 } }, { id = THUD, vol = 0.8, s = { 0.5, 0.56 } } },
     -- 子弹从耳边飞过：一下尖的「嗖」（风声截短、拉快、削掉低音）+ 一声脆响
     whiz = { { id = WIND, vol = 7, s = { 2.6, 3.3 }, reg = { 2.1, 2.45 }, eq = { -12, 4, 8 } }, { id = TICK, vol = 0.45, s = { 3.6, 4.2 } } },
+    -- 树倒（钢城，Scenery.lua）：树干「咔」地断开（放慢的脆响 + 一小截低沉的爆裂）、倒下去带风的呼一声、落地「嘭」的一下闷响
+    treeFall = { { id = TICK, vol = 1.3, s = { 0.5, 0.58 }, eq = { 6, 2, -6 } },
+      { id = EXP, vol = 0.3, s = { 2.0, 2.3 }, reg = { 0.02, 0.2 }, eq = { 4, 2, -10 }, delay = 0.02 },
+      { id = WIND, vol = 4, s = { 0.85, 0.95 }, reg = { 2, 3.1 }, eq = { 2, 4, -6 }, delay = 0.25, fade = 0.6 },
+      { id = THUD, vol = 1.8, s = { 0.4, 0.45 }, eq = { 10, -2, -18 }, delay = 1.25 } },
     -- 音爆（AirFx.lua）：N 形波的头尾两声连着的低沉「嘭——嘭」，放慢、失真、削掉高音；远处的人按距离晚到
     sonic = { { id = EXP, vol = 1.2, s = { 0.5, 0.55 }, reg = { 0, 1.7 }, eq = { 10, 0, -16 }, dist = 0.55 },
       { id = EXP, vol = 1, s = { 0.47, 0.5 }, reg = { 0, 1.5 }, eq = { 10, -2, -18 }, dist = 0.55, delay = 0.14 } },
@@ -1673,6 +1678,8 @@ function Fx.init(G)
           if G.radarShot then G.radarShot(e.a, e.t, e.q) end   -- 雷达：敌人开枪的地方闪一下（Hud.lua）
         end
       elseif k == "boom" then boom(e.p, e.s, e.c, e.h, e.d, e.am)
+      elseif k == "tree" or k == "treeReset" then   -- 钢城的树倒了 / 新一局立回去（服务器 Trees.lua；Scenery.lua 画）
+        if G.onTreeFx then G.onTreeFx(e) end
       elseif k == "gimp" then kineticHit(e.p, e.n, e.d, e.h, e.s)   -- 穿甲弹打在地上（Ents.lua）
       elseif k == "spark" then   -- 炮弹、航炮直接打在车、船、飞机上：钢甲上一大团火花（Ents.lua）
         if typeof(e.p) == "Vector3" then
