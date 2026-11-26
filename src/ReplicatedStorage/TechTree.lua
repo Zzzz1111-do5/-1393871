@@ -22,7 +22,7 @@ TT.BRANCH = {
   ground = { name = "坦克", en = "Ground", cols = { { "主战坦克", "MBT" }, { "主战坦克 · 第二条线", "MBT II" }, { "轻型 / 歼击车", "Light / TD" },
     { "步兵战车", "IFV" }, { "自行防空", "SPAA" } } },
   air = { name = "战机", en = "Aircraft", cols = { { "战斗机", "Fighters" }, { "重型 / 多用途", "Heavy / Multirole" }, { "攻击机 / 轰炸机", "Strike" } } },
-  heli = { name = "直升机", en = "Helicopters", cols = { { "攻击直升机", "Attack" }, { "运输 / 多用途", "Utility" } }, need = { 1, 1, 1, 1, 1, 1 } },
+  heli = { name = "直升机", en = "Helicopters", cols = { { "攻击直升机", "Attack" }, { "多用途 / 火力支援", "Utility" } }, need = { 1, 1, 1, 1, 1, 1 } },
 }
 -- 等级（行）：年代、研究要多少研究点、买要多少金币
 TT.RANKS = {
@@ -75,7 +75,7 @@ local LIST = {
       { "cn_j35", "歼-35", "J-35", 2025, 7, 2, 14.0, veh = "j35" },
       { "cn_h6k", "轰-6K", "H-6K", 2011, 6, 3, 11.0, veh = "h6k" },
     },
-    [H] = {   -- 中国：直-10（攻击）；直-8（运输）。直升机树没有一级：各国最早那架运输直升机白送（free），一进来就能开（直-20 借 UH-60 的模型，删了）
+    [H] = {   -- 中国：直-10（攻击）；直-8（多用途，挂火箭巢）。直-20 借 UH-60 的模型，删了
       { "cn_z10", "直-10", "Z-10", 2012, 6, 1, 10.3, veh = "z10" },
       { "cn_z8", "直-8", "Z-8", 1994, 5, 2, 8.3, veh = "z8", free = true },
     },
@@ -95,8 +95,7 @@ local LIST = {
     },
     [A] = {
     },
-    [H] = {   -- 德国：虎式 UHT（攻击）；NH90（运输）
-      { "de_nh90", "NH90 TTH", "NH90 TTH", 2006, 5, 2, 8.7, veh = "nh90", free = true },
+    [H] = {   -- 德国：虎式 UHT（攻击）。NH90 TTH 是纯运输（没有武器），11-26 用户「很多运输型直升机可以去掉了 实战没有意义」删了
       { "de_tiger", "虎式 UHT", "Tiger UHT", 2005, 6, 1, 10.3, veh = "tiger" },
     },
   },
@@ -137,10 +136,9 @@ local LIST = {
       { "us_a10c", "A-10C 雷电II", "A-10C Thunderbolt II", 2007, 6, 3, 11.3, veh = "a10c" },
       { "us_mq9", "MQ-9 死神", "MQ-9 Reaper", 2007, 6, 3, 11.0, veh = "mq9" },
     },
-    [H] = {   -- 美国：AH-1W、AH-64E（攻击）；CH-47、UH-1N、UH-60（运输）
+    [H] = {   -- 美国：AH-1W、AH-64E（攻击）；UH-1N、UH-60（多用途：火箭巢 / 地狱火）。CH-47 纯运输，11-26 删了（用户：运输直升机实战没有意义）
       { "us_ah1w", "AH-1W 超级眼镜蛇", "AH-1W SuperCobra", 1986, 4, 1, 9.3, veh = "ah1w" },
       { "us_ah64e", "AH-64E 阿帕奇", "AH-64E Apache", 2012, 6, 1, 11.0, veh = "ah64e" },
-      { "us_ch47", "CH-47 支奴干", "CH-47 Chinook", 1962, 1, 2, 6.7, veh = "ch47" },
       { "us_uh1n", "UH-1N 双休伊", "UH-1N Twin Huey", 1971, 2, 2, 7.0, veh = "uh1n" },
       { "us_uh60", "UH-60 黑鹰", "UH-60 Black Hawk", 1979, 3, 2, 8.0, veh = "uh60" },
     },
@@ -157,10 +155,9 @@ local LIST = {
       { "jp_f35a", "F-35A 闪电II", "F-35A", 2018, 7, 1, 14.0, veh = "f35" },
       { "jp_f2a", "F-2A", "F-2A", 2000, 5, 3, 12.3, base = "f16" },
     },
-    [H] = {   -- 日本：AH-1S、AH-64DJ（攻击；AH-64DJ 借同族的模型）；CH-47J、UH-60JA（运输，借同族的模型）。OH-1 没有能用的模型，删了
+    [H] = {   -- 日本：AH-1S、AH-64DJ（攻击；AH-64DJ 借同族的模型）；UH-60JA（多用途，借同族的模型）。OH-1 没有能用的模型，删了；CH-47J 纯运输，11-26 删了
       { "jp_ah1s", "AH-1S 眼镜蛇", "AH-1S Cobra", 1979, 3, 1, 8.7, veh = "ah1s" },
       { "jp_ah64dj", "AH-64DJ", "AH-64DJ", 2006, 6, 1, 10.7, veh = "ah64dj", model = "ah64e" },
-      { "jp_ch47j", "CH-47J", "CH-47J", 1986, 3, 2, 7.3, veh = "ch47j", model = "ch47", free = true },
       { "jp_uh60ja", "UH-60JA", "UH-60JA", 1997, 5, 2, 8.3, veh = "uh60ja", model = "uh60" },
     },
   },
@@ -201,8 +198,8 @@ local LIST = {
 --   按规则现算、不逐项写死（上面行里的 free = true 不再看）——以后加了更老的车，白送的自动换成它：
 --   各列打头（没有前置）的车里，最低一级、年份最老的那一辆（再一样按战斗等级低的、列表里靠前的）；
 --   地面树只在坦克那几列（主战、第二条线、轻型）里挑，一辆坦克都没有才看步战车、防空车；
---   直升机树先挑运输 / 多用途那一列（最基础的一直是运输直升机：直-8、NH90、CH-47、CH-47J、米-8），没有再看攻击直升机；固定翼哪一列都行
-local STARTER_COLS = { ground = { [1] = true, [2] = true, [3] = true }, heli = { [2] = true } }
+--   直升机树、固定翼哪一列都行（11-26 纯运输直升机删了：起步的是最老、级别最低的那架——米-8MT、UH-1N、AH-1S、直-8、虎式）
+local STARTER_COLS = { ground = { [1] = true, [2] = true, [3] = true } }
 local function pickStarter(list, br)
   local pref = STARTER_COLS[br]
   for pass = 1, 2 do
