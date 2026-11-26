@@ -439,8 +439,13 @@ function Armor.init(G)
     local dt = math.max(0.02, t - (e.lastSync or t))
     local p0, p1 = e.root.CFrame.Position, cf.Position
     local flat = V(p1.X - p0.X, 0, p1.Z - p0.Z).Magnitude
-    local maxD = math.max((G.kitSpeedCap and G.kitSpeedCap(e)) or e.def.speed, e.lcac and LCAC.speed or 0) * 1.5 * dt + 6   -- 扫雷犁放着：限 15 公里 / 时
-    if e.wt and e.wt.mob == false then maxD = math.min(maxD, 3 * dt + 1.2) end   -- 战雷式伤害：驾驶员没了、发动机 / 传动 / 履带坏了，只能滑一点
+    -- 能走多远按「攒下的额度」算（用户 11-26「过一阵子就卡一回 卡的时候坦克速度就归零」）：卡一下时几个包挤在同一帧到，
+    --   原来按两包之间的 dt（最少 0.02 秒）算上限，挤在一起的包走的路超了就当瞬移拉回去、客户端车速清零；
+    --   现在额度按时间往上攒（最多攒 1.5 秒的量），每个包花掉它走的路
+    local vmax = math.max((G.kitSpeedCap and G.kitSpeedCap(e)) or e.def.speed, e.lcac and LCAC.speed or 0) * 1.5   -- 扫雷犁放着：限 15 公里 / 时
+    if e.wt and e.wt.mob == false then vmax = math.min(vmax, 3) end   -- 战雷式伤害：驾驶员没了、发动机 / 传动 / 履带坏了，只能滑一点
+    e.syncBudget = math.min((e.syncBudget or (vmax * 0.5 + 8)) + vmax * dt, vmax * 1.5 + 12)
+    local maxD = e.syncBudget
     local h = Map.height(p1.X, p1.Z)
     local bad = flat > maxD or p1.Y ~= p1.Y or math.abs(p1.Y - math.max(h, -e.def.H) - e.def.H / 2) > e.def.H * 1.5 + 6
     if not e.def.amphib and h < -3 and not e.lcac then bad = true end
@@ -451,6 +456,7 @@ function Armor.init(G)
       G.R.Drive:FireClient(P.pl, { op = "fix", cf = e.root.CFrame })
       return
     end
+    e.syncBudget = math.max(0, e.syncBudget - flat)
     G.moveEnt(e, cf)
     if e.lcac then   -- 站在气垫艇上：艇跟着车走；开上岸了把车放下
       if e.lcac.alive then G.moveEnt(e.lcac, lcacUnder(cf * CF(0, -e.def.H / 2, 0))) end
@@ -571,10 +577,10 @@ function Armor.init(G)
       elseif a then
         local v0, drag, gs = BAL.launchArgs(a)
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, cls = a.cls, w = ww, src = S, ignore = { e.model, P.char },
-          life = BAL.MAXR * BAL.S / v0 + 1.5 })
+          life = 60 })   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
-          life = math.max(w.range / w.speed + 0.5, 4000 * BAL.S / w.speed) })   -- 没有弹道表的炮（机关炮、73 毫米）：也飞 4 公里（原来射程 ÷ 初速，一公里多就没了）
+          life = 60 })   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
       end
       G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id })
     elseif w.kind == "gun" then

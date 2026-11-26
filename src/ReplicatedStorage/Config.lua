@@ -5,6 +5,9 @@ local Config = {}
 Config.Version = "1.0-alpha"
 Config.Build = "dev"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
+-- 存档怎么写（Store.lua，用户 11-26「账号的载具解锁要能保留」）：gap 同一个人两次写至少隔几秒（Roblox 同一个键 6 秒才能写一次，多的排队）、
+--   auto 每隔几秒看一次存档变没变（变了就存）、closeWait 关服时最多等几秒把还没写完的写完（Roblox 给 BindToClose 30 秒）
+Config.Save = { gap = 7, auto = 60, closeWait = 25 }
 Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、炮弹、导弹
 -- 地图：开服以后进来的人在选地图界面投票定一张（init.server.lua；Studio 里给 Workspace 设属性 MapName 直接定）——island（棕榈岛，Map.lua）、
 --   sands（海湾战争式的纯陆地沙漠「沙海」，MapSands.lua，五个阶段的突破）。原来还有 desert（「沙漠风暴」，征服）：用户 11-24 删了
@@ -265,12 +268,16 @@ end
 --   veh：载具价钱（每类都有几型不要钱，进服就能开）；不在表里的（舰艇）不要钱；B-2 照旧是 R 币通行证（Config.Passes）
 --   配件：没到这把枪的解锁等级也能拿金币买（attBase + attPerLv × 等级），到了等级照旧白给
 --   unlockAll：true = 载具全部直接能开（自己测试用；配件全开是 Config.GunMods.unlockAll）
---   infinite：true = 无限金币（用户 11-24：「给我先设置成无限金币」）——买载具、配件不查余额、不扣钱，界面上写 ∞；
---     存档里的金币照旧（挣的照样记），改回 false 就恢复正常；上线前记得改回 false
+--   infinite：true = 无限金币（用户 11-24 要过「给我先设置成无限金币」；11-26 又说「金币不要设置成无限」：关掉了）——
+--     开着时买载具、配件不查余额、不扣钱，界面上写 ∞；存档里的金币照旧。自己测试想全开用兑换码（Tech.lua），别再打开这个
+--   科技树对局（战雷式，WtMatch G.wtGroundOnly）：一局的金币 = 这一局的研究点 × treeK（研究点照 Tech.lua：得分、击毁、赢了 ×1.3、模式倍率），
+--     跟研究的进度差不多同步（一、二级车的价钱是研究点的一半，越往上越贵，高级车要多打几局攒钱——战雷那种感觉）；
+--     startCoins 新账号的金币：够买一两辆二级车（9000），远不够把树买穿；老档里的金币照存的数字
 Config.Economy = {
   unlockAll = false,
-  infinite = true,
-  startCoins = 1500,
+  infinite = false,
+  startCoins = 20000,
+  treeK = 0.5,
   perScore = 0.1, win = 200, lose = 60,
   veh = {
     -- 坦克

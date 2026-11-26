@@ -123,13 +123,37 @@ check(not C.artyOn() and st.arty ~= true, "Shift 退出炮兵视角")
 check(R.workspace:FindFirstChild("ArtyMarks") == nil, "地上的圈收掉了")
 
 print("⑥ X 透视自己的车、B 大地图（用户 11-25「烟幕改成m x改成透视自己的坦克」「按m放大地图」）")
-R.as("client", function() C.ownXrayToggle() end)
+-- 用户 11-26「x应该是摁住显示3d 松手就恢复原样 然后 不同区域要有不同颜色标识」：按住 X 才显示
+T.key(T.Enum.KeyCode.X, true)
 R.run(0.3)
 local xf = R.workspace:FindFirstChild("OwnXray")
-check(C.ownXrayOn() and xf ~= nil and #xf:GetChildren() >= 5, "X：车里的乘员、模块画出来了（" .. (xf and #xf:GetChildren() or 0) .. " 个）")
-R.as("client", function() C.ownXrayToggle() end)
+local grp, hls, cats = 0, 0, {}
+if xf then
+  for _, c in ipairs(xf:GetChildren()) do
+    if c.ClassName == "Model" then grp = grp + 1 cats[c.Name] = true end
+    for _, h in ipairs(c:GetChildren()) do if h.ClassName == "Highlight" then hls = hls + 1 end end
+  end
+end
+local cl = {}
+for k in pairs(cats) do cl[#cl + 1] = k end
+table.sort(cl)
+check(C.ownXrayOn() and grp >= 5 and hls >= grp, "按住 X：按类别分组上色（" .. table.concat(cl, " ") .. "），每组一个 Highlight")
+check(cats.X_crew and cats.X_engine and cats.X_ammo, "乘员、发动机、弹药都有")
+check(R.services.Players.LocalPlayer.PlayerGui:FindFirstChild("OwnXrayLegend") ~= nil, "屏幕上有图例")
+T.key(T.Enum.KeyCode.X, false)
 R.run(0.2)
-check(not C.ownXrayOn() and R.workspace:FindFirstChild("OwnXray") == nil, "再按 X 关上")
+check(not C.ownXrayOn() and R.workspace:FindFirstChild("OwnXray") == nil, "松开 X 恢复原样")
+R.as("client", function() C.driveToggleSight() end)
+R.run(0.3)
+local inSight = C.drive and C.drive.sight
+T.key(T.Enum.KeyCode.X, true)
+R.run(0.3)
+check(inSight and C.ownXrayOn() and not C.drive.sight, "瞄准镜里按住 X：退到车外看得见")
+T.key(T.Enum.KeyCode.X, false)
+R.run(0.3)
+check(C.drive and C.drive.sight, "松开回到瞄准镜里")
+R.as("client", function() C.driveToggleSight() end)
+R.run(0.3)
 R.as("client", function() C.wtMapToggle(true) end)
 R.run(0.3)
 local mg = me.PlayerGui:FindFirstChild("WtMap")

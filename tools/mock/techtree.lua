@@ -197,6 +197,7 @@ if target then
   G.treePublish(P)
   R.run(0.5)
   check(TT.researched(t, target.key), "研究点够了：研究完")
+  if P.data then P.data.coins = 10000000 end   -- 11-26 金币不再无限：买之前给够钱
   T.act("treeBuy", target.key)
   R.run(0.5)
   check(TT.owned(t, target.key), "买下了")

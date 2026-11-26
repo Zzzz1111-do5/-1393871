@@ -1333,7 +1333,7 @@ function Fx.init(G)
           Debris:AddItem(sm, 1.25 * k)
         end
       end
-      if s.t > ((s.kind == "bomb") and 40 or (s.hyper and 95 or 15)) then endShot(id) end
+      if s.t > ((s.kind == "bomb") and 40 or (s.hyper and 95 or ((s.kind == "shell") and 65 or 15))) then endShot(id) end   -- 炮弹：等服务器的 shotEnd（11-26 原来 15 秒就删，远的弹半路没了）
     end
   end
   -- 抛副油箱：照挂着的样子拼一个（WeaponModels 的外形），带着飞机的速度往下掉——空箱子阻力大很快慢下来，重心靠前机头往下栽、绕纵轴慢慢转；

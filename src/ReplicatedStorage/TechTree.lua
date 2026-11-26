@@ -4,7 +4,7 @@
 --   · 研究：打仗挣研究点，记在「正在研究」的那一辆上，攒够这一辆的研究点就研究完；一级里研究完 RANK_NEED 辆才能研究下一级
 --   · 购买：研究完以后花金币买下；买下的才能放进出击阵容
 --   · 战斗等级 br（0.3 / 0.4 一档）：阵容的战斗等级 = 里面最高的那辆；分房按 ±1.0
---   · 每系每棵树第一级各列打头的那一辆白送（研究完、买好）
+--   · 每系每棵树只白送一辆起步车（研究完、买好），按规则现算（TT.starter，见下面「起步车」）；别的都要研究、购买
 --   veh：游戏里开的型号（VehDefs / AirDefs 的 id）。base：还没有自己的模型和性能，先借这一辆的（界面上写「暂用 某某」，以后做了真模型就换成 veh）
 local TT = {}
 
@@ -193,10 +193,40 @@ local LIST = {
   },
 }
 
+-- 起步车（用户 11-26：「不要一开始就给人解锁那么多坦克 就每个系从只给一辆最基础的坦克开始」）：每系每棵树只白送一辆，
+--   按规则现算、不逐项写死（上面行里的 free = true 不再看）——以后加了更老的车，白送的自动换成它：
+--   各列打头（没有前置）的车里，最低一级、年份最老的那一辆（再一样按战斗等级低的、列表里靠前的）；
+--   地面树只在坦克那几列（主战、第二条线、轻型）里挑，一辆坦克都没有才看步战车、防空车；
+--   直升机树先挑运输 / 多用途那一列（最基础的一直是运输直升机：直-8、NH90、CH-47、CH-47J、米-8），没有再看攻击直升机；固定翼哪一列都行
+local STARTER_COLS = { ground = { [1] = true, [2] = true, [3] = true }, heli = { [2] = true } }
+local function pickStarter(list, br)
+  local pref = STARTER_COLS[br]
+  for pass = 1, 2 do
+    local best, bi
+    for i, it in ipairs(list) do
+      if it.prev == nil and (pass == 2 or not pref or pref[it.col]) then
+        local better = not best
+        if best then
+          if it.rank ~= best.rank then better = it.rank < best.rank
+          elseif (it.year or 0) ~= (best.year or 0) then better = (it.year or 0) < (best.year or 0)
+          elseif it.br ~= best.br then better = it.br < best.br
+          else better = i < bi end
+        end
+        if better then best, bi = it, i end
+      end
+    end
+    if best or not pref then return best end
+  end
+  return nil
+end
+TT.pickStarter = pickStarter   -- 测试用：拿一份假的车单验证规则
+TT.START = {}   -- [系][树] = 起步车的 key（这棵树空着就没有）
+
 -- 展开：每项变成表，记前置（同一列的上一项）、研究点、价格
 TT.byKey = {}
 TT.list = {}   -- [系][树] = { 项, ... }（按列、按顺序）
 for _, nat in ipairs(TT.NATIONS) do
+  TT.START[nat] = {}
   TT.list[nat] = {}
   for _, br in ipairs(TT.BRANCHES) do
     local out, lastInCol = {}, {}
@@ -213,24 +243,25 @@ for _, nat in ipairs(TT.NATIONS) do
       lastInCol[it.col] = it
       local R = TT.RANKS[it.rank]
       it.rp, it.cost = R.rp, R.cost
-      it.free = row.free == true or (it.rank == 1 and it.prev == nil)   -- 第一级各列打头的白送；直升机树从三、五级开始，打头的运输机写明 free
+      it.free = false   -- 白送的只有起步车（下面按规则挑）
       table.insert(out, it)
       TT.byKey[it.key] = it
     end
-    -- 一级的车都删了（没有原模型）的树：最低那一级各列打头的白送，一进来就有车开
-    local anyFree, lo = false, math.huge
-    for _, it in ipairs(out) do
-      if it.free then anyFree = true end
-      lo = math.min(lo, it.rank)
-    end
-    if not anyFree then
-      for _, it in ipairs(out) do if it.rank == lo and it.prev == nil then it.free = true end end
+    local st = pickStarter(out, br)
+    if st then
+      st.free = true
+      TT.START[nat][br] = st.key
     end
     TT.list[nat][br] = out
   end
 end
 
 function TT.get(key) return TT.byKey[key] end
+-- 这一系这棵树的起步车（白送的那一辆；树空着返回 nil）
+function TT.starter(nat, br)
+  local k = TT.START[nat] and TT.START[nat][br]
+  return k and TT.byKey[k] or nil
+end
 -- 战斗等级的写法（10.0 → "10.0"）
 function TT.brText(v) return string.format("%.1f", v or 0) end
 -- 阵容的战斗等级：里面最高的那辆

@@ -1,7 +1,8 @@
 -- 全面大战场（服务器）——科技树：研究、购买、出击阵容、出击（用户 11-25：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」
 --   「不要让玩家拿枪之类的了 就跟战雷完全一样 不要让玩家作为个体活动」）
 --   存档 P.data.tree：res 研究完的、own 买下的、rp[key] 攒着的研究点、cur[系:树] 正在研究的、lineup[系] 出击阵容（最多 5 辆）、nat 现在用哪个系、
---     free[系] 没处放的研究点（研究完多出来的、没选研究目标时挣的）
+--     free[系] 没处放的研究点（研究完多出来的、没选研究目标时挣的）；P.data.codes[码的编号] 兑换过的码（不写给客户端）
+--   白送的只有每系每棵树一辆起步车（TechTree TT.starter，用户 11-26「每个系从只给一辆最基础的坦克开始」），别的研究完再拿金币买
 --   给客户端：玩家属性 Tree（JSON，变了才写）；动作（客户端 Act）：treeResearch / treeBuy / treeLineup / treeNat / deployVeh
 --   挣研究点：一局结束按得分（G.treeAward，Round.lua 结算时调）；出车时记下这一局用过哪棵树，研究点分给用过的树正在研究的那辆
 --   出击（deployVeh）：从出击阵容里挑一辆，人直接坐进车里 / 飞机里出现在自己基地（不步行：Config.Wt.noInfantry）；车没了回出击界面
@@ -37,7 +38,7 @@ function Tech.init(G)
     return d.tree
   end
   G.treeOf = T
-  -- 第一次玩（阵容空着）：白送的放进阵容——先每棵树各一辆（坦克、飞机、直升机都能马上试），再补其余白送的坦克；
+  -- 第一次玩（阵容空着）：白送的起步车放进阵容（每棵树一辆：坦克、飞机、直升机；TechTree TT.starter）；
   --   留一个空位：第一辆买下的车自动放进去（不然直升机树也白送一架以后阵容一开始就满了）。按树、按树里的顺序排（坦克在前）
   local function defaultLineup(t, nat)
     local pick, n, cap, na = {}, 0, LINEUP - 1, 0
@@ -67,7 +68,31 @@ function Tech.init(G)
   end
   G.treePublish = publish
 
-  -- 读档：只留认得的 key
+  ---------------------------------------------------------------- 兑换码（用户 11-25「设置一个兑换码 在设置里」「兑换码 Zhengyongshuo 直接解锁所有载具」）
+  --   码只放在服务器脚本里（客户端看不到）；存档里记的是编号 id（P.data.codes[id] = 兑换的时间，不进写给客户端的 Tree 属性）；
+  --   all：科技树每一辆都记成研究完 + 买下——读档时也补一遍，以后加的新车兑过的人自动有（用户 11-26：兑换的结果要存进档）
+  local CODES = { zhengyongshuo = { id = "all", all = true } }
+  local CODE_BY_ID = {}
+  for _, R in pairs(CODES) do CODE_BY_ID[R.id] = R end
+  -- 「全部解锁」：返回这次新解锁了几辆
+  local function unlockAll(t)
+    local n = 0
+    for key in pairs(TT.byKey) do
+      if not (t.res[key] == true and t.own[key] == true) then n += 1 end
+      t.res[key] = true
+      t.own[key] = true
+    end
+    return n
+  end
+  local function unlockByCodes(t, codes)
+    for id in pairs(codes or {}) do
+      local R = CODE_BY_ID[id]
+      if R and R.all then unlockAll(t) end
+    end
+  end
+
+  -- 读档（用户 11-26「账号的载具解锁要能保留」）：研究完 / 买下的照收——科技树暂时删掉的车（认不得的 key）也原样留着，
+  --   以后加回来还算；兑换过的码补一遍；阵容、乘员按下面「阵容」那段整理
   local ef = G.econFromSave
   G.econFromSave = function(P, d)
     if ef then ef(P, d) end
@@ -75,37 +100,29 @@ function Tech.init(G)
     local t = blank()
     t.nat = TT.NAT[src.nat] and src.nat or "cn"
     for _, f in ipairs({ "res", "own" }) do
-      for k, v in pairs(type(src[f]) == "table" and src[f] or {}) do if TT.byKey[k] and v == true then t[f][k] = true end end
+      local n = 0
+      for k, v in pairs(type(src[f]) == "table" and src[f] or {}) do
+        if type(k) == "string" and #k <= 40 and v == true and n < 500 then
+          t[f][k] = true
+          n += 1
+        end
+      end
     end
+    local codes = {}
+    for id, v in pairs(type(d) == "table" and type(d.codes) == "table" and d.codes or {}) do
+      if type(id) == "string" and #id <= 32 and (v == true or type(v) == "number") then codes[id] = v end
+    end
+    P.data.codes = codes
+    unlockByCodes(t, codes)
     for k, v in pairs(type(src.rp) == "table" and src.rp or {}) do
       if TT.byKey[k] and type(v) == "number" and v > 0 then t.rp[k] = math.floor(v) end
     end
     for k, v in pairs(type(src.cur) == "table" and src.cur or {}) do
       if type(k) == "string" and TT.byKey[v] then t.cur[k] = v end
     end
+    -- 乘员：先按原来的位置读出来（只留认得的技能、级数在范围里；点数超了（改过规则）就清零重点），阵容挪了位置乘员跟着车走
+    local crewOld = {}
     for _, nat in ipairs(TT.NATIONS) do
-      local f = type(src.free) == "table" and tonumber(src.free[nat]) or nil
-      if f and f > 0 then t.free[nat] = math.floor(f) end
-      local L = type(src.lineup) == "table" and src.lineup[nat]
-      if type(L) == "table" then
-        local out = {}
-        for _, k in ipairs(L) do
-          if TT.byKey[k] and TT.byKey[k].nat == nat and TT.owned(t, k) and #out < LINEUP and not (isAir(k) and airIn(out) >= AIR_MAX) then table.insert(out, k) end
-        end
-        t.lineup[nat] = #out > 0 and out or nil   -- 阵容里的车都删了（11-25 没有原模型的删掉）：按默认阵容重新排
-      end
-    end
-    for k, m in pairs(type(src.mods) == "table" and src.mods or {}) do   -- 改装：只留认得的车、认得的改装
-      local it = TT.byKey[k]
-      if it and type(m) == "table" then
-        local o = { done = {}, rp = 0 }
-        for mk, v in pairs(type(m.done) == "table" and m.done or {}) do if v == true and WM.get(it, mk) then o.done[mk] = true end end
-        if type(m.cur) == "string" and WM.canResearch(it, o.done, m.cur) then o.cur = m.cur end
-        if type(m.rp) == "number" and m.rp > 0 then o.rp = math.floor(m.rp) end
-        t.mods[k] = o
-      end
-    end
-    for _, nat in ipairs(TT.NATIONS) do   -- 乘员：只留认得的技能、级数在范围里；点数超了（改过规则）就清零重点
       local cs = type(src.crew) == "table" and type(src.crew[nat]) == "table" and src.crew[nat] or {}
       local out = {}
       for i = 1, LINEUP do
@@ -117,12 +134,92 @@ function Tech.init(G)
             if v and v >= 1 then o.sk[s.key] = math.min(WC.MAXLV, math.floor(v)) end
           end
           if WC.free(o) < 0 then o.sk = {} end
-          out[tostring(i)] = o
+          out[i] = o
         end
       end
-      t.crew[nat] = out
+      crewOld[nat] = out
+    end
+    -- 阵容：认得的、这个系的、买下的才留（飞行单位最多 AIR_MAX 个）；11-26 以前白送、档里没记的车（每棵树第一级各列打头的都白送过：
+    --   M551、BMP-1、T-72 乌拉尔……）现在不算买下了——在阵容里的换成这棵树的起步车（只换一次，起步车已经在阵容里就去掉）；
+    --   阵容里一辆地面车都没有（第一辆必须是地面车，出不了击）就补上起步坦克；全空了按默认阵容
+    for _, nat in ipairs(TT.NATIONS) do
+      local f = type(src.free) == "table" and tonumber(src.free[nat]) or nil
+      if f and f > 0 then t.free[nat] = math.floor(f) end
+      local L = type(src.lineup) == "table" and src.lineup[nat]
+      local map = nil   -- 新位置 → 原来的位置（乘员跟着车）
+      if type(L) == "table" then
+        local out, seen, swapped = {}, {}, {}
+        map = {}
+        for _, k in ipairs(L) do
+          local it = type(k) == "string" and TT.byKey[k]
+          if it and it.nat == nat then seen[k] = true end
+        end
+        for i, k in ipairs(L) do
+          local it = type(k) == "string" and TT.byKey[k] or nil
+          if it and it.nat == nat and not TT.owned(t, k) and not swapped[it.branch] then
+            local st = TT.starter(nat, it.branch)
+            if st and not seen[st.key] then
+              it, k = st, st.key
+              seen[k] = true
+            end
+            swapped[it.branch] = true
+          end
+          if it and it.nat == nat and TT.owned(t, k) and not table.find(out, k) and #out < LINEUP and not (isAir(k) and airIn(out) >= AIR_MAX) then
+            table.insert(out, k)
+            map[#out] = i
+          end
+        end
+        local st = TT.starter(nat, "ground")
+        local hasGround = false
+        for _, k in ipairs(out) do if TT.byKey[k].branch == "ground" then hasGround = true end end
+        if #out > 0 and st and not hasGround then
+          if #out >= LINEUP then
+            map[#out] = nil
+            table.remove(out)
+          end
+          table.insert(out, st.key)
+        end
+        t.lineup[nat] = #out > 0 and out or nil   -- 阵容里的车都删了（11-25 没有原模型的删掉）：按默认阵容重新排
+        if #out == 0 then map = nil end
+      end
+      -- 乘员挪到车的新位置；跟着的车去掉了的放到空着的位置上（不丢经验、技能）
+      local outC, used, frees = {}, {}, {}
+      if map then
+        for ni, oi in pairs(map) do
+          if crewOld[nat][oi] then
+            outC[tostring(ni)] = crewOld[nat][oi]
+            used[oi] = true
+          end
+        end
+      end
+      for i = 1, LINEUP do if not outC[tostring(i)] and not (map and map[i] ~= nil) then table.insert(frees, i) end end
+      for oi = 1, LINEUP do
+        local c = crewOld[nat][oi]
+        if c and not used[oi] then
+          local slot = map and table.remove(frees, 1) or oi
+          if slot then outC[tostring(slot)] = c end
+        end
+      end
+      t.crew[nat] = outC
+    end
+    for k, m in pairs(type(src.mods) == "table" and src.mods or {}) do   -- 改装：只留认得的车、认得的改装
+      local it = TT.byKey[k]
+      if it and type(m) == "table" then
+        local o = { done = {}, rp = 0 }
+        for mk, v in pairs(type(m.done) == "table" and m.done or {}) do if v == true and WM.get(it, mk) then o.done[mk] = true end end
+        if type(m.cur) == "string" and WM.canResearch(it, o.done, m.cur) then o.cur = m.cur end
+        if type(m.rp) == "number" and m.rp > 0 then o.rp = math.floor(m.rp) end
+        t.mods[k] = o
+      end
     end
     P.data.tree = t
+    publish(P)
+  end
+  -- 存档合并了别的服务器写的解锁（Store.lua writeOnce）：兑换过的码再补一遍，写给客户端
+  G.treeReload = function(P)
+    local t = T(P)
+    if not t then return end
+    unlockByCodes(t, P.data.codes)
     publish(P)
   end
 
@@ -261,7 +358,7 @@ function Tech.init(G)
     publish(P)
     save(P)
   end
-  -- 买：研究完了才能买；无限金币（Config.Economy.infinite）照样不扣
+  -- 买：研究完了才能买，金币够才买得起（扣金币；用户 11-26「金币不要设置成无限」，Config.Economy.infinite 关着）
   G.ACT.treeBuy = function(P, key)
     local t = T(P)
     local it = type(key) == "string" and TT.byKey[key]
@@ -311,10 +408,9 @@ function Tech.init(G)
     publish(P)
     save(P)
   end
-  ---------------------------------------------------------------- 兑换码（用户 11-25「设置一个兑换码 在设置里」「兑换码 Zhengyongshuo 直接解锁所有载具」）
-  --   码只放在服务器脚本里（客户端看不到）；不分大小写、去掉首尾空格；兑了就把科技树每一辆都记成研究完 + 买下（以后加了新车再兑一次也行）；
+  ---------------------------------------------------------------- 兑换码（码的表在上面 CODES）：不分大小写、去掉首尾空格；
+  --   兑了就把科技树每一辆都记成研究完 + 买下，码的编号记进 P.data.codes（读档时再补一遍：以后加的新车也有）；
   --   结果写在玩家属性 Redeem（「状态|数目|序号」）给设置界面显示，另外弹一条提示；试得太快（2 秒内）不理
-  local CODES = { zhengyongshuo = { all = true } }
   local redeemAt, redeemN = {}, 0
   G.ACT.redeem = function(P, code)
     if type(code) ~= "string" or #code > 64 or not P.pl then return end
@@ -335,13 +431,9 @@ function Tech.init(G)
       return
     end
     local n = 0
-    if R.all then
-      for key in pairs(TT.byKey) do
-        if not (t.res[key] == true and t.own[key] == true) then n += 1 end
-        t.res[key] = true
-        t.own[key] = true
-      end
-    end
+    if R.all then n = unlockAll(t) end
+    P.data.codes = P.data.codes or {}
+    if P.data.codes[R.id] == nil then P.data.codes[R.id] = os.time() end   -- 存进档（用户 11-26：兑换码解锁的要保留）
     if n > 0 then G.msg(P.pl, "good", "redeem.ok", n) else G.msg(P.pl, "info", "redeem.none") end
     reply(n > 0 and "ok" or "none", n)
     publish(P)
@@ -349,20 +441,28 @@ function Tech.init(G)
   end
   G.on("left", function(P) redeemAt[P] = nil end)
 
-  -- 现在的阵容（没有就给默认的）
+  -- 现在的阵容（没有或者被清空了就给默认的：客户端 TechUI lineupOf 也这么显示，免得机库上有车、出击说「不在阵容里」）
   function G.treeLineup(P)
     local t = T(P)
     if not t then return {} end
-    return t.lineup[t.nat] or defaultLineup(t, t.nat)
+    local L = t.lineup[t.nat]
+    if not L or #L == 0 then L = defaultLineup(t, t.nat) end
+    return L
   end
 
-  -- 一局结束发研究点：按这一局的得分（击毁、占点都在里面），赢了多三成；分给这一局用过的树正在研究的那辆，没选的进 free
+  -- 这一局按得分算的研究点（击毁、占点都在得分里），赢了多三成、按模式乘；Economy.lua 结算金币也按它（金币 = 研究点 × treeK）
+  local function roundRp(P, won)
+    local base = math.floor((P.score or 0) * 8 + (P.kills or 0) * 250 + 300)
+    local mk = ((W.modeK or {})[G.wtModeNow and G.wtModeNow() or "rb"]) or 1   -- 历史 ×1.3、全真 ×1.6（战雷：越真实奖励越多）
+    return math.floor(base * (won and 1.3 or 1) * mk), mk
+  end
+  G.treeRoundRp = roundRp
+
+  -- 一局结束发研究点：分给这一局用过的树正在研究的那辆，没选的进 free
   function G.treeAward(P, won)
     local t = T(P)
     if not t then return 0 end
-    local base = math.floor((P.score or 0) * 8 + (P.kills or 0) * 250 + 300)
-    local mk = ((W.modeK or {})[G.wtModeNow and G.wtModeNow() or "rb"]) or 1   -- 历史 ×1.3、全真 ×1.6（战雷：越真实奖励越多）
-    local rp = math.floor(base * (won and 1.3 or 1) * mk)
+    local rp, mk = roundRp(P, won)
     P.treeModeK = mk
     local used = P.treeUsed or {}
     local brs = {}
@@ -398,7 +498,7 @@ function Tech.init(G)
       end
     end
     -- 结算页的明细（客户端 TechUI G.treeResultText，WtBattle 结算页那一行）：研究点、倍率、记在哪辆上、改装、乘员经验
-    local last = { n = (G.round and G.round.n) or 0, rp = rp, mk = mk, won = won == true, cur = {}, mods = {}, crew = {} }
+    local last = { n = (G.round and G.round.n) or 0, rp = rp, mk = mk, won = won == true, cur = {}, mods = {}, crew = {}, coins = P.roundCoins }   -- coins：Economy.lua 刚发的金币
     for _, br in ipairs(brs) do
       local ck = t.cur[t.nat .. ":" .. br]
       local cit = ck and TT.byKey[ck]
@@ -409,6 +509,7 @@ function Tech.init(G)
     t.last = last
     P.treeModFin = {}
     P.treeUsed, P.treeUsedKeys = {}, {}
+    P.roundCoins = nil
     if rp > 0 and P.pl then G.msg(P.pl, "good", "tree.rp", rp) end
     publish(P)
     return rp
@@ -789,7 +890,9 @@ function Tech.init(G)
       if G.ACT.enterVeh then G.ACT.enterVeh(P, e.id) end
       G.msg(P.pl, "info", air and "tree.testOnAir" or "tree.testOn", it.name)
     end
+    P.testDeploy = true   -- Round.lua deploy：试驾不受出生点 / 准备阶段 / 兵力限制（用户 11-26「训练场目前没发试驾飞机了」）
     G.ACT.deploy(P, "crew", air and "baseAir" or "base", go)
+    P.testDeploy = nil
   end
   -- 试驾下车 / 在试驾场被打掉：回机库不算阵亡，不用等重生倒计时（战雷：试驾完马上能再试驾、能出击）——
   --   Round 在阵亡时记的 canDeployAt 晚一帧清掉（同一帧里 Round 的阵亡处理可能排在后面）

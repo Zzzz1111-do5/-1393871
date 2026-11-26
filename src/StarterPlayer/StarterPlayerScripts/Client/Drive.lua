@@ -1168,12 +1168,27 @@ function Drive.init(G)
     st.root = base * CF(0, d.H / 2, 0)
   end
 
-  -- 准星打到哪：从镜头往前打一条射线（不算自己的车、实体的样子）
+  -- 射线不算的东西：自己这辆车（实体、样子、碰撞盒、履带板）、自己的人、特效、车内的零件。
+  --   用户 11-26「坦克瞄准一个坦克 火控计算机会越过那个坦克瞄准后面的」：原来把所有车的样子（G.viewFolder）都排除了，
+  --   测距、准星、火控解算都穿过敌车量到后面的地上；现在只排除自己的，别的车（敌我、靶车、残骸）都挡射线
+  local function rayEx()
+    local ex = {}
+    local function add(x) if x then table.insert(ex, x) end end
+    add(ownBox)
+    if st and st.em then
+      add(st.em)
+      local v = G.views and G.views[st.em]
+      add(v and v.model)
+    end
+    add(me.Character)
+    add(G.fxFolder)
+    add(G.interiorNow)
+    return ex
+  end
+  -- 准星打到哪：从镜头往前打一条射线（不算自己的车）
   local function aimPoint()
     local o, dir = cam.CFrame.Position, cam.CFrame.LookVector
-    local ex = { G.viewFolder, ownBox }
-    if me.Character then table.insert(ex, me.Character) end
-    if st.em then table.insert(ex, st.em) end
+    local ex = rayEx()
     aimParams.FilterDescendantsInstances = ex
     local res = G.rayFar(o, dir * 4000, aimParams)   -- 开了 streaming：远处没加载的地形按地形高度算（Stream.lua）
     return res and res.Position or (o + dir * 4000), res ~= nil
@@ -1259,9 +1274,7 @@ function Drive.init(G)
       dirW = base:VectorToWorldSpace(V(math.sin(ry) * math.cos(rp), math.sin(rp), -math.cos(ry) * math.cos(rp)))
       k.yaw, k.pitch = math.atan2(-dirW.X, -dirW.Z), math.asin(math.clamp(dirW.Y, -1, 1))
     end
-    local ex = { G.viewFolder, ownBox }
-    if me.Character then table.insert(ex, me.Character) end
-    if st.em then table.insert(ex, st.em) end
+    local ex = rayEx()
     aimParams.FilterDescendantsInstances = ex
     -- 瞄准点只管方向和距离（火控按距离抬炮）：炮管长度以内碰到的（贴着工事、石头、屋檐停车）不算，不然 aimTurret 按一格远的点算出来的俯仰角不对
     local res = G.rayFar(piv, dirW * 4000, aimParams)
@@ -1303,9 +1316,13 @@ function Drive.init(G)
   -- 激光一路上打到的东西：草丛、烟、玻璃、细杆子、半透明的这些挡不住，光接着往前走——每碰到一个就是一个回波（最多三个，真车的测距机也是三个）
   local function porous(inst)
     if not inst or not inst:IsA("BasePart") then return false end
-    if inst.Transparency >= 0.3 then return true end
+    -- 车、飞机的实体（服务器的碰撞盒，本身是透明的）算回波——用户 11-26「火控计算机会越过那个坦克瞄准后面的」：
+    --   车的样子（客户端模型）射线打不中，打得中的只有这个透明碰撞盒，原来按「透明」当成穿得过去，激光穿过车量到后面的地
+    local m = inst:FindFirstAncestorWhichIsA("Model")
+    if m and m:GetAttribute("EntId") ~= nil then return false end
     local mt = inst.Material
     if mt == Enum.Material.Glass or mt == Enum.Material.ForceField or mt == Enum.Material.Fabric or mt == Enum.Material.LeafyGrass or mt == Enum.Material.Grass then return true end
+    if inst.Transparency >= 0.3 then return not inst.CanCollide end   -- 看不见的：挡炮弹的碰撞盒（房子）算，别的不算
     local sz = inst.Size
     return math.min(sz.X, sz.Y, sz.Z) < 0.5 and math.max(sz.X, sz.Y, sz.Z) < 12
   end
@@ -1354,8 +1371,7 @@ function Drive.init(G)
     end
     local eye = sightEye()
     local dir = st.sight and cam.CFrame.LookVector or ((st.aimPt and (st.aimPt - eye).Magnitude > 1) and (st.aimPt - eye).Unit or cam.CFrame.LookVector)
-    local ex = { G.viewFolder, ownBox, st.em }
-    if me.Character then table.insert(ex, me.Character) end
+    local ex = rayEx()
     local rets = {}
     local o = eye
     local left = BAL.MAXR * BAL.S
@@ -1525,8 +1541,7 @@ function Drive.init(G)
       disp = (st.arty and G.artyBloom) and G.artyBloom() or nil })   -- 炮兵视角里散布圈胀开了多少（0～1，服务器按它散落点）   -- am 坦克炮这一发是什么弹（服务器按它的初速、阻力打出去）；tgt 地空导弹的目标
     if w.kind == "gun" and G.gunFx then   -- 自己打的机枪：本地马上画曳光（服务器发回来的特效会跳过自己打的，原来开车打机枪什么都看不见）
       local dir = mz.LookVector
-      local ex = { G.viewFolder, ownBox, st.em }
-      if me.Character then table.insert(ex, me.Character) end
+      local ex = rayEx()
       aimParams.FilterDescendantsInstances = ex
       local res = G.rayFar(mz.Position, dir * (w.range or 900), aimParams)
       G.gunFx(wid, mz.Position, res and res.Position or (mz.Position + dir * (w.range or 900)), true)
@@ -1631,8 +1646,12 @@ function Drive.init(G)
       if not (G.wtKeySlot and G.wtKeySlot(st, i)) and st.d.weapons[i] then st.wi = i end
     elseif k == Enum.KeyCode.M then   -- 烟幕弹（用户 11-25「烟幕改成m」）
       smoke()
-    elseif k == Enum.KeyCode.X then   -- 透视自己的车：乘员、模块按状态上色（XrayOwn.lua，用户 11-25「x改成透视自己的坦克」）
-      if G.ownXrayToggle then G.ownXrayToggle() end
+    elseif k == Enum.KeyCode.X then   -- 透视自己的车：按住显示、松开恢复（XrayOwn.lua；用户 11-26「x应该是摁住显示3d 松手就恢复原样」）
+      if G.ownXrayHold then
+        st.xrSight = st.sight   -- 开着瞄准镜：先退到车外看自己的车，松手再回镜里（原来镜里按 X 什么都看不到）
+        if st.sight then toggleSight() end
+        G.ownXrayHold(true)
+      end
     elseif k == Enum.KeyCode.Y and st.em and st.em:GetAttribute("WtC") ~= nil then   -- 战雷式：着火先灭火，没着火就修车（再按一次取消修）
       G.R.Act:FireServer(st.em:GetAttribute("WtF") and "wtExt" or "wtFix")
     elseif k == Enum.KeyCode.G and not (G.interiorOn and G.interiorOn()) then   -- 战雷式侦察（WtMatch.lua）：轻型车对着准星下的敌车按，全队看得见它 30 秒
@@ -1651,6 +1670,11 @@ function Drive.init(G)
   end)
   UIS.InputEnded:Connect(function(io)
     if st and io.UserInputType == Enum.UserInputType.MouseButton1 then st.firing = false end
+    if io.KeyCode == Enum.KeyCode.X and G.ownXrayHold then   -- 松开 X：透视收起，原来在瞄准镜里的回镜里
+      G.ownXrayHold(false)
+      if st and st.xrSight and not st.sight then toggleSight() end
+      if st then st.xrSight = nil end
+    end
   end)
   -- 滚轮（用户 11-25「画面缩放升高的时候 先往后 再往上……参考坦克世界的画面缩放逻辑」）：
   --   第三人称往后滚，镜头先往后拉（臂长 0.6 → 1.6 倍），拉到头再往上升（绕着转的点抬高十几米，站得高看得远）；
@@ -1680,7 +1704,7 @@ function Drive.init(G)
     if m.op == "fix" and typeof(m.cf) == "CFrame" then   -- 服务器不认：拉回去
       local base = m.cf * CF(0, -st.d.H / 2, 0)
       local look = base.LookVector
-      st.pos, st.yaw, st.speed = base.Position, math.atan2(-look.X, -look.Z), 0
+      st.pos, st.yaw = base.Position, math.atan2(-look.X, -look.Z)   -- 车速不清零（11-26：原来每次拉回车速归零，卡一下就停）
       st.root = m.cf
     end
   end)
@@ -1820,7 +1844,7 @@ function Drive.init(G)
         -- 瞄准镜里的准星就是炮的指向；鼠标给的是想去的方向
         local o = eye
         local want = dirCam.LookVector
-        aimParams.FilterDescendantsInstances = { G.viewFolder, ownBox, st.em, me.Character }
+        aimParams.FilterDescendantsInstances = rayEx()
         local res = G.rayFar(o, want * 4000, aimParams)
         st.aimPt = res and res.Position or (o + want * 4000)
       end

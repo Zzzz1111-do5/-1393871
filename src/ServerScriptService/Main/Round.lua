@@ -780,14 +780,21 @@ function Round.init(G)
     end
     local kit = (type(choice) == "string") and kitFromRole(choice) or kitFromLoadout(choice, P)
     if not kit then return end
+    -- 试驾（Tech.lua 置 P.testDeploy）：不受出生点开放、准备阶段、兵力的限制——用户 11-26「训练场目前没发试驾飞机了」：
+    --   原来准备阶段守方机场（af3）不在 PREP_OK 里、有的任务里机场出生点不在单子上，试驾飞机全被「出生点不可用」拦下
+    local test = P.testDeploy == true
+    P.testDeploy = nil
     local sp = nil
-    for _, s in ipairs(spawnList(P.team, P)) do if s.id == spawnId then sp = s end end
-    if not sp or not sp.ok then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
+    local list = spawnList(P.team, P)
+    for _, s in ipairs(list) do if s.id == spawnId then sp = s end end
+    if test and not sp then sp = list[1] end
+    if not sp or (not sp.ok and not test) then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
     -- 准备阶段：后方、自己的据点和集结点；登陆艇也能上（艇在海上等着，开战一起冲滩）；不能先跳伞
     local PREP_OK = { fleet = true, cv = true, barge = true, af2 = true, camp = true, point = true, rally = true, beach = true, redbase = true, base = true }   -- redbase：沙海的前进基地；base：沙漠风暴两边的基地
-    if R.phase == "prep" and not PREP_OK[sp.kind] then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
-    if P.team == "atk" and R.phase == "battle" and (R.tickets or 1) <= 0 then G.msg(P.pl, "bad", "ui.noTickets") return end   -- 兵力打光：攻方不能再出生
-    if conquest() and P.team == "def" and R.phase == "battle" and (R.ticketsDef or 1) <= 0 then G.msg(P.pl, "bad", "ui.noTickets") return end   -- 征服：守方也按兵力
+    if R.phase == "prep" and not PREP_OK[sp.kind] and not test then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
+    if test then   -- 试驾不看兵力
+    elseif P.team == "atk" and R.phase == "battle" and (R.tickets or 1) <= 0 then G.msg(P.pl, "bad", "ui.noTickets") return end   -- 兵力打光：攻方不能再出生
+    if not test and conquest() and P.team == "def" and R.phase == "battle" and (R.ticketsDef or 1) <= 0 then G.msg(P.pl, "bad", "ui.noTickets") return end   -- 征服：守方也按兵力
     P.lastChoice = choice   -- 快速部署照上次的装备
     P.role = kit.role
     P.kit = kit

@@ -450,6 +450,11 @@ function Ents.init(G)
           G.explode(s.pos, s.w, s.src)
           done = true
         end
+        -- 炮弹飞出地图、钻到地底下（射线漏掉的）：收掉——11-26 炮弹改成飞到落地（life 60 秒），别在界外一直飞
+        if not done and s.kind == "shell" then
+          local lim = (Map.R or 12288) * 1.3   -- 地形范围再往外三成（再往外没有地可落）
+          if math.abs(s.pos.X) > lim or math.abs(s.pos.Z) > lim or s.pos.Y < Map.height(s.pos.X, s.pos.Z) - 40 then done = true end
+        end
         if not done and (s.t > (s.life or 8) or (s.pos.Y < -1.5 and Map.height(s.pos.X, s.pos.Z) < -1.5)) then   -- 掉进海里：水面上溅起水花（海加深以后不能等沉到海底）
           if s.kind ~= "grenade" then G.fx({ k = "splash", p = V(s.pos.X, 0, s.pos.Z) }) end
           done = true

@@ -1653,6 +1653,7 @@ function TechUI.init(G)
     local parts = {}
     local mk = last.mk or 1
     table.insert(parts, L("研究点 +", "RP +") .. last.rp .. ((mk ~= 1) and (L("（模式 ×", " (mode ×") .. mk .. L("）", ")")) or ""))
+    if (last.coins or 0) > 0 then table.insert(parts, L("金币 +", "Coins +") .. fmtNum(last.coins)) end   -- 11-26 金币不再无限：这一局挣了多少
     for _, c in ipairs(last.cur or {}) do
       local it = TT.get(c.k)
       if it then table.insert(parts, nm(it) .. " " .. math.min(c.rp, c.need) .. " / " .. c.need) end
@@ -1737,7 +1738,13 @@ function TechUI.init(G)
     if stt == "can" then
       btn(L("研究这一辆", "Research"), true, function() act("treeResearch", it.key) end).Name = "Research"
     elseif stt == "res" then
-      btn(L("购买（", "Buy (") .. it.cost .. ")", true, function() act("treeBuy", it.key) end).Name = "Buy"
+      -- 金币不够（用户 11-26「金币不要设置成无限」）：按钮写还差多少、不是主按钮（点了服务器也会说差多少）
+      local coins = me:GetAttribute("Coins")
+      local short = (me:GetAttribute("CoinsInf") ~= true and type(coins) == "number") and (it.cost - coins) or 0
+      local bb = btn(short > 0 and (L("金币不够（还差 ", "Not enough coins (") .. fmtNum(short) .. L("）", " short)")) or (L("购买（", "Buy (") .. fmtNum(it.cost) .. ")"),
+        short <= 0, function() act("treeBuy", it.key) end)
+      bb.Name = "Buy"
+      if short > 0 then bb:SetAttribute("Short", short) end
     elseif stt == "own" then
       local md = tree.mods and tree.mods[it.key]
       local nDone, nAll = WM.count(it, md and md.done)
@@ -1884,8 +1891,11 @@ function TechUI.init(G)
       card.Size, card.Position = UDim2.new(0, CW, 0, CH), UDim2.new(0, cx, 0, cy)
       -- 卡片（11-25「科技树没有设计感」）：深色底 + 左边一道状态色条（已拥有绿、研究完淡绿、正在研究琥珀、能研究白、没开灰），
       --   车图放在一块上亮下暗的底板上；名字窄体粗字靠右、战斗等级等宽字在右下；选中琥珀描边，鼠标放上去底色亮一点
-      local BASE = lock and RGB(22, 24, 27) or RGB(31, 35, 40)
-      card.BackgroundColor3, card.BackgroundTransparency, card.BorderSizePixel = BASE, 0.02, 0
+      -- 用户 11-26「车辆那个跟等级挂钩的背景颜色改成覆盖整个车辆的方框」：整张卡的底色就是这一级的颜色（上亮下暗的渐变），
+      --   锁住的整张压暗；车图下面垫一块半透明的深色（车图、字都清楚）
+      local BASE = lock and RGB(120, 120, 120) or Color3.new(1, 1, 1)
+      card.BackgroundColor3, card.BackgroundTransparency, card.BorderSizePixel = BASE, 0, 0
+      TH.rankGrad(card, it.rank)
       card.AutoButtonColor = false
       card.ZIndex = 3
       card.Parent = scroll
@@ -1895,12 +1905,11 @@ function TechUI.init(G)
       local strip = frame(card, UDim2.new(0, 3, 1, -6), UDim2.new(0, 3, 0, 3), STRIP, (stt == "can") and 0.45 or 0)
       strip.ZIndex = 5
       TH.corner(strip, 1)
-      local bay = frame(card, UDim2.new(0, math.floor(CW * 0.56), 1, -6), UDim2.new(0, 9, 0, 3), RGB(255, 255, 255), lock and 0.72 or 0.42)
+      local bay = frame(card, UDim2.new(0, math.floor(CW * 0.56), 1, -6), UDim2.new(0, 9, 0, 3), RGB(0, 0, 0), lock and 0.55 or 0.7)
       bay.Name = "Bay"
       bay.ZIndex = 3
       TH.corner(bay, 2)
-      TH.rankGrad(bay, it.rank)   -- 等级底色（用户 11-25：不同等级的载具背景颜色要有区别）
-      card.MouseEnter:Connect(function() card.BackgroundColor3 = BASE:Lerp(RGB(70, 76, 84), 0.35) end)
+      card.MouseEnter:Connect(function() card.BackgroundColor3 = lock and RGB(160, 160, 160) or RGB(255, 255, 255) end)
       card.MouseLeave:Connect(function() card.BackgroundColor3 = BASE end)
       local img = Instance.new("ImageLabel")   -- 左边：写实车图（没有才是白色剪影）
       img.Name = "Pic"
@@ -1999,6 +2008,10 @@ function TechUI.init(G)
   G.openTechTree = openTree
   G.refreshTechTree = function() if panel.Visible then refreshTree() end end
 
+  -- 金币变了（买了车、一局结算）：科技树开着的话详情里的「购买 / 金币不够」跟着变
+  me:GetAttributeChangedSignal("Coins"):Connect(function()
+    if panel.Visible then showDetail(view.sel and TT.get(view.sel)) end
+  end)
   me:GetAttributeChangedSignal("Tree"):Connect(function()
     readTree()
     if panel.Visible then refreshTree() end

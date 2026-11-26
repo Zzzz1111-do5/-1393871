@@ -1479,6 +1479,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       return
     end
     if not c.model.Parent then c.model.Parent = workspace end
+    G.interiorNow = c.model   -- 车内的零件：开车的测距 / 瞄准射线不算它（Drive.lua rayEx）
     frames(c, v)            -- 先按上一帧的动画算一遍（动画里要用到各组的位置）
     stepAnim(c, v, st, dt)
     stepMovs(c, dt)         -- 旋钮、开关、按钮
@@ -2617,6 +2618,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     end
     local c = cur
     if not c.model.Parent then c.model.Parent = workspace end
+    G.interiorNow = c.model   -- 车内的零件：开车的测距 / 瞄准射线不算它（Drive.lua rayEx）
     if v.M and not c.pilotsHidden then pcall(AM.setPilots, v.M, false) c.pilotsHidden = true end
     if mode == "seat" then zoneHide(c, true) elseif c.zoneOn then zoneHide(c, false) end   -- 导演镜头从外面看：外模型完整
     frames(c, v)

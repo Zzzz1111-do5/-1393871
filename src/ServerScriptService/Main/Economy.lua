@@ -13,9 +13,9 @@ function Economy.init(G)
   local E = Config.Economy
   local GM = require(RS:WaitForChild("GunMods"))
   if E.unlockAll then G.econAll = true end   -- 自己测试用：载具全开（Config.Economy.unlockAll）
-  -- 无限金币（Config.Economy.infinite，用户 11-24）：买东西不查余额、不扣；玩家属性 Coins 写一个大数（客户端按它判断买不买得起）、
-  --   CoinsInf = true（界面上写 ∞）；存档里的真金币照旧
-  --   每次现查（测试台开着关着都要测；上线前把 Config 里的 infinite 改回 false 就行）
+  -- 无限金币（Config.Economy.infinite，用户 11-24 要过；11-26「金币不要设置成无限」已经关掉）：开着时买东西不查余额、不扣；
+  --   玩家属性 Coins 写一个大数（客户端按它判断买不买得起）、CoinsInf = true（界面上写 ∞）；存档里的真金币照旧
+  --   每次现查（测试台开着关着都要测）
   local function INF() return E.infinite == true end
   local INF_SHOW = 999999999
 
@@ -133,11 +133,19 @@ function Economy.init(G)
   ---------------------------------------------------------------- 挣
 
   -- 一局打完（Round.lua 结算，先于存档）：得分 × perScore + 赢 / 输；PvE 模式（Pve.lua）照这个算一份，打通关卡另外加
+  --   科技树对局（战雷式，用户 11-26「金币不要设置成无限」：要正常挣、正常花）：金币 = 这一局的研究点 × treeK（Tech.lua G.treeRoundRp：
+  --   得分、击毁、赢了 ×1.3、模式倍率）——科技树的价钱是几千到三十万，原来那套（得分 × 0.1 + 200）一局才几百，研究完了一辈子买不起
   function G.awardCoins(P, won)
     if not P.data then return end
-    -- PvE 关卡（Pve.lua）：输赢的固定数不发，关卡奖励顶替它（不然反复刷第 1 关比打对战挣得多）
-    local flat = G.pve and 0 or (won and E.win or E.lose)
-    local n = math.floor((P.roundXp or 0) * E.perScore) + flat
+    local n
+    if G.treeRoundRp and G.wtGroundOnly and G.wtGroundOnly() then
+      n = math.floor(G.treeRoundRp(P, won) * (E.treeK or 0.5))
+    else
+      -- PvE 关卡（Pve.lua）：输赢的固定数不发，关卡奖励顶替它（不然反复刷第 1 关比打对战挣得多）
+      local flat = G.pve and 0 or (won and E.win or E.lose)
+      n = math.floor((P.roundXp or 0) * E.perScore) + flat
+    end
+    P.roundCoins = n   -- 结算页明细（Tech.lua t.last.coins）
     if n > 0 then G.addCoins(P, n, "eco.round") end
   end
 end
