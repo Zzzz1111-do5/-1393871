@@ -254,7 +254,10 @@ function Fly.init(G)
       if d.rotor then v.spin1 = spinStep(v.spin1, rpm / 100 * d.rotor.rpm / 60 * math.pi * 2 * 0.3, d.rotor.blades or 4, dt) end
       if d.rotor2 then v.spin2 = spinStep(v.spin2, rpm / 100 * d.rotor2.rpm / 60 * math.pi * 2 * 0.3, d.rotor2.blades or 4, dt) end
       if d.tail then v.spinT = spinStep(v.spinT, rpm / 100 * 18, (type(d.tail) == "table" and d.tail.blades) or 4, dt) end
-      if d.prop then v.spinP = spinStep(v.spinP, (c.thr or 0) / 100 * 30, 3, dt) end
+      if d.prop then   -- 推进式螺旋桨（MQ-9、攻击-2）：慢车也转（原来按油门，收了油门桨就停在半空）；打坏 / 没油几秒里慢下来，只剩迎风空转
+        v.rpmP = approach(v.rpmP or 32, engDead and 8 or (32 + 0.68 * math.clamp(c.thr or 0, 0, 100)), (engDead and 10 or 45) * dt)
+        v.spinP = spinStep(v.spinP, v.rpmP / 100 * 34, 3, dt)
+      end
       if d.fanEng then v.spinF = spinStep(v.spinF, (0.25 + (c.thr or 0) / 100) * 9, 14, dt) end   -- 涡扇风扇（A-10）：慢车也转
       -- 喷气发动机的涡轮（AirModels 的发动机后段，18 片叶片）：跟着转速，慢车也转；
       --   发动机打坏 / 没油 / 成了残骸：转速几秒里掉到只剩风车转（原来照着油门接着转）
@@ -263,6 +266,7 @@ function Fly.init(G)
         v.spinJ = spinStep(v.spinJ, (0.12 + v.rpmJ / 100) * 7.6, 18, dt)
       end
       c.spin1, c.spin2, c.spinT, c.spinP, c.spinF, c.spinJ = v.spin1, v.spin2, v.spinT, v.spinP, v.spinF, v.spinJ
+      c.rpmP = v.rpmP   -- 螺旋桨转速：AM.pose 按它让桨叶变虚、出桨盘
       AM.setStores(M, em:GetAttribute("Stores"))
       -- 远的少摆几次（一架几百个零件）
       v.frame += 1

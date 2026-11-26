@@ -829,8 +829,9 @@ function TacPad.init(G)
     if d.rotor then c.spin1 = (c.spin1 + d.rotor.rpm / 60 * math.pi * 2 * 0.3 * dt) % (math.pi * 2) end
     if d.rotor2 then c.spin2 = (c.spin2 + d.rotor2.rpm / 60 * math.pi * 2 * 0.3 * dt) % (math.pi * 2) end
     if d.tail then c.spinT = (c.spinT + 18 * dt) % (math.pi * 2) end
-    if d.prop then c.spinP = (c.spinP + 30 * dt) % (math.pi * 2) end
+    if d.prop then c.spinP, c.rpmP = (c.spinP + math.min(30 * dt, 0.8)) % (math.pi * 2), 96 end   -- 螺旋桨（每帧最多转大半个桨距：快了看着像倒转）
     if d.fanEng then c.spinF = ((c.spinF or 0) + 45 * dt) % (math.pi * 2) end   -- A-10 的涡扇风扇
+    if d.kind == "jet" and not d.prop then c.spinJ = ((c.spinJ or 0) + math.min(7.6 * 1.08 * dt, 0.12)) % (math.pi * 2) end   -- 喷口里的涡轮（同 Fly.lua：96% 转速；每帧不超过 18 片叶片间隔的三分之一）
     pcall(AM.pose, P.M, cf, c, os.clock())
   end
   local function job(f, kill)

@@ -258,6 +258,33 @@ function T.fakeImport(key)
   return n
 end
 
+-- 同上，飞机：照 ImportedAir 在 ReplicatedStorage.Imported.Air.<key> 摆一套同名、同尺寸的 MeshPart（推力矢量喷口用 key = "tvc"）
+function T.fakeImportAir(key)
+  local RS = R.services.ReplicatedStorage
+  local IA = R.require(RS:FindFirstChild("ImportedAir"))
+  local info = IA.m[key]
+  if not info then return 0 end
+  local imp = RS:FindFirstChild("Imported") or R.Instance.new("Folder")
+  imp.Name = "Imported"
+  imp.Parent = RS
+  local af = imp:FindFirstChild("Air") or R.Instance.new("Folder")
+  af.Name = "Air"
+  af.Parent = imp
+  local f = R.Instance.new("Folder")
+  f.Name = key
+  local n = 0
+  for name, p in pairs(info.parts) do
+    local b = R.Instance.new("MeshPart")
+    b.Name = "A_" .. key .. "__" .. name
+    b.Size = T.V3(p.s[1], p.s[2], p.s[3])
+    b.Parent = f
+    n = n + 1
+  end
+  f:SetAttribute("N", n)
+  f.Parent = af
+  return n
+end
+
 function T.summary()
   print(string.format("脚本报错 %d 条，警告 %d 条", #R.errors, #R.warns))
   -- 同一条（每帧都报的）只列一次，后面写重复了几次

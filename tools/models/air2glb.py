@@ -403,6 +403,11 @@ def convert(key, AD, ids):
         for sy in ([1, -1] if abs(n[1]) > 0.05 else [1]):
             p = R([n[0], n[1] * sy, n[2]])
             noz.append([round(float(p[0]), 3), round(float(p[1]), 3), round(float(p[2]), 3), round(float(n[3]) * S, 3)])
+    # 按转好的模型量过的（tools/models/nozray.py 的 NOZM：从机尾往前打射线量出口、内径、喷口里挡着的有多深）盖掉手写的——
+    #   手写的几型对不上原模型的喷口（歼-10 低 1.8 格、歼-11 在喷口后面 2.6 格、歼-6 一个圆喷管标成两个……），涡轮、尾焰、推力矢量喷口都歪着
+    import nozray   # noqa: E402
+    if key in nozray.NOZM:
+        noz = [list(n) for n in nozray.NOZM[key]]
     if noz:
         info['noz'] = noz
     # —— 灯、挂架贴着原模型的蒙皮：机体（含折叠外翼）的三角形

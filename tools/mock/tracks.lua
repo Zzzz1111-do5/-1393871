@@ -5,6 +5,8 @@
 --   ③ 原地左转：右边（外侧）往前走、左边往后走
 --   ④（11-26「坦克履带动画也有 bug」）整圈连着走：一帧里没有哪块板跳一大截（原来走到头一下跳回另一头）、相邻两块间距一样（原来有个空档跟着走）
 --   ⑤ 槽位会回收：最多 8 辆有履带板，开远了的 2 秒后让出来，后来的坦克也有（原来一占就不放，开一会儿新坦克履带全不动）
+--   ⑥（11-26「履带 bug 是坦克同时有两副履带，一副会动」）原模型自己的履带块（TrackLoops 的 trk）在履带板出来时藏起来、
+--     开远了板收起来时放回来；履带板连成一整条（板缝里不露底下那副）；履带和车身一块网格的车（豹 2A7V）什么都不藏、照样有履带板
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF = T.R, T.V3, T.CF
 local check = T.check
@@ -20,6 +22,8 @@ G.botsClear()
 local KEY = "t72b3"
 local nFake = T.fakeImport(KEY)
 check(nFake > 0, "假装导入了 " .. KEY .. " 的原模型（" .. nFake .. " 块）")
+local KEY2 = "leo2a7v"   -- 履带和车身是一块网格：藏不掉，只能盖住
+T.fakeImport(KEY2)
 local me = T.join("P1", 8101, true)
 R.run(2)
 local C = T.C
@@ -43,6 +47,29 @@ end
 print("  （原模型 " .. tostring(v and v.M and v.M.imported) .. "，履带板 " .. #links .. " 块）")
 check(#links >= 40, "镜头附近的履带车有履带板（" .. #links .. " 块）")
 if #links == 0 then T.summary() return end
+
+print("⑥ 原模型自己的履带块藏起来（不然看着是两副履带）")
+local function origState(vv, key)
+  local trk = TL[key].trk or {}
+  local hid, tot = 0, 0
+  for _, nm in ipairs(trk) do
+    local q = vv.model:FindFirstChild("V_" .. key .. "__" .. nm)
+    if q then
+      tot = tot + 1
+      if q.Transparency >= 0.99 then hid = hid + 1 end
+    end
+  end
+  return hid, tot, #trk
+end
+do
+  local hid, tot, n = origState(v, KEY)
+  check(n > 0 and tot == n and hid == tot, string.format("%s：原来的履带块（%s）有履带板时都藏起来了（%d / %d）", KEY, table.concat(TL[KEY].trk or {}, "、"), hid, n))
+  local sh = C.tracksShape(KEY)
+  check(sh ~= nil and type(TL[KEY].loop) == "table" and sh.total > 30, string.format("整圈按原履带块的外轮廓走（一圈 %.1f 格）", sh and sh.total or 0))
+  check(links[1].Size.Z >= sh.sp * 0.95, string.format("履带板连成一整条：板长 %.2f、节距 %.2f（原来板长只有节距的 0.74，缝里露出不动的原履带）", links[1].Size.Z, sh.sp))
+  local w = TL[KEY].bxo - TL[KEY].bxi
+  check(links[1].Size.X >= w, string.format("履带板比原履带宽（%.2f ≥ %.2f）", links[1].Size.X, w))
+end
 
 print("② 往前开")
 local function rel(p) return v.hullF:PointToObjectSpace(p.Position) end
@@ -142,5 +169,32 @@ local n1 = 0
 for _, en in ipairs(rest) do if hasLinks(en) then n1 = n1 + 1 end end
 local _, nAct2 = C.tracksActive()
 check(n1 == #rest, string.format("开远了的让出槽位：留在镜头附近的 %d 辆都有履带板（%d 辆有，占着 %d 个槽）", #rest, n1, nAct2))
+do   -- 开远了的：履带板收了，原来的履带放回来（远处看是原模型的履带，不是没履带）
+  local back, cnt = 0, 0
+  for _, en in ipairs(ents) do
+    local vv = C.views and C.views[en.model]
+    if vv and vv.model and not hasLinks(en) then
+      cnt = cnt + 1
+      local hid = origState(vv, KEY)
+      if hid == 0 then back = back + 1 end
+    end
+  end
+  check(cnt >= 5 and back == cnt, string.format("开远了的 %d 辆：原来的履带都放回来了（%d 辆）", cnt, back))
+end
+do   -- 履带和车身一块网格的（豹 2A7V）：什么都不藏、照样有履带板
+  local def2 = VD.get(KEY2)
+  local e2 = def2 and G.newVehicle("def", KEY2, G.vehBaseAt(def2, x0 + 20, z0 + 20, V3(0, 0, -1)))
+  for _ = 1, 30 do cam.CFrame = camF R.run(1 / 20) end
+  local vv = e2 and C.views and C.views[e2.model]
+  local hidden = 0
+  if vv and vv.model then
+    for _, q in ipairs(vv.model:GetDescendants()) do
+      if q:IsA("BasePart") and tostring(q.Name):match("^V_" .. KEY2 .. "__Body") and q.Transparency >= 0.99 then hidden = hidden + 1 end
+    end
+  end
+  check(e2 ~= nil and vv ~= nil and vv.M and vv.M.imported == KEY2, KEY2 .. "：拼出来了（原模型）")
+  check(TL[KEY2].trk == nil and hidden == 0, string.format("%s：履带和车身是一块网格，什么都不藏（藏了 %d 块）", KEY2, hidden))
+  check(e2 ~= nil and hasLinks(e2), KEY2 .. "：照样有履带板（连成一条盖住原来的）")
+end
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "))
 T.summary()

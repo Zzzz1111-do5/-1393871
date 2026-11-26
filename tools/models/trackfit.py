@@ -137,6 +137,175 @@ def simplify_open(pl, tol=0.05):
     return out
 
 
+#   —— 11-26（用户「履带 bug 是坦克同时有两副履带，一副会动」）：大多数原模型的履带是单独的块（有的还拆成履带板、销、诱导齿几块），
+#   套上去的履带板只是叠在它外面，板与板之间、拐角处露出底下那副不动的——看着就是两副。认出这些块（游戏里套上履带板时把它们藏起来），
+#   整圈按它们侧视的外轮廓量（不是凸包：T-72 / T-90 这种没有托带轮的，上面一段压在负重轮顶上一起一伏）
+#   认履带块：贴地（最低 < 0.4 格）、和履带差不多长（≥ 75%）、九成顶点在履带宽度里、
+#     侧视绝大多数顶点贴着自己的凸包边（≥ 60%：一圈），凸包里面大半是空的（覆盖 ≤ 60%：负重轮、侧裙板这种实心的不算）；
+#   还要分「纯履带」和「履带里还带着别的」：自己侧视填满后往里缩 1 格的那片，纯履带是空的（量过的 20 来块全是 0%；
+#     履带板本身连诱导齿侧视有 0.6 格厚，缩得少了会误伤），勒克莱尔的块带着六个负重轮的胎圈（99%）、10 式的带着侧裙板（22%）——
+#     这种不能藏（藏了负重轮少一圈、侧裙板没了），只能盖住
+def belt_parts(J, BIN, xi, xo, tlen):
+    from scipy.spatial import ConvexHull
+    out = []
+    for m in glbio.meshes(J, BIN):
+        P = m.P[np.unique(m.idx.reshape(-1))]
+        if len(P) < 40:
+            continue
+        ax = np.abs(P[:, 0])
+        if ((ax > xi - 0.25) & (ax < xo + 0.25)).mean() < 0.9 or np.ptp(P[:, 2]) < 0.75 * tlen or P[:, 1].min() > 0.4:
+            continue
+        Q = P[:, [2, 1]]
+        try:
+            hl = ConvexHull(Q)
+        except Exception:
+            continue
+        H = Q[hl.vertices]
+        d = np.full(len(Q), np.inf)
+        for i in range(len(H)):
+            a, b = H[i], H[(i + 1) % len(H)]
+            t = np.clip(((Q - a) @ (b - a)) / max(((b - a) ** 2).sum(), 1e-12), 0, 1)
+            d = np.minimum(d, np.linalg.norm(Q - (a + t[:, None] * (b - a)), axis=1))
+        ring = (d < 0.5).mean()
+        cov = raster(m.P[m.idx][:, :, [2, 1]], Q.min(0), Q.max(0), 0.15, edges=False)
+        g0 = Q.min(0)
+        ii, jj = np.nonzero(np.ones_like(cov))
+        cells = np.c_[ii * 0.15 + g0[0] + 0.075, jj * 0.15 + g0[1] + 0.075]
+        inh = (cells @ hl.equations[:, :2].T + hl.equations[:, 2] <= 1e-9).all(1)
+        fill = cov.ravel()[inh].mean() if inh.any() else 1
+        if ring >= 0.6 and fill <= 0.6:
+            out.append((glbio.part_name(m.node), m, inner_cov(m.P[m.idx][:, :, [2, 1]]) <= 0.03))
+    return out
+
+
+def inner_cov(TT, g=0.05, depth=1.0):
+    """侧视：块自己填满后往里缩 depth 格的那片，被它自己占了多少（纯履带一圈 ≈ 0）"""
+    from scipy import ndimage
+    lo = TT.reshape(-1, 2).min(0) - 4 * g
+    hi = TT.reshape(-1, 2).max(0) + 4 * g
+    cov = raster(TT, lo, hi, g)
+    st = np.ones((3, 3), bool)
+    sol = ndimage.binary_fill_holes(ndimage.binary_dilation(cov, st, iterations=3))
+    k = int(round(depth / g))
+    yy, xx = np.mgrid[-k:k + 1, -k:k + 1]
+    core = ndimage.binary_erosion(sol, xx * xx + yy * yy <= k * k)
+    return float(cov[core].mean()) if core.any() else 0.0
+
+
+def raster(TT, lo, hi, g, edges=True):
+    """侧视（z, y）三角形栅格化：格子 g；edges 连边一起画（侧着看是一条线的面也算上）"""
+    nz, ny = int((hi[0] - lo[0]) / g) + 3, int((hi[1] - lo[1]) / g) + 3
+    cov = np.zeros((nz, ny), bool)
+    for tri in TT:
+        a, b, c = tri
+        mn, mx = np.floor((tri.min(0) - lo) / g).astype(int), np.ceil((tri.max(0) - lo) / g).astype(int)
+        mn, mx = np.maximum(mn, 0), np.minimum(mx, [nz - 1, ny - 1])
+        if (mx - mn).prod() > 20000:
+            continue
+        zz, yy = np.meshgrid(np.arange(mn[0], mx[0] + 1), np.arange(mn[1], mx[1] + 1), indexing='ij')
+        pts = np.c_[zz.ravel() * g + lo[0] + g / 2, yy.ravel() * g + lo[1] + g / 2]
+        v0, v1 = b - a, c - a
+        den = v0[0] * v1[1] - v0[1] * v1[0]
+        if abs(den) > 1e-12:
+            w = pts - a
+            u = (w[:, 0] * v1[1] - w[:, 1] * v1[0]) / den
+            v = (v0[0] * w[:, 1] - v0[1] * w[:, 0]) / den
+            k = (u >= -0.02) & (v >= -0.02) & (u + v <= 1.02)
+            cov[zz.ravel()[k], yy.ravel()[k]] = True
+        if edges:
+            for p, q in ((a, b), (b, c), (c, a)):
+                n = int(np.linalg.norm(q - p) / (g * 0.5)) + 2
+                s = p + np.linspace(0, 1, n)[:, None] * (q - p)
+                ij = np.floor((s - lo) / g).astype(int)
+                ok = (ij[:, 0] >= 0) & (ij[:, 0] < nz) & (ij[:, 1] >= 0) & (ij[:, 1] < ny)
+                cov[ij[ok, 0], ij[ok, 1]] = True
+    return cov
+
+
+def envelope(TT, g=0.04):
+    """履带块侧视的外轮廓：栅格化 → 膨胀两格连上块之间的缝 → 填洞 → 腐蚀回来 → 沿外边描一圈 → 化简。
+    返回逆时针（z 往右、y 往上）的闭合折线，从最前面那一点开始"""
+    from scipy import ndimage
+    lo = TT.reshape(-1, 2).min(0) - 4 * g
+    hi = TT.reshape(-1, 2).max(0) + 4 * g
+    cov = raster(TT, lo, hi, g)
+    st = np.ones((3, 3), bool)
+    # 膨胀 5 格（0.2 格）把块和块之间、履带板之间的缝连上（M60A3 的履带板是一块块分开的），填洞，再腐蚀回来
+    sol = ndimage.binary_fill_holes(ndimage.binary_dilation(cov, st, iterations=5))
+    sol = ndimage.binary_erosion(sol, st, iterations=5)
+    # 开运算（圆盘半径 5 格 = 0.2 格）：磨掉 0.4 格以内的尖刺、凸起（主动轮齿尖、履带板上的齿、诱导齿），不然板走过去一上一下跳、
+    #   拐角处挤成一团；主动轮、诱导轮那种半径一格以上的圆弧、上面一段压在负重轮上的起伏不受影响
+    r = 5
+    yy, xx = np.mgrid[-r:r + 1, -r:r + 1]
+    sol = ndimage.binary_opening(sol, xx * xx + yy * yy <= r * r)
+    lab, n = ndimage.label(sol)
+    if n > 1:   # 只要最大的那一片
+        sz = ndimage.sum(sol, lab, range(1, n + 1))
+        sol = lab == (1 + int(np.argmax(sz)))
+    # 还是没连成一整片（填出来比凸包小得多）：退回凸包
+    from scipy.spatial import ConvexHull
+    pts = TT.reshape(-1, 2)
+    hl = ConvexHull(pts)
+    if sol.sum() * g * g < 0.75 * hl.volume:
+        H = pts[hl.vertices]
+        area = 0.5 * np.sum(H[:, 0] * np.roll(H[:, 1], -1) - np.roll(H[:, 0], -1) * H[:, 1])
+        if area < 0:
+            H = H[::-1]
+        H = dp_closed(H, 0.06)
+        k = int(np.argmin(H[:, 0] + 1e-3 * H[:, 1]))
+        return np.roll(H, -k, axis=0)
+    # Moore 邻域描边（格子坐标 i = z、j = y）：从最下面一行最左边的格子出发，沿外边逆时针走一圈
+    nz, ny = sol.shape
+    js = np.nonzero(sol.any(0))[0].min()
+    i0 = np.nonzero(sol[:, js])[0].min()
+    nb = [(1, 0), (1, 1), (0, 1), (-1, 1), (-1, 0), (-1, -1), (0, -1), (1, -1)]   # 逆时针排的 8 个方向（z 往右、y 往上）
+
+    def on(i, j):
+        return 0 <= i < nz and 0 <= j < ny and sol[i, j]
+    path = [(i0, js)]
+    cur, back = (i0, js), 6   # 从下面（j−1，一定是空的）开始找
+    for _ in range(nz * ny):
+        found = False
+        for k in range(1, 9):
+            d = (back + k) % 8
+            ni, nj = cur[0] + nb[d][0], cur[1] + nb[d][1]
+            if on(ni, nj):
+                back = (d + 4) % 8
+                cur = (ni, nj)
+                found = True
+                break
+        if not found or cur == path[0]:
+            break
+        path.append(cur)
+    C = np.array([(lo[0] + (i + 0.5) * g, lo[1] + (j + 0.5) * g) for i, j in path])
+    # 走的方向：有向面积 > 0 是逆时针
+    area = 0.5 * np.sum(C[:, 0] * np.roll(C[:, 1], -1) - np.roll(C[:, 0], -1) * C[:, 1])
+    if area < 0:
+        C = C[::-1]
+    C = dp_closed(C, 0.06)   # 比一格（0.04）大一点：栅格的一格台阶抹平
+    k = int(np.argmin(C[:, 0] + 1e-3 * C[:, 1]))   # 从最前面（z 最小）那一点开始
+    return np.roll(C, -k, axis=0)
+
+
+def dp_closed(C, tol):
+    """闭合折线的道格拉斯-普克化简"""
+    def dp(P):
+        if len(P) < 3:
+            return P
+        a, b = P[0], P[-1]
+        ab = b - a
+        L = np.linalg.norm(ab)
+        d = np.abs(ab[0] * (P[:, 1] - a[1]) - ab[1] * (P[:, 0] - a[0])) / L if L > 1e-9 else np.linalg.norm(P - a, axis=1)
+        i = int(np.argmax(d))
+        if d[i] <= tol:
+            return np.array([a, b])
+        return np.vstack([dp(P[:i + 1])[:-1], dp(P[i:])])
+    far = int(np.argmax(np.linalg.norm(C - C[0], axis=1)))
+    A = dp(np.vstack([C[:far + 1]]))
+    Bq = dp(np.vstack([C[far:], C[:1]]))
+    return np.vstack([A[:-1], Bq[:-1]])
+
+
 res = {}
 for key in KEYS:
     if not os.path.exists(os.path.join(GLB_DIR, key + '.glb')):
@@ -176,7 +345,34 @@ for key in KEYS:
                 'pts': [round(v, 3) for p in poly for v in p]}
     if key in NO_TOP:
         res[key]['z0'] = res[key]['z1'] = 'nil'
-    print('%-8s x %.2f..%.2f  上沿 %.1f  轮廓 %d 点' % (key, xi, xo, top, len(poly)))
+    # 单独的履带块：游戏里藏起来，整圈按它们的外轮廓
+    J_, BIN_ = glbio.read_glb(os.path.join(GLB_DIR, key + '.glb'))
+    pz = [p[0] for p in poly]
+    belts = belt_parts(J_, BIN_, xi, xo, max(pz) - min(pz))
+    pure = [(nm, m) for nm, m, ok in belts if ok]
+    use = pure or [(nm, m) for nm, m, ok in belts]
+    loopC = None
+    if use:
+        TT = np.concatenate([m.P[m.idx][:, :, [2, 1]] for _, m in use])
+        TT = TT - np.array([0, y0])
+        loopC = envelope(TT)
+        if not pure and loopC[:, 1].max() > top + 0.35:   # 带着侧裙板之类、外轮廓被顶高了（10 式）：不用
+            loopC = None
+    if loopC is not None:
+        BP = np.concatenate([m.P[np.unique(m.idx.reshape(-1))] for _, m in use])
+        bx = np.abs(BP[:, 0])
+        if pure:
+            res[key]['trk'] = [nm for nm, _ in pure]
+        res[key]['bxi'], res[key]['bxo'] = round(float(np.percentile(bx, 1)), 3), round(float(np.percentile(bx, 99)), 3)
+        # 下面一半有多长：从最前面那一点逆时针走到最后面那一点（打断的履带只剩这一段）
+        kz = int(np.argmax(loopC[:, 0]))
+        seg = np.linalg.norm(np.diff(loopC[:kz + 1], axis=0), axis=1).sum()
+        res[key]['lowL'] = round(float(seg), 2)
+        res[key]['loop'] = [round(float(v), 2) for p in loopC for v in p]
+    print('%-8s x %.2f..%.2f  上沿 %.1f  轮廓 %d 点%s' % (key, xi, xo, top, len(poly),
+          ('；履带块 %s（藏），外轮廓 %d 点' % ('/'.join(res[key]['trk']), len(loopC))) if pure and loopC is not None else
+          ('；履带块 %s 里还带着别的（不藏）%s' % ('/'.join(nm for nm, _ in use), ('，外轮廓 %d 点' % len(loopC)) if loopC is not None else '，外轮廓被顶高了不用')) if use else
+          '；没有单独的履带块（和车身一块网格）'))
     if REVIEW:
         from PIL import Image, ImageDraw
         zmin, zmax = float(P[:, 2].min()), float(P[:, 2].max())
@@ -193,16 +389,25 @@ for key in KEYS:
         pp = [((z - zmin) * K + 4, H - 5 - y * K) for z, y in poly]
         dr.line(pp, fill=(255, 80, 60), width=2)
         dr.line([((zc0 - zmin) * K + 4, H - 5 - top * K), ((zc1 - zmin) * K + 4, H - 5 - top * K)], fill=(80, 200, 255), width=2)
+        if loopC is not None:   # 履带块的外轮廓（绿）
+            lp = [((z - zmin) * K + 4, H - 5 - y * K) for z, y in loopC]
+            dr.line(lp + lp[:1], fill=(60, 230, 90), width=1)
         os.makedirs(REVIEW, exist_ok=True)
         im.save(os.path.join(REVIEW, key + '.png'))
 
 lines = ['-- 履带轮廓（tools/models/trackfit.py 从原模型量的，别手改）：客户端 Tracks.lua 照它套一圈会转的履带板',
          '--   TL[模型键] = { xi 履带内边, xo 外边（|x|，左右对称）, top 上面一段的高度, z0 / z1 上面一段画到哪（前、后）,',
-         '--     pts = { z1, y1, z2, y2, … } 下面一段：车头那头 → 贴地 → 车尾那头的折线（格，原点车底中心，−Z 朝前） }',
+         '--     pts = { z1, y1, z2, y2, … } 下面一段：车头那头 → 贴地 → 车尾那头的折线（格，原点车底中心，−Z 朝前）,',
+         '--     原模型履带是单独的块的（大多数）：trk = { 块名… } 游戏里套上履带板时把它们藏起来（不然看着是两副履带）；',
+         '--     loop = { z, y, … } 这些块侧视的外轮廓（逆时针一整圈，从最前面那一点开始）、lowL 下面一半多长、bxi / bxo 履带块的内外边 }',
          'return {']
 for k in sorted(res):
     r = res[k]
-    lines.append('  %s = { xi = %s, xo = %s, top = %s, z0 = %s, z1 = %s, pts = { %s } },' % (k, r['xi'], r['xo'], r['top'], r['z0'], r['z1'], ', '.join(str(v) for v in r['pts'])))
+    extra = ''
+    if r.get('loop'):
+        extra = '%s, bxi = %s, bxo = %s, lowL = %s, loop = { %s }' % ((', trk = { %s }' % ', '.join('"%s"' % n for n in r['trk'])) if r.get('trk') else '',
+                                                                     r['bxi'], r['bxo'], r['lowL'], ', '.join(str(v) for v in r['loop']))
+    lines.append('  %s = { xi = %s, xo = %s, top = %s, z0 = %s, z1 = %s, pts = { %s }%s },' % (k, r['xi'], r['xo'], r['top'], r['z0'], r['z1'], ', '.join(str(v) for v in r['pts']), extra))
 lines.append('}')
 open(OUT, 'w', encoding='utf-8').write('\n'.join(lines) + '\n')
 print('写了', OUT, len(res), '辆')

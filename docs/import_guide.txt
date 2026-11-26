@@ -36,6 +36,9 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日起 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～八包、E 第一～七包，新的在上面）
+  E 11-26 下午这一包：重导一个文件——
+    · air/mq9.glb：MQ-9 / 攻击-2 的螺旋桨拆成了会转的部件（里面的零件换成 A_mq9_v5__…；不重导照旧能用，只是螺旋桨不转）
+    其余（喷口位置、履带）只换游戏文件就行
   E 11-26 夜这一包：新导入两个文件（别的不用动）——
     · veh/type59.glb：59 式中型坦克（科技树中国地面一级 59 式、二级 69-II 式都用它；Sketchfab CC-BY，署名在 veh/credits.txt）
     · bld/city.glb：钢城的写实楼房（10 种楼，14 MB；署名在 bld/city_credits.txt）。没导入的话城里照旧用零件拼的楼

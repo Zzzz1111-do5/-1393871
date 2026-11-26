@@ -754,14 +754,30 @@ function AM.build(d, team, load)
       end
     end
     -- 尾喷口：收敛调节片随加力张开、加力火焰、马赫环
-    for j, E in ipairs(d.eng or {}) do
-      if imp and imp.info.noz and not E.prop then   -- 原模型：火焰从原模型的尾喷口喷（左右按最近的配）
-        local best, bd = nil, math.huge
-        for _, nz in ipairs(imp.info.noz) do
-          local dd = math.abs(nz[1] - E.x) + math.abs(nz[3] - E.z) * 0.1
-          if dd < bd then best, bd = nz, dd end
-        end
-        if best then E = setmetatable({ x = best[1], y = best[2] + imp.O.Y, z = best[3], r = best[4] }, { __index = E }) end
+    -- 原模型：每台发动机配最近的喷口；两台发动机配到同一个喷口的（歼-6：原模型尾部只有一个圆喷管）只画一份
+    --   （原来两份涡轮、尾焰一左一右叠在一个喷管里，看着是歪的）
+    local function nozOf(E)
+      local best, bd = nil, math.huge
+      for _, nz in ipairs(imp.info.noz) do
+        local dd = math.abs(nz[1] - E.x) + math.abs(nz[3] - E.z) * 0.1
+        if dd < bd then best, bd = nz, dd end
+      end
+      return best
+    end
+    local engs = d.eng or {}
+    if imp and imp.info.noz then
+      local used, list = {}, {}
+      for _, E in ipairs(engs) do
+        local nz = (not E.prop) and nozOf(E) or nil
+        if not (nz and used[nz]) then table.insert(list, E) end
+        if nz then used[nz] = true end
+      end
+      engs = list
+    end
+    for j, E in ipairs(engs) do
+      if imp and imp.info.noz and not E.prop then   -- 原模型：火焰从原模型的尾喷口喷（tools/models/nozray.py 按模型量的出口、内径；deep 喷口里第一层挡着的有多深）
+        local best = nozOf(E)
+        if best then E = setmetatable({ x = best[1], y = best[2] + imp.O.Y, z = best[3], r = best[4], deep = best[5], cdeep = best[6] }, { __index = E }) end
       end
       local E0 = E   -- 原模型自己的喷口出口（下面推力矢量喷口会把 E 挪到它的出口）：发动机后段照这里摆
       local tvcVec = nil
@@ -839,11 +855,15 @@ function AM.build(d, team, load)
       --   二元喷口（F-22）、螺旋桨不画；位置按原模型自己的喷口出口（E0）往里
       if not E.prop and not E.flat and d.kind == "jet" then
         local r0, z0 = E0.r, E0.z
+        -- 原模型喷口里自己有一层涡轮面 / 尾锥 / 堵头的（E0.deep：离出口多深，nozray.py 量的）：整套往外挪到它前面、按比例压短
+        --   （原来一律摆在出口往里 1.75 个半径：浅的那几型被原模型自己的那层挡住看不见，或者叠在一起闪）
+        local dk = E0.deep and math.clamp((E0.deep - 0.12) / (r0 * 1.75), 0.25, 1) or 1
         local t0 = TAG
         TAG = "eng"
-        local hubCF = CF(E0.x, E0.y, z0 - r0 * 1.75) * CFrame.Angles(math.pi / 2, 0, 0)   -- 盘心坐标系：转轴是自己的 Y（顺着机身）
+        local hubCF = CF(E0.x, E0.y, z0 - r0 * 1.75 * dk) * CFrame.Angles(math.pi / 2, 0, 0)   -- 盘心坐标系：转轴是自己的 Y（顺着机身）
         local fJ = function(c) return c.spinJ or 0 end
-        add(newPart(m, V(r0 * 0.5, 0.25, r0 * 0.5), RGB(48, 46, 44), MAT.Metal, CYL), UPRIGHT, "r", { hub = hubCF, f = fJ })
+        local ownCone = E0.cdeep ~= nil and E0.cdeep < r0 * 1.3 * dk   -- 原模型喷口正中自己有尾锥（轰-6K）：盘心、程序画的尾锥藏在它后面，不画
+        if not ownCone then add(newPart(m, V(r0 * 0.5, 0.25, r0 * 0.5), RGB(48, 46, 44), MAT.Metal, CYL), UPRIGHT, "r", { hub = hubCF, f = fJ }) end
         local NB = 18
         for kb = 1, NB do
           local a = (kb - 1) / NB * math.pi * 2
@@ -852,8 +872,10 @@ function AM.build(d, team, load)
           bp.CastShadow = false
           add(bp, cfb, "r", { hub = hubCF, f = fJ })
         end
-        local cone = cylZ(r0 * 0.7, r0 * 0.36, CF(E0.x, E0.y, z0 - r0 * 1.3), RGB(58, 56, 54), MAT.Metal)
-        cone.p.CastShadow = false
+        if not ownCone then
+          local cone = cylZ(r0 * 0.7 * dk, r0 * 0.36, CF(E0.x, E0.y, z0 - r0 * 1.3 * dk), RGB(58, 56, 54), MAT.Metal)
+          cone.p.CastShadow = false
+        end
         for ring, rr in ipairs((d.ab and not E0.cold and not E0.mild) and { 0.62, 0.34 } or {}) do   -- 没有加力的（轰-6、A-10、无人机）没有火焰稳定器
           local n = (ring == 1) and 14 or 8
           for ks = 1, n do
@@ -861,7 +883,7 @@ function AM.build(d, team, load)
             local len = 2 * math.pi * rr * r0 / n * 1.06
             local hp = newPart(m, V(len, r0 * 0.08, r0 * 0.12), RGB(46, 44, 42), MAT.Neon)
             hp.CastShadow = false
-            local cf0 = CF(E0.x, E0.y, z0 - r0 * 0.85) * CFrame.Angles(0, 0, a) * CF(0, rr * r0, 0)
+            local cf0 = CF(E0.x, E0.y, z0 - r0 * 0.85 * dk) * CFrame.Angles(0, 0, a) * CF(0, rr * r0, 0)
             table.insert(M.flames, add(hp, cf0, "ab", { holder = true }))
           end
         end
@@ -1403,6 +1425,17 @@ function AM.build(d, team, load)
           else
             table.insert(M.blades, it)
           end
+        elseif (g == "Prop" or g == "PropHub") and I.prop then
+          -- 推进式螺旋桨（用户 11-26「螺旋桨建模位置歪了 且发动机不会动」：原模型的桨叶、桨毂整流罩烘在机身网格里，一动不动；
+          --   tools/models/propsplit.py 按连通块拆出来）：绕原模型的桨轴转（c.spinP，Fly.lua 按发动机转速算）；桨叶转快了变虚（下面 pblades）
+          local R = I.prop
+          local hub = CF(V(R.p[1], R.p[2], R.p[3]) + O) * axisY(V(R.a[1], R.a[2], R.a[3]).Unit)
+          local it = add(mp, hub:Inverse() * cc0, "r", { hub = hub, f = function(cc) return cc.spinP or 0 end })
+          if g == "Prop" then
+            if imp.plain then mp.Color, mp.Material = RGB(58, 60, 62), MAT.SmoothPlastic end   -- 换涂装的（攻击-2）：桨叶照旧深灰，别刷成机身色
+            M.pblades = M.pblades or {}
+            table.insert(M.pblades, it)
+          end
         elseif g == "Gun" or g == "GunY" then   -- 机头炮塔（阿帕奇、直-10：tools/models/air2glb.py 从原模型里拆出来的）：跟着瞄准转——炮绕耳轴方位 + 俯仰，炮塔座只转方位
           local G0 = I[string.lower(g)] or I.gun
           local piv = G0 and (V(G0.p[1], G0.p[2], G0.p[3]) + O) or c
@@ -1419,6 +1452,13 @@ function AM.build(d, team, load)
           add(mp, cc0, "b")
         end
       end
+    end
+    if I.prop and M.pblades then   -- 螺旋桨转快了的桨盘：桨尖那么大的一圈很淡的模糊（同直升机的桨盘）
+      local R = I.prop
+      local hub = CF(V(R.p[1], R.p[2], R.p[3]) + O) * axisY(V(R.a[1], R.a[2], R.a[3]).Unit)
+      local disc = add(newPart(m, V(0.08, (R.r or 2.5) * 2.02, (R.r or 2.5) * 2.02), RGB(40, 42, 44), MAT.Glass, CYL, 1), UPRIGHT, "r", { hub = hub, f = function() return 0 end })
+      disc.p.CastShadow = false
+      M.pdiscs = { disc }
     end
     for _, w in ipairs(I.wells or {}) do
       local wp = newPart(m, V(math.max(w.s[1] - 0.1, 0.1), math.max(w.s[2], 0.1), math.max(w.s[3] - 0.1, 0.1)), DARK, MAT.SmoothPlastic)
@@ -1657,6 +1697,14 @@ function AM.pose(M, cf, c, now, world)
     M.blur = blur
     for _, it in ipairs(M.blades) do it.p.Transparency = (blur == 1) and 0.72 or 0 end
     for _, it in ipairs(M.discs) do it.p.Transparency = (blur == 1) and 0.86 or 1 end
+  end
+  if M.pblades then   -- 原模型拆出来的螺旋桨：按螺旋桨自己的转速（c.rpmP，Fly.lua）变虚、出桨盘；机库里没开车（nil）就是清清楚楚的三片桨
+    local pb = ((c.rpmP or 0) > 40) and 1 or 0
+    if pb ~= M.pblur then
+      M.pblur = pb
+      for _, it in ipairs(M.pblades) do it.p.Transparency = (pb == 1) and 0.68 or 0 end
+      for _, it in ipairs(M.pdiscs or {}) do it.p.Transparency = (pb == 1) and 0.88 or 1 end
+    end
   end
   -- 灯：航行灯常亮；防撞灯一秒闪一下（机背、机腹错开半拍）；翼尖频闪双闪；着陆灯随起落架；被击毁 / 关灯（M.dark）全灭
   local gearDown = (c.gear or 0) > 0.6

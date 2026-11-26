@@ -11,6 +11,10 @@
 --   · 上面一段量不准的几辆（TrackLoops 里 z0 = nil，量到了挡泥板）：后弧、上面一段、前弧上的板藏着，只露下面一段
 --   · 下面一段往后走、上面一段往前走（相对车身），贴地那几块相对地面不动——同真车；转向时外侧快、内侧慢，原地转向一边往前一边往后
 --   · 省事：离镜头 220 格以内、最多 8 辆才画；远了、车毁了就藏起来不动
+--   · 11-26（用户「履带 bug 是坦克同时有两副履带，一副会动」）：大多数原模型的履带本来就是单独的块（TrackLoops 的 trk），
+--     原来履带板只是叠在它外面，板与板之间留着缝、拐角处和它差着一点，露出底下那副不动的——看着就是两副。
+--     现在套上履带板时把原来那几块藏起来（Transparency = 1；离远了、让出槽位、车毁了放回来），整圈照这几块侧视的外轮廓（loop）走；
+--     履带和车身是同一块网格、藏不掉的（豹 2A7V、M163……），履带板连成一整条、比原履带宽一点、外表面高出一点，把它整个盖住
 --   View.lua 每帧算完车身位置调 G.tracksStep(v, M, hullF, dt, far, base)
 local RS = game:GetService("ReplicatedStorage")
 
@@ -25,8 +29,9 @@ function Tracks.init(G)
   local cam = workspace.CurrentCamera
   local now = os.clock
   local PITCH = 0.95   -- 一块履带板多长（格）：真车一节 15～19 厘米，画成两节一块，近处、远处都看得出在走
-  local TH = 0.24      -- 板厚
-  local IN = TH / 2 - 0.04   -- 板中心比轮廓往里收多少（板外表面比原履带外面高出 0.04 格，盖住原来静止的花纹）
+  local TH = 0.28      -- 板厚
+  local IN = TH / 2 - 0.035   -- 板中心比轮廓往里收多少（板外表面比原履带外面高出 0.035 格：藏不掉的原履带被整个盖住，不打架闪烁）
+  local LINK = 0.97    -- 板长占节距多少：连成一整条，只留一道细缝看得出一节一节（原来 0.74，板缝里露出底下不动的原履带）
   local RANGE = 220
   local MAXN = 8
   local FREE_T = 2     -- 藏起来超过几秒放掉槽位
@@ -64,29 +69,34 @@ function Tracks.init(G)
     if c ~= nil then return c or nil end
     local T = TL[key]
     if not T or type(T.pts) ~= "table" or #T.pts < 4 then cache[key] = false return nil end
-    local L = T.pts
-    local n = #L
-    local zs, ys, ze, ye = L[1], L[2], L[n - 1], L[n]
-    local tzs, tys = unit(L[3] - L[1], L[4] - L[2])
-    local tze, tye = unit(L[n - 1] - L[n - 3], L[n] - L[n - 2])
-    local hasTop = (T.z0 ~= nil and T.z1 ~= nil and T.z1 - T.z0 > 1)
-    local top = T.top or 3
-    local z0, z1 = T.z0, T.z1
-    if not hasTop then   -- 上面一段量不准：回程只是藏着走的路，按贴地那段的两头连
-      local lo, hi = math.huge, -math.huge
-      for i = 1, n, 2 do if L[i + 1] < 0.3 then lo, hi = math.min(lo, L[i]), math.max(hi, L[i]) end end
-      if lo > hi then lo, hi = zs * 0.8, ze * 0.8 end
-      z0, z1 = lo, hi
+    local P, lowLen, hasTop = {}, 0, true
+    if type(T.loop) == "table" and #T.loop >= 8 then
+      -- 原模型单独的履带块侧视的外轮廓（trackfit.py）：逆时针一整圈，从最前面那一点开始；下面一半到最后面那一点
+      for i = 1, #T.loop do P[i] = T.loop[i] end
+      lowLen = T.lowL or 0
+    else
+      local L = T.pts
+      local n = #L
+      local zs, ys, ze, ye = L[1], L[2], L[n - 1], L[n]
+      local tzs, tys = unit(L[3] - L[1], L[4] - L[2])
+      local tze, tye = unit(L[n - 1] - L[n - 3], L[n] - L[n - 2])
+      hasTop = (T.z0 ~= nil and T.z1 ~= nil and T.z1 - T.z0 > 1)
+      local top = T.top or 3
+      local z0, z1 = T.z0, T.z1
+      if not hasTop then   -- 上面一段量不准：回程只是藏着走的路，按贴地那段的两头连
+        local lo, hi = math.huge, -math.huge
+        for i = 1, n, 2 do if L[i + 1] < 0.3 then lo, hi = math.min(lo, L[i]), math.max(hi, L[i]) end end
+        if lo > hi then lo, hi = zs * 0.8, ze * 0.8 end
+        z0, z1 = lo, hi
+      end
+      -- 折线：下面一段 → 后弧 → 上面一段 → 前弧（逆时针：z 往右、y 往上），记下面一段有多长
+      for i = 1, n do P[i] = L[i] end
+      for i = 1, n / 2 - 1 do lowLen += math.sqrt((L[2 * i + 1] - L[2 * i - 1]) ^ 2 + (L[2 * i + 2] - L[2 * i]) ^ 2) end
+      arc(P, ze, ye, tze, tye, z1, top, -1, 0)
+      P[#P + 1], P[#P + 2] = z1, top
+      P[#P + 1], P[#P + 2] = z0, top
+      arc(P, z0, top, -1, 0, zs, ys, tzs, tys)
     end
-    -- 折线：下面一段 → 后弧 → 上面一段 → 前弧（逆时针：z 往右、y 往上），记下面一段有多长
-    local P = {}
-    for i = 1, n do P[i] = L[i] end
-    local lowLen = 0
-    for i = 1, n / 2 - 1 do lowLen += math.sqrt((L[2 * i + 1] - L[2 * i - 1]) ^ 2 + (L[2 * i + 2] - L[2 * i]) ^ 2) end
-    arc(P, ze, ye, tze, tye, z1, top, -1, 0)
-    P[#P + 1], P[#P + 2] = z1, top
-    P[#P + 1], P[#P + 2] = z0, top
-    arc(P, z0, top, -1, 0, zs, ys, tzs, tys)
     -- 闭合一圈的累计长度
     local m = #P / 2
     local cum = { 0 }
@@ -121,8 +131,9 @@ function Tracks.init(G)
       vis[i] = hasTop or (i - 1) * ds <= lowLen + 0.2
     end
     local nl = math.max(4, math.floor(total / PITCH + 0.5))
+    local xi, xo = T.bxi or T.xi, T.bxo or T.xo   -- 有单独的履带块：宽度按它量的
     c = { T = T, N = N, ds = ds, total = total, z = sz, y = sy, nz = nz, ny = ny, vis = vis,
-      nl = nl, sp = total / nl, xm = (T.xi + T.xo) / 2, w = (T.xo - T.xi) + 0.1, top = hasTop, lowLen = lowLen }
+      nl = nl, sp = total / nl, xm = (xi + xo) / 2, w = (xo - xi) + 0.14, top = hasTop, lowLen = lowLen, trk = T.trk }
     cache[key] = c
     return c
   end
@@ -130,12 +141,21 @@ function Tracks.init(G)
 
   local active = {}   -- [v] = 状态
   local nActive = 0
+  -- 原模型自己那几块履带：套上履带板时藏起来、板藏起来时放回来（按原来的透明度）
+  local function origShow(S, on)
+    if S.origOn == on then return end
+    S.origOn = on
+    for _, o in ipairs(S.orig) do
+      if o.p.Parent then o.p.Transparency = on and o.tr or 1 end
+    end
+  end
   local function release(v)
     local S = active[v]
     if not S then return end
     active[v] = nil
     nActive -= 1
     if S.conn then S.conn:Disconnect() end
+    origShow(S, true)
     for _, p in ipairs(S.parts) do p:Destroy() end
   end
   local function build(v, M, sh)
@@ -147,7 +167,7 @@ function Tracks.init(G)
         p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
         p.Material = Enum.Material.Metal
         p.Color = (i % 2 == 0) and C1 or C2
-        p.Size = V(sh.w, TH, sh.sp * 0.74)
+        p.Size = V(sh.w, TH, sh.sp * LINK)
         p.TopSurface, p.BottomSurface = Enum.SurfaceType.Smooth, Enum.SurfaceType.Smooth
         p.Transparency = 1
         p.Parent = M.model   -- 跟车模型一起（车模型删了它也没了；炮兵视角藏敌车时一起藏）
@@ -156,7 +176,13 @@ function Tracks.init(G)
         vis[#vis + 1] = false
       end
     end
-    local S = { sh = sh, parts = parts, cfs = cfs, vis = vis, s = { 0, 0 }, last = nil, shown = true, hidT = nil, fwd = 0, yr = 0, dist = 0 }
+    -- 原模型自己的履带块（VehModels 克隆时保留了名字 V_<键>__<块名>）
+    local orig = {}
+    for _, nm in ipairs(sh.trk or {}) do
+      local q = M.model:FindFirstChild("V_" .. M.imported .. "__" .. nm)
+      if q and q:IsA("BasePart") then orig[#orig + 1] = { p = q, tr = q.Transparency } end
+    end
+    local S = { sh = sh, parts = parts, cfs = cfs, vis = vis, s = { 0, 0 }, last = nil, shown = true, hidT = nil, fwd = 0, yr = 0, dist = 0, orig = orig, origOn = true }
     S.conn = M.model.Destroying:Connect(function()
       if active[v] == S then
         active[v] = nil
@@ -172,6 +198,7 @@ function Tracks.init(G)
     for i, p in ipairs(S.parts) do
       if S.vis[i] then p.Transparency = 1 S.vis[i] = false end
     end
+    origShow(S, true)   -- 履带板不画了：原来那副露出来（不然车底下没履带）
   end
   -- 槽位满了：放掉一辆藏了的（藏得最久的），没有就放掉比 dist 远 STEAL 格以上、最远的那辆
   local function freeSlot(dist)
@@ -209,6 +236,7 @@ function Tracks.init(G)
       nActive += 1
     end
     S.shown, S.hidT, S.dist = true, nil, dist
+    origShow(S, false)
     -- 车速（往前为正）、转向角速度：按没加悬挂晃动的车底（base）这一帧和上一帧
     local ref = base or hullF
     local fwd, yawRate = 0, 0
