@@ -89,7 +89,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Imports", "Store", "Economy", "Tech", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Revive", "Squads", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Wt", "Kit", "Air", "WtAir", "Nuke", "Depots", "WtMatch", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle", "Trees", "Pve" }) do
+for _, name in ipairs({ "Imports", "Store", "Economy", "Tech", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Revive", "Squads", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Wt", "Kit", "Air", "WtAir", "Nuke", "Depots", "WtMatch", "FarLod", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle", "Trees", "Pve" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -231,6 +231,7 @@ task.spawn(function()
   waitMap()
   local ok, err = xpcall(function() G.World.build(G) end, tb)
   if not ok then bootError("生成地图", err) G.worldReady = true end
+  if G.farLodPublish then G.try("远景替身", G.farLodPublish) end   -- 流式加载时远处的楼画替身（FarLod.lua）
   if G.depotsBuild then G.try("生成点", G.depotsBuild) end   -- 载具生成点（要等舰队甲板建好）
   if G.navBuild then G.try("寻路", G.navBuild) end   -- 后台算机器人走路的流场
   if G.roundStart then G.try("开局", G.roundStart) end

@@ -257,6 +257,16 @@ for _, nat in ipairs(TT.NATIONS) do
   end
 end
 
+-- 型号 → 科技树里第一个用它自己性能的项（沙盒、电脑车没有 TreeKey：观瞄 WtOptics 按它查年代、国家）
+TT.byVeh = {}
+for _, nat in ipairs(TT.NATIONS) do
+  for _, br in ipairs(TT.BRANCHES) do
+    for _, it in ipairs(TT.list[nat][br]) do
+      if it.veh and TT.byVeh[it.veh] == nil then TT.byVeh[it.veh] = it end
+    end
+  end
+end
+
 function TT.get(key) return TT.byKey[key] end
 -- 这一系这棵树的起步车（白送的那一辆；树空着返回 nil）
 function TT.starter(nat, br)

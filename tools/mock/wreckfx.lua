@@ -67,7 +67,16 @@ local st = C.wreckStat
 check(st ~= nil, "WreckFx 起来了")
 local big0, ch0 = st and st.big or 0, st and st.chunks or 0
 killAs(e, "ammo")
-R.run(0.6)
+-- 弹药在底下转盘里的车（用户 11-26「要先着火再飞」，WtDamage.CAROUSEL）：先从舱口往外窜火几秒，再掀炮塔、炸开
+local WD = R.require(R.services.ReplicatedStorage:FindFirstChild("WtDamage"))
+local cook = WD.CAROUSEL[VEH] and WD.cookSecs(e.id) or 0
+if cook > 0 then
+  R.run(0.6)
+  check(st and (st.cook or 0) >= 1 and st.big == big0, string.format("转盘弹药：先着火（%s 次），还没炸（火球 %d）——%.1f 秒后再炸", tostring(st and st.cook), st and st.big or -1, cook))
+  R.run(cook)
+else
+  R.run(0.6)
+end
 check(st and st.big == big0 + 1, "殉爆：大火球（" .. tostring(st and st.big) .. "）")
 local nc = chunks()
 check(nc >= 6, "钢板碎块飞出去了（" .. nc .. " 块真零件）")

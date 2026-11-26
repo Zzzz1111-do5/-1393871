@@ -285,6 +285,71 @@ function WreckFx.init(G)
     end
   end
 
+  -- 转盘车殉爆前先烧（用户 11-26「部分弹药架在下面的坦克被干掉炮塔飞起来吧 然后要先着火再飞」）：发射药一着火，
+  --   车长、炮长两个舱口往上喷火（越烧越旺、越喷越高），里面噼啪乱响、火星乱溅，火光一闪一闪，黑烟往上冒；
+  --   secs 秒后 View.lua 掀炮塔、G.wreckFx 画大火球（同一刻）
+  function G.wreckCook(v, base, secs)
+    local d0 = v.def or {}
+    local M = v.M or {}
+    if not base then return end
+    local L, W, H = d0.L or 20, d0.W or 10, d0.hullH or (d0.H or 8) * 0.6
+    local tp = d0.turret and d0.turret.pivot
+    local top = base.Position + V(0, (tp and tp.Y or H) + (d0.turret and 2.2 or 0.6), 0)
+    local p = base.Position + V(0, H * 0.7, 0)
+    local k, d = lod(p)
+    if d > 4000 then return end
+    stat.cook = (stat.cook or 0) + 1
+    -- 两个舱口：炮塔顶左右各一个（按车宽）
+    local jets = {}
+    for _, sx in ipairs({ -0.22, 0.2 }) do
+      local q = top + base.RightVector * (W * sx) - base.LookVector * (L * 0.02)
+      local h = holder(CFrame.lookAt(q, q + V(0, 1, 0)))
+      local f = emitter(h, { tex = TX.fire, rate = 10, life = { 0.35, 0.7 }, spd = { 6, 12 }, spread = 10, dir = Enum.NormalId.Front,
+        drag = 1.4, acc = V(0, 8, 0), size = seq(0, 1.6, 0.4, 3, 1, 1), tr = seq(0, 0.05, 0.7, 0.35, 1, 1),
+        col = cseq(0, RGB(255, 240, 200), 0.35, FIRE_MID, 1, FIRE_DARK), le = 0.95, rot = 80, z = 2 })
+      local s2 = emitter(h, { tex = TX.smoke, rate = 3, life = { 2.5, 4 }, spd = { 5, 9 }, spread = 14, drag = 1, acc = V(1.6, 4, 0.8),
+        size = seq(0, 2, 1, 10), tr = seq(0, 0.25, 1, 1), col = cseq(0, SOOT, 1, SOOT2), rot = 15 })
+      table.insert(jets, { h = h, f = f, s = s2 })
+      Debris:AddItem(h, secs + 5)
+    end
+    -- 越烧越旺：喷得越来越高、越来越密
+    local t0 = os.clock()
+    task.spawn(function()
+      while os.clock() - t0 < secs do
+        local q = math.clamp((os.clock() - t0) / secs, 0, 1)
+        for _, j in ipairs(jets) do
+          if j.f.Parent then
+            j.f.Rate = 10 + 46 * q
+            j.f.Speed = NumberRange.new(6 + 18 * q, 12 + 30 * q)
+            j.f.Size = seq(0, 1.6 + 1.6 * q, 0.4, 3 + 4 * q, 1, 1.4)
+            j.s.Rate = 3 + 6 * q
+          end
+        end
+        task.wait(0.1)
+      end
+      for _, j in ipairs(jets) do if j.f.Parent then j.f.Rate = j.f.Rate * 0.4 end end   -- 炸开那一下之后火小下去（大火由 heavyBurn 接着烧）
+    end)
+    -- 里面噼啪：零星的小殉爆（火星、闪一下、一声脆响），越到后面越密
+    local t = 0.15
+    while t < secs - 0.15 do
+      local tt = t
+      task.delay(tt, function()
+        if not (M.model and M.model.Parent) then return end
+        local q = top + base.RightVector * ((math.random() - 0.5) * W * 0.5) + V(0, -1 + math.random(), 0)
+        local h = holder(CF(q))
+        emitter(h, { tex = TX.spark, n = N(14, k), life = { 0.35, 0.9 }, spd = { 18, 46 }, spread = 70, acc = V(0, -60, 0), drag = 0.6,
+          size = seq(0, 0.35, 1, 0.08), tr = seq(0, 0, 1, 0.4), col = cseq(0, RGB(255, 236, 170), 1, RGB(255, 150, 60)), le = 1, rot = 0 })
+        if G.flash then G.flash(q, RGB(255, 170, 90), 18, 3, 0.12) end
+        pop(q, d, false)
+        Debris:AddItem(h, 2)
+      end)
+      t += 0.45 - 0.25 * (t / secs) + math.random() * 0.2
+    end
+    -- 车身也烧起来（View.lua 的 fire / black：先小、炸开以后 heavyBurn 调大）
+    if M.fire then M.fire.Rate = 14 end
+    if M.black then M.black.Rate = 6 end
+  end
+
   local liveBig = 0
   -- v：View.lua 的车（v.M 模型、v.def 型号）；why：服务器的 WtWhy（"ammo" 殉爆、"fire" 烧毁、"crew" 乘员打光、nil 老式血量打光）；base：车底的 CFrame
   function G.wreckFx(v, why, base)

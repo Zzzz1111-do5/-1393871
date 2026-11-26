@@ -375,6 +375,10 @@ Config.Wt = { on = true, noInfantry = true, sp0 = 0, spMax = 3000, perScore = 0.
   -- 三种模式（机库里投票，准备阶段按票数，开战定住；Tech.lua）：ab 街机（敌人都标、飞机空中出生）、rb 历史（只标近处看得见的）、
   --   sb 全真（不标、只能第一人称）；研究点、乘员经验按 modeK 乘
   mode0 = "rb", modeK = { ab = 1, rb = 1.3, sb = 1.6 }, airSpawnH = 1200,
+  -- 击毁奖励（用户 11-26「你自己设计一个击杀效果和音效以及奖励」）：每打掉一辆当场发金币 coin0 + 对方等级 × coinRank，按模式 modeK 乘；
+  --   研究点照旧结算时发（一局按击毁数 × rpKill 算，Tech.lua roundRp）——击毁那一下先报这一辆算多少；
+  --   加成：弹药殉爆、一发击毁（这一辆只挨了我一发）、越级击毁（对方战斗等级比我高 brUp 以上）各乘一下
+  kill = { coin0 = 90, coinRank = 25, rpKill = 250, bonus = { ammo = 1.3, one = 1.25, up = 1.5 }, brUp = 0.7 },
   cost = { tank = 300, apc = 200, aa = 220, arty = 260, jet = 450, bomber = 550, drone = 280, heli = 380, transport = 240, ship = 400 } }
 -- cat：地面车的 VehDefs cat（tank / apc / aa / arty）、飞机的 AirDefs cat（jet / heli）、舰艇 ship；nPaid：这一局已经花 SP 出过几辆
 function Config.WtCost(id, cat, nPaid)

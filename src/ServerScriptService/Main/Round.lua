@@ -1200,6 +1200,7 @@ function Round.init(G)
     clearChars()
     for _, P in pairs(G.P) do
       P.kills, P.deaths, P.score, P.caps, P.roundXp = 0, 0, 0, 0, 0
+      P.wtKillRp = nil   -- 击毁加成的研究点（WtMatch.lua）：每局重算
     end
     G.emit("roundStart")
     if R.mission ~= "break" or (G.wtGroundOnly and G.wtGroundOnly()) then G.msgAll("info", "wtm.mission", { k = "wtm.mi." .. R.mission }) end
@@ -1350,6 +1351,11 @@ function Round.init(G)
     C.round = R.n
     C.picked = P.picked == true
     C.queued = P.queued   -- 匹配中：自己排着的那一辆（科技树的键；没排是 nil）
+    -- 局内选车（用户 11-26：匹配完进局，再在局内的界面选载具；车毁了回到这个界面）：这一局算他的（匹配进来 / 半路加入）、现在没车 →
+    --   客户端机库（TechUI.lua）就是选车页：主按钮「出击」、多一个「退出战斗」、先选中匹配时点的那一辆（pickPref）
+    local inMatch = P.match ~= nil and P.match == R.n and (R.phase == "prep" or R.phase == "battle") and not P.testDeploy
+    C.pick = (inMatch and not P.vehicle) or nil
+    C.pickPref = C.pick and P.pickPref or nil
     C.myVote = (not G.mapId and G.mapVotes and G.mapVotes[P.pl]) or nil   -- 自己投的哪张（选地图界面高亮）
     C.rAtk, C.rDef = teamCount("atk", true), teamCount("def", true)   -- 选阵营界面：两边各有几个真人、能不能进
     C.canAtk, C.canDef = canJoin(P, "atk"), canJoin(P, "def")

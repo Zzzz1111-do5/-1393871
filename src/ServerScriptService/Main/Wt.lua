@@ -146,9 +146,16 @@ function Wt.init(G)
     e.wtWhy = why
     e.model:SetAttribute("WtWhy", why)   -- 客户端 View：殉爆才掀炮塔
     local base = baseOf(e)
-    if why == "ammo" then   -- 殉爆：一大团火、炮塔掀飞（客户端 ArmorFx 的 wreck 画残骸，这里多一声大的）
+    if why == "ammo" then   -- 殉爆：一大团火（客户端 View / WreckFx 画残骸，这里多一声大的）
       local tp = e.def.turret and e.def.turret.pivot or V(0, e.def.hullH or 4, 0)
-      G.fx({ k = "boom", p = (base * CF(tp)).Position, s = 4.2, c = "wreck" })
+      local at = (base * CF(tp)).Position
+      if W.CAROUSEL[e.def.id] and e.def.turret then   -- 弹在车体底下的：先烧几秒再炸、炮塔飞起来（客户端按 WtCook 同步）
+        local cook = W.cookSecs(e.id)
+        e.model:SetAttribute("WtCook", cook)
+        task.delay(cook, function() G.fx({ k = "boom", p = at, s = 4.6, c = "wreck" }) end)
+      else
+        G.fx({ k = "boom", p = at, s = 4.2, c = "wreck" })
+      end
     end
     e.wtLastDriver = e.driver   -- 车毁了以后车里的人就下车了：击杀信息、「你被击毁」那一发的 X 光要发给他们
     e.wtLastPass = e.pass and table.clone(e.pass) or nil
@@ -320,6 +327,10 @@ function Wt.init(G)
 
   local function sendHit(e, s, res, out, extra)
     local P = s.src and s.src.P
+    if P then   -- 谁打中过它几发（WtMatch.lua 击毁奖励的「一发击毁」）
+      e.wtHitsBy = e.wtHitsBy or {}
+      e.wtHitsBy[P] = (e.wtHitsBy[P] or 0) + 1
+    end
     local payload = { op = "wtHit", id = e.id, veh = e.def.id, r = res.r, kill = res.kill, why = res.why, fire = res.fire, blow = res.blow,
       parts = out, pen = res.pen and math.floor(res.pen) or nil, arm = res.eff and math.floor(res.eff) or nil, ang = res.ang and math.floor(res.ang) or nil,
       dist = res.dist and math.floor(res.dist) or nil, xr = extra, tk = e.treeKey }   -- tk：科技树出的车（界面写科技树里的名字）

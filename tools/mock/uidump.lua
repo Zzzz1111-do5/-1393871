@@ -7,30 +7,20 @@ local VW, VH, INSET = 1280, 720, 36
 local items, perGui = {}, {}
 local function c3(c) return c and { math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5) } or nil end
 local function isGui(o) return R.base.IsA(o, "GuiObject") end
-local function place(o, px, py, pw, ph, scale, guiName, z0, alpha)
-  local p = o._p
-  local sz = o.Size
-  local ps = o.Position
-  local ap = o.AnchorPoint
-  local w = (sz.XS * pw + sz.XO) * scale
-  local h = (sz.YS * ph + sz.YO) * scale
-  local x = px + ps.XS * pw + ps.XO * scale - ap.X * w
-  local y = py + ps.YS * ph + ps.YO * scale - ap.Y * h
-  return x, y, w, h
-end
 local function cut(a, x, y, w, h, r)   -- 裁剪框（ClipsDescendants、CanvasGroup）：和上一层的取交集
   local b = { x, y, x + w, y + h, r or 0 }
   if not a then return b end
   return { math.max(a[1], b[1]), math.max(a[2], b[2]), math.min(a[3], b[3]), math.min(a[4], b[4]), (r and r > 0) and r or a[5] }
 end
-local function walk(o, px, py, pw, ph, scale, guiName, depth, clip, ga)
+-- 排版（同 Roblox）：每个元素在父元素「没缩放」的坐标里按 Size / Position / AnchorPoint 排，再乘上祖先的 UIScale；
+--   元素自己的 UIScale 以它的锚点为中心放大它自己和子孙（ScreenGui 底下的 UIScale 当成每个顶层元素自己的）
+--   walk(o, ax, ay, uw, uh, s)：o 的框左上角在屏幕的 (ax, ay)，没缩放的大小 uw × uh，o 里面的坐标乘 s 才是屏幕像素
+local function walk(o, ax, ay, uw, uh, s, guiName, depth, clip, ga, rootU)
   ga = ga or 1
   -- 子元素：有 UIListLayout 的按顺序排
   local layout = o:FindFirstChildOfClass("UIListLayout")
   local kids = {}
   for _, c in ipairs(o._kids) do if isGui(c) and c._p.Visible ~= false then kids[#kids + 1] = c end end
-  local us = o:FindFirstChildOfClass("UIScale")
-  local sc = scale * (us and us.Scale or 1)
   if layout and #kids > 0 then
     table.sort(kids, function(a, b)
       local la, lb = a.LayoutOrder or 0, b.LayoutOrder or 0
@@ -42,12 +32,28 @@ local function walk(o, px, py, pw, ph, scale, guiName, depth, clip, ga)
   local horiz = layout and layout.FillDirection == Enum.FillDirection.Horizontal
   local pad = layout and layout.Padding or nil
   for _, c in ipairs(kids) do
-    local x, y, w, h = place(c, px, py, pw, ph, sc)
-    if layout then
-      x, y = px + cx, py + cy
-      local padPx = pad and (pad.Scale * (horiz and pw or ph) + pad.Offset) or 0
-      if horiz then cx = cx + w + padPx else cy = cy + h + padPx end
+    local sz, ps, ap = c.Size, c.Position, c.AnchorPoint
+    local cuw = sz.XS * uw + sz.XO
+    local cuh = sz.YS * uh + sz.YO
+    local arc = c:FindFirstChildOfClass("UIAspectRatioConstraint")   -- 宽高比约束（默认 FitWithinMaxSize）：在原来的框里按比例缩
+    if arc and (arc.AspectRatio or 0) > 0 then
+      local ar = arc.AspectRatio
+      local w2 = math.min(cuw, cuh * ar)
+      cuw, cuh = w2, w2 / ar
     end
+    local own = c:FindFirstChildOfClass("UIScale")
+    local u = (own and own.Scale or 1) * (rootU or 1)
+    local w, h = cuw * s * u, cuh * s * u
+    local x, y
+    if layout then
+      x, y = ax + cx * s, ay + cy * s
+      local padPx = pad and (pad.Scale * (horiz and uw or uh) + pad.Offset) or 0
+      if horiz then cx = cx + cuw + padPx else cy = cy + cuh + padPx end
+    else
+      x = ax + (ps.XS * uw + ps.XO) * s - ap.X * w
+      y = ay + (ps.YS * uh + ps.YO) * s - ap.Y * h
+    end
+    local sc = s * u
     local p = c._p
     local stroke = c:FindFirstChildOfClass("UIStroke")
     local corner = c:FindFirstChildOfClass("UICorner")
@@ -56,7 +62,7 @@ local function walk(o, px, py, pw, ph, scale, guiName, depth, clip, ga)
       bg = c3(c.BackgroundColor3), bgT = c.BackgroundTransparency, }
     if corner then rec.corner = corner.CornerRadius.Scale * math.min(w, h) + corner.CornerRadius.Offset * sc end
     if stroke and stroke._p.Enabled ~= false then
-      rec.st = c3(stroke.Color) rec.stT = stroke.Transparency rec.stW = stroke.Thickness
+      rec.st = c3(stroke.Color) rec.stT = stroke.Transparency rec.stW = stroke.Thickness * sc
       local sg = stroke:FindFirstChildOfClass("UIGradient")
       if sg then
         pcall(function()
@@ -74,6 +80,8 @@ local function walk(o, px, py, pw, ph, scale, guiName, depth, clip, ga)
     if c._cls == "ImageLabel" or c._cls == "ImageButton" then
       rec.img = c.Image rec.ic = c3(c.ImageColor3) rec.iT = c.ImageTransparency
       rec.icon = c:GetAttribute("Icon")   -- HudArt 装上的图标（HudIcons 里的名字）
+      rec.pic = c:GetAttribute("PicName")   -- 写实车图（VehPics 里的名字；模拟器解不出 EditableImage，渲染时照游戏的解法还原）
+      rec.fit = (c.ScaleType == Enum.ScaleType.Fit) or nil
     end
     rec.clip, rec.ga = clip, ga
     if c._cls == "ViewportFrame" then rec.vp = c._p.Name end
@@ -82,7 +90,11 @@ local function walk(o, px, py, pw, ph, scale, guiName, depth, clip, ga)
       pcall(function()
         local kp = {}
         for _, k in ipairs(grad.Transparency.Keypoints) do kp[#kp + 1] = { k.Time, k.Value } end
-        rec.grad = { rot = grad.Rotation or 0, kp = kp }
+        local ck = {}   -- 颜色渐变（乘在底色上）：没开（Enabled = false）就不算
+        if grad.Enabled ~= false then
+          for _, k in ipairs(grad.Color.Keypoints) do ck[#ck + 1] = { k.Time, c3(k.Value) } end
+        end
+        rec.grad = { rot = grad.Rotation or 0, kp = kp, ck = (#ck > 0) and ck or nil }
       end)
     end
     items[#items + 1] = rec
@@ -94,7 +106,7 @@ local function walk(o, px, py, pw, ph, scale, guiName, depth, clip, ga)
     elseif c.ClipsDescendants then
       kidClip = cut(clip, x, y, w, h, nil)
     end
-    if c._cls ~= "ViewportFrame" then walk(c, x, y, w, h, sc, guiName, depth + 1, kidClip, kidGa) end
+    if c._cls ~= "ViewportFrame" then walk(c, x, y, cuw, cuh, sc, guiName, depth + 1, kidClip, kidGa) end
   end
 end
 local pg = me:FindFirstChildOfClass("PlayerGui")
@@ -106,7 +118,8 @@ table.sort(guis, function(a, b) return (a.DisplayOrder or 0) < (b.DisplayOrder o
 for gi, g in ipairs(guis) do
   local top = g.IgnoreGuiInset and 0 or INSET
   local n0 = #items
-  walk(g, 0, top, VW, VH - top, 1, g._p.Name .. "#" .. gi, 0)
+  local gu = g:FindFirstChildOfClass("UIScale")
+  walk(g, 0, top, VW, VH - top, 1, g._p.Name .. "#" .. gi, 0, nil, nil, gu and gu.Scale or nil)
   for i = n0 + 1, #items do items[i].order = (g.DisplayOrder or 0) * 1000 + gi end
 end
 print(string.format("显示着的界面元素 %d 个；按 ScreenGui：", #items))

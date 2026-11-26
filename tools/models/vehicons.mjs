@@ -29,6 +29,7 @@ const GLB = {
   t80u: 't80u', t80b: 't80u', t80bvm: 't80u', bmp1: 'bmp1', leo2a6: 'leo2a6', leo2a4: 'leo2a6', leo1: 'leo1', leo1a5: 'leo1', m60a3: 'm60a3', m60a1: 'm60a3',
   t64a: 't64', t64b: 't64', type74: 'type74', type74g: 'type74', gepard1a1: 'gepard', gepard1a2: 'gepard', bmp2: 'bmp2', bmp2m: 'bmp2',   // 11-25 D 第二批
   m551: 'm551', leo2a7v: 'leo2a7v', type10: 'type10', leclerc: 'leclerc', t72b3: 't72b3', t72ural: 't72b3', t72a: 't72b3', t72b: 't72b3',   // E、C 的（11-24 / 11-25）
+  type59: 'type59', type69: 'type59',   // 11-26 E：59 式（69-II 借它的模型）
 };
 // 飞机、直升机（AirDefs 的型号）→ models/air 的原模型（ImportedAir.alias 去掉版本后缀和 ~）；没有原模型的 gj11 是 X-47B 的模型、gj2 / z20 借 MQ-9 / UH-60
 const AIR = {

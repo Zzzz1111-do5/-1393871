@@ -21,26 +21,39 @@ def rgb(c):
     return tuple(int(v) for v in (c or [255, 255, 255]))
 
 
+def grad_fill(size, base, g):
+    """UIGradient 的颜色（乘在底色上，同 Roblox）；没给颜色就是纯底色"""
+    w, h = size
+    ck = g.get('ck')
+    if not ck or all(tuple(c[1]) == (255, 255, 255) for c in ck):
+        return Image.new('RGBA', size, tuple(base) + (255,))
+    import numpy as np
+    rot = math.radians(g.get('rot', 0))
+    dx, dy = math.cos(rot), math.sin(rot)
+    xs = (np.arange(w) / max(1, w - 1) - 0.5)[None, :]
+    ys = (np.arange(h) / max(1, h - 1) - 0.5)[:, None]
+    u = np.clip(xs * dx + ys * dy + 0.5, 0, 1)
+    ts = [c[0] for c in sorted(ck)]
+    out = np.zeros((h, w, 3))
+    for ch in range(3):
+        vs = [c[1][ch] for c in sorted(ck)]
+        out[:, :, ch] = np.interp(u, ts, vs) * base[ch] / 255.0
+    arr = np.dstack([out.astype('uint8'), np.full((h, w), 255, 'uint8')])
+    return Image.fromarray(arr, 'RGBA')
+
+
 def grad_mask(w, h, g):
     """UIGradient 的透明度：Rotation 0 从左到右、90 从上到下（按 Roblox 的方向），返回 0～255 的不透明度遮罩"""
+    import numpy as np
     w, h = max(1, int(math.ceil(w))), max(1, int(math.ceil(h)))
     kp = sorted(g['kp'])
     rot = math.radians(g.get('rot', 0))
     dx, dy = math.cos(rot), math.sin(rot)
-    m = Image.new('L', (w, h))
-    px = m.load()
-    for y in range(h):
-        for x in range(w):
-            u = ((x / max(1, w - 1) - 0.5) * dx + (y / max(1, h - 1) - 0.5) * dy) + 0.5
-            u = min(1, max(0, u))
-            t = kp[-1][1]
-            for i in range(len(kp) - 1):
-                if kp[i][0] <= u <= kp[i + 1][0]:
-                    a = (u - kp[i][0]) / max(1e-6, kp[i + 1][0] - kp[i][0])
-                    t = kp[i][1] + (kp[i + 1][1] - kp[i][1]) * a
-                    break
-            px[x, y] = int(255 * (1 - t))
-    return m
+    xs = (np.arange(w) / max(1, w - 1) - 0.5)[None, :]
+    ys = (np.arange(h) / max(1, h - 1) - 0.5)[:, None]
+    u = np.clip(xs * dx + ys * dy + 0.5, 0, 1)
+    t = np.interp(u, [k[0] for k in kp], [k[1] for k in kp]) if len(kp) > 1 else np.full((h, w), kp[0][1])
+    return Image.fromarray((255 * (1 - t)).clip(0, 255).astype('uint8'), 'L')
 
 
 _icons = None
@@ -71,6 +84,40 @@ def icon_img(name):
             px[o * 2], px[o * 2 + 1] = l, a
             o += 1; i += 1
     return Image.frombytes('LA', (w, h), bytes(px))
+
+
+_pics = None
+
+
+def pic_img(name):
+    """照 HudArt.lua picDecode 还原 src/ReplicatedStorage/VehPics.lua 的写实车图（调色板 RGBA + 透明游程）"""
+    global _pics
+    import base64, re, os
+    if _pics is None:
+        _pics = {}
+        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'ReplicatedStorage', 'VehPics.lua')
+        if os.path.exists(p):
+            txt = open(p, encoding='utf-8').read()
+            m = re.search(r'w = (\d+), h = (\d+)', txt)
+            _pics['_wh'] = (int(m.group(1)), int(m.group(2))) if m else (240, 120)
+            for k, pal, d in re.findall(r'(\w+) = \{ p = "([^"]*)", d = "([^"]*)" \}', txt):
+                _pics[k] = (pal, d)
+    if name not in _pics:
+        return None
+    w, h = _pics['_wh']
+    pal, d = _pics[name]
+    pal, raw = base64.b64decode(pal), base64.b64decode(d)
+    px = bytearray(w * h * 4)
+    o, i = 0, 0
+    while i < len(raw) and o < w * h:
+        b = raw[i]
+        if b == 0:
+            o += raw[i + 1]; i += 2
+        else:
+            q = (b - 1) * 4
+            px[o * 4:o * 4 + 4] = pal[q:q + 4]
+            o += 1; i += 1
+    return Image.frombytes('RGBA', (w, h), bytes(px))
 
 
 VPIMG = {}   # 视口名 → 图片（命令行 vp:名字=图片.png）
@@ -149,8 +196,13 @@ def main():
             col = rgb(it['bg']) + (a,)
             if it.get('grad'):
                 m = grad_mask(w, h, it['grad'])
-                fill = Image.new('RGBA', m.size, rgb(it['bg']) + (0,))
-                fill.putalpha(m.point(lambda v: int(v * (1 - bgT) * ga)))
+                fill = grad_fill(m.size, rgb(it['bg']), it['grad'])
+                al = m.point(lambda v: int(v * (1 - bgT) * ga))
+                if r > 0.5:   # 圆角：按圆角再裁一下
+                    rm = Image.new('L', m.size, 0)
+                    ImageDraw.Draw(rm).rounded_rectangle([0, 0, m.size[0] - 1, m.size[1] - 1], radius=min(r, w / 2, h / 2), fill=255)
+                    al = ImageChops.multiply(al, rm)
+                fill.putalpha(al)
                 ov.alpha_composite(fill, (int(x), int(y)))
             elif abs(rot) > 0.5 and r <= 0.5:
                 cx, cy = x + w / 2, y + h / 2
@@ -168,7 +220,25 @@ def main():
                 ImageDraw.Draw(mk).rounded_rectangle([0, 0, src.size[0] - 1, src.size[1] - 1], radius=min(r, src.size[0] / 2, src.size[1] / 2), fill=255)
                 src.putalpha(ImageChops.multiply(src.getchannel('A'), mk))
             ov.alpha_composite(src, (int(round(x)), int(round(y))))
-        if it.get('icon') and (it.get('iT') or 0) < 0.99:
+        pic_done = False
+        if it.get('pic') and (it.get('iT') or 0) < 0.99 and int(w) > 0 and int(h) > 0:   # 写实车图：按比例塞进框里（ScaleType Fit）
+            src = pic_img(it['pic'])
+            if src is not None:
+                sw, sh = src.size
+                k = min(w / sw, h / sh) if it.get('fit') else None
+                tw, th = (int(round(sw * k)), int(round(sh * k))) if k else (int(round(w)), int(round(h)))
+                if tw > 0 and th > 0:
+                    im2 = src.resize((tw, th), Image.LANCZOS)
+                    tint = rgb(it.get('ic'))
+                    if tint != (255, 255, 255):
+                        r_, g_, b_, a_ = im2.split()
+                        im2 = Image.merge('RGBA', [r_.point(lambda v, c=tint[0]: v * c // 255), g_.point(lambda v, c=tint[1]: v * c // 255),
+                                                   b_.point(lambda v, c=tint[2]: v * c // 255), a_])
+                    a_ = im2.split()[3].point(lambda v: int(v * (1 - (it.get('iT') or 0)) * ga))
+                    im2.putalpha(a_)
+                    ov.alpha_composite(im2, (int(round(x + (w - tw) / 2)), int(round(y + (h - th) / 2))))
+                    pic_done = True
+        if not pic_done and it.get('icon') and (it.get('iT') or 0) < 0.99:
             src = icon_img(it['icon'])
             if src is not None and int(w) > 0 and int(h) > 0:
                 src = src.resize((max(1, int(round(w))), max(1, int(round(h)))), Image.LANCZOS)

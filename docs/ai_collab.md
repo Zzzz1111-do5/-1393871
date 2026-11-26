@@ -25,6 +25,29 @@
 
 ## 正在做
 
+- E（11-26 夜，用户：「改成匹配完之后两边再开始在局内有一个界面选择载具」，后来「风格跟我目前的主界面风格完全不一样」「局内选车的界面别弄科技树」「要先着火再飞」……）：
+  · **局内选车 = 机库的局内模式**（单独的选车页 WtPick.lua 删了）：匹配到了不自动出车，进局（WtMatch.lua enterMatch：P.match）回机库选；车被打掉也回这里。
+    Round.lua personal() 推 C.pick（这一局算他的、现在没车）、C.pickPref（匹配前点的那一辆，先选中）；TechUI.lua hangarSet 见 S.pick：主按钮写「出击」、挪到右下角，
+    顶上「退出战斗」（ACT.matchLeave 清 P.match），国旗条、科技树、地图投票都收起，阵容卡填满等级底色；飞机在地面车出过之前卡片压暗、点不了（不写字）。
+    WtMatch.lua whyNot(P, 型号, 种类) 是出不了的原因 { 语言键, 参数… }，G.wtSpawnOk 用它说话。中间那行「匹配到了」大字去掉了。测试 tools/mock/match.lua ②⑤
+  · **按年代的观瞄**（ReplicatedStorage/WtOptics.lua，Client/Drive.lua 开镜）：每辆车按科技树的键（沙盒、电脑车按型号 TechTree.byVeh 查年代、国家）定夜视——
+    主动红外 ir（六七十年代：只亮探照灯那一圈，外面压黑）、微光 ii、热像 th1（扫描线、发糊）/ th2 / th3（高清）、没有 none；能切的通道 st.allow（V 只在这几种里转），
+    天黑默认这辆车最好的那种。分划按原厂火控代（WtMods.fcsGen）和东西方：sov 苏式（^ 形、提前量刻度、表尺、测距曲线）、nato 早期弹道、lrf 激光测距、dig / hk 数字；
+    光学年代（sov、nato）镜里没有数字读数，装定距离看分划上的指针。测试 tools/mock/optics.lua（59 式、M60A1、T-72A、豹 2A4、T-90M）；veh.lua 的切换顺序改成现代坦克没有微光档。
+    **用户 11-26 看了截图嫌难看，要照真镜子重画**（白天黑色细线、上方各弹种距离表尺 + 指示线、两边每格 4 密位、左下 2.7 米测距曲线、按密位随倍率缩放）——下一步做
+  · **击毁效果和奖励**（Client/KillFx.lua）：打中是四根细条拼的标记（原来那个「✕」字在一些字体里是方块），击毁是粗 X + 琥珀圈扩开 + 四角折线，音效 killConfirm / coinSparkle（Fx.lua）；
+    服务器 WtMatch.lua entDied 按对方等级、殉爆 / 一发 / 越级加成发金币、研究点（K.wtKillRp 结算时并进 Tech.lua roundRp），Drive 远程 wtKillReward → 右边奖励条。测试 tools/mock/killfx.lua
+  · **转盘弹药的车先着火再掀炮塔**（WtDamage.CAROUSEL：T-64 / 72 / 80 / 90、96、99A）：Wt.lua destroy 记 WtCook（WtDamage.cookSecs 按车号 2.2～3.4 秒），到点才炸；
+    客户端 View.lua → WreckFx.lua G.wreckCook 先从舱口往外窜火、噼啪响越来越密，到点 startToss 掀炮塔。测试 tools/mock/wreckfx.lua 按这个时序
+  · **选系页删了**（用户：两版都不满意，「所有系都自动送一辆最低级的车吧 选系去掉」）：起步车本来就是每系每棵树白送一辆（TechTree free），新玩家直接进机库。
+    存档的 started、ACT.treeStart 一并删了。测试 tools/mock/starters.lua。**用户又要「都要从 1 级开始」**：日本地面 / 飞机 / 直升机、俄罗斯坦克 / 飞机、德国飞机 / 直升机、美国飞机 / 直升机、
+    中国直升机还没有 1 级，正在 Sketchfab 找模型补（T-62A、F-4、MiG-21F-13、F-104G、PAH-1、米-4……）
+  · 59 式补了车图（VehPics veh_type59）；几门炮的武器名补了语言键（vw.gun100d 等，原来显示成代码名）；预览工具 uidump.lua 的 UIScale / 宽高比约束按 Roblox 的规则算（以锚点缩放）
+  · **远景替身**（服务器 Main/FarLod.lua、客户端 Client/FarLod.lua）：Roblox 自带的 StreamingMesh / SLIM 远景只给发布时摆在地点文件里的模型做，我们的楼是开服时程序摆的，用不上——
+    开服摆完地图（init.server.lua World.build 之后 G.farLodPublish）把 workspace.Map 里每栋 Atomic 楼、每块最长边 ≥ 160 的大零件（路、跑道）记成替身清单（ReplicatedStorage.FarLod 的 M1…Mn，按整行分段 ≤ 9 万字）：
+    导入的写实楼记网格块名字（客户端从 ReplicatedStorage.Imported.Bld 克隆原网格摆），其余记体积最大的 8 块方块（位置、XYZ 转角、大小、颜色、材质号）；楼打标签 FarLod + 属性 FarId。
+    客户端照清单摆（不挡人、不挡射线、不投影子），真楼流进来（CollectionService InstanceAdded）藏替身、流出去（InstanceRemoved）再摆；楼 Destroying / 离开世界记进 FarLod.Gone，替身去掉。
+    模拟器 CollectionService 补了 RemoveTag / HasTag / GetInstanceAdded / RemovedSignal（Destroy 时发 Removed）。测试 tools/mock/farlod.lua。**以后新加的整栋楼照旧 Atomic 就自动有远景**；Persistent 的（据点、舰队）不进清单
 - E（11-26 下午，用户：「发动机的 bug 是螺旋桨建模位置歪了 且发动机不会动 履带 bug 是坦克同时有两幅履带一副会动」）：
   · **喷口（发动机「歪」）**：ImportedAir 的 noz（涡轮叶片、火焰稳定器、喷口热光、尾焰、推力矢量 / 调节片喷口外罩都照它摆）好几型对不上原模型——
     歼-10 低 1.8 格、歼-11 偏上偏里还在喷口后面 2.6 格、歼-6 原模型只有一个圆喷管却标成两个小的（一左一右歪着两套涡轮）、歼-15T / 歼-8 标在喷管里面 1～2 格、

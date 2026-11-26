@@ -58,10 +58,6 @@ function Play.init(G)
     crossBars[i] = f
   end
   local crossGap, crossPop = 8, 0
-  local hitX = ui.label(G.gui, "✕", UDim2.fromOffset(34, 34), UDim2.fromScale(0.5, 0.5), 28, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
-  hitX.TextTransparency = 1
-  hitX.ZIndex = 16
-  local hitT = 0
   local ammoText = ui.label(hud, "", UDim2.fromOffset(320, 26), UDim2.new(1, -260, 1, -90), 18, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, Vector2.new(1, 0), Enum.TextXAlignment.Right)
   ammoText.TextStrokeTransparency = 0.4
   G.ammoLabel = ammoText   -- Hud.lua 换成右下角的武器、弹药（这一行字收起来）
@@ -72,15 +68,10 @@ function Play.init(G)
 
   -- 命中提示：kind 是 hit / head、打死的 kill / headkill（小兵）、pkill / headpkill（真人）、vkill（车船）、fkill（工事）
   --   打死的红叉、爆头金色（爆头打死橙红），打死的叉先放大再缩回去；加分、连杀在 Juice.lua
+  --   用户 11-26「击杀敌坦克准心莫名其妙会变成正方形」：原来是一个「✕」字，字体里没有这个字形就画成方框——标记、击毁确认、声音改到 KillFx.lua（细条拼的）
   function G.hitMarker(kind)
     local kill = string.find(kind, "kill") ~= nil
-    local head = string.find(kind, "head") ~= nil
-    hitX.Position = G.hitMarkerAt or UDim2.fromScale(0.5, 0.5)   -- 开飞机时标在炮口指的地方（Fly.lua 每帧设），不然在屏幕中间
-    hitX.TextColor3 = (kill and head and RGB(255, 150, 40)) or (kill and RGB(255, 70, 60)) or (head and RGB(255, 220, 80)) or Color3.new(1, 1, 1)
-    hitX.TextTransparency = 0
-    hitX.TextSize = kill and 44 or (head and 34 or 28)
-    hitT = now()
-    if G.playSound then G.playSound(kill and "killding" or "hit") end
+    if G.killFxMark then G.killFxMark(kind) elseif G.playSound then G.playSound(kill and "killding" or "hit") end
     if G.onHitMarker then G.onHitMarker(kill and "kill" or kind) end
     if G.juiceHit then G.juiceHit(kind) end
   end
@@ -691,9 +682,6 @@ function Play.init(G)
       local tip = G.breachStep(dt, armed and w and w.kind == "breach" or false, cur.firing)
       if tip then tipText.Text = tip end
     end
-    local a = now() - hitT
-    hitX.TextTransparency = math.clamp(a / 0.25, 0, 1)
-    if hitX.TextSize > 28 then hitX.TextSize = math.max(28, hitX.TextSize - 90 * (1 / 60)) end   -- 打死的大叉缩回去
   end
 end
 

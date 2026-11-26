@@ -452,7 +452,7 @@ function Tech.init(G)
 
   -- 这一局按得分算的研究点（击毁、占点都在得分里），赢了多三成、按模式乘；Economy.lua 结算金币也按它（金币 = 研究点 × treeK）
   local function roundRp(P, won)
-    local base = math.floor((P.score or 0) * 8 + (P.kills or 0) * 250 + 300)
+    local base = math.floor((P.score or 0) * 8 + (P.kills or 0) * 250 + 300 + (P.wtKillRp or 0) / (((W.modeK or {})[G.wtModeNow and G.wtModeNow() or "rb"]) or 1))   -- wtKillRp：击毁加成（WtMatch.lua）
     local mk = ((W.modeK or {})[G.wtModeNow and G.wtModeNow() or "rb"]) or 1   -- 历史 ×1.3、全真 ×1.6（战雷：越真实奖励越多）
     return math.floor(base * (won and 1.3 or 1) * mk), mk
   end

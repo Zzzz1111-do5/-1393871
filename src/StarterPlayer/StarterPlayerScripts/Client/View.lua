@@ -18,6 +18,7 @@ function View.init(G)
   local VM = require(script.Parent:WaitForChild("VehModels"))
   local TT = require(RS:WaitForChild("TechTree"))   -- 科技树暂用车的真车涂装（TreeKey 属性）
   local SK = require(RS:WaitForChild("WtSkins"))   -- 涂装、贴花（⑯，机库里选的：属性 Camo / TacNo / Emb）
+  local WD = require(RS:WaitForChild("WtDamage"))  -- 哪些车殉爆会掀炮塔（CAROUSEL）、先烧几秒（cookSecs）
   local V = Vector3.new
   local CF = CFrame.new
   local RGB = Color3.fromRGB
@@ -857,16 +858,29 @@ function View.init(G)
       v.wrecked = true
       v.wreckT = os.clock()
       -- 坦克被打爆：炮塔掀飞；别的有炮塔的车四成会（按编号定，大家看到的一样）
+      local whyW = em:GetAttribute("WtWhy")
+      local base0 = v.cf * CF(0, -d.H / 2, 0)
       if d.turret and not v.toss then
         local seed = tonumber(v.id) or 0
-        local why = em:GetAttribute("WtWhy")   -- 战雷式伤害（服务器 Wt.lua）：只有弹药殉爆才掀炮塔，乘员打光、烧毁的车炮塔留着
-        if why ~= nil then
-          if why == "ammo" then startToss(v) end
+        -- 战雷式伤害（服务器 Wt.lua）：只有弹放在车体底下（转盘式自动装弹机，WtDamage.CAROUSEL）的车殉爆才掀炮塔——
+        --   用户 11-26「要先着火再飞」：先烧 WtCook 秒（舱口喷火、火星噼啪、黑烟往上冒），烧完一下炸开、炮塔飞起来；
+        --   乘员打光、烧毁、弹在尾舱的车炮塔留着
+        if whyW ~= nil then
+          if whyW == "ammo" and WD.CAROUSEL[d.id] then
+            local cook = em:GetAttribute("WtCook") or WD.cookSecs(v.id)
+            v.cookT = os.clock() + cook
+            if G.wreckCook then G.try_(G.wreckCook, v, base0, cook) end
+            task.delay(cook, function()
+              if v.toss or not (v.M and v.M.model and v.M.model.Parent) then return end
+              startToss(v)
+              if G.wreckFx then G.try_(G.wreckFx, v, "ammo", base0) end
+            end)
+          end
         elseif d.cat == "tank" or Random.new(seed * 31 + 7):NextNumber() < 0.4 then startToss(v) end
       end
       M.fire.Rate, M.black.Rate = 30, 12
       -- 殉爆的大火球、钢板碎块、接连殉爆、舱口窜火、浓黑烟柱、地面烧焦（WreckFx.lua，用户 11-25「载具爆炸效果不够猛画风不够战雷」）
-      if G.wreckFx then G.try_(G.wreckFx, v, em:GetAttribute("WtWhy"), v.cf * CF(0, -d.H / 2, 0)) end
+      if G.wreckFx and not v.cookT then G.try_(G.wreckFx, v, whyW, base0) end   -- 先烧再炸的（转盘车殉爆）：大火球等烧完那一下再画
       if M.fire.Parent then   -- 夜里残骸的火光照亮周围（每帧闪一闪）
         local pl = Instance.new("PointLight")
         pl.Color, pl.Range, pl.Brightness, pl.Shadows = Color3.fromRGB(255, 140, 60), 28, 3, false   -- 投影子的只留最近的一处（stepFireShadows）

@@ -165,6 +165,7 @@ function HudArt.init(G)
   function G.vehPicOn(label, air, ...)
     for _, id in ipairs({ ... }) do
       local name = id and G.vehPicName(air, id)
+      if name then pcall(function() label:SetAttribute("PicName", name) end) end   -- 界面截图预览（tools/mock/hud_render.py）按它画车图
       local pc = name and G.vehPic(name)
       if pc then
         local ok = pcall(function() label.ImageContent = pc.content end)

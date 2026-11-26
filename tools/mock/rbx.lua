@@ -581,7 +581,11 @@ local function seqType(name, kp)
       for _, k in ipairs(a) do if typeof(k) ~= kp then error(name .. ".new 的表里要 " .. kp, 2) end end
       if a[1].Time ~= 0 or a[#a].Time ~= 1 then error(name .. ".new 关键点的时间要从 0 到 1", 2) end
     end
-    return setmetatable({ a = a, b = b, Keypoints = (type(a) == "table" and typeof(a) == "table") and a or nil }, { __type = name })
+    local kps = (type(a) == "table" and typeof(a) == "table") and a or nil
+    if not kps and a ~= nil then   -- 同 Roblox：new(值) / new(头, 尾) 也有两个关键点（时间 0 和 1）
+      kps = { setmetatable({ Time = 0, Value = a, Envelope = 0 }, { __type = kp }), setmetatable({ Time = 1, Value = (b ~= nil) and b or a, Envelope = 0 }, { __type = kp }) }
+    end
+    return setmetatable({ a = a, b = b, Keypoints = kps }, { __type = name })
   end }
 end
 local ColorSequence, NumberSequence = seqType("ColorSequence", "ColorSequenceKeypoint"), seqType("NumberSequence", "NumberSequenceKeypoint")
@@ -852,7 +856,13 @@ function base.Destroy(o)
   for _, s in pairs(o._ev) do
     for _, c in ipairs(s.conns) do c.on = false end
   end
-  for _, set in pairs(tags) do set[o] = nil end
+  for tg, set in pairs(tags) do
+    if set[o] then
+      set[o] = nil
+      local sg = R.tagSig and R.tagSig[tg .. "-"]
+      if sg then sg:Fire(o) end   -- 同 Roblox：带标签的东西没了（拆掉 / 流出去）发 GetInstanceRemovedSignal
+    end
+  end
   destroyDepth = destroyDepth - 1
 end
 local CLONE_SKIP = { Player = true, Backpack = true, PlayerGui = true }
@@ -1902,7 +1912,29 @@ R.services.CollectionService = service("CollectionService", {}, { methods = {
   AddTag = function(_, inst, tag)
     if typeof(inst) ~= "Instance" or type(tag) ~= "string" then error("AddTag(Instance, 字符串)", 2) end
     tags[tag] = tags[tag] or {}
+    local had = tags[tag][inst]
     tags[tag][inst] = true
+    local sg = R.tagSig and R.tagSig[tag .. "+"]
+    if sg and not had then sg:Fire(inst) end
+  end,
+  RemoveTag = function(_, inst, tag)
+    if tags[tag] and tags[tag][inst] then
+      tags[tag][inst] = nil
+      local sg = R.tagSig and R.tagSig[tag .. "-"]
+      if sg then sg:Fire(inst) end
+    end
+  end,
+  HasTag = function(_, inst, tag) return tags[tag] ~= nil and tags[tag][inst] == true end,
+  -- 模拟器只有一份世界：「流进来 / 流出去」测试自己发（R.tagSig[标签 .. "+" / "-"]:Fire(东西)）
+  GetInstanceAddedSignal = function(_, tag)
+    R.tagSig = R.tagSig or {}
+    R.tagSig[tag .. "+"] = R.tagSig[tag .. "+"] or newSig()
+    return R.tagSig[tag .. "+"]
+  end,
+  GetInstanceRemovedSignal = function(_, tag)
+    R.tagSig = R.tagSig or {}
+    R.tagSig[tag .. "-"] = R.tagSig[tag .. "-"] or newSig()
+    return R.tagSig[tag .. "-"]
   end,
   GetTagged = function(_, tag)
     local out = {}

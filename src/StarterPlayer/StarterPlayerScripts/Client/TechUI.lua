@@ -241,8 +241,17 @@ function TechUI.init(G)
     elseif nat == "us" then
       for i = 0, 12 do bar(0, i / 13, 1, 1 / 13 + 0.005, (i % 2 == 0) and RGB(178, 34, 52) or RGB(255, 255, 255)) end
       bar(0, 0, 0.42, 7 / 13, RGB(60, 59, 110))
-      local t = text(f, "★ ★ ★\n ★ ★ \n★ ★ ★", UDim2.fromScale(0.42, 7 / 13), nil, 6, RGB(255, 255, 255), Enum.TextXAlignment.Center)
-      t.TextScaled, t.TextWrapped, t.TextTruncate = true, true, Enum.TextTruncate.None
+      -- 星：5 行交错（4、3、4、3、4 颗）一颗颗摆（原来一个三行的字符串 TextScaled，旗子小的时候挤成一团）
+      for r = 0, 4 do
+        local odd = r % 2 == 1
+        for c = 0, odd and 2 or 3 do
+          local x = 0.42 * (c + (odd and 1 or 0.5)) / 4
+          local y = (7 / 13) * (r + 0.5) / 5
+          local t = text(f, "★", UDim2.fromScale(0.42 / 4.4, (7 / 13) / 4.2), UDim2.fromScale(x, y), 6, RGB(255, 255, 255), Enum.TextXAlignment.Center)
+          t.TextScaled, t.TextTruncate = true, Enum.TextTruncate.None
+          t.AnchorPoint = Vector2.new(0.5, 0.5)
+        end
+      end
     elseif nat == "jp" then
       bar(0, 0, 1, 1, RGB(250, 250, 250))
       local d = frame(f, UDim2.fromScale(0.36, 0.54), UDim2.fromScale(0.5, 0.5), RGB(188, 0, 45), 0)
@@ -530,6 +539,15 @@ function TechUI.init(G)
         end
       end)
       H.goT, H.goSub = bt, bs
+      H.go0 = { parent = top, size = bb.Size, pos = bb.Position, tSize = bt.Size, tPos = bt.Position, tTs = bt.TextSize, sPos = bs.Position, sTs = bs.TextSize }
+      -- 局内选车时才出来：「退出战斗」（这一局不打了，回到匹配前的机库：WtMatch.lua matchLeave）
+      local lw = mobile and 110 or 128
+      local lb = button(top, L("退出战斗", "Leave battle"), UDim2.new(0, lw, 0, mobile and 24 or 28), UDim2.new(0.5, -lw / 2, 0, TY + THh + (mobile and 54 or 64)))
+      lb.Name = "LeaveMatch"
+      lb.TextSize = TH.S.small
+      lb.Visible = false
+      lb.MouseButton1Click:Connect(function() act("matchLeave") end)
+      H.leaveBtn = lb
       -- 这一局（战雷那块「陆战 · 历史性能」）：地图（点了投下一局的图）、阶段和时间、战斗等级
       local MW = mobile and 260 or 330
       local card = frame(top, UDim2.new(0, MW, 0, mobile and 40 or 46), UDim2.new(0.5, -MW / 2, 0, TY + THh + (mobile and 8 or 10)), TH.C.PANEL, 0.18)
@@ -580,9 +598,11 @@ function TechUI.init(G)
         list.Size = UDim2.new(0, MW, 0, 8 + #ids * 32)
       end
       mapB.MouseButton1Click:Connect(function()
+        if G.S and G.S.pick then list.Visible = false return end   -- 局内（这一局算他的）：不能选图（用户 11-26「为什么局内还能选地图 去掉」）
         if not list.Visible then fillList() end
         list.Visible = not list.Visible
       end)
+      H.mapList = list
       H.phaseT = text(card, "", UDim2.new(1, -16, 0, 16), UDim2.new(0, 8, 0, mobile and 22 or 26), TH.S.small, TH.C.MUTE, Enum.TextXAlignment.Center)
       H.phaseT.Name = "Phase"
       H.phaseT.Font = TH.F.mono
@@ -794,7 +814,10 @@ function TechUI.init(G)
     local mname = (G.T and G.T("map." .. mid .. ".name")) or mid
     if mname == ("map." .. mid .. ".name") then mname = mid end
     local cur = workspace:GetAttribute("WtMode") or "rb"
-    H.mapT.Text = L("陆战 · ", "Ground · ") .. mname .. "  ·  " .. (MODE_NAME[cur] or MODE_NAME.rb) .. "  ▼"
+    local inMatch = S.pick == true   -- 局内：只写这一局打的是什么图，不能点开选图（没有 ▼）
+    H.mapT.Text = L("陆战 · ", "Ground · ") .. mname .. "  ·  " .. (MODE_NAME[cur] or MODE_NAME.rb) .. (inMatch and "" or "  ▼")
+    if H.mapB then H.mapB.Active = not inMatch H.mapB.AutoButtonColor = false end
+    if inMatch and H.mapList then H.mapList.Visible = false end
   end
 
   -- 厂房里停哪一辆：出击阵容里选中的（按真车涂装；有原模型的就是原模型）
@@ -885,7 +908,8 @@ function TechUI.init(G)
     if n == 0 and #(w.order or {}) >= (w.max or 5) then return L("这一局阵容满了", "Lineup full"), FAINT end
     local air = it.branch == "air" or it.branch == "heli"
     -- 飞机（同服务器 WtMatch：用户 11-25「第一辆必须是地面车，飞机要攒点数才能出」）：先出一辆地面车；一直要 SP，不免费
-    if air and not w.ground then return L("先出地面车", "Ground first"), BAD end   -- 卡片窄：短一点（点了服务器会说全）
+    --   用户 11-26「不要写先出击地面车 你直接禁止选飞机就行」：不写字，第三个返回值说这张卡禁选（卡片压暗、点了不理）
+    if air and not w.ground then return nil, BAD, true end
     local c = 0
     if air or (S.phase == "battle" and not w.free) then
       local ok, v = pcall(Config.WtCost, it.play, cat, w.paid or 0)
@@ -1013,6 +1037,7 @@ function TechUI.init(G)
     H.handleT.Text = ((G.treeGui and G.treeGui.Visible) and "︾  " or "︽  ") .. L("科技树", "Tech tree") .. ((G.treeGui and G.treeGui.Visible) and "  ︾" or "  ︽")
     dockNations(function(nat)
       if nat == tree.nat then return end
+      if G.S and G.S.pick then return end   -- 局内选车：阵容跟着这一局，不换系
       tree.nat = nat
       selSlot = 1
       act("treeNat", nat)
@@ -1022,6 +1047,13 @@ function TechUI.init(G)
     clear(H.row)
     local keys = lineupOf(tree.nat)
     if not keys[selSlot] then selSlot = 1 end
+    local function locked(k)   -- 这一局还没出过地面车：飞机、直升机禁选（服务器 WtMatch 照样拦）
+      local x = k and TT.get(k)
+      return x ~= nil and select(3, spState(x)) == true
+    end
+    if locked(keys[selSlot]) then
+      for i = 1, #keys do if not locked(keys[i]) then selSlot = i break end end
+    end
     do   -- 底下那一条右头：阵容里几个飞行单位（用户 11-25「最多两个飞行单位」）
       local na = 0
       for _, k in ipairs(keys) do local x = TT.get(k) if x and (x.branch == "air" or x.branch == "heli") then na += 1 end end
@@ -1046,14 +1078,17 @@ function TechUI.init(G)
       if on and it then TH.glow(card) else TH.stroke(card, false, TH.C.LINE).Transparency = 0.84 end
       if it then
         local over = cap ~= nil and it.br > cap + 0.05   -- 超出这一局能出的战斗等级（点了服务器也会说）
+        local lock = locked(key)   -- 禁选（还没出过地面车的飞机）：整张卡压暗，点了不理
         local strip = frame(card, UDim2.new(0, 3, 1, -8), UDim2.new(0, 3, 0, 4), on and AMBER or RGB(80, 86, 92), 0)
         TH.corner(strip, 1)
-        local bay = frame(card, UDim2.new(1, -16, 1, -44), UDim2.new(0, 10, 0, 18), RGB(255, 255, 255), 0.45)
+        -- 等级底色铺满整张卡（用户 11-26「坦克背景颜色没有填满」）：上面等级色、往下淡进深色（名字压在暗的那头）
+        local bay = frame(card, UDim2.fromScale(1, 1), nil, RGB(255, 255, 255), 0.3)
         bay.Name = "Bay"
-        TH.corner(bay, 2)
+        bay.ZIndex = 0
+        TH.corner(bay, 3)
         TH.rankGrad(bay, it.rank)   -- 等级底色（用户 11-25：不同等级的载具背景颜色要有区别）
         -- 用户 11-25 晚「主界面不打开科技树 就别显示载具背景颜色了」：只有科技树开着时阵容卡片才画等级底色（treeShown 跟着开关）
-        bay.Visible = H.treeOpen == true
+        bay.Visible = H.treeOpen == true or (G.S ~= nil and G.S.pick == true)   -- 局内选车：一直画等级底色（用户 11-26「载具背后的背景颜色加上」）
         H.bays = H.bays or {}
         table.insert(H.bays, bay)
         -- 车图：写实车图（原模型按战雷那个角度拍的，HudArt G.vehPicOn）；没有才退回白色剪影
@@ -1070,6 +1105,14 @@ function TechUI.init(G)
           img.ImageTransparency = over and 0.5 or 0
           if not on then img.ImageColor3 = RGB(200, 200, 200) end   -- 没选中的稍暗一点
         end
+        if lock then
+          img.ImageTransparency = 0.72
+          img.ImageColor3 = RGB(120, 124, 128)
+          bay.BackgroundTransparency = 0.82
+          card.BackgroundTransparency = 0.35
+          card.AutoButtonColor = false
+          card:SetAttribute("Locked", true)
+        end
         local no = text(card, tostring(i), UDim2.new(0, 14, 0, 14), UDim2.new(0, 7, 0, 4), TH.S.tiny, FAINT)
         no.Font = TH.F.mono
         if it.stand then   -- 还没有自己的模型：借的是哪一型写在右边和科技树详情里
@@ -1080,7 +1123,7 @@ function TechUI.init(G)
         local br = text(card, TT.brText(it.br), UDim2.new(0, 44, 0, 14), UDim2.new(1, -50, 0, 4), TH.S.small, over and BAD or (on and TH.C.TEXT or TH.C.MUTE), Enum.TextXAlignment.Right)
         br.Name = "Br"
         br.Font = TH.F.mono
-        local n1 = text(card, nm(it), UDim2.new(1, -12, 0, 18), UDim2.new(0, 6, 1, -36), mobile and TH.S.body or TH.S.sub, over and FAINT or TH.C.TEXT, Enum.TextXAlignment.Center)
+        local n1 = text(card, nm(it), UDim2.new(1, -12, 0, 18), UDim2.new(0, 6, 1, -36), mobile and TH.S.body or TH.S.sub, (over or lock) and FAINT or TH.C.TEXT, Enum.TextXAlignment.Center)
         n1.Name = "VehName"
         n1.Font = TH.F.bold
         n1.TextStrokeTransparency = 0.5
@@ -1090,6 +1133,7 @@ function TechUI.init(G)
         st.Name = "Sp"
         local slotI = i
         card.MouseButton1Click:Connect(function()
+          if lock then return end
           if selSlot ~= slotI then
             selSlot = slotI
             refreshHangar()
@@ -1200,7 +1244,7 @@ function TechUI.init(G)
         end
         -- 这一局的账（SP、免费那一辆、出过几次）、战斗等级变了：卡片上的「免费 / SP / 备用 / 用完」跟着刷新
         local w = S.wt or {}
-        local sig = table.concat({ tostring(S.phase), tostring(w.sp), tostring(w.free), tostring(w.paid), tostring(#(w.order or {})), tostring(workspace:GetAttribute("WtBr")) }, "|")
+        local sig = table.concat({ tostring(S.phase), tostring(w.sp), tostring(w.free), tostring(w.paid), tostring(#(w.order or {})), tostring(workspace:GetAttribute("WtBr")), tostring(S.pick) }, "|")
         if sig ~= lastSig then
           lastSig = sig
           refreshHangar()
@@ -1214,7 +1258,50 @@ function TechUI.init(G)
             if H.goBtn then H.goBtn.BackgroundTransparency = 0 end
           end
         else
-          H.goT.Text = L("加入战斗", "TO BATTLE")
+          -- 局内选车（用户 11-26「匹配完之后 两边再开始在局内有一个界面选择载具」，同战雷）：这一局算他的、现在没车（服务器 S.pick）——
+          --   机库就是选车页（同一套外观：用户「你这个做的风格跟我目前的主界面风格完全不一样」），主按钮是「出击」，顶上多一个「退出战斗」
+          H.goT.Text = S.pick and L("出击", "SPAWN") or L("加入战斗", "TO BATTLE")
+        end
+        if H.leaveBtn then H.leaveBtn.Visible = S.pick == true end
+        -- 局内选车：「出击」放到右下角（用户 11-26「出击的按钮放到右下角吧」，同战雷的出击页），和阵容卡一样高；不在局里放回顶栏正中
+        local br = S.pick == true
+        if H.goBR ~= br and H.goBtn and H.go0 then
+          H.goBR = br
+          local b, o = H.goBtn, H.go0
+          if br then
+            local vs = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
+            local rowW = 5 * H.SW + 4 * H.SG
+            local free = vs.X - 2 * M0 - rowW - 12
+            local w = math.clamp(free, 200, mobile and 220 or 320)
+            b.Parent = ui
+            b.Size = UDim2.new(0, w, 0, H.SH)
+            if free >= 200 then   -- 阵容卡右边放得下：和卡并排
+              b.Position = UDim2.new(1, -(M0 + w), 1, -((mobile and 12 or 18) + H.SH))
+            else                  -- 屏幕窄（手机）：放在「科技树」那一条上面、靠右
+              b.Position = UDim2.new(1, -(M0 + w), 1, -(H.dockTop + 8 + H.SH))
+            end
+            H.goT.Size, H.goT.Position, H.goT.TextSize = UDim2.new(1, 0, 0, math.floor(H.SH * 0.5)), UDim2.new(0, 0, 0, math.floor(H.SH * 0.16)), mobile and 26 or 34
+            H.goSub.Position, H.goSub.TextSize = UDim2.new(0, 6, 1, -(mobile and 22 or 28)), TH.S.small
+          else
+            b.Parent = o.parent
+            b.Size, b.Position = o.size, o.pos
+            H.goT.Size, H.goT.Position, H.goT.TextSize = o.tSize, o.tPos, o.tTs
+            H.goSub.Position, H.goSub.TextSize = o.sPos, o.sTs
+          end
+        end
+        if H.nats then H.nats.Visible = not S.pick end   -- 这一局里不能换系（阵容跟着这一局）
+        -- 用户 11-26「那个局内选车的界面别弄科技树了」：底下「科技树」那一条整条收起、开着的科技树关上
+        if H.dock then H.dock.Visible = not S.pick end
+        if S.pick and G.treeGui and G.treeGui.Visible and closeTree then closeTree() end
+        -- 刚进这一局：阵容里先选中匹配时点的那一辆（服务器记的 pickPref）
+        if S.pick and S.pickPref and H.lastPref ~= tostring(S.round) .. S.pickPref then
+          H.lastPref = tostring(S.round) .. S.pickPref
+          for i, k in ipairs(lineupOf(tree.nat)) do
+            if k == S.pickPref and selSlot ~= i then
+              selSlot = i
+              refreshHangar()
+            end
+          end
         end
       end
     end
@@ -1282,7 +1369,7 @@ function TechUI.init(G)
   local function treeShown(on)   -- 开着科技树：底下的「科技树」把手亮着、箭头朝下，机库中间那一层（乘员、选中的车）让开
     H.mid.Visible = not on
     H.treeOpen = on
-    for _, b in ipairs(H.bays or {}) do if b.Parent then b.Visible = on end end   -- 阵容卡片的等级底色：只在科技树开着时画
+    for _, b in ipairs(H.bays or {}) do if b.Parent then b.Visible = on or (G.S ~= nil and G.S.pick == true) end end   -- 阵容卡片的等级底色：科技树开着、局内选车时画
     if H.navTree then
       H.navTree:SetAttribute("Lit", on or nil)
       H.navTree.BackgroundColor3 = on and TH.C.PANEL or TH.C.RAISE

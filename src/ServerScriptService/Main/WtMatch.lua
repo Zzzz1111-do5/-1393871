@@ -56,28 +56,22 @@ function WtMatch.init(G)
   -- 阵容按什么记：科技树出的车（Tech.lua 出车时设 P.wtKey）按科技树的键——借同一型号的两辆算两种；别的按型号
   local function keyOf(P, vid) return (P and P.wtKey) or vid end
   local function nameOf(P, vid) return (P and P.wtKey) and { k = "tree." .. P.wtKey } or { k = "veh." .. vid } end
-  function G.wtSpawnOk(P, vid, kind)
-    if not on() or not P or not P.pl or not vid then return true end
+  -- 为什么出不了（nil = 能出）：{ 语言键, 参数… }——出车时说一声（wtSpawnOk）
+  local function whyNot(P, vid, kind)
+    if not on() or not P or not P.pl or not vid then return nil end
     local s = S(P)
     local lk = keyOf(P, vid)
     local n = s.ln[lk] or 0
-    if n == 0 and #s.order >= (W.lineup or 5) then
-      G.msg(P.pl, "bad", "wt.lineupFull", W.lineup or 5)
-      return false
-    end
-    if n >= 1 + (W.backup or 1) then
-      G.msg(P.pl, "bad", "wt.noBackup", nameOf(P, vid), n)
-      return false
-    end
-    if isAir(vid, kind) and not s.ground then   -- 这一局还没出过地面车：飞机不让出
-      G.msg(P.pl, "bad", "wt.groundFirst")
-      return false
-    end
+    if n == 0 and #s.order >= (W.lineup or 5) then return { "wt.lineupFull", W.lineup or 5 } end
+    if n >= 1 + (W.backup or 1) then return { "wt.noBackup", nameOf(P, vid), n } end
+    if isAir(vid, kind) and not s.ground then return { "wt.groundFirst" } end   -- 这一局还没出过地面车：飞机不让出
     local c = G.wtCost(P, vid, kind)
-    if c > s.sp then
-      G.msg(P.pl, "bad", "wt.needSp", c, math.floor(s.sp))
-      return false
-    end
+    if c > s.sp then return { "wt.needSp", c, math.floor(s.sp) } end
+    return nil
+  end
+  function G.wtSpawnOk(P, vid, kind)
+    local w = whyNot(P, vid, kind)
+    if w then G.msg(P.pl, "bad", table.unpack(w)) return false end
     return true
   end
   local SKS = require(RS:WaitForChild("WtSkins"))
@@ -324,6 +318,27 @@ function WtMatch.init(G)
         G.R.Drive:FireClient(K.pl, { op = "wtAward", a = a, pts = AWARD[a] or 40 })
       end
       if victim and victim.pl then victim.wtKilledBy, victim.wtKilledT = K.vehicle, t end
+      -- 击毁奖励（用户 11-26「你自己设计一个击杀效果和音效以及奖励」）：金币当场发、研究点这一辆算多少（结算时一起发）、SP 这一下涨了多少；
+      --   加成：弹药殉爆、一发击毁、越级击毁
+      local KC = W.kill or {}
+      local TT = require(RS:WaitForChild("TechTree"))
+      local vit = e.treeKey and TT.byKey[e.treeKey]
+      local kit = K.vehicle and K.vehicle.treeKey and TT.byKey[K.vehicle.treeKey]
+      local mk = ((W.modeK or {})[G.wtModeNow and G.wtModeNow() or "rb"]) or 1
+      local k, tags = 1, {}
+      local B = KC.bonus or {}
+      if e.wtWhy == "ammo" then k *= (B.ammo or 1.3) table.insert(tags, "ammo") end
+      if e.wtHitsBy and e.wtHitsBy[K] == 1 then k *= (B.one or 1.25) table.insert(tags, "one") end
+      if vit and kit and vit.br >= kit.br + (KC.brUp or 0.7) then k *= (B.up or 1.5) table.insert(tags, "up") end
+      local rank = (vit and vit.rank) or 3
+      local coins = math.floor(((KC.coin0 or 90) + rank * (KC.coinRank or 25)) * mk * k / 5 + 0.5) * 5
+      local rp = math.floor((KC.rpKill or 250) * mk * k / 5 + 0.5) * 5
+      if G.addCoins and coins > 0 then G.addCoins(K, coins) end
+      K.wtKillRp = (K.wtKillRp or 0) + rp - math.floor((KC.rpKill or 250) * mk)   -- 加成那一截（基础的按击毁数结算时算）
+      local R2 = G.round
+      local sp = (R2 and R2.phase == "battle") and math.floor((Config.Score and Config.Score.vehicleKill or 0) * (W.perScore or 0.5)) or 0
+      G.R.Drive:FireClient(K.pl, { op = "wtKillReward", vv = e.def and e.def.id or nil, vk = e.treeKey, sp = sp, coins = coins, rp = rp, tags = tags,
+        air = e.cat == "air" or nil })
     end
     if e.cat ~= "inf" and e.cat ~= "fort" and e.def and e.def.id then
       local D = e.driver or e.wtLastDriver
@@ -493,11 +508,27 @@ function WtMatch.init(G)
     if not R or R.phase ~= "queue" then return nil end
     return { n = #queuedList(), need = full(), left = R.queueEnds and math.max(0, math.ceil(R.queueEnds - now())) or nil, wait = MC.wait or 60 }
   end
+  -- 进局（这一局算他的）：客户端机库变成局内选车页（Round.lua 推 C.pick），先把自己基地一带的地图传过来（开着 streaming 时，选车的这几秒里出生点一带都到位）
+  local function enterMatch(P)
+    local R = G.round
+    P.match = R and R.n or nil
+    P.pickT = os.clock()
+    local pad = G.treePadFor and G.treePadFor(P.team, false, false)   -- 本队地面车的出车位（Tech.lua）
+    local base = pad and pad.term
+    if typeof(base) == "Vector3" and P.pl and P.pl.Parent then
+      task.spawn(function() pcall(function() P.pl:RequestStreamAroundAsync(base, 30) end) end)
+    end
+    G.pushOne(P)
+  end
+  G.wtEnterMatch = enterMatch
   G.ACT.matchJoin = function(P, key)
     local R = G.round
     if not R or type(key) ~= "string" then return end
-    if R.phase ~= "queue" then   -- 已经在打（准备 / 战斗）：直接加入
-      if G.ACT.deployVeh then G.ACT.deployVeh(P, key) end
+    if R.phase ~= "queue" then   -- 已经在打（准备 / 战斗）：进局、出选车界面（同战雷：「加入战斗」以后在局里选车）
+      if P.testDeploy then if G.ACT.deployVeh then G.ACT.deployVeh(P, key) end return end
+      if G.treeCanQueue and not G.treeCanQueue(P, key) then return end
+      P.pickPref = key
+      enterMatch(P)
       return
     end
     if G.treeCanQueue and not G.treeCanQueue(P, key) then return end   -- 阵容里没有、没买、超出战斗等级（Tech.lua 自己说原因）
@@ -510,6 +541,12 @@ function WtMatch.init(G)
     P.queued = nil
     G.pushAll()
   end
+  -- 局内选车页（机库）上的「退出战斗」：这一局不打了（车没了才能退；坐在车里的不理）
+  G.ACT.matchLeave = function(P)
+    if P.vehicle then return end
+    P.match, P.pickPref = nil, nil
+    G.pushOne(P)
+  end
   -- 匹配够了没有（Round.lua 每步问）：没人排了就停表（下一个人点了重新起算）
   function G.queueStep(t)
     local R = G.round
@@ -518,19 +555,17 @@ function WtMatch.init(G)
     if n >= full() then return true end
     return R.queueEnds ~= nil and t >= R.queueEnds
   end
-  -- 匹配到了：排着的人都算这一局的，坐进自己点的那一辆（准备阶段第一辆免费，同战雷）
+  -- 匹配到了：排着的人都算这一局的，进局先出选车界面（用户 11-26「匹配完之后 两边再开始在局内有一个界面选择载具」；
+  --   原来直接坐进机库里点的那一辆）——机库里点的那一辆在界面上先选中（pickPref）；人机照旧自己出车（AIVeh.lua）
   G.on("matchFound", function()
-    local R = G.round
     for _, P in ipairs(queuedList()) do
       local key = P.queued
       P.queued = nil
-      P.match = R.n
-      task.defer(function()
-        if G.P[P.pl] == P and not P.vehicle and G.ACT.deployVeh then G.try("匹配出车", G.ACT.deployVeh, P, key) end
-      end)
+      P.pickPref = key
+      enterMatch(P)
     end
     if G.treeRoundBr then pcall(G.treeRoundBr) end
-    G.msgAll("center", "match.found")
+    -- 不再在屏幕正中写「匹配完成：进入战斗（人不够的位置由人机补上）」（用户 11-26「把那串字去掉太难看」）：机库的主按钮变成「出击」就说明了
   end)
   G.on("left", function(P) P.queued = nil end)
   -- 这一队这一局真打的人（匹配进来的、半路加入的；坐在车里的、活着的也算）——电脑补到 teamSize 时扣掉他们（AIVeh.lua）

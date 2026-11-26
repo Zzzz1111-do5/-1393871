@@ -1081,7 +1081,7 @@ function UI.init(G)
     if S.alive then sel.pageUser, sel.slot = nil, nil end   -- 下次阵亡：上次出击过就先给生成点页
     local menuOn = G.menuShown and G.menuShown()
     -- 机库（TechUI.lua，用户 11-25「就跟战雷完全一样 不要让玩家作为个体活动」）：开着 Config.Wt.noInfantry 时盖住步兵部署页，从出击阵容里挑车出击
-    if G.hangarSet then G.hangarSet(showDeploy and not menuOn) end
+    if G.hangarSet then G.hangarSet(showDeploy and not menuOn) end   -- 局内选车也是这一页（TechUI.lua：服务器 S.pick 时主按钮「出击」）
     deploy.Visible = showDeploy and not menuOn and not (G.hangarActive and G.hangarActive())   -- 主菜单开着（背景是透明的 3D 场景）：部署界面先不画
     hud.Visible = not showDeploy and not dying
     results.Visible = S.phase == "end" and not (G.wtResultsOn and G.wtResultsOn())   -- 战雷式结算页（WtBattle.lua）开着就不画这张

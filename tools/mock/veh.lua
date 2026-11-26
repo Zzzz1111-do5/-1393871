@@ -204,13 +204,12 @@ if side == "def" then
     R.run(0.6)
     modes[#modes + 1] = tostring(({ "day", "nv", "whot", "bhot" })[C.drive.mode])
   end
-  check(modes[1] == "bhot" and modes[2] == "day" and modes[3] == "nv", "瞄准镜默认白热档，V 依次切黑热、昼光、夜视：" .. table.concat(modes, " → "))
+  -- 观瞄按年代（WtOptics，用户 11-26）：现代坦克的炮长镜只有昼光和热像（白热 / 黑热），没有微光通道——微光、主动红外在 tools/mock/optics.lua 测
+  check(modes[1] == "bhot" and modes[2] == "day" and modes[3] == "whot", "瞄准镜默认白热档，V 依次切黑热、昼光、白热（现代坦克没有微光通道）：" .. table.concat(modes, " → "))
   R.run(0.3)
-  -- 夜里底子 0.55，夜视增亮：沙漠图 +1.5、别的图 +2.7（DayNight.lua nvEv：沙漠少加）——测试台开的是沙海，所以看 > 1.9
-  check(C.sightNv == true and lighting.ExposureCompensation > 1.9,
-    string.format("镜里的夜视档照夜视仪那样增亮（曝光 %.2f；原来夜视仪让出画面时增亮也撤了，一片墨绿）", lighting.ExposureCompensation))
+  check(C.sightNv ~= true, "热像档不是夜视增亮（热像自己看热）")
   local hv2 = shown("HintOptic")
-  check(hv2 and hv2:find(C.T("sight.nv"), 1, true), "提示跟着换成现在的模式：" .. tostring(hv2))
+  check(hv2 and hv2:find(C.T("sight.whot"), 1, true), "提示跟着换成现在的模式：" .. tostring(hv2))
   T.tap(Enum.KeyCode.LeftShift)
   R.run(0.3)
   check(not C.drive.sight and not cc.Enabled, "再按 Shift 退出瞄准镜，调色关了")

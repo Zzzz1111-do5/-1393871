@@ -18,6 +18,8 @@ function Drive.init(G)
   local TMods = require(RS:WaitForChild("TankMods"))   -- 坦克改装（用户 11-19）
   local BAL = require(RS:WaitForChild("Ballistics"))   -- 坦克炮的真实弹道、弹种（用户 11-22 晚：开镜开炮符合真实物理和火控）
   local WM = require(RS:WaitForChild("WtMods"))   -- 科技树改装：火控计算机哪一代、升级了几级（WtMods.FCS）
+  local OPT = require(RS:WaitForChild("WtOptics"))   -- 观瞄按年代（用户 11-26）：夜视是哪一种、分划是哪一套、能切哪几种通道
+  local TTr = require(RS:WaitForChild("TechTree"))
   local V = Vector3.new
   local CF = CFrame.new
   local RGB = Color3.fromRGB
@@ -143,6 +145,161 @@ function Drive.init(G)
   local dc = Instance.new("UICorner")
   dc.CornerRadius = UDim.new(0.5, 0)
   dc.Parent = dot
+  -- 各年代的分划（用户 11-26「不同时期的坦克开镜不一样」，WtOptics.RET）：上面那套是数字火控（dig / hk）；
+  --   sov 苏式 TSh / TPD（^ 形瞄准标、两边提前量刻度、左上各弹种表尺、左下测距曲线），nato 早期弹道（细十字、下面一排落点横线），
+  --   lrf 激光测距（方框瞄准标）——线都登记进 retParts / retHalo（分划照明、亮度旋钮照旧管它们），数字登记进 retTexts
+  local RETS = { dig = reticle, hk = reticle }
+  local retTexts = {}
+  local retPtr = {}   -- 光学分划的距离指针：[分划] = { f = 指针, y = 距离（米）→ 像素 }
+  local function retBox(name)
+    local f = Instance.new("Frame")
+    f.Name = "Ret_" .. name
+    f.Size = UDim2.fromOffset(460, 380)
+    f.AnchorPoint = Vector2.new(0.5, 0.5)
+    f.Position = UDim2.fromScale(0.5, 0.5)
+    f.BackgroundTransparency = 1
+    f.Visible = false
+    f.Parent = sight
+    RETS[name] = f
+    return f
+  end
+  local function seg(par, x, y, w, h, rot)   -- 一根分划线：中心在分划中心偏 (x, y) 像素，宽 w 高 h，顺时针转 rot 度
+    local pos = UDim2.new(0.5, x, 0.5, y)
+    for _, g in ipairs({ { 10, 0.9 }, { 4, 0.7 } }) do
+      local hf = ui.frame(par, UDim2.fromOffset(w + g[1], h + g[1]), pos, RET, g[2], Vector2.new(0.5, 0.5))
+      hf.Rotation = rot or 0
+      local c = Instance.new("UICorner")
+      c.CornerRadius = UDim.new(0, math.ceil(g[1] / 2) + 1)
+      c.Parent = hf
+      table.insert(retHalo, { f = hf, t = g[2] })
+    end
+    local f = ui.frame(par, UDim2.fromOffset(w, h), pos, RET, 0, Vector2.new(0.5, 0.5))
+    f.Rotation = rot or 0
+    table.insert(retParts, f)
+    return f
+  end
+  local function num(par, s0, x, y, ts)
+    local t = ui.label(par, s0, UDim2.fromOffset(40, 14), UDim2.new(0.5, x, 0.5, y), ts or 12, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
+    table.insert(retTexts, t)
+    return t
+  end
+  do   -- sov：^ 形瞄准标（尖在瞄准点）、两边横线和提前量刻度、左上两列表尺（穿甲 / 榴弹，单位百米）、左下测距曲线（目标高 2.7 米）
+    local R = retBox("sov")
+    seg(R, -7, 11, 26, 2, 122.5)
+    seg(R, 7, 11, 26, 2, 57.5)
+    for sx = -1, 1, 2 do
+      seg(R, sx * 96, 0, 120, 2)
+      for i = 1, 5 do seg(R, sx * (36 + i * 20), 5, 2, 8) end
+    end
+    local zh = G.lang ~= "en"
+    for c, lab in ipairs({ zh and "穿" or "AP", zh and "榴" or "HE" }) do
+      local x = -200 + (c - 1) * 34
+      seg(R, x, -105, 2, 120)
+      num(R, lab, x, -175, 13)
+      for i = 0, 5 do
+        local y = -165 + i * 24
+        seg(R, x + 5, y, 10, 2)
+        if c == 1 then num(R, tostring(i * 4), x - 18, y, 11) end
+      end
+    end
+    -- 表尺指针：一根横线跨两列表尺，停在装定的距离上（真车炮长摇表尺手轮挪这根线；光学年代没有数字读数，距离看它）
+    local ptr = Instance.new("Frame")
+    ptr.Name = "RangePtr"
+    ptr.Size = UDim2.fromOffset(0, 0)
+    ptr.Position = UDim2.new(0.5, 0, 0.5, -165)
+    ptr.BackgroundTransparency = 1
+    ptr.Parent = R
+    seg(ptr, -183, 0, 62, 2)
+    seg(ptr, -219, -3, 9, 2, 35)
+    seg(ptr, -219, 3, 9, 2, -35)
+    retPtr.sov = { f = ptr, y = function(m) return -165 + math.clamp(m, 0, 2000) * 0.06 end }
+    seg(R, -140, 128, 120, 2)   -- 测距曲线：底线 + 一排越来越矮的竖线（离得越远目标越矮）
+    for i, r in ipairs({ { -196, 46, "10" }, { -172, 32, "15" }, { -148, 23, "20" }, { -124, 16, "30" }, { -100, 12, "40" } }) do
+      seg(R, r[1], 128 - r[2] / 2, 2, r[2])
+      num(R, r[3], r[1], 128 - r[2] - 10, 10)
+    end
+  end
+  do   -- nato：细十字（中间留空）、下面一排各距离的落点横线（百米）、横线上的提前量刻度
+    local R = retBox("nato")
+    seg(R, 0, -85, 1.5, 150)
+    for sx = -1, 1, 2 do
+      seg(R, sx * 95, 0, 170, 1.5)
+      for i = 1, 4 do seg(R, sx * (i * 32), -4, 1.5, 8) end
+    end
+    seg(R, 0, 78, 1.5, 120)
+    local DROP = { { 18, 34, "4" }, { 40, 30, "8" }, { 66, 26, "12" }, { 96, 22, "16" }, { 130, 18, "20" } }
+    for i, r in ipairs(DROP) do
+      seg(R, 0, r[1], r[2], 2)
+      num(R, r[3], r[2] / 2 + 16, r[1], 11)
+    end
+    -- 左边一个 > 指着装定距离那一档落点线（两档之间按距离插）
+    local ptr = Instance.new("Frame")
+    ptr.Name = "RangePtr"
+    ptr.Size = UDim2.fromOffset(0, 0)
+    ptr.Position = UDim2.new(0.5, 0, 0.5, 18)
+    ptr.BackgroundTransparency = 1
+    ptr.Parent = R
+    seg(ptr, -30, -3, 9, 1.5, 35)
+    seg(ptr, -30, 3, 9, 1.5, -35)
+    retPtr.nato = { f = ptr, y = function(m)
+      local hm = math.clamp(m, 0, 2000) / 100
+      local x0, y0 = 0, 0
+      for _, r in ipairs(DROP) do
+        local x1 = tonumber(r[3])
+        if hm <= x1 then return y0 + (r[1] - y0) * (hm - x0) / (x1 - x0) end
+        x0, y0 = x1, r[1]
+      end
+      return y0
+    end }
+  end
+  do   -- lrf：方框瞄准标（四边各一根、角上留空）、两边横线、下面一根竖线
+    local R = retBox("lrf")
+    seg(R, 0, -11, 14, 2)
+    seg(R, 0, 11, 14, 2)
+    seg(R, -11, 0, 2, 14)
+    seg(R, 11, 0, 2, 14)
+    for sx = -1, 1, 2 do seg(R, sx * 95, 0, 140, 2) end
+    seg(R, 0, 74, 2, 100)
+  end
+  -- 主动红外的探照灯圈：灯照得到的那一圈亮，外面压黑（只在主动红外档）
+  local irBeam = Instance.new("Frame")
+  irBeam.Name = "IrBeam"
+  irBeam.AnchorPoint = Vector2.new(0.5, 0.5)
+  irBeam.Position = UDim2.fromScale(0.5, 0.5)
+  irBeam.Size = UDim2.fromScale(0.42, 0.42)
+  irBeam.BackgroundTransparency = 1
+  irBeam.Visible = false
+  irBeam.Parent = sight
+  do
+    local a = Instance.new("UIAspectRatioConstraint")
+    a.AspectRatio = 1
+    a.Parent = irBeam
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0.5, 0)
+    c.Parent = irBeam
+    local st0 = Instance.new("UIStroke")
+    st0.Thickness = 700
+    st0.Color = Color3.new(0, 0, 0)
+    st0.Transparency = 0.18
+    st0.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    st0.Parent = irBeam
+  end
+  -- 第一代热像的扫描线（一道道横线）
+  local scan = Instance.new("Frame")
+  scan.Name = "ThScan"
+  scan.Size = UDim2.fromScale(1, 1)
+  scan.BackgroundTransparency = 1
+  scan.Visible = false
+  scan.Parent = sight
+  for i = 0, 240 do
+    local l = ui.frame(scan, UDim2.new(1, 0, 0, 1), UDim2.new(0, 0, 0, i * 4), RGB(0, 0, 0), 0.72)
+    l.Name = "L"
+  end
+  local blur = Instance.new("BlurEffect")   -- 热像分辨率低：画面糊一点（代越老越糊）
+  blur.Name = "SightBlur"
+  blur.Size = 0
+  blur.Enabled = false
+  blur.Parent = Lighting
   local rangeText = ui.label(sight, "", UDim2.fromOffset(200, 30), UDim2.new(0.5, 0, 0.5, 150), 26, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
   local modeText = ui.label(sight, "", UDim2.fromOffset(260, 22), UDim2.new(0.5, 0, 0.5, -180), 16, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
   local zoomText = ui.label(sight, "", UDim2.fromOffset(120, 22), UDim2.new(0.5, 200, 0.5, 150), 16, RET, Enum.Font.RobotoMono, Vector2.new(0.5, 0.5))
@@ -188,14 +345,14 @@ function Drive.init(G)
   cc.Enabled = false
   cc.Parent = Lighting
   G.sightCC = cc
-  local MODES = { "day", "nv", "whot", "bhot" }
+  local MODES = { "day", "nv", "whot", "bhot", "ir" }   -- 5 主动红外（WtOptics：六七十年代的车）；每辆车能切哪几种看 st.allow
   local ZOOMS0 = { 20, 7 }   -- 瞄准镜视场（度）：约 3.5×、10×
   -- 各型的视场（VehDefs 的 sightZoom：昼光、热像各几档倍率）：M1A2 SEPv2 第二代前视红外热像 3 / 6 / 13 / 25 / 50 倍、昼光 3 / 10 倍
   local ZOOMS = ZOOMS0
   local function zoomList()
     local z = st and st.d and st.d.sightZoom
     if not z then return ZOOMS0 end
-    local th = st.mode == 3 or st.mode == 4
+    local th = (st.mode or 1) ~= 1   -- 夜视通道（微光、主动红外、热像）按 sightZoom.th 的倍率（真车的夜视镜倍率和昼光不一样）
     local mags = (th and z.th) or z.day or { 3.5, 10 }
     local key = (th and "th" or "day")
     z._fov = z._fov or {}
@@ -245,6 +402,7 @@ function Drive.init(G)
   local function applyMode()
     if not st or not st.sight or G.interiorOptic then   -- 车里换成别的光学设备（辅助瞄准镜，Interior.lua）：它自己画分划、调颜色
       cc.Enabled = false
+      blur.Enabled = false
       clearHl()
       sight.Visible = false
       G.sightNv = false
@@ -255,10 +413,25 @@ function Drive.init(G)
     local m = MODES[st.mode]
     -- 观瞄打坏了（WtVfx.lua，服务器 Wt.lua 的 optics 模块，11-26）：热成像通道没了，只剩昼光 / 微光
     if G.opticsDead and G.opticsDead() and (m == "whot" or m == "bhot") then m = "day" end
-    G.sightNv = m == "nv"   -- 镜里的夜视档：昼夜（DayNight.lua）照夜视仪那样增亮（夜视仪开着镜时让出画面，增亮原来也跟着撤了）
+    G.sightNv = m == "nv" or m == "ir"   -- 镜里的夜视档：昼夜（DayNight.lua）照夜视仪那样增亮（夜视仪开着镜时让出画面，增亮原来也跟着撤了）
     local thermal = m == "whot" or m == "bhot"
     eyepiece.Visible = not thermal
     screenBox.Visible = thermal
+    -- 年代（WtOptics）：分划、热像的代、主动红外的探照灯圈
+    local kit = st.kit or { ret = "dig", nv = "th2" }
+    local ret = kit.ret or "dig"
+    reticle.Visible = (ret == "dig" or ret == "hk")
+    for k, f in pairs(RETS) do if f ~= reticle then f.Visible = (k == ret) end end
+    local NVd = OPT.NV[kit.nv or ""] or {}
+    irBeam.Visible = m == "ir"
+    scan.Visible = thermal and NVd.lines == true
+    blur.Enabled = thermal and (NVd.blur or 0) > 0
+    blur.Size = thermal and (NVd.blur or 0) or 0
+    -- 光学年代的分划没有数字读数（测距、弹种、待发、状态那一行是数字火控的）
+    local digital = (ret == "dig" or ret == "hk" or ret == "lrf")
+    st.kitDigital = digital
+    ammoText.Visible, readyBox.Visible, fcsText.Visible = digital, digital, digital
+    if not digital then multiBar.Visible = false end
     grain.Visible = m ~= "day"
     cc.Enabled = true
     local retCol = st.retNight and RET_DIM or RET   -- 红分划（钢铁猛兽那样）：分划照明旋钮白天亮红、夜间暗红
@@ -267,6 +440,9 @@ function Drive.init(G)
       clearHl()
     elseif m == "nv" then
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.35, 0.06, RGB(120, 255, 140)
+      clearHl()
+    elseif m == "ir" then   -- 主动红外：红外变像管的绿、暗、反差大（只有探照灯那一圈看得清）
+      cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.42, -0.06, RGB(150, 236, 168)
       clearHl()
     elseif m == "whot" then
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.45, -0.32, RGB(225, 225, 225)
@@ -277,6 +453,7 @@ function Drive.init(G)
     end
     -- 热像仪的增益（对比度）、电平（亮度）：炮长控制面板上的两个旋钮（车里 Interior：st.thGain / st.thLevel，0～4，2 是中间）
     if m == "whot" or m == "bhot" then
+      cc.Contrast += (NVd.gain or 0)   -- 一代热像反差低、三代高
       cc.Contrast += ((st.thGain or 2) - 2) * 0.12
       cc.Brightness += ((st.thLevel or 2) - 2) * 0.07
     end
@@ -293,6 +470,7 @@ function Drive.init(G)
     dhs.Color, dhs.Transparency = retCol, 1 - 0.25 * hk
     dotStroke.Color = retCol
     dotStroke.Transparency = RB
+    for _, l in ipairs(retTexts) do l.TextColor3 = retCol l.TextTransparency = SB end   -- 年代分划上的数字（表尺、测距曲线）
     for _, l in ipairs({ rangeText, modeText, zoomText, ammoText, fcsText }) do   -- 字也带一圈红色的光
       l.TextStrokeColor3 = retCol
       l.TextStrokeTransparency = 1 - (1 - SB) * 0.45 * (st.retNight and 0.7 or 1)
@@ -301,7 +479,7 @@ function Drive.init(G)
     rangeText.TextTransparency, modeText.TextTransparency, zoomText.TextTransparency, ammoText.TextTransparency, fcsText.TextTransparency = SB, SB, SB, SB, SB
     fcsText.TextColor3, multiBar.BackgroundColor3, multiBar.BackgroundTransparency = retCol, retCol, SB
     readyBox.BackgroundColor3, readyStroke.Color = retCol, retCol
-    modeText.Text = T("sight." .. m)
+    modeText.Text = T("sight." .. m) .. ((thermal and NVd.short) and ("  ·  " .. ((G.lang == "en") and NVd.short[2] or NVd.short[1])) or "")
     for _, g in ipairs(dots) do g.BackgroundColor3 = (m == "nv") and RGB(200, 255, 200) or Color3.new(1, 1, 1) end
   end
 
@@ -628,7 +806,9 @@ function Drive.init(G)
   local function nightNow() return G.isNight ~= nil and G.isNight() end
   local function nextMode()
     if not st then return end
-    st.mode = st.mode % #MODES + 1
+    local allow = st.allow or { 1, 2, 3, 4 }
+    local i0 = table.find(allow, st.mode) or 0
+    st.mode = allow[i0 % #allow + 1]
     G.sightPref[nightNow() and "night" or "day"] = st.mode
     applyMode()
   end
@@ -647,7 +827,7 @@ function Drive.init(G)
     local yaw = math.atan2(-look.X, -look.Z)
     st = { id = vs.id, em = em, d = d, pos = base.Position, yaw = yaw, speed = 0, steer = 0, accel = 0, root = root,
       ty = em:GetAttribute("Ty") or 0, gp = em:GetAttribute("Gp") or 0, camYaw = yaw, camPitch = -0.12, sight = false,
-      mode = G.sightPref[nightNow() and "night" or "day"] or (nightNow() and 3 or 1), zoom = 1,
+      mode = 1, zoom = 1,
       wi = 1, sendT = 0, next = {}, firing = false, hlT = 0, my = em:GetAttribute("My") or 0, mp = em:GetAttribute("Mp") or 0,
       fcs = { am = nil, R = nil, laseT = nil, ry = 0, rp = 0,   -- 火控：弹种、测的距离（米）、测距的时刻、瞄准线跟踪的角速度
         lrf = "LAST", arm = true, multi = false,   -- 激光：末回波 / 首回波（真车开机默认末回波）、待命 / 保险、上一次是不是多回波
@@ -659,6 +839,23 @@ function Drive.init(G)
       --   没写（沙盒、老模式的车）按原来那样：有激光就马上测、测距那一下算提前量
       fcsP = em:GetAttribute("FcsGen") and WM.fcsParams(em:GetAttribute("FcsGen"), em:GetAttribute("ModFcs") or 0) or nil,
       stab = true, retLvl = 0, symLvl = 0, retNight = false, thGain = 2, thLevel = 2 }   -- 稳定器、分划亮度、符号亮度、分划夜间照明、热像增益、电平
+    -- 观瞄按年代（WtOptics，用户 11-26）：这辆车有哪几种光电通道、夜视是哪一种、分划是哪一套；
+    --   默认档：记着的（这辆车有才用）→ 天黑用这辆车最好的夜视（热像 > 微光 > 主动红外）→ 昼光
+    do
+      local tk = em:GetAttribute("TreeKey")
+      local itT = (tk and TTr.get(tk)) or (TTr.byVeh and TTr.byVeh[d.id])   -- 沙盒、电脑车没有 TreeKey：按型号找科技树里那一项的年代、国家
+      local fg = em:GetAttribute("FcsGen")
+      if fg == nil and itT then fg = WM.fcsGen(itT) end   -- 同服务器出车时的算法（年代、有没有激光、是不是坦克）
+      st.kit = OPT.kit(tk or (itT and itT.key), d.id, fg, itT and itT.year, itT and itT.nat)
+      if (em:GetAttribute("ModFcs") or 0) >= 3 and (fg or 0) >= 3 then st.kit.ret = "hk" end   -- 火控升满：数字火控加自动跟踪
+      st.allow = st.kit.modes
+      local pref = G.sightPref[nightNow() and "night" or "day"]
+      if pref and table.find(st.allow, pref) then
+        st.mode = pref
+      elseif nightNow() then
+        st.mode = table.find(st.allow, 3) and 3 or (table.find(st.allow, 2) and 2 or (table.find(st.allow, 5) and 5 or 1))
+      end
+    end
     G.drive, G.myVeh = st, st
     -- 炮兵视角（ArtyView.lua）用：炮口在哪（画弹道弧线）、当前武器还要装填几秒
     st.muzzle = function()
@@ -2017,7 +2214,11 @@ function Drive.init(G)
       if am then   -- 火控：弹种、测的距离（没测是 BS 战斗瞄准距离，没回波 ----）、待发
         local f = st.fcs
         rangeText.Text = f.R and ((f.lrf == "FIRST" and "F " or "") .. string.format("%04d", f.R)) or (f.noRet and "----" or string.format("BS %04d", bsRange(am)))
-        multiBar.Visible = f.R ~= nil and f.multi == true
+        -- 光学年代（WtOptics：苏式 / 北约早期分划）：没有数字读数，装定距离看分划上的指针
+        rangeText.Visible = st.kitDigital ~= false
+        local rp = retPtr[st.kit and st.kit.ret or ""]
+        if rp then rp.f.Position = UDim2.new(0.5, 0, 0.5, rp.y(f.R or bsRange(am))) end
+        multiBar.Visible = f.R ~= nil and f.multi == true and st.kitDigital ~= false
         local parts = {}
         if f.mode == 2 then table.insert(parts, "EMER") elseif f.mode == 3 then table.insert(parts, "MAN") end
         if st.stab == false then table.insert(parts, "STAB OFF") end
@@ -2028,11 +2229,12 @@ function Drive.init(G)
         if f.trk then table.insert(parts, "TRACK") end   -- 自动目标跟踪锁着
         fcsText.Text = table.concat(parts, "   ")
         ammoText.Text = am.sym
-        readyBox.Visible = true
+        readyBox.Visible = st.kitDigital ~= false   -- 光学年代的分划没有待发方块（WtOptics）
         readyBox.BackgroundTransparency = (rel >= 0.999) and 0 or 1
       else
         local dist = (st.aimPt - cam.CFrame.Position).Magnitude
         rangeText.Text = string.format("%04d", math.floor(dist / 2.8 / 5 + 0.5) * 5)
+        rangeText.Visible = true
         multiBar.Visible = false
         fcsText.Text = ""
         ammoText.Text = ""

@@ -106,6 +106,19 @@ function W.prof(d)
   return W.PROF[d.id] or W.CAT[d.cat] or W.CAT.apc
 end
 
+---------------------------------------------------------------- 弹药殉爆时炮塔会被顶飞的车
+-- 弹放在车体底下转盘式自动装弹机里（苏 / 俄 T-64、T-72、T-80、T-90，中国 96、99 系）：殉爆时整个炮塔连炮被顶上天
+--   （用户 11-26「部分弹药架在下面的坦克被干掉炮塔飞起来吧 然后要先着火再飞」）——先烧 W.cookSecs 秒（发射药着火、舱口往外喷火），
+--   再一下炸开、炮塔飞起来；弹在炮塔尾舱的（M1、豹 2、勒克莱尔、10 式……）有泄压板或者整车炸，炮塔不飞
+W.CAROUSEL = { t64a = true, t64b = true, t72ural = true, t72a = true, t72b = true, t72b3 = true, t80b = true, t80u = true, t80bvm = true,
+  t90m = true, t90a = true, ztz96 = true, ztz99a = true }
+-- 烧多久（2.2～3.4 秒）：按实体编号定，服务器、各个客户端算出来一样
+function W.cookSecs(id)
+  local h = 0
+  for c in tostring(id or ""):gmatch(".") do h = (h * 31 + string.byte(c)) % 100003 end
+  return 2.2 + (h % 97) / 96 * 1.2
+end
+
 ---------------------------------------------------------------- 弹的穿深（毫米）
 
 -- 坦克炮弹（Ballistics.AMMO 的键）：p0 炮口处、fall 每公里掉多少（脱壳穿甲弹）、t 类型（ke 动能 / ce 聚能 / he 杀爆）、
