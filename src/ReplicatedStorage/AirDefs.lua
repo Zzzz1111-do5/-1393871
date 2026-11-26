@@ -38,6 +38,7 @@ AirDefs.W = {
   m61 = { kind = "gun", rate = 0.012, dmg = 11, speed = 2100, range = 1800, splash = 2, vs = VS_GUN, cal = 0.16 },     -- M61A2 20 毫米
   gau22 = { kind = "gun", rate = 0.018, dmg = 15, speed = 2100, range = 1800, splash = 2.5, vs = VS_GUN, cal = 0.17 },  -- GAU-22/A 25 毫米
   gsh23 = { kind = "gun", rate = 0.018, dmg = 15, speed = 1900, range = 1700, splash = 2.5, vs = VS_GUN, cal = 0.17 },  -- 23-3 型双管 23 毫米（歼-8II 机腹）
+  gsh302 = { kind = "gun", rate = 0.02, dmg = 30, speed = 2000, range = 1900, splash = 3, vs = VS_GUN, cal = 0.2 },   -- GSh-30-2 双管 30 毫米（苏-25：250 发，每分钟约 3000 发）
   nr30 = { kind = "gun", rate = 0.024, dmg = 30, speed = 1900, range = 1700, splash = 3, vs = VS_GUN, cal = 0.2 },     -- 30-1 型（НР-30）30 毫米 ×3（歼-6：两门在翼根、一门在机头右下，合起来每分钟两千五百发）
   gau8 = { kind = "gun", rate = 0.017, dmg = 22, speed = 1900, range = 2000, splash = 3, cal = 0.22,                      -- GAU-8 30 毫米贫铀穿甲弹
     vs = { inf = 1, light = 1.2, armor = 0.55, air = 1.4, ship = 0.5, fort = 0.7 } },
@@ -66,6 +67,33 @@ AirDefs.W = {
   -- AIM-54 不死鸟（F-14 专用，用户 11-23 加 F-14）：4 米长、454 公斤的远程雷达弹——射程最远、飞得快，但又重又笨（转得慢、导引头视场窄、锁得慢）
   aim54 = { kind = "aam", eject = { t = 0.6, f = 0, d = 18 }, seeker = "radar", dmg = 620, splash = 18, speed = 820, range = 4600, lockTime = 2.6, cone = 18, turn = 38, burn = 6, life = 10, vs = VS_AAM,
     shape = { L = 11.0, d = 1.06, fin = 1.6 } },
+
+  -- 俄制空空弹（用户 11-26：苏-57、米格-29 要参数跟现实一样；数值按公开资料、和上面各弹同一个比例尺——射程比 AIM-120C（约 105 公里）= 3800）
+  --   R-73（AA-11）：红外近距弹，2.9 米、0.17 米、105 公斤，射程约 30 公里，导引头离轴 ±60°（配头盔瞄准具），鸭翼 + 燃气舵、大过载
+  r73 = { kind = "aam", seeker = "ir", dmg = 500, splash = 14, speed = 620, range = 1900, lockTime = 0.9, cone = 50, turn = 80, burn = 3, life = 6.5, vs = VS_AAM,
+    shape = { L = 8.1, d = 0.48, fin = 0.9 } },
+  --   R-74M2：苏-57 侧弹舱用的 R-73 改型（尾翼、舵面展长缩小装得进弹舱），射程约 40 公里，离轴更大
+  r74 = { kind = "aam", seeker = "ir", dmg = 500, splash = 14, speed = 640, range = 2100, lockTime = 0.8, cone = 55, turn = 85, burn = 3.2, life = 7, vs = VS_AAM,
+    shape = { L = 8.1, d = 0.48, fin = 0.65 } },
+  --   R-27R（AA-10A）：半主动雷达弹（靠发射机的雷达一直照着：没有 act，不自己开导引头），4.08 米、0.23 米、253 公斤，迎头射程约 70～80 公里
+  r27r = { kind = "aam", seeker = "radar", dmg = 600, splash = 17, speed = 700, range = 2700, lockTime = 1.8, cone = 20, turn = 42, burn = 4.5, life = 8, vs = VS_AAM,
+    shape = { L = 11.4, d = 0.64, fin = 1.5 } },
+  --   K-77M（180 工程）：苏-57 主弹舱的主动雷达弹，有源相控阵导引头、双脉冲发动机，射程约 150～190 公里；栅格尾翼换成了普通尾翼（装得进弹舱）
+  k77m = { kind = "aam", seeker = "radar", dmg = 560, splash = 16, speed = 800, range = 4300, lockTime = 1.8, cone = 24, turn = 56, burn = 5, life = 9.5, vs = VS_AAM,
+    shape = { L = 10.4, d = 0.56, fin = 0.8 } },
+
+  --   R-27ER：加大发动机的半主动雷达弹，4.78 米、0.26 米、350 公斤，迎头射程约 130 公里
+  r27er = { kind = "aam", seeker = "radar", dmg = 640, splash = 18, speed = 760, range = 3400, lockTime = 2.0, cone = 20, turn = 40, burn = 6, life = 9.5, vs = VS_AAM,
+    shape = { L = 13.4, d = 0.73, fin = 1.6 } },
+  --   R-77-1（RVV-SD）：主动雷达弹，3.71 米、0.2 米、190 公斤，射程约 110 公里；尾部四片栅格翼
+  r77 = { kind = "aam", seeker = "radar", dmg = 540, splash = 15, speed = 760, range = 3500, lockTime = 1.9, cone = 24, turn = 55, burn = 5, life = 9, vs = VS_AAM,
+    shape = { L = 10.4, d = 0.56, fin = 1.0 } },
+  --   R-60M：老式红外近距弹，2.14 米、0.12 米、44 公斤，射程约 8 公里（苏-25 最外侧挂两枚自卫）
+  r60 = { kind = "aam", seeker = "ir", dmg = 380, splash = 11, speed = 560, range = 1100, lockTime = 1.0, cone = 25, turn = 70, burn = 2.5, life = 5, vs = VS_AAM,
+    shape = { L = 6.0, d = 0.34, fin = 0.8 } },
+  --   Kh-29L：激光半主动空地导弹，3.9 米、0.38 米、657 公斤（战斗部 320 公斤），射程约 10 公里
+  kh29 = { kind = "agm", dmg = 1400, splash = 26, speed = 330, range = 2200, lockTime = 1.5, cone = 20, turn = 18, burn = 6, life = 10, vs = VS_AGM,
+    shape = { L = 10.9, d = 1.06, fin = 1.6 } },
 
   -- 铠甲-S1 的 57E6 地空导弹（地面车发射；车上的弹药数在 VehDefs.W.s57e6，服务器 Armor.lua 按这里的速度、转弯飞；客户端照 shape 画）：
   --   弹长 3.2 米、助推器直径 0.17 米，两级、无线电指令制导（kind sam：热诱弹不骗它）
@@ -141,6 +169,7 @@ AirDefs.W = {
 }
 -- 导引方式：ir 红外、radar 主动雷达、laser 激光、gps 卫星 / 惯性、tv 电视 / 红外成像、arm 被动雷达（反辐射）、none 无制导
 local GUIDE = { igla = "ir", type91 = "ir", ataka = "cmd", shturm = "cmd", hot3 = "cmd", tow = "cmd", vikhr = "laser",
+  r73 = "ir", r74 = "ir", r27r = "radar", k77m = "radar", r27er = "radar", r77 = "radar", r60 = "ir", kh29 = "laser",
   pl10 = "ir", aim9x = "ir", ty90 = "ir", aim92 = "ir", pl15 = "radar", pl12 = "radar", aim120 = "radar", aim54 = "radar", akd10 = "laser", agm114 = "laser",
   kd88 = "tv", agm65 = "tv", yj83k = "radar", yj91 = "arm", agm88 = "arm", ls6 = "gps", gbu31 = "gps", gbu32 = "gps", gbu38 = "gps", gbu39 = "gps", gbu12 = "laser", lt2 = "laser" }
 for id, w in pairs(AirDefs.W) do
@@ -170,6 +199,14 @@ local MOTOR = {
   aim120 = { burn = 6.5, g = 32, bleed = 0.095, smoke = "low" },
   pl15 = { burn = 5.0, pulse = { at = 9, t = 4.5 }, speed = 820, g = 30, bleed = 0.08, smoke = "low" },
   aim54 = { burn = 9, g = 18, bleed = 0.07, smoke = "heavy" },
+  r73 = { burn = 3.0, g = 50, bleed = 0.17, smoke = "med" },
+  r74 = { burn = 3.2, g = 55, bleed = 0.16, smoke = "low" },
+  r27r = { burn = 6, g = 25, bleed = 0.1, smoke = "med" },
+  k77m = { burn = 5.5, pulse = { at = 10, t = 4 }, speed = 840, g = 32, bleed = 0.08, smoke = "low" },   -- 双脉冲（同霹雳-15）
+  r27er = { burn = 7, g = 25, bleed = 0.09, smoke = "med" },
+  r77 = { burn = 6, g = 32, bleed = 0.1, smoke = "low" },
+  r60 = { burn = 2.4, g = 40, bleed = 0.2, smoke = "med" },
+  kh29 = { burn = 6, g = 10, bleed = 0.05, smoke = "heavy" },
   s57e6 = { burn = 2.0, speed = 1100, g = 32, bleed = 0.045, smoke = "heavy" },   -- 两级：助推器烧完扔掉，弹体（没有发动机）高速滑翔、阻力小
   akd10 = { burn = 3.5, g = 15, bleed = 0.06, smoke = "med" },
   agm114 = { burn = 3.0, g = 15, bleed = 0.07, smoke = "med" },
@@ -770,6 +807,124 @@ D.b2 = { kind = "jet", cat = "jet", L = 59, W = 147, H = 14.5, gearH = 9.0, hp =
   st = mirror({ { name = "bay", pos = V(4.6, -2.2, 1.0), bay = "main", opts = { "gbu31", "mk82" }, n = N({ gbu31 = 8, mk82 = 16 }) } }),
   presets = { preset("jdam", { bay = "gbu31" }), preset("mk82", { bay = "mk82" }) } }
 
+---------------------------------------------------------------- 俄罗斯：米格-29、T-50、苏-57（用户 11-26：给了 bohmerang 的三个模型「原封不动导入」、「参数要跟现实中一样」）
+--   原模型三个都放着起落架（另有一套收起时关着的舱门 GearUp），机身尺寸照原模型量的（tools/models/sf_air.py）；性能数值和别的飞机同一个比例尺：
+--   推重比 → accel / abAccel，低空最大速度 → vMil / vAB（×2.25 是真速度），最大滚转率、过载、失速照公开资料
+-- 苏-57（量产型，2020 年起交付）：长 20.1 米、翼展 14.1 米、高 4.6 米、翼面积 78.8 平方米；空重 18 吨、正常起飞 25 吨、最大 35 吨；
+--   两台 AL-41F1（117 发动机）：军推 88.3 千牛、加力 142.2 千牛（正常起飞重量下推重比约 1.16），三元推力矢量（每个喷口 ±15°，左右喷口的偏转面斜着装：俯仰、偏航、滚转都管）；
+--   最大速度 2 马赫（高空约 2135 公里 / 时）、不开加力超音速巡航约 1.3 马赫，升限 2 万米，过载 +9；GSh-30-1（9A1-4071K）30 毫米炮 150 发（右边前缘根部）；
+--   两个前后排的主弹舱（各 2 枚 K-77M）、两个三角形侧弹舱（各 1 枚 R-74M2），翼下 6 个外挂点；雷达 N036（见 RADAR），光电 101KS-V
+D.su57 = { kind = "jet", cat = "jet", L = 56, W = 39.5, H = 12.9, gearH = 6.9, hp = 760, stall = 92, vMil = 375, vAB = 475, accel = 54, abAccel = 40,
+  pitch = 52, roll = 230, yaw = 26, g = 9, aoaMax = 28, flares = 64, gun = "gsh30", gunAmmo = 150, gunPos = V(2.8, 0.4, -11.2), ab = true, stealth = true, tvc = true,
+  fus = { len = 53, w = 6.6, h = 4.4, y = 0 }, nose = 10, canopy = { z = -17.4, len = 6.7, w = 3.0, h = 2.4, y = 2.4 },
+  intake = "box", intakeZ = -6, intakeW = 2.6,
+  wing = { xr = 4.2, zr0 = -5.6, zr1 = 20.2, xt = 20.4, zt0 = 12.0, zt1 = 15.7, y = 0.2, lerx = true },
+  htail = { xr = 5.9, zr0 = 15.5, zr1 = 25.4, xt = 14.5, zt0 = 22.5, zt1 = 25.4, y = 0.2 },
+  vt = { x = 6.6, zr0 = 13, zr1 = 21.5, zt0 = 17.5, zt1 = 21.5, h = 6.4, cant = 26, allMove = true },
+  eng = { { x = 4.1, y = 0.5, z = 24.3, r = 1.5 }, { x = -4.1, y = 0.5, z = 24.3, r = 1.5 } },
+  gear = { nose = { z = -9.9, len = 5.5 }, main = { x = 7.3, z = 7.6, len = 5.5 }, r = 1.4 },
+  -- 弹舱：两个主弹舱在两台发动机中间的龙骨下面前后排（各长约 4.4 米），侧弹舱在进气道外侧的翼根整流罩里
+  bays = { main = { z0 = -5.0, z1 = 19.6, w = 2.8 }, sideR = { x = 5.6, z0 = -1.2, z1 = 4.6, w = 1.0 } },
+  st = mirror({
+    { name = "bayF", pos = V(1.0, -2.3, 1.1), bay = "main", opts = { "k77m" } },
+    { name = "bayR", pos = V(1.0, -2.3, 13.4), bay = "main", opts = { "k77m" } },
+    { name = "bayS", pos = V(5.6, -0.7, 1.7), bay = "sideR", opts = { "r74" } },
+    { name = "wing", pos = V(11.2, -0.6, 7.0), opts = { "k77m", "r74" } },
+  }),
+  presets = { preset("aa", { bayF = "k77m", bayR = "k77m", bayS = "r74" }), preset("beast", { bayF = "k77m", bayR = "k77m", bayS = "r74", wing = "k77m" }) } }
+-- T-50（苏-57 的原型机，2010 年首飞；用户给的「Su-57 Felon (P)」是 054 号，即 T-50-4，2012 年）：机体、发动机同量产型（AL-41F1），
+--   雷达是试验阶段的 N036（见 RADAR.t50）；机头多一根长空速管
+do
+  local function cp(t)
+    if type(t) ~= "table" or getmetatable(t) ~= nil then return t end
+    local o = {}
+    for k, v in pairs(t) do o[k] = cp(v) end
+    return o
+  end
+  D.t50 = cp(D.su57)
+  D.t50.hp = 740
+end
+-- 米格-29（9.12，1983 年服役）：长 17.32 米（含空速管）、翼展 11.36 米、高 4.73 米、翼面积 38 平方米；空重 11 吨、正常起飞 15.3 吨、最大 18 吨；
+--   两台 RD-33：军推 49.4 千牛、加力 81.4 千牛（正常起飞重量下推重比约 1.08）；最大速度 2.25 马赫（高空约 2400 公里 / 时）、海平面约 1500 公里 / 时，
+--   升限 1.8 万米、爬升率约 330 米 / 秒，过载 +9（超音速 +7）；GSh-30-1 30 毫米炮 150 发（左边边条根部）；翼下 6 个挂点：内侧 R-27R、中间和外侧 R-73（或 R-60M）；
+--   雷达 N019（见 RADAR）、光电 KOLS（激光测距 + 红外搜索跟踪）、头盔瞄准具「窄缝」（R-73 离轴发射）
+D.mig29 = { kind = "jet", cat = "jet", L = 48.5, W = 31.8, H = 13.2, gearH = 6.3, hp = 640, stall = 95, vMil = 330, vAB = 480, accel = 46, abAccel = 40,
+  pitch = 46, roll = 210, yaw = 18, g = 9, aoaMax = 26, flares = 60, gun = "gsh30", gunAmmo = 150, gunPos = V(-2.8, 0.1, -2.8), ab = true,
+  fus = { len = 46, w = 5.4, h = 4.0, y = 0 }, nose = 9, canopy = { z = -9.6, len = 6.5, w = 2.3, h = 1.6, y = 2.0 },
+  intake = "box", intakeZ = -1, intakeW = 2.4, nacelle = { x = 2.5, w = 2.8, h = 2.8 },
+  wing = { xr = 4.8, zr0 = -3.0, zr1 = 12.9, xt = 15.6, zt0 = 11.0, zt1 = 13.5, y = -0.6, lerx = true },
+  htail = { xr = 4.8, zr0 = 14.7, zr1 = 23.9, xt = 10.8, zt0 = 21.0, zt1 = 23.9, y = -1.7 },
+  vt = { x = 5.0, zr0 = 13.5, zr1 = 20.7, zt0 = 18.5, zt1 = 21.2, h = 6.0, cant = 6 },
+  eng = { { x = 2.4, y = -2.7, z = 19.6, r = 1.26 }, { x = -2.4, y = -2.7, z = 19.6, r = 1.26 } },
+  gear = { nose = { z = -4.2, len = 5.0 }, main = { x = 4.5, z = 5.9, len = 5.0 }, r = 1.0 },
+  st = mirror({
+    -- own：挂在原模型自己的发射导轨 / 挂架下面（模型里有 APU-470 / APU-73 导轨、外侧挂架），不另画挂架；位置照模型量的（内侧导轨 |y| 2.37 米、
+    --   中间 3.10 米、外侧挂架 3.76 米，前后在导轨中间）
+    { name = "inner", pos = V(6.62, -2.0, 5.6), opts = { "r27r", "r73" }, own = true },
+    { name = "mid", pos = V(8.68, -2.0, 7.48), opts = { "r73", "r27r" }, own = true },
+    { name = "outer", pos = V(10.53, -1.9, 8.53), opts = { "r73" }, own = true },
+  }),
+  presets = { preset("aa", { inner = "r27r", mid = "r73", outer = "r73" }), preset("wvr", { inner = "r73", mid = "r73", outer = "r73" }) } }
+
+-- 苏-35S（2014 年服役；用户 11-26 给的 bohmerang「Sukhoi Su-35 - Fighter Jet - Free」，原来借歼-11 的模型和性能）：长 21.9 米、翼展 15.3 米（带翼尖吊舱）、高 5.9 米、
+--   翼面积 62 平方米；空重 19 吨、正常起飞 25.3 吨、最大 34.5 吨；两台 AL-41F1S（117S）：军推 86.3 千牛、加力 142 千牛（推重比约 1.15），推力矢量 ±15°（两个喷口的偏转面斜着装）；
+--   最大速度 2.25 马赫（高空约 2400 公里 / 时）、海平面约 1400 公里 / 时，升限 1.8 万米，过载 +9；GSh-30-1 150 发；12 个挂点（翼尖是「希比内」电子战吊舱）；
+--   雷达 N035（见 RADAR）、光电 OLS-35
+D.su35 = { kind = "jet", cat = "jet", L = 61.3, W = 42.8, H = 16.5, gearH = 7.6, hp = 780, stall = 92, vMil = 345, vAB = 480, accel = 52, abAccel = 40,
+  pitch = 50, roll = 220, yaw = 24, g = 9, aoaMax = 28, flares = 64, gun = "gsh30", gunAmmo = 150, gunPos = V(2.6, 0.6, -9), ab = true, tvc = true,
+  fus = { len = 58, w = 5.0, h = 4.4, y = 0 }, nose = 11, canopy = { z = -16.6, len = 8.3, w = 2.3, h = 2.0, y = 2.0 },
+  intake = "box", intakeZ = -4, intakeW = 3.0, nacelle = { x = 3.3, w = 3.4, h = 3.4 },
+  wing = { xr = 4.0, zr0 = -8, zr1 = 13, xt = 20.3, zt0 = 9, zt1 = 14, y = 0.0, lerx = true },
+  htail = { xr = 5.1, zr0 = 15.6, zr1 = 25.6, xt = 13.6, zt0 = 22.5, zt1 = 25.6, y = 0.1 },
+  vt = { x = 6.0, zr0 = 13, zr1 = 20.7, zt0 = 17.3, zt1 = 20.7, h = 9.4, cant = 0 },
+  eng = { { x = 3.3, y = 0.3, z = 23.6, r = 1.6 }, { x = -3.3, y = 0.3, z = 23.6, r = 1.6 } },
+  gear = { nose = { z = -7.8, len = 7.3 }, main = { x = 6.1, z = 8.2, len = 7.3 }, r = 1.3 },
+  st = mirror({
+    -- 机翼下三个挂架是原模型自己的（own，|y| 3.50 / 4.63 / 6.29 米、前后在挂架中间）；翼尖是「希比内」电子战吊舱（模型自带），不挂弹
+    { name = "outer", pos = V(17.6, -1.0, 12.3), opts = { "r73", "r74" }, own = true },
+    { name = "mid", pos = V(12.96, -1.2, 8.7), opts = { "r77", "r27er", "r73", "kh29", "b250" }, n = N({ b250 = 2 }), own = true },
+    { name = "inner", pos = V(9.8, -1.2, 7.28), opts = { "r77", "r27er", "kh29", "b250" }, n = N({ b250 = 2 }), own = true },
+    { name = "duct", pos = V(2.6, -3.0, 2.0), opts = { "r77", "r27er" }, ej = true },
+    { name = "ctr", pos = V(0, -2.6, -3.0), opts = { "r77", "b250" }, n = N({ b250 = 2 }), ej = true },
+  }),
+  presets = { preset("aa", { outer = "r74", mid = "r27er", inner = "r77", duct = "r77", ctr = "r77" }), preset("ag", { outer = "r74", mid = "kh29", inner = "kh29", duct = "r77", ctr = "b250" }) } }
+-- 苏-25（1981 年服役，「白嘴鸦」）：用户 11-26 给的 Immersive3A「[PBR] Sukhoi Su-25」（CC-BY）：长 15.53 米、翼展 14.36 米、高 4.8 米、翼面积 30.1 平方米；
+--   空重 9.8 吨、正常起飞 14.6 吨、最大 17.6 吨；两台 R-95Sh 涡喷（各 40.2 千牛，不带加力；推重比约 0.56）；最大速度约 950 公里 / 时（0.82 马赫），
+--   升限 7000 米（空载 1 万米），过载 +6.5；座舱钛合金装甲浴盆；GSh-30-2 双管 30 毫米炮 250 发；翼下 10 个挂点（S-8 火箭、炸弹、Kh-25 / Kh-29、外侧 R-60M 自卫）；
+--   没有雷达（机头是「枫叶」激光测距 / 指示器）；翼尖吊舱后面是开花式减速板；箔条 / 热焰弹 256 发（UV-26）
+D.su25 = { kind = "jet", cat = "jet", L = 43.5, W = 40.2, H = 13.4, gearH = 5.5, hp = 1000, stall = 90, vMil = 320, accel = 36, pitch = 34, roll = 140, yaw = 16, g = 6.5,
+  flares = 256, gun = "gsh302", gunAmmo = 250, gunPos = V(-1.1, -2.7, -12.6),
+  fus = { len = 40, w = 4.6, h = 4.4, y = 0 }, nose = 8, canopy = { z = -10.7, len = 4.4, w = 2.6, h = 1.8, y = 2.4 },
+  intake = "box", intakeZ = -2, intakeW = 2.2,
+  wing = { xr = 2.8, zr0 = -3.0, zr1 = 6.6, xt = 20.3, zt0 = 3.6, zt1 = 6.6, y = 0 },
+  htail = { xr = 0.8, zr0 = 13.4, zr1 = 18.4, xt = 6.7, zt0 = 16.0, zt1 = 18.4, y = 0.4 },
+  vt = { x = 0, zr0 = 9.7, zr1 = 18.0, zt0 = 15.5, zt1 = 18.0, h = 7.4, cant = 0 },
+  eng = { { x = 2.35, y = 0.4, z = 7.3, r = 0.9 }, { x = -2.35, y = 0.4, z = 7.3, r = 0.9 } },
+  gear = { nose = { z = -8.4, len = 2.0 }, main = { x = 3.5, z = 1.4, len = 2.2 }, r = 1.1 },
+  st = mirror({
+    { name = "p1", pos = V(5.7, -0.8, -0.1), opts = { "kh29", "b250", "s8" }, own = true },
+    { name = "p2", pos = V(8.0, -0.8, 0.6), opts = { "b250", "s8", "kh29" }, own = true },
+    { name = "p3", pos = V(10.2, -0.8, 1.1), opts = { "s8", "b250" }, own = true },
+    { name = "p4", pos = V(12.4, -0.8, 1.9), opts = { "s8", "b250" }, own = true },
+    { name = "p5", pos = V(14.4, -0.8, 3.1), opts = { "r60" }, own = true },
+  }),
+  presets = { preset("cas", { p1 = "kh29", p2 = "b250", p3 = "s8", p4 = "s8", p5 = "r60" }), preset("bomb", { p1 = "b250", p2 = "b250", p3 = "b250", p4 = "b250", p5 = "r60" }) } }
+
+-- 苏-27S（1985 年服役）：歼-11 就是照苏-27SK 造的，性能照抄歼-11（两台 AL-31F：军推 76.2 千牛、加力 122.6 千牛；正常起飞 23 吨；2.35 马赫；+9 g），
+--   挂俄式的弹（R-73 / R-27R / R-27ER）、N001「剑」雷达；原模型借苏-35S 的（like：俄罗斯涂装和机徽；用户 11-26「为什么俄罗斯的飞机上会有中国的图标」——
+--   原来借歼-11 的模型）。苏-35S 的模型喷口能偏，苏-27 没有推力矢量：AirModels 按 tvc 不偏（调节片照旧开合）
+D.su27 = hv(D.j11, { like = "su35", flares = 96,
+  st = mirror({
+    { name = "tip", pos = V(19.3, -0.2, 11.5), opts = { "r73" } },
+    { name = "outer", pos = V(17.6, -1.0, 12.3), opts = { "r73", "r27r" }, own = true },
+    { name = "mid", pos = V(12.96, -1.2, 8.7), opts = { "r27r", "r27er", "r73", "b250" }, n = N({ b250 = 2 }), own = true },
+    { name = "inner", pos = V(9.8, -1.2, 7.28), opts = { "r27er", "r27r", "b250" }, n = N({ b250 = 2 }), own = true },
+    { name = "duct", pos = V(2.6, -3.0, 2.0), opts = { "r27r", "r27er" }, ej = true },
+    { name = "ctr", pos = V(0, -2.6, -3.0), opts = { "r27er", "b250" }, n = N({ b250 = 2 }), ej = true },
+  }),
+  presets = { preset("aa", { tip = "r73", outer = "r73", mid = "r27r", inner = "r27er", duct = "r27r", ctr = "r27er" }),
+    preset("strike", { tip = "r73", outer = "r73", mid = "b250", inner = "b250", duct = "r27r", ctr = "b250" }) } })
+
 ---------------------------------------------------------------- 补默认值
 
 -- 对空雷达（用户 11-24 夜：「战雷……不同带有雷达的载具会根据雷达型号有雷达扫描图的，为雷达锁定式导弹提供引导，所以也有 39 机动的这种说法」）：
@@ -796,9 +951,20 @@ local RADAR = {
   f16 = radar("AN/APG-68 脉冲多普勒", "pd", 11000, 9000, 60, 40, 60),
   f15 = radar("AN/APG-63 脉冲多普勒", "pd", 13000, 10500, 60, 40, 60),
   f14 = radar("AN/AWG-9 脉冲多普勒", "pd", 18000, 14000, 65, 40, 60),
+  -- 苏-57 的 Sh121 雷达组：N036「松鼠」有源相控阵——机头 N036-1-01（X 波段，1514 个收发组件）+ 两侧的 N036B-1-01 侧视阵（方位往两边多看一截：az 75）
+  --   + 前缘涡流控制板里的 L 波段阵；公开说法对大目标约 400 公里、战斗机大小的目标约 160 公里，跟踪 60 个、同时攻击 16 个（和 APG-77 一档）
+  su57 = radar("N036 松鼠 有源相控阵", "pd", 16500, 13500, 75, 45, 40),
+  t50 = radar("N036 有源相控阵（试验型）", "pd", 15500, 12500, 75, 45, 42),   -- 原型机（T-50-3 起才装上雷达）：软件、功率还没到量产型
+  -- 米格-29（9.12）的 N019「宝石」脉冲多普勒（RLPK-29）：对战斗机迎头约 70 公里、尾追约 35 公里，跟踪 10 个、攻击 1 个；方位 ±67°；下视、抗干扰都弱
+  mig29 = radar("N019 宝石 脉冲多普勒", "pd", 9500, 7500, 67, 40, 70),
+  -- 苏-35S 的 N035「雪豹-E」无源相控阵：对 3 平方米的目标迎头约 350～400 公里，跟踪 30 个、攻击 8 个；电扫 ±60°，再加液压转台整个天线转到 ±120°（az 90 折中）
+  su35 = radar("N035 雪豹-E 无源相控阵", "pd", 17500, 14000, 90, 60, 55),
+  -- 苏-27S 的 N001「剑」脉冲多普勒（卡塞格伦天线）：对战斗机迎头约 80～100 公里、跟踪一个打一个；视场 ±60°
+  su27 = radar("N001 剑 脉冲多普勒", "pd", 10000, 8000, 60, 40, 70),
 }
 -- 雷达弹（主动雷达）：act 离目标多近自己开导引头（之前按发射机雷达的跟踪走数据链）、notch 导引头的置零门限（格 / 秒）
-local ARH = { pl15 = { act = 2800, notch = 50 }, aim120 = { act = 2600, notch = 50 }, aim54 = { act = 3200, notch = 60 }, pl12 = { act = 2200, notch = 55 } }
+local ARH = { pl15 = { act = 2800, notch = 50 }, aim120 = { act = 2600, notch = 50 }, aim54 = { act = 3200, notch = 60 }, pl12 = { act = 2200, notch = 55 },
+  k77m = { act = 3000, notch = 45 }, r77 = { act = 2600, notch = 55 } }   -- K-77M 有源相控阵导引头：开机远、不怕置零；R-27R 是半主动，不在这里
 for wid, a in pairs(ARH) do
   local w = AirDefs.W[wid]
   if w then w.act, w.notch = a.act, a.notch end

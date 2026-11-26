@@ -17,6 +17,7 @@ import mdl2glb as B   # noqa: E402
 import air2glb as X   # noqa: E402
 import air_anim as A   # noqa: E402
 import air_kf as KF   # noqa: E402
+import sf_gear as SG   # noqa: E402  两套起落架网格、原模型喷口（推力矢量）
 
 LIC = 'CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）'
 
@@ -200,6 +201,170 @@ SPEC = {
         # 两台涡喷-6 并排（原模型尾部是一整圈喷管，按两个喷口算尾焰）
         'noz': [[-4.56, 0.15, 0.74, 0.15]],
     },
+    # 苏-57（bohmerang 的「Sukhoi Su-57 Felon - Fighter Jet - Free」，CC BY-NC-SA：作者写明只许个人用、不许商用——用户 11-26 指定原封不动导入，
+    #   已告诉用户这个授权）：机身一个网格（舵面、喷口调节片都是单独的连通块）、座舱盖（后半块能掀、前风挡不动）、座舱、平显；
+    #   起落架两套：SU57-landingOn 放下的支柱、机轮、打开的主轮舱门（+ 着陆灯 landingOnLight），SU57-landingOff 收起后关好的三块门板——
+    #   照真机做收放（sf_gear.py）：主起落架、前起落架都往前收进机轮前面的舱里（舱的位置按 landingOff 的门板量的）；
+    #   前起落架往后斜拉的那根撑杆收的时候会从机腹戳出去（真机是折起来的）：单独成 GearB，起落架一动就藏起来
+    #   推力矢量：两台 AL-41F1 的喷口全向偏转（±15°），每个喷口 16 片调节片 + 16 片密封片 + 里层，按方位分 16 组开合
+    #   下面的范围都是网页版坐标、离地高度（selg：z 减了地面），量法见 tools/models/sf_gear.py
+    'su57': {
+        'ids': ['su57'],
+        'credit': '苏-57：Sukhoi Su-57 Felon - Fighter Jet - Free，作者 bohmerang（https://sketchfab.com/3d-models/sukhoi-su-57-felon-fighter-jet-free-59995d6f34ba4bb7990195be3a745fc5），'
+                  'CC BY-NC-SA 4.0（署名—非商业—相同方式共享；作者注明只许个人使用、不许用于商业作品）。'
+                  '（改动：转成 Roblox 坐标、按机轮摆平，舵面、座舱盖、起落架、舱门、喷口调节片拆成会动的块）',
+        'fwd': '+x', 'up': '+y', 'scale': 0.1026, 'selg': True,   # 全长 20.1 米
+        'gear': [r'^SU57-landingOn_6$'],   # frame() 按放下的机轮摆平俯仰
+        'gearon': [r'^SU57-landingOn_6$', r'^SU57-landingOnLight_7$'], 'gearoff': [r'^SU57-landingOff_5$'],
+        'pitnode': [r'^SU57-cockpit_2$'], 'pithud': [r'^SU57-hud_3$'],
+        'pit': [[5.55, 0.0, 3.12]],
+        'legs': [
+            # 前起落架：双轮，支柱顶的横梁在 x 3.6、离地 2.03；往前收，机轮收到舱前段（舱从 x 2.5 到 5.6）
+            {'g': 'GearN', 'sel': {'x': [3.0, 4.25], 'ay': [0, 0.45], 'z': [0, 2.4]}, 'p': [3.6, 0.0, 2.03], 'to': [5.25, 0.0, 2.33], 'steer': True},
+            # 主起落架（左，右边照镜像）：单轮在支柱外侧；支柱顶的耳轴 x −2.78、离地 2.42；往前收进机轮前面 2.9 米长的舱（门板 x −3.09～−0.23、|y| 1.73～2.64），
+            #   舱只有 0.9 米宽：机轮竖着收（不转 90°），收的时候往里靠一点
+            {'g': 'GearL', 'mir': True, 'sel': {'x': [-3.35, -1.9], 'y': [1.6, 2.85], 'z': [0, 2.6]}, 'p': [-2.78, 2.19, 2.42], 'to': [-0.9, 2.02, 2.55]},
+        ],
+        'brace': [{'g': 'GearB', 'sel': {'x': [2.3, 3.37], 'ay': [0, 0.2], 'z': [1.3, 2.0]}}],
+        'doors': [
+            # 主轮舱门：打开的门（外侧铰链、往下垂着，带内侧的加强筋）配 landingOff 里关好的门板
+            {'g': 'GDoorM', 'mir': True, 'sel': {'x': [-3.2, -0.1], 'y': [2.4, 3.15], 'z': [1.1, 2.3]}, 'off': {'x': [-3.2, -0.1], 'y': [1.6, 2.8], 'z': [1.4, 2.4]}},
+        ],
+        # 前轮舱前段的两扇门（x 4.0～5.6）：放下起落架的那套网格里是关着的（同真机：放完前门又关上，只留支柱那一截敞着）——
+        #   照真机的顺序：前门往下翻开 → 前起落架放下 / 收起 → 前门再关上（门边的铰链座留在舱边上）
+        'odoors': [{'g': 'GDoorN', 'sel': {'x': [3.9, 5.7], 'ay': [0, 0.32], 'z': [1.5, 1.75]}, 'A': 88}],
+        'nozzles': [{'g': 'Noz', 'node': r'^SU57-airframe', 'x': [-8.85, -7.55], 'c': [1.475, 2.64], 'r': 0.68, 'tv': '3d', 'A': 15, 'n': 16, 'pa': 10, 'r0': 0.3}],
+        'nodes': {},
+        'comp': [
+            # 后座舱盖（前风挡不动）：后铰链往上掀
+            {'node': r'^SU57-canopy_1$', 'sel': {'x': [5.3, 5.9]}, 'g': 'Canopy', 'k': 'canopy', 'extra': {'A': 0.75}},
+            # LEVCON（翼根前面那块可动边条）
+            {'node': r'^SU57-airframe', 'sel': {'x': [2.5, 3.3], 'ay': [1.5, 2.3], 'z': [2.2, 2.5]}, 'g': 'Lev', 'k': 'lev', 'split': 'y'},
+            # 前缘襟翼
+            {'node': r'^SU57-airframe', 'sel': {'x': [-3.0, -1.0], 'ay': [4.0, 6.0], 'z': [2.2, 2.6]}, 'g': 'Slat', 'k': 'slat', 'split': 'y'},
+            # 襟副翼（内段）连它后面那截作动筒整流罩
+            {'node': r'^SU57-airframe', 'sel': {'x': [-6.1, -5.5], 'ay': [3.9, 4.5], 'z': [2.5, 2.62]}, 'g': 'Flp', 'k': 'flaperon', 'split': 'y'},
+            {'node': r'^SU57-airframe', 'sel': {'x': [-6.1, -5.75], 'ay': [3.8, 4.05], 'z': [2.4, 2.52]}, 'g': 'Flp', 'k': 'flaperon', 'split': 'y'},
+            # 副翼（外段）连后截整流罩、后缘上的放电刷
+            {'node': r'^SU57-airframe', 'sel': {'x': [-5.9, -5.4], 'ay': [5.6, 6.1], 'z': [2.5, 2.65]}, 'g': 'Ail', 'k': 'ail', 'split': 'y'},
+            {'node': r'^SU57-airframe', 'sel': {'x': [-5.8, -5.4], 'ay': [5.35, 5.55], 'z': [2.45, 2.57]}, 'g': 'Ail', 'k': 'ail', 'split': 'y'},
+            {'node': r'^SU57-airframe', 'sel': {'x': [-6.2, -5.8], 'ay': [5.9, 6.6], 'z': [2.55, 2.63]}, 'g': 'Ail', 'k': 'ail', 'split': 'y'},
+            # 全动平尾连翼尖的放电刷
+            {'node': r'^SU57-airframe', 'sel': {'x': [-7.6, -7.0], 'ay': [3.4, 3.9], 'z': [2.45, 2.65]}, 'g': 'Stab', 'k': 'stab', 'split': 'y'},
+            {'node': r'^SU57-airframe', 'sel': {'x': [-8.95, -8.6], 'ay': [4.6, 4.95], 'z': [2.5, 2.65]}, 'g': 'Stab', 'k': 'stab', 'split': 'y'},
+            # 全动垂尾（外倾）连尖上的航行灯、天线
+            {'node': r'^SU57-airframe', 'sel': {'x': [-6.2, -5.3], 'ay': [2.6, 3.2], 'z': [3.5, 4.0]}, 'g': 'Fin', 'k': 'fin', 'split': 'y'},
+            {'node': r'^SU57-airframe', 'sel': {'x': [-7.45, -6.8], 'ay': [3.1, 3.3], 'z': [4.2, 4.45]}, 'g': 'Fin', 'k': 'fin', 'split': 'y'},
+        ],
+        'noz': [[-8.70, 1.475, 2.64, 0.47]],
+    },
+    # 米格-29（9.12，bohmerang 的「MiG-29 - Fighter Jet - Free」，CC BY-NC-SA：作者写明只许个人用、不许商用——用户 11-26 指定原封不动导入）：
+    #   机身一个网格（全动平尾、方向舵、襟翼、副翼、机腹减速板是单独的连通块；前缘机动襟翼和喷口没分开）、座舱盖（后半块能掀）、座舱、平显、
+    #   内侧 / 中间两对发射导轨（rails 节点，外侧挂架在机身网格里）——导弹直接挂在模型自己的导轨下面（AirDefs 挂点的 own），不另画挂架；
+    #   起落架两套（同苏-57）：前起落架往后收（真机：米格设计局的前起落架往后收，前面那根撑杆收的时候折起来——单独成 GearB）、
+    #   主起落架往前、绕斜轴收，机轮边收边转 90° 躺平（真机如此）；放下时主轮舱前段的门斜挂着、前轮舱两侧的门垂着，和 landingOff 关好的门板配对
+    'mig29': {
+        'ids': ['mig29'],
+        'credit': '米格-29：MiG-29 - Fighter Jet - Free，作者 bohmerang（https://sketchfab.com/3d-models/mig-29-fighter-jet-free-0a21787096244220b246ec8747e7b09c），'
+                  'CC BY-NC-SA 4.0（署名—非商业—相同方式共享；作者注明只许个人使用、不许用于商业作品）。'
+                  '（改动：转成 Roblox 坐标、按机轮摆平，舵面、座舱盖、起落架、舱门拆成会动的块）',
+        'fwd': '+x', 'up': '+y', 'len': 17.32, 'selg': True,   # 全长 17.32 米（含空速管）
+        'gear': [r'^MiG-29-landingOn_6$'],
+        'gearon': [r'^MiG-29-landingOn_6$', r'^MiG-29-landingOnLight_7$'], 'gearoff': [r'^MiG-29-landingOff_5$'],
+        'pitnode': [r'^MiG-29-cockpit_2$'], 'pithud': [r'^MiG-29-hud_3$'],
+        'pit': [[3.55, 0.0, 2.95]],
+        'legs': [
+            {'g': 'GearN', 'sel': {'x': [1.1, 1.86], 'ay': [0, 0.3], 'z': [0, 2.2]}, 'p': [1.72, 0.0, 1.98], 'to': [0.1, 0.0, 2.35], 'steer': True},
+            {'g': 'GearL', 'mir': True, 'sel': {'x': [-2.9, -1.7], 'y': [1.0, 1.85], 'z': [0, 2.1]}, 'p': [-2.42, 1.28, 1.95], 'to': [-0.9, 1.3, 2.02], 'tw': 90},
+        ],
+        'brace': [{'g': 'GearB', 'sel': {'x': [1.86, 3.0], 'ay': [0, 0.25], 'z': [0.9, 2.1]}}],
+        'doors': [
+            {'g': 'GDoorM', 'mir': True, 'sel': {'x': [-1.45, -0.75], 'y': [0.95, 1.35], 'z': [1.0, 1.4]},
+             'off': {'x': [-2.2, 0.0], 'y': [1.0, 1.8], 'z': [1.4, 2.0]}, 'crop': {'x': [-1.85, -0.4]}},
+            {'g': 'GDoorN', 'mir': True, 'sel': {'x': [0.8, 1.2], 'y': [0.2, 0.4], 'z': [1.4, 1.75]},
+             'off': {'x': [1.3, 1.8], 'ay': [0, 0.1], 'z': [1.5, 1.9]}, 'crop': {'x': [0.19, 1.8], 'y': [0.0, 0.3]}},
+        ],
+        'nodes': {},
+        'comp': [
+            {'node': r'^MiG-29-canopy_1$', 'sel': {'x': [2.3, 3.7]}, 'g': 'Canopy', 'k': 'canopy', 'extra': {'A': 0.8}},
+            {'node': r'^MiG-29-airframe', 'sel': {'x': [-7.2, -6.6], 'ay': [2.5, 3.1], 'z': [1.5, 1.8]}, 'g': 'Stab', 'k': 'stab', 'split': 'y'},
+            {'node': r'^MiG-29-airframe', 'sel': {'x': [-7.1, -6.7], 'ay': [1.7, 1.9], 'z': [2.7, 3.05]}, 'g': 'Rud', 'k': 'rud', 'split': 'y'},
+            {'node': r'^MiG-29-airframe', 'sel': {'x': [-4.3, -3.8], 'ay': [2.4, 2.9], 'z': [1.8, 1.95]}, 'g': 'Flp', 'k': 'flap', 'split': 'y'},
+            {'node': r'^MiG-29-airframe', 'sel': {'x': [-4.6, -4.2], 'ay': [3.9, 4.4], 'z': [1.75, 1.85]}, 'g': 'Ail', 'k': 'ail', 'split': 'y'},
+            {'node': r'^MiG-29-airframe', 'sel': {'x': [-6.2, -5.6], 'ay': [0, 0.1], 'z': [1.6, 1.8]}, 'g': 'Brake', 'k': 'abrk', 'extra': {'A': 0.9}},
+        ],
+        'noz': [[-7.05, 0.94, 1.40, 0.40]],
+    },
+    # 苏-35S（bohmerang 的「Sukhoi Su-35 - Fighter Jet - Free」，CC BY-NC-SA：作者写明只许个人用、不许商用——用户 11-26 给的，原封不动导入；
+    #   原来科技树的苏-35S 借歼-11 的模型，机身上是中国的机徽）：机身一个网格（全动平尾、方向舵、襟副翼、两个喷口的外筒 + 各 16 片调节片是单独的连通块；
+    #   前缘襟翼没分开；苏-27 一族后缘只有襟副翼、没有单独的副翼，滚转靠襟副翼 + 平尾差动）；座舱盖（风挡不动，后面两段一起往上掀）；
+    #   起落架两套（同苏-57）：前起落架往前收（后面那根撑杆收的时候折起来——GearB），主起落架往前收、机轮边收边转 90° 躺平（苏-27 一族如此）；
+    #   主轮舱放下时前后两扇门斜挂着，和 landingOff 那一整块关好的门板（3.8 米长）各配一半；
+    #   推力矢量：两台 117S 的喷口各在外倾 32° 的斜面里偏 ±15°（一起偏管俯仰，反着偏管滚转和偏航）
+    'su35': {
+        'ids': ['su35'],
+        'credit': '苏-35S：Sukhoi Su-35 - Fighter Jet - Free，作者 bohmerang（https://sketchfab.com/3d-models/sukhoi-su-35-fighter-jet-free-3213a404e5cb4fb68f778b9acae5109c），'
+                  'CC BY-NC-SA 4.0（署名—非商业—相同方式共享；作者注明只许个人使用、不许用于商业作品）。'
+                  '（改动：转成 Roblox 坐标、按机轮摆平，舵面、座舱盖、起落架、舱门、喷口调节片拆成会动的块）',
+        'fwd': '+x', 'up': '+y', 'len': 21.9, 'selg': True,   # 全长 21.9 米
+        'gear': [r'^SU-35-landingOn_6$'],
+        'gearon': [r'^SU-35-landingOn_6$', r'^SU-35-landingOnLight_7$'], 'gearoff': [r'^SU-35-landingOff_5$'],
+        'pitnode': [r'^SU-35-cockpit_2$'], 'pithud': [r'^SU-35-hud_3$'],
+        'pit': [[5.75, 0.0, 3.35]],
+        'legs': [
+            {'g': 'GearN', 'sel': {'x': [2.4, 3.4], 'ay': [0, 0.3], 'z': [0, 2.3]}, 'p': [3.12, 0.0, 2.08], 'to': [4.95, 0.0, 2.42], 'steer': True},
+            {'g': 'GearL', 'mir': True, 'sel': {'x': [-3.45, -2.4], 'y': [1.65, 2.4], 'z': [0, 2.32]}, 'p': [-3.0, 1.81, 2.5], 'to': [-1.0, 1.88, 2.55], 'tw': 90},
+        ],
+        'brace': [{'g': 'GearB', 'sel': {'x': [1.85, 2.62], 'ay': [0, 0.12], 'z': [1.4, 2.3]}}],
+        'doors': [
+            {'g': 'GDoorF', 'mir': True, 'sel': {'x': [-1.0, -0.5], 'y': [2.5, 2.9], 'z': [2.2, 2.6]},
+             'off': {'x': [-2.2, -1.8], 'y': [1.7, 2.1], 'z': [2.3, 2.6]}, 'crop': {'x': [-1.6, -0.05]}},
+            {'g': 'GDoorA', 'mir': True, 'sel': {'x': [-2.9, -2.5], 'y': [1.95, 2.3], 'z': [2.33, 2.6]},
+             'off': {'x': [-2.2, -1.8], 'y': [1.7, 2.1], 'z': [2.3, 2.6]}, 'crop': {'x': [-3.9, -1.5]}},
+        ],
+        'nozzles': [{'g': 'Noz', 'node': r'^SU-35-airframe', 'x': [-9.1, -7.45], 'c': [1.19, 2.72], 'r': 0.75, 'tv': ('pl', 32), 'A': 15, 'n': 16, 'pa': 10, 'r0': 0.3}],
+        'nodes': {},
+        'comp': [
+            {'node': r'^SU-35canopy_1$', 'sel': {'x': [4.5, 6.3]}, 'g': 'Canopy', 'k': 'canopy', 'extra': {'A': 0.75}},
+            {'node': r'^SU-35-airframe', 'sel': {'x': [-7.7, -7.0], 'ay': [3.1, 3.6], 'z': [2.6, 3.0]}, 'g': 'Stab', 'k': 'stab', 'split': 'y'},
+            {'node': r'^SU-35-airframe', 'sel': {'x': [-7.0, -6.6], 'ay': [2.0, 2.25], 'z': [4.0, 4.5]}, 'g': 'Rud', 'k': 'rud', 'split': 'y'},
+            {'node': r'^SU-35-airframe', 'sel': {'x': [-4.9, -4.4], 'ay': [3.5, 4.0], 'z': [2.85, 3.05]}, 'g': 'Flp', 'k': 'flaperon', 'split': 'y'},
+        ],
+        'noz': [[-9.0, 1.19, 2.72, 0.5]],
+    },
+    # 苏-25（Immersive3A 的「[PBR] Sukhoi Su-25」，CC-BY；用户 11-26「这个也做进来 都别减面哈」）：机身一个网格（起落架放着、和机身连在一个网格里；
+    #   舵面都是单独的连通块：内外两段前缘缝翼、内外两段襟翼、副翼、升降舵、上下两段方向舵、翼尖吊舱后面上下两瓣开花减速板）、座舱玻璃；
+    #   翼下每边 5 个挂架是模型自己的（导弹、火箭巢、炸弹直接挂在挂架下面，AirDefs 挂点的 own）；
+    #   起落架只有放下的样子：按连通块挑出每条腿（comp 的 leg），照真机收——前起落架往前收；主起落架往前收进发动机短舱下面、机轮转 90° 躺平
+    'su25': {
+        'ids': ['su25'],
+        'credit': credit('苏-25', '[PBR] Sukhoi Su-25', 'Immersive3A', '956d0cb0bbe54fa8ad72e8c3e224fd2d', 'pbr-sukhoi-su-25')
+                  + '（改动：转成 Roblox 坐标，舵面、减速板、起落架拆成会动的块）',
+        'fwd': '-z', 'up': '+y', 'len': 15.53, 'ground': True, 'selg': True,   # 全长 15.53 米
+        'pit': [[3.75, 0.0, 2.62]],
+        'legs': [
+            {'g': 'GearN', 'p': [3.1, 0.0, 1.75], 'to': [4.45, 0.0, 1.95], 'steer': True, 'keep': True},
+            {'g': 'GearL', 'mir': True, 'p': [-0.2, 1.0, 1.42], 'to': [0.72, 1.0, 1.58], 'tw': 90, 'keep': True},
+        ],
+        'nodes': {},
+        'comp': [
+            # 起落架（和机身一个网格）：前起落架（连侧面挂着的门）、主起落架（连支柱内侧挂着的门）
+            {'node': r'^fuselage', 'sel': {'x': [2.55, 3.6], 'ay': [0, 0.35], 'z': [0, 1.75]}, 'leg': 'GearN'},
+            {'node': r'^fuselage', 'sel': {'x': [-1.0, 0.5], 'ay': [0.3, 1.45], 'z': [0, 1.0]}, 'leg': 'Gear', 'split': 'y'},
+            {'node': r'^fuselage', 'sel': {'x': [-2.3, -1.8], 'ay': [5.2, 5.7], 'z': [1.85, 2.05]}, 'g': 'Ail', 'k': 'ail', 'split': 'y'},
+            {'node': r'^fuselage', 'sel': {'x': [-2.2, -1.8], 'ay': [3.4, 3.8], 'z': [1.95, 2.1]}, 'g': 'FlpO', 'k': 'flap', 'split': 'y'},
+            {'node': r'^fuselage', 'sel': {'x': [-2.2, -1.75], 'ay': [1.9, 2.25], 'z': [2.0, 2.15]}, 'g': 'FlpI', 'k': 'flap', 'split': 'y'},
+            {'node': r'^fuselage', 'sel': {'x': [-0.9, -0.5], 'ay': [5.1, 5.5], 'z': [1.95, 2.1]}, 'g': 'SlatO', 'k': 'slat', 'split': 'y'},
+            {'node': r'^fuselage', 'sel': {'x': [-0.1, 0.3], 'ay': [2.4, 2.8], 'z': [2.1, 2.25]}, 'g': 'SlatI', 'k': 'slat', 'split': 'y'},
+            {'node': r'^fuselage', 'sel': {'x': [-6.4, -6.1], 'ay': [1.1, 1.5], 'z': [2.0, 2.15]}, 'g': 'Elev', 'k': 'elev', 'split': 'y'},
+            {'node': r'^fuselage', 'sel': {'x': [-6.1, -5.85], 'ay': [0, 0.05], 'z': [2.8, 3.1]}, 'g': 'Rud', 'k': 'rud'},
+            {'node': r'^fuselage', 'sel': {'x': [-6.1, -5.85], 'ay': [0, 0.05], 'z': [3.5, 3.7]}, 'g': 'Rud', 'k': 'rud'},
+            # 翼尖吊舱后面的开花减速板：上瓣往上、下瓣往下（前沿铰链）
+            {'node': r'^fuselage', 'sel': {'x': [-2.6, -2.3], 'ay': [6.9, 7.15], 'z': [1.83, 1.95]}, 'g': 'BrkU', 'k': 'abrk', 'split': 'y', 'extra': {'A': 1.0}},
+            {'node': r'^fuselage', 'sel': {'x': [-2.6, -2.3], 'ay': [6.9, 7.15], 'z': [1.7, 1.82]}, 'g': 'BrkD', 'k': 'abrk', 'split': 'y', 'extra': {'A': 1.0}},
+        ],
+        'noz': [[-3.85, 0.76, 1.30, 0.28]],
+    },
     'f15': {
         'ids': ['f15'],
         'credit': 'F-15C：F-15A Eagle — USAF 76-0020, Duxford，作者 mgg8（https://sketchfab.com/3d-models/f-15a-eagle-usaf-76-0020-duxford-524f9394057e46ec8424d4a356f794b7），CC0 公共领域（不用署名，照样写上出处）',
@@ -323,6 +488,40 @@ SPEC = {
     },
 }
 
+
+
+def shifted(base, dx, **kw):
+    """同一套网格、整体前后挪了 dx 米的模型（T-50 原型机比量产型机头多一根试飞空速管，包围盒中心往前挪，别的都往后挪 0.74 米）：
+    SPEC 里所有前后位置（sel 的 x、铰链、收好的位置、喷口、座舱、尾喷口）一起挪"""
+    import copy
+    S = copy.deepcopy(SPEC[base])
+
+    def sel(d):
+        if isinstance(d, dict) and 'x' in d:
+            d['x'] = [d['x'][0] + dx, d['x'][1] + dx]
+    for k in ('legs', 'doors', 'odoors', 'flaps', 'brace'):
+        for e in S.get(k, []):
+            for kk in ('sel', 'off'):
+                sel(e.get(kk))
+            for kk in ('p', 'to', 'w'):
+                if kk in e:
+                    e[kk] = [e[kk][0] + dx] + list(e[kk][1:])
+    for e in S.get('nozzles', []):
+        e['x'] = [e['x'][0] + dx, e['x'][1] + dx]
+    for e in S.get('comp', []):
+        sel(e.get('sel'))
+    for k in ('pit', 'noz'):
+        if k in S:
+            S[k] = [[v[0] + dx] + list(v[1:]) for v in S[k]]
+    S.update(kw)
+    return S
+
+
+# T-50（苏-57 原型机，bohmerang 的「Sukhoi Su-57 Felon (P) - Fighter Jet - Free」，同一个作者、同一套网格：机头多一根试飞空速管、原型机的涂装）
+SPEC['t50'] = shifted('su57', -0.74, ids=['t50'],
+    credit='T-50（苏-57 原型机）：Sukhoi Su-57 Felon (P) - Fighter Jet - Free，作者 bohmerang（https://sketchfab.com/3d-models/sukhoi-su-57-felon-p-fighter-jet-free-31127bc63bc048debb694aa88bbaafae），'
+           'CC BY-NC-SA 4.0（署名—非商业—相同方式共享；作者注明只许个人使用、不许用于商业作品）。'
+           '（改动：转成 Roblox 坐标、按机轮摆平，舵面、座舱盖、起落架、舱门、喷口调节片拆成会动的块）')
 
 # ---------------------------------------------------------------- 读 GLB
 
@@ -536,6 +735,14 @@ def inbox(lo, hi, sel):
     return True
 
 
+def mirror_sel(sel):
+    """左边的范围换成右边的：y 区间取反（ay 是 |y|，不用动）"""
+    o = dict(sel)
+    if 'y' in sel:
+        o['y'] = [-sel['y'][1], -sel['y'][0]]
+    return o
+
+
 CARVED = {}  # build() 雕过的显示屏：{名字: {'z0' 显示面离 pitscr.c 平面多远, 'cut' 切了几个三角形}}
 EXTRA = {}   # build() 顺便算的：飞行员眼位、座舱屏幕（网页版坐标），main() 交给 air_anim 的 PIT / PITSCR
 
@@ -667,6 +874,45 @@ def build(key, path):
     prims = gather(J, BIN)
     Rm, t, s = frame(prims, S)
     nodes = S.get('nodes', {})
+    # 两套起落架网格（sf_gear.py）：地面 = 放下的机轮最低点；legs / doors / nozzles / selg 的范围都按离地高度量（z 减了地面）
+    gon, goff = S.get('gearon', []), S.get('gearoff', [])
+    zg = None
+    if gon:
+        zg = min(float(((p['P'] @ Rm.T + t) * s)[:, 2].min()) for p in prims if match(p['path'], gon))
+    elif S.get('ground'):   # 起落架和机身一个网格、只有放下的样子（苏-25）：地面 = 整个模型最低点（机轮）
+        zg = min(float(((p['P'] @ Rm.T + t) * s)[:, 2].min()) for p in prims if not match(p['path'], S.get('drop', [])))
+    zoff = np.array([0.0, 0.0, zg if (zg is not None and S.get('selg')) else 0.0])
+    G = {'legs': {}, 'doors': {}, 'closed': {}, 'flaps': {}, 'odoors': {}, 'noz': {}, 'sdoors': {}, 'sdspec': {}}   # 部件名 → 顶点（网页版坐标、地面 z = 0）
+    legs, doors, flaps = [], [], []
+    for L in S.get('legs', []):
+        legs.append(L)
+        if L.get('mir'):
+            R_ = dict(L)
+            R_['g'] = L['g'][:-1] + 'R'
+            if 'sel' in L:   # 腿在机身网格里（苏-25）：comp 的 leg 规则挑块，这里没有 sel
+                R_['sel'] = mirror_sel(L['sel'])
+            for k_ in ('p', 'to', 'w'):
+                if k_ in L:
+                    R_[k_] = [L[k_][0], -L[k_][1], L[k_][2]]
+            legs.append(R_)
+    for D in S.get('doors', []):
+        for sd in ((1, -1) if D.get('mir') else (0,)):
+            D2 = dict(D)
+            D2['g'] = D['g'] + {1: 'L', -1: 'R', 0: ''}[sd]
+            if sd == -1:
+                D2['sel'], D2['off'] = mirror_sel(D['sel']), mirror_sel(D['off'])
+                if D.get('crop'):
+                    D2['crop'] = mirror_sel(D['crop'])
+            doors.append(D2)
+    for F in S.get('flaps', []):
+        flaps.append(F)
+    nozs = []
+    for Nz in S.get('nozzles', []):
+        for sd in (1, -1):
+            N2 = dict(Nz)
+            N2['side'] = sd
+            N2['c'] = [Nz['c'][0] * sd, Nz['c'][1]]
+            nozs.append(N2)
     # 原模型自带座舱（用户 11-23：「你去找带内饰的然后给他们屏幕实现功能」）：座舱里的件（pitmat 材质、pitnode 节点）单独成 Pit 组——
     #   游戏里坐进座舱时不藏（看到的就是原模型的座舱），屏幕贴在它的显示器上；pithud 原模型的平显（玻璃上画死了符号）单独成 PitHud 组，
     #   座舱里藏起来、换成我们会动的平显
@@ -697,8 +943,79 @@ def build(key, path):
     nv = 0
     groups = {}
     dropmat = S.get('dropmat', [])
+    def grp(name, mat, P, N, UV, T):
+        if name not in pidx:
+            pidx[name] = len(parts)
+            parts.append({'n': name})
+        groups.setdefault((mat, pidx[name]), []).append((P, N, UV, T))
     for p in prims:
         if match(p['path'], S.get('drop', [])):
+            continue
+        if gon and (match(p['path'], gon) or match(p['path'], goff)):
+            on = bool(match(p['path'], gon))
+            P = (p['P'] @ Rm.T + t) * s
+            N = p['N'] @ Rm.T
+            Pg = P - np.array([0, 0, zg])
+            lab = components(P, p['T'])
+            for l in np.unique(lab):
+                m = lab == l
+                T_ = p['T'][m]
+                Q = Pg[np.unique(T_.reshape(-1))]
+                lo_, hi_ = Q.min(0), Q.max(0)
+                name = None
+                if on:
+                    for B_ in S.get('brace', []):   # 撑杆（收的时候真机折起来）：起落架一动就藏起来
+                        if inbox(lo_, hi_, B_['sel']):
+                            name = B_['g']
+                            break
+                    for L in ([] if name else legs):
+                        if inbox(lo_, hi_, L['sel']):
+                            name = L['g']
+                            G['legs'].setdefault(name, []).append(Q)
+                            break
+                    if name is None:
+                        for D in doors:
+                            if inbox(lo_, hi_, D['sel']):
+                                name = D['g']
+                                G['doors'].setdefault(name, []).append((Pg, T_))
+                                break
+                    if name is None:
+                        for D in S.get('odoors', []):   # 两头关着、中途开着的门（前轮舱前门）：按三角形重心分左右两扇
+                            if inbox(lo_, hi_, D['sel']):
+                                cy = Pg[T_].mean(axis=1)[:, 1]
+                                for sd_, mk in (('L', cy >= 0), ('R', cy < 0)):
+                                    if mk.any():
+                                        nm_ = D['g'] + sd_
+                                        G['odoors'].setdefault(nm_, (D, []))[1].append(Pg[np.unique(T_[mk].reshape(-1))])
+                                        grp(nm_, p['mat'], P, N, p['UV'], T_[mk])
+                                name = ''
+                                break
+                    if name is None:
+                        name = 'GearX'   # 舱里的作动筒、支架：收到底时藏起来
+                        if os.environ.get('GEARX'):
+                            print('    GearX 块：%d 个三角形  x %.2f..%.2f  y %.2f..%.2f  z %.2f..%.2f' % (len(T_), lo_[0], hi_[0], lo_[1], hi_[1], lo_[2], hi_[2]))
+                else:
+                    for D in doors:
+                        if inbox(lo_, hi_, D['off']):
+                            G['closed'].setdefault(D['g'], []).append((Pg, T_))
+                    for F in flaps:
+                        if inbox(lo_, hi_, F['off']):
+                            if F.get('split') == 'y':   # 左右两扇：按三角形重心在中线哪边分开
+                                cy = Pg[T_].mean(axis=1)[:, 1]
+                                for sd_, mk in (('L', cy >= 0), ('R', cy < 0)):
+                                    if mk.any():
+                                        nm_ = F['g'] + sd_
+                                        G['flaps'].setdefault(nm_, (F, []))[1].append(Pg[np.unique(T_[mk].reshape(-1))])
+                                        grp(nm_, p['mat'], P, N, p['UV'], T_[mk])
+                                name = ''
+                            else:
+                                name = F['g']
+                                G['flaps'].setdefault(name, (F, []))[1].append(Q)
+                            break
+                    if name is None:
+                        name = 'GearUp'   # 收起后关好的门板：收到底时才画
+                if name:
+                    grp(name, p['mat'], P, N, p['UV'], T_)
             continue
         if dropmat and 0 <= p['mat'] < len(mnames) and any(re.search(r_, mnames[p['mat']]) for r_ in dropmat):
             continue   # 按材质去掉（FlightGear 公用仪表的贴图：不是模型作者本人画的；起落架上挂的外挂……）
@@ -737,7 +1054,8 @@ def build(key, path):
             continue
         # 按连通块挑：一个节点里合在一起的翼面（鸭翼和机翼一个节点）、挂着的副油箱（和机身一个节点）
         rules = [r for r in S.get('comp', []) if any(re.search(r['node'], n) for n in names_of(p['path']))]
-        if rules:
+        nzr = [z_ for z_ in nozs if any(re.search(z_['node'], n) for n in names_of(p['path']))]
+        if rules or nzr:
             P = (p['P'] @ Rm.T + t) * s
             N = p['N'] @ Rm.T
             lab = components(P, p['T'])
@@ -745,12 +1063,32 @@ def build(key, path):
             for l in np.unique(lab):
                 m = lab == l
                 Q = P[p['T'][m].reshape(-1)]
-                lo_, hi_ = Q.min(0), Q.max(0)
+                lo_, hi_ = Q.min(0) - zoff, Q.max(0) - zoff
+                c_ = (lo_ + hi_) / 2
+                hitN = None
+                for z_ in nzr:   # 喷口：中心在前后范围里、离喷口轴不到 r
+                    if z_['x'][0] <= c_[0] <= z_['x'][1] and math.hypot(c_[1] - z_['c'][0], c_[2] - z_['c'][1]) <= z_['r']:
+                        hitN = z_
+                        break
+                if hitN is not None:
+                    G['noz'].setdefault(id(hitN), (hitN, []))[1].append((p['mat'], P, N, p['UV'], p['T'][m]))
+                    rest[m] = False
+                    continue
                 for r in rules:
                     if not inbox(lo_, hi_, r['sel']):
                         continue
                     rest[m] = False
                     if r.get('drop'):
+                        break
+                    if r.get('leg') or r.get('sdoor'):   # 起落架和机身一个网格的（苏-25）：这一块属于哪条腿 / 哪扇门（关键帧部件，sf_gear.py）
+                        nm_ = r.get('leg') or r.get('sdoor')
+                        if r.get('split') == 'y':
+                            nm_ += 'L' if (lo_[1] + hi_[1]) / 2 >= 0 else 'R'
+                        Qg = Q - np.array([0, 0, zg])
+                        (G['legs'] if r.get('leg') else G['sdoors']).setdefault(nm_, []).append(Qg)
+                        if r.get('sdoor'):
+                            G['sdspec'][nm_] = r
+                        grp(nm_, p['mat'], P, N, p['UV'], p['T'][m])
                         break
                     if r.get('gear'):   # 起落架（pi 0：air_anim.GEAR 按连通块分前 / 左 / 右）
                         groups.setdefault((p['mat'], 0), []).append((P, N, p['UV'], p['T'][m]))
@@ -798,6 +1136,53 @@ def build(key, path):
         P = (p['P'] @ Rm.T + t) * s
         N = p['N'] @ Rm.T
         groups.setdefault((p['mat'], pi), []).append((P, N, p['UV'], p['T']))
+    # 原模型的喷口（sf_gear.nozzle_parts）：外筒、按方位分组的调节片各成一个部件；推力矢量、开合的参数进 surf
+    xsurf = {}
+    for _, (Nz, lst) in G['noz'].items():
+        comps_ = [(k, (P - np.array([0, 0, zg]))[np.unique(T.reshape(-1))]) for k, (mi, P, N, UV, T) in enumerate(lst)]
+        names_, sf_ = SG.nozzle_parts(comps_, Nz, Nz['side'], log=print)
+        for k, (mi, P, N, UV, T) in enumerate(lst):
+            grp(names_[k], mi, P, N, UV, T)
+        xsurf.update(sf_)
+    # 起落架（sf_gear）：每条腿、每扇门一个关键帧部件（网页版坐标、地面 z = 0，就是下面减了 z0 以后的坐标）
+    for L in legs:
+        if L['g'] not in G['legs']:
+            raise ValueError('%s 的起落架 %s 一块也没挑到（sel 量错了？）' % (key, L['g']))
+        p_, frames = SG.leg_frames(G['legs'][L['g']], L, log=print)
+        # hu：gear 低于它就藏起来——腿收到位（win 的起点）以后关门那段时间腿已经在舱里，藏掉免得舱太浅的地方（米格-29 翼根）蒙皮盖不住
+        ex_ = {} if L.get('keep') else {'hu': round(L.get('win', (0.2, 1.0))[0] + 0.01, 3)}   # keep：没有舱门的（苏-25），收好的腿留在舱里不藏
+        if L.get('steer'):
+            ex_['st'] = 1
+        xsurf[L['g']] = SG.kf_entry(p_, frames, extra=ex_)
+    for D in doors:
+        if D['g'] not in G['doors'] or D['g'] not in G['closed']:
+            raise ValueError('%s 的舱门 %s 没配上（打开的 %d 块、关好的 %d 块）' % (key, D['g'], len(G['doors'].get(D['g'], [])), len(G['closed'].get(D['g'], []))))
+        So = np.concatenate([SG.sample(P, T, 3000) for P, T in G['doors'][D['g']]])
+        Sc = np.concatenate([SG.sample(P, T, 3000) for P, T in G['closed'][D['g']]])
+        if D.get('crop'):   # 关好的门板比打开的门大（盖住支柱那一截的门跟着支柱走）：只拿这一段拟合
+            cp = D['crop']
+            keep = np.ones(len(Sc), dtype=bool)
+            for ax_, k_ in ((0, 'x'), (1, 'y'), (2, 'z')):
+                if k_ in cp:
+                    keep &= (Sc[:, ax_] >= cp[k_][0]) & (Sc[:, ax_] <= cp[k_][1])
+            if 'ay' in cp:
+                keep &= (np.abs(Sc[:, 1]) >= cp['ay'][0]) & (np.abs(Sc[:, 1]) <= cp['ay'][1])
+            Sc = Sc[keep]
+        R_, t_, err = SG.fit_door(Sc, So, log=print)
+        if err > D.get('tol', 0.03):
+            print('  ！%s 舱门拟合残差 %.1f 毫米，偏大' % (D['g'], err * 1000))
+        Vo = np.concatenate([P[np.unique(T.reshape(-1))] for P, T in G['doors'][D['g']]])
+        c_, frames = SG.door_frames(R_, t_, Vo, win=D.get('win', (0.0, 0.2)), log=print, name=D['g'])
+        xsurf[D['g']] = SG.kf_entry(c_, frames, extra={'hu': 1})
+    for nm_, Vs in G['sdoors'].items():   # 只有打开样子的门：绕最高那条长边转回贴着蒙皮（关上）
+        c_, frames = SG.sdoor_frames(np.concatenate(Vs), G['sdspec'][nm_], log=print, name=nm_)
+        xsurf[nm_] = SG.kf_entry(c_, frames)
+    for nm_, (D, Vs) in G['odoors'].items():
+        c_, frames = SG.oc_frames(np.concatenate(Vs), D.get('A', 88), win=D.get('win', (0.0, 0.15, 0.85, 1.0)), log=print, name=nm_)
+        xsurf[nm_] = SG.kf_entry(c_, frames, extra={'hu': 1})
+    for nm_, (F, Vs) in G['flaps'].items():
+        c_, frames = SG.flap_frames(np.concatenate(Vs), F.get('A', 85), win=F.get('win', (0.0, 0.2)), log=print, name=nm_)
+        xsurf[nm_] = SG.kf_entry(c_, frames)
     # 槽壁、槽底：一种新材质（深色哑光，排在座舱盖克隆的材质后面），放进座舱件那一组
     for nm in cnames:
         if nm not in CARVED:
@@ -809,6 +1194,8 @@ def build(key, path):
     allP = np.concatenate([P for gl in groups.values() for (P, _, _, _) in gl])
     gearP = [P for (mi, pi), gl in groups.items() if pi == 0 for (P, _, _, _) in gl]
     z0 = float(np.concatenate(gearP)[:, 2].min()) if gearP else float(allP[:, 2].min())
+    if zg is not None:
+        z0 = zg
     for (mi, pi), gl in sorted(groups.items(), key=lambda kv: (kv[0][1], kv[0][0])):
         s0 = len(IB) * 3 if False else sum(len(x) for x in IB)
         cnt = 0
@@ -918,6 +1305,7 @@ def build(key, path):
             continue
         Q = VBa[np.unique(T3[sel].reshape(-1)), 0:3].astype(np.float64)
         surf[g] = hinge(g, spec, Q)
+    surf.update(xsurf)
     print('  %s：%d 个三角形、%d 种材质、%d 张贴图；全长 %.2f 米、翼展 %.2f 米、高 %.2f 米；节点活动部件 %s' % (
         key, len(T3), len(mats), len(imgs), np.ptp(allP[:, 0]), np.ptp(allP[:, 1]), float(allP[:, 2].max() - z0), ', '.join(sorted(surf))))
     return meta, binb, S['credit'], surf
@@ -973,6 +1361,8 @@ def hinge(g, spec, Q):
         e1 = Q[ay > hi_ - 0.15 * (hi_ - lo_)]
     if k in ('ail', 'flap', 'flaperon', 'elevon', 'elev', 'rud'):
         a, b = e0[np.argmax(e0[:, 0])], e1[np.argmax(e1[:, 0])]
+    elif k in ('slat', 'lev'):   # 前缘襟翼、LEVCON（苏-57 翼根可动边条）：绕自己的后缘转
+        a, b = e0[np.argmin(e0[:, 0])], e1[np.argmin(e1[:, 0])]
     elif k in ('stab', 'can', 'fin'):
         le, te = e0[:, 0].max(), e0[:, 0].min()
         xp = le - 0.35 * (le - te)
@@ -1005,6 +1395,8 @@ def hinge(g, spec, Q):
         probe, want = Q.mean(0), A.DOWN + np.array([0, (1.0 if Q[:, 1].mean() >= 0 else -1.0) * 0.5, 0])
     elif k == 'abrk':   # 背上的往上掀、肚皮下的往下翻
         probe, want = Q.mean(0) - np.array([0.3, 0, 0]), (A.UP if Q[:, 2].mean() > 1.8 else A.DOWN)
+    elif k in ('slat', 'lev'):   # 前缘往下
+        probe, want = Q[np.argmax(Q[:, 0])], A.DOWN
     else:
         probe, want = Q[np.argmin(Q[:, 0])], A.DOWN
     e = {'k': k, 's': side, 'a': [round(float(x), 4) for x in a], 'b': [round(float(x), 4) for x in b], 'sg': A.probe_sign(np.asarray(a), np.asarray(b), probe, want)}
@@ -1043,7 +1435,7 @@ def preview(out, info, img):
             q = P[k]
             d.polygon([(W / 2 + q[j, 0] * sc, H / 2 - q[j, 1] * sc) for j in range(3)], fill=tuple(int(x * sh[k]) for x in cols[k]))
         for g, e in (info.get('surf') or {}).items():
-            if 'a' in e and e.get('k') not in ('kf',):
+            if 'a' in e and 'b' in e and e.get('k') not in ('kf',):
                 a, b = (np.array(e['a']) - ctr) @ Rm.T, (np.array(e['b']) - ctr) @ Rm.T
                 d.line([(W / 2 + a[0] * sc, H / 2 - a[1] * sc), (W / 2 + b[0] * sc, H / 2 - b[1] * sc)], fill=(255, 40, 40), width=2)
         d.text((6, 6), title, fill=(255, 255, 255))
@@ -1100,6 +1492,16 @@ def main(argv):
                                                             ', '.join('%s(%s)' % (g, e.get('k')) for g, e in sorted((info.get('surf') or {}).items()))))
     if view:
         preview(out, info, view)
+    if '--pose' in argv:   # 摆几个姿势写成 GLB（tools/models/air_pose.py），给 Blender 渲染核对起落架收放、舵面、喷口
+        import air_pose as AP
+        pdir = argv[argv.index('--pose') + 1]
+        os.makedirs(pdir, exist_ok=True)
+        POSES = {'down': {'gear': 1, 'thr': 80}, 'g07': {'gear': 0.7}, 'g04': {'gear': 0.4}, 'g015': {'gear': 0.15}, 'g005': {'gear': 0.05},
+                 'up': {'gear': 0, 'thr': 125, 'pit': 1},
+                 'ctrl': {'gear': 1, 'thr': 125, 'pit': 1, 'rol': 1, 'yaw': 1, 'flap': 1, 'can': 1}}
+        for nm, c in POSES.items():
+            B.write_glb(S.get('kname', key), meta2, binb2, info, AP.pose(out, info, c), os.path.join(pdir, '%s_%s.glb' % (key, nm)), prefix='A_')
+        print('  姿势：' + pdir)
     if dry:
         return
     path = os.path.join('models/air', key + '.glb')

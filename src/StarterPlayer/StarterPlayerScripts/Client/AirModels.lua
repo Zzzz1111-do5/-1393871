@@ -72,6 +72,8 @@ local SURF_F = {
   -- 起落架舱门（原模型蒙皮上切出来的，歼-20 j20_v4）：放起落架的前 1/4 先开门（之后支柱才放下，kf 关键帧照同一个节奏），收起的最后 1/4 才关上
   gdh = function(c, _, A) return math.clamp((c.gear or 1) * 4, 0, 1) * A end,
   abrk = function(c, _, A) return (c.brk or 0) * A end,   -- 减速板（歼-11 背上那块大的）：按减速量掀开
+  slat = function(c) return (c.flap or 0) * rad(18) + math.max(0, c.pit or 0) * rad(12) end,   -- 前缘襟翼：放襟翼、拉杆（迎角大）时前缘往下垂
+  lev = function(c) return (c.flap or 0) * rad(8) + (c.pit or 0) * rad(14) end,                 -- 苏-57 翼根的 LEVCON：跟着俯仰上下（抬头时前缘往下）
 }
 -- 推力矢量喷口（用户给的「F-15 SE Thrust Vector Nozzle」，models/air/tvc.glb，元数据 ImportedAir.m.tvc；用户：给飞机都用上这个推力矢量推嘴的动画）：
 --   圆喷口的战斗机每个尾喷口装一只——外罩贴着原模型的喷口出口往后接，15 片调节片绕喉道处的铰链开合（慢车微张、军推收拢、加力张到最大，
@@ -86,6 +88,33 @@ local function tvcOpen(t)
   return 0.15 + 0.85 * math.min(1, (t - 100) / 25)
 end
 AM.tvcOpen = tvcOpen
+-- 原模型自己的尾喷口（tools/models/sf_gear.py 拆的：外筒 + 按方位分组的调节片；用户 11-26「很多飞机的发动机不止可以缩放 还可以3纬运动」）：
+--   整个喷口绕喉道（外筒前沿的圆心 S.p）偏转，S.a 是喷口朝后的轴；S.tv = "3d" 全向（苏-57 的 AL-41F1），"pl" 只在外倾 S.cant 度的斜面里偏
+--   （苏-35S 的 117S：两个喷口的斜面朝外各歪 32°，一起偏管俯仰、反着偏管滚转和偏航）；最大偏角 S.A 度。抬头出口往上、右偏出口往右、右滚右边往上
+local NOZ_P, NOZ_R, NOZ_Y = rad(15), rad(8), rad(10)
+local function nozVec(S, O)
+  local P = V(S.p[1], S.p[2], S.p[3]) + O
+  local A = V(S.a[1], S.a[2], S.a[3]).Unit
+  local U = (V(0, 1, 0) - A * A.Y).Unit
+  local Rt = U:Cross(A).Unit
+  local side = (P.X >= 0) and 1 or -1
+  local E = nil
+  if S.tv == "pl" then
+    local ca = rad(S.cant or 32)
+    E = (U * math.cos(ca) + Rt * (side * math.sin(ca))).Unit
+  end
+  local mx = rad(S.A or 15)
+  local PC, PCi = CF(P), CF(-P)
+  return function(c)
+    if not S.tv then return CF() end
+    local D = U * ((c.pit or 0) * NOZ_P + side * (c.rol or 0) * NOZ_R) + Rt * ((c.yaw or 0) * NOZ_Y)
+    if E then D = E * D:Dot(E) end
+    local m = D.Magnitude
+    if m < 1e-4 then return CF() end
+    if m > mx then D, m = D * (mx / m), mx end
+    return PC * CFrame.fromAxisAngle(A:Cross(D / m).Unit, m) * PCi
+  end
+end
 -- 这个型号导入了原模型没有：{ key, info 元数据, folder 导入的块, plain 去掉原机涂装（我方没有模型、拿美军机代的）, O 模型坐标 → 机体坐标的平移 }
 --   先找最新版（有舵面、舱门、座舱盖、起落架支柱这些活动部件，修过朝反的面，键名 <键>_v3），没导入就按 ImportedAir 的 old 表挨个找老版
 --   （_v2 会动、有的面朝反了；不带后缀的一整块蒙皮、不会动）；
@@ -386,6 +415,7 @@ function AM.build(d, team, load)
           --   原来照型号表的高低差挂，进气道下的挂点吊下来三四格）
           local S0 = w.shape or { d = 0.6 }
           local hp = (d.kind == "heli") and math.clamp(0.2 + S0.d * 0.25, 0.25, 0.6) or math.clamp(0.35 + S0.d * 0.55, 0.6, 1.3)
+          if s.own then hp = S0.d * 0.5 + 0.08 end   -- 原模型自己的挂架 / 导轨（米格-29、苏-25、苏-35）：弹顶着挂架底挂，不另画挂架
           local ys = adj[1] + imp.O.Y
           pos = V(adj[3], ys - hp, adj[2])
           wy = ys
@@ -394,7 +424,7 @@ function AM.build(d, team, load)
         local fold = (d.fold and math.abs(pos.X) > d.fold) and side or nil
         local bayK = s.bay and ((s.bay == "main") and "bay" or "bayS") or nil
         -- 外挂：挂架（翼下的竖板）
-        if not s.bay and d.kind == "jet" then
+        if not s.bay and d.kind == "jet" and not (s.own and adj) then
           local h = math.max(0.4, wy - pos.Y)
           local pyl = box(V(0.35, h, math.clamp(S.L * 0.38, 2.0, 5.5)), CF(pos.X, pos.Y + h / 2, pos.Z), skinD, MAT.Metal, fold and "f" or "b", fold and { fold = fold } or nil)
           table.insert(M.pylons, pyl)
@@ -781,6 +811,12 @@ function AM.build(d, team, load)
       end
       local E0 = E   -- 原模型自己的喷口出口（下面推力矢量喷口会把 E 挪到它的出口）：发动机后段照这里摆
       local tvcVec = nil
+      local IS = imp and imp.info.surf
+      if IS and (IS.NozL or IS.NozR) and not E.prop then   -- 原模型自己的喷口能偏（sf_gear.py）：火焰、热芯跟着这一侧喷口的偏转走（喷口部件建好后才有 M.nozF）
+        local nm = (E.x >= 0) and "NozR" or "NozL"
+        if not IS[nm] then nm = IS.NozL and "NozL" or "NozR" end
+        tvcVec = function(c) local f = M.nozF and M.nozF[nm] return f and f(c) or CF() end
+      end
       if imp and (TVC_ON[d.id] or NOZ_ONLY[d.id]) and not E.prop and not E.flat then
         local TI, TF = tvcAsset()
         if TI then
@@ -1310,7 +1346,7 @@ function AM.build(d, team, load)
   if d.kind == "heli" then heli() else jet() end
   buildStores()
   -- 原模型的活动部件：绕铰链转（S.a → S.b，模型坐标；cc0 是这块不转时的样子）
-  local function addSurf(mp, cc0, S, I, O)
+  local function addSurf(mp, cc0, S, I, O, g)
     if S.k == "gdoor" then   -- 起落架舱门、轮舱：不转，收到一半藏起来
       add(mp, cc0, "b", { vis = function(c) return (c.gear or 1) > 0.5 end })
       return
@@ -1323,6 +1359,7 @@ function AM.build(d, team, load)
       local PC, PCi = CF(P), CF(-P)
       local n, ch, def = #K, S.ch, (S.ch == "gear") and 1 or 0
       local lastU, lastC = nil, nil
+      local steerP = S.st and P or nil   -- 前起落架（sf_gear.py 的 st）：放下着地时跟着方向舵绕支柱转
       add(mp, cc0, "m", { kf = S.ch, f = function(c)
         local u = math.clamp(c[ch] or def, 0, 1)
         if u ~= lastU then   -- 操纵量没变就不重算（飞行中起落架一直收着）
@@ -1330,7 +1367,27 @@ function AM.build(d, team, load)
           local i = math.min(n - 1, math.floor(x))
           lastU, lastC = u, PC * K[i]:Lerp(K[i + 1], x - i) * PCi
         end
+        if steerP and u > 0.999 and (c.steer or 0) ~= 0 then return lastC * CF(steerP) * CFrame.Angles(0, -(c.steer or 0), 0) * CF(-steerP) end
         return lastC
+      end, vis = S.hu and function(c) return (c.gear or 1) > ((S.hu < 1) and S.hu or 0.002) end or nil })
+      -- hu：两套起落架网格的放下那套，gear 低于 hu 就藏起来（腿收到位以后关门那段藏掉，舱太浅的地方蒙皮盖不住；舱门收到底换成关好的门板 GearUp）
+      return
+    end
+    if S.k == "noz" then   -- 原模型的喷口外筒：推力矢量偏转（借这个模型的、本身没有推力矢量的型号不偏：苏-27 借苏-35S 的模型）
+      local f = d.tvc and nozVec(S, O) or function() return CF() end
+      M.nozF = M.nozF or {}
+      M.nozF[g or ""] = f
+      add(mp, cc0, "m", { f = f })
+      return
+    end
+    if S.k == "pet" then   -- 原模型喷口的调节片：跟着喷口偏，再绕自己前沿的铰链开合（慢车微张、军推收拢、加力张开；r0 是模型画出来那一刻的开度）
+      local hp, ax = V(S.p[1], S.p[2], S.p[3]) + O, V(S.a[1], S.a[2], S.a[3]).Unit
+      local H, Hi = CF(hp), CF(-hp)
+      local sg, A, r0, nz = S.sg or 1, rad(S.A or 10), S.r0 or 0.3, S.n
+      add(mp, cc0, "m", { f = function(c)
+        local nf = M.nozF and M.nozF[nz]
+        local base = nf and nf(c) or CF()
+        return base * H * CFrame.fromAxisAngle(ax, sg * (tvcOpen(c.thr or 0) - r0) * A) * Hi
       end })
       return
     end
@@ -1406,7 +1463,13 @@ function AM.build(d, team, load)
         if imp.noGear and (g == "Gear" or (S and (S.k == "gear" or S.k == "gdoor"))) then   -- 不是真起落架（见 NOGEAR）：当蒙皮一直画
           add(mp, cc0, "b")
         elseif S then   -- 活动部件（舵面、弹舱门、座舱盖、起落架支柱）：绕原模型上切出来的铰链转
-          addSurf(mp, cc0, S, I, O)
+          addSurf(mp, cc0, S, I, O, g)
+        elseif g == "GearUp" then   -- 两套起落架网格（tools/models/sf_gear.py）：收起后关好的门板，收到底才画
+          add(mp, cc0, "b", { vis = function(cc) return (cc.gear or 1) <= 0.002 end })
+        elseif g == "GearX" then   -- 舱里的作动筒、铰链座：收到底藏起来（关好的门板盖住）
+          add(mp, cc0, "b", { vis = function(cc) return (cc.gear or 1) > 0.002 end })
+        elseif g == "GearB" then   -- 前起落架往后拉的撑杆（真机收的时候折起来）：起落架一动就藏起来
+          add(mp, cc0, "b", { vis = function(cc) return (cc.gear or 1) >= 0.98 end })
         elseif g == "Gear" then   -- 起落架：收起时藏起来
           add(mp, cc0, "b", { vis = function(cc) return (cc.gear or 1) > 0.5 end })
         elseif g == "Rotor" or g == "Rotor2" or g == "TRotor" then

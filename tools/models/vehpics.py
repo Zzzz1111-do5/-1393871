@@ -2,15 +2,18 @@
 #   tools/models/vehicons.mjs 的 SET=photo 拍的 pic_veh_<模型>.png / pic_air_<模型>.png（960 × 480，透明背景）
 #   → 缩到 W × H（带透明度一起缩：先预乘）、每张自己的 255 色调色板（带透明度）、透明像素连成串只记个数 → src/ReplicatedStorage/VehPics.lua
 #   型号 → 图：照 vehicons.mjs 里的 GLB（地面车）、AIR（飞机、直升机）两张表
-#   python3 -I tools/models/vehpics.py <图目录> [W H]
+#   python3 -I tools/models/vehpics.py <图目录> [W H] [--merge]
+#     --merge：只加 / 换图目录里有的图，VehPics.lua 里原来别的图原样留着（原图 PNG 不在手边时补几张用）
 import sys, os, re, base64, glob
 from PIL import Image
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, '..', '..'))
-src = sys.argv[1]
-W = int(sys.argv[2]) if len(sys.argv) > 2 else 240
-H = int(sys.argv[3]) if len(sys.argv) > 3 else 120
+MERGE = '--merge' in sys.argv
+argv = [a for a in sys.argv[1:] if a != '--merge']
+src = argv[0]
+W = int(argv[1]) if len(argv) > 1 else 240
+H = int(argv[2]) if len(argv) > 2 else 120
 
 mjs = open(os.path.join(HERE, 'vehicons.mjs'), encoding='utf-8').read()
 def table(name):
@@ -42,6 +45,10 @@ def encode(path):
     return base64.b64encode(bytes(pal)).decode(), base64.b64encode(bytes(out)).decode()
 
 pics = {}
+if MERGE:   # 原来 VehPics.lua 里的图（已经编好码）先放进来，图目录里有同名的再换掉
+    old = open(os.path.join(ROOT, 'src', 'ReplicatedStorage', 'VehPics.lua'), encoding='utf-8').read()
+    for name, p_, d_ in re.findall(r'\n    (\w+) = \{ p = "([^"]*)", d = "([^"]*)" \},', old):
+        pics[name] = (p_, d_)
 for f in sorted(glob.glob(os.path.join(src, 'pic_*.png'))):
     name = os.path.basename(f)[4:-4]   # veh_m1a2dc / air_ah64
     pics[name] = encode(f)

@@ -39,6 +39,11 @@ local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game
   E 11-26 下午这一包：重导一个文件——
     · air/mq9.glb：MQ-9 / 攻击-2 的螺旋桨拆成了会转的部件（里面的零件换成 A_mq9_v5__…；不重导照旧能用，只是螺旋桨不转）
     其余（喷口位置、履带）只换游戏文件就行
+  E 11-26 深夜这一包：新导入五个文件（别的不用动）——
+    · air/su57.glb、air/t50.glb、air/mig29.glb、air/su35.glb、air/su25.glb：苏-57、T-50（苏-57 原型机）、米格-29、苏-35S、苏-25 的原模型（不减面，每个 4.5～5.3 MB）。
+      起落架照真机收放（先开舱门、放 / 收腿、再关门）、苏-57 / 苏-35S 的喷口能偏（推力矢量）；苏-27 也用 su35.glb（不再是歼-11 的中国机徽）。
+      前四个模型的作者写明只许个人使用、不许商用（CC BY-NC-SA），署名在 models/air/credits.txt
+    导法同下面「一、导入」：「导入 3D」选文件、导进 Workspace，开服自动收好
   E 11-26 夜这一包：新导入两个文件（别的不用动）——
     · veh/type59.glb：59 式中型坦克（科技树中国地面一级 59 式、二级 69-II 式都用它；Sketchfab CC-BY，署名在 veh/credits.txt）
     · bld/city.glb：钢城的写实楼房（10 种楼，14 MB；署名在 bld/city_credits.txt）。没导入的话城里照旧用零件拼的楼

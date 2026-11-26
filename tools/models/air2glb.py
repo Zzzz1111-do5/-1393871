@@ -230,6 +230,8 @@ def segment(key):
                 g = n
             elif n in ('Pit', 'PitHud'):   # 原模型自带的座舱（sf_air.py 的 pitmat / pitnode）、原模型的平显（pithud）
                 g = n
+            elif n in ('GearUp', 'GearX', 'GearB'):   # 两套起落架网格（sf_gear.py）：收起后关好的门板、舱里的作动筒支架、会折的撑杆
+                g = n
             else:
                 g = 'Body'
             tri_g += [g] * len(T)
@@ -333,7 +335,7 @@ def convert(key, AD, ids):
     # 按（部件，材质）分块
     out = []
     count = {}
-    order = ['Body', 'FoldR', 'FoldL', 'TipR', 'TipL'] + sorted(surf) + ['Gear', 'Rotor', 'Rotor2', 'TRotor', 'Gun', 'GunY', 'Pit', 'PitHud']
+    order = ['Body', 'FoldR', 'FoldL', 'TipR', 'TipL'] + sorted(surf) + ['Gear', 'GearUp', 'GearX', 'GearB', 'Rotor', 'Rotor2', 'TRotor', 'Gun', 'GunY', 'Pit', 'PitHud']
     for g in order:
         for mi in sorted(set(tri_m[tri_g == g].tolist())):
             idx_all = tris[(tri_g == g) & (tri_m == mi)]
@@ -363,6 +365,13 @@ def convert(key, AD, ids):
         for g, e in sorted(surf.items()):
             if e.get('k') == 'kf':   # 关键帧部件：支点、每帧的挪动和转动
                 info['surf'][g] = KF.to_model(e, R, B.rb)
+                continue
+            if e.get('k') in ('noz', 'pet'):   # 原模型的喷口（sf_gear.py）：支点按点换、轴按方向换（不平移、单位长）
+                e = dict(e)
+                e['p'] = [round(float(x), 3) for x in R(e['p'])]
+                d_ = B.rbn(np.asarray(e['a'], dtype=np.float64))
+                e['a'] = [round(float(x), 5) for x in d_ / np.linalg.norm(d_)]
+                info['surf'][g] = e
                 continue
             e = dict(e)
             e['a'] = [round(float(x), 3) for x in R(e['a'])]
@@ -463,6 +472,11 @@ def convert(key, AD, ids):
                 surf[i + 1] = [st_['y'], st_['z'], round(float(np.sign(x) * min(abs(x), st_['x1'])), 3)]
                 continue
             thin = D['kind'] == 'heli' or abs(x) > half
+            if s.get('own'):   # 原模型自己的挂架 / 导轨（米格-29、苏-25、苏-35）：就在这里往上找最低的面（挂架底），弹挂在它下面
+                h = ray_ud(Pt, x, z)
+                if h is not None:
+                    surf[i + 1] = [round(float(h[0]), 3), round(float(z), 3), round(float(x), 3)]
+                    continue
             r = fit_pylon(Pt, x, z, thin)
             if r:
                 surf[i + 1] = [round(float(r[1]), 3), round(float(r[0]), 3), round(float(r[2]), 3)]   # [下表面 y, z, x]

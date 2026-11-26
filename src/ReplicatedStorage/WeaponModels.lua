@@ -31,6 +31,16 @@ local D = {
   -- 霹雳-10 / 霹雳-15 的尾翼照真弹的比例（用户 11-23 核对歼-20 弹舱：原来的尾翼翼展快一米，四枚霹雳-15 塞不进主弹舱、霹雳-10 收不进侧弹舱）：
   --   霹雳-15 歼-20 用的是切短的尾翼，尾翼尖离弹轴约 0.18 米；霹雳-10 的舵面大一点，约 0.2 米
   pl2 = { nose = "ir", col = LGREY, bands = { { 0.2, 0.03, YELLOW } }, tail = { at = 0.9, c = 0.13, s = 2.3 }, can = { at = 0.16, c = 0.07, s = 1.6 } },   -- 霹雳-2：前面四片小舵、后面四片大尾翼（响尾蛇 B 的样子）
+  -- 俄制（用户 11-26 苏-57、米格-29）：R-73 前面一圈小的「去稳定翼」+ 四片鸭翼、后面四片带副翼的尾翼；R-74M2 同样子、尾翼短（装得进侧弹舱）；
+  --   R-27R 弹体中前部四片很宽的蝶形舵、尾部四片翼；K-77M 弹体两侧细长的边条、尾翼短（原来 R-77 的栅格尾翼换掉了）
+  r73 = { nose = "ir", col = WHITE, bands = { { 0.26, 0.025, YELLOW } }, tail = { at = 0.9, c = 0.12, s = 1.7 }, can = { at = 0.12, c = 0.07, s = 1.5 } },
+  r74 = { nose = "ir", col = LGREY, bands = { { 0.26, 0.025, YELLOW } }, tail = { at = 0.9, c = 0.1, s = 1.1 }, can = { at = 0.12, c = 0.06, s = 1.1 } },
+  r27r = { nose = "radar", col = WHITE, bands = { { 0.18, 0.02, YELLOW } }, tail = { at = 0.92, c = 0.09, s = 1.5 }, mid = { at = 0.3, c = 0.16, s = 2.2 } },
+  k77m = { nose = "radar", col = WHITE, bands = { { 0.22, 0.02, YELLOW } }, tail = { at = 0.94, c = 0.07, s = 0.8 }, mid = { at = 0.5, c = 0.3, s = 0.5, strake = 1 } },
+  r27er = { nose = "radar", col = WHITE, bands = { { 0.16, 0.02, YELLOW } }, tail = { at = 0.93, c = 0.08, s = 1.5 }, mid = { at = 0.28, c = 0.14, s = 2.1 } },
+  r77 = { nose = "radar", col = WHITE, bands = { { 0.22, 0.02, YELLOW } }, tail = { at = 0.95, c = 0.05, s = 1.6, grid = true }, mid = { at = 0.5, c = 0.3, s = 0.5, strake = 1 } },
+  r60 = { nose = "ir", col = LGREY, bands = { { 0.24, 0.03, YELLOW } }, tail = { at = 0.88, c = 0.13, s = 1.8 }, can = { at = 0.1, c = 0.06, s = 1.3 } },
+  kh29 = { nose = "laser", col = LGREY, bands = { { 0.3, 0.03, YELLOW } }, tail = { at = 0.9, c = 0.14, s = 1.5 }, can = { at = 0.18, c = 0.08, s = 1.2 } },
   pl10 = { nose = "ir", col = LGREY, bands = { { 0.22, 0.03, YELLOW } }, tail = { at = 0.9, c = 0.11, s = 0.75 }, mid = { at = 0.28, c = 0.05, s = 0.9, strake = 0.5 } },
   aim9x = { nose = "ir", col = GREY, bands = { { 0.2, 0.025, YELLOW }, { 0.3, 0.025, BROWN } }, tail = { at = 0.93, c = 0.09, s = 2.4 }, mid = { at = 0.24, c = 0.035, s = 1.2 } },
   pl15 = { nose = "radar", col = WHITE, bands = { { 0.25, 0.025, YELLOW } }, tail = { at = 0.92, c = 0.08, s = 0.6 }, mid = { at = 0.5, c = 0.32, s = 0.55, strake = 1 } },
@@ -197,7 +207,16 @@ function WM.spec(w, flight)
     local chord, span = F.c * L, F.s * d
     for k = 0, 3 do
       local a = k * math.pi / 2 + math.pi / 4
-      if F.strake then   -- 长边条：贴着弹体的细长翼
+      if F.grid then   -- 栅格翼（R-77）：一片翼是个扁方框，竖着两道、横着两道格子
+        local base = CF(0, 0, z) * CFrame.Angles(0, 0, a) * CF(0, d / 2 + span / 2, 0)
+        local t = math.max(0.04, span * 0.06)
+        for _, yy in ipairs({ -span / 2, span / 2 }) do put("box", V(span, t, chord), base * CF(0, yy, 0), c2 or col) end
+        for _, xx in ipairs({ -span / 2, span / 2 }) do put("box", V(t, span, chord), base * CF(xx, 0, 0), c2 or col) end
+        for _, k2 in ipairs({ -1 / 6, 1 / 6 }) do
+          put("box", V(t * 0.6, span, chord), base * CF(k2 * span * 2, 0, 0), c2 or col)
+          put("box", V(span, t * 0.6, chord), base * CF(0, k2 * span * 2, 0), c2 or col)
+        end
+      elseif F.strake then   -- 长边条：贴着弹体的细长翼
         put("box", V(0.05, span * 0.5, chord), CF(0, 0, z) * CFrame.Angles(0, 0, a) * CF(0, d / 2 + span * 0.25, 0), c2 or col)
       else   -- 切角三角翼：楔形（前缘斜、后缘平）
         put("wedge", V(0.06, span, chord), CF(0, 0, z) * CFrame.Angles(0, 0, a) * CF(0, d / 2 + span / 2, 0), c2 or col)

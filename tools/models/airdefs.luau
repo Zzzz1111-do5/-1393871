@@ -14,7 +14,7 @@ local out = {}
 for id, d in pairs(AD.D) do
 	local st = {}
 	for i, s in ipairs(d.st or {}) do
-		st[i] = { name = s.name, pos = v(s.pos), bay = s.bay }
+		st[i] = { name = s.name, pos = v(s.pos), bay = s.bay, own = s.own }
 	end
 	local eng = {}
 	for i, e in ipairs(d.eng or {}) do eng[i] = { e.x, e.y, e.z, e.r, flat = e.flat, prop = e.prop } end

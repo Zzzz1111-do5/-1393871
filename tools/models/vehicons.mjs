@@ -38,6 +38,7 @@ const AIR = {
   j10: 'j10', j11: 'j11', j36: 'j36',   // 11-22 加的歼-10C、歼-11B、歼-36（sf_air.py 转的）
   j8: 'j8', f16: 'f16', j6: 'j6',   // 11-23 的歼-8II、F-16C，11-25 的歼-6（科技树里原来借歼-8II 的模型）
   f15: 'f15', f14: 'f14',   // 11-25 的 F-15C、F-14A
+  su57: 'su57', t50: 't50', mig29: 'mig29', su35: 'su35', su27: 'su35', su25: 'su25',   // 11-26 用户给的俄系（苏-27 借苏-35S 的模型）
   mi24: 'mi24', mi28: 'mi28', ka52: 'ka52', mi8: 'mi8', tiger: 'tiger', nh90: 'nh90', ah1w: 'ah1w', ah1s: 'ah1s', uh1n: 'uh1n', z8: 'z8',   // 11-25 各国直升机
 };
 // 舰艇（ShipDefs 的型号）→ models/ship 的原模型（文件名同型号）
@@ -100,7 +101,9 @@ if (SET === 'photo') {
     done.add('air/' + key);
     if (!fs.existsSync(path.join(ROOT, 'models', 'air', key + '.glb'))) continue;
     if (fs.existsSync(path.join(outDir, 'pic_air_' + key + '.png')) && process.env.REDO !== '1') continue;
-    const hide = (id === 'z10') ? '__TRotor' : '';
+    // 两套起落架网格的（sf_gear.py：苏-57、苏-35、米格-29）：拍收起落架的样子——放下的腿、打开的舱门、舱里的东西不拍，关好的门板（GearUp）照拍
+    const TWO = new Set(['su57', 't50', 'mig29', 'su35']);
+    const hide = (id === 'z10') ? '__TRotor' : (TWO.has(key) ? '__(Gear[NLRXB]|GDoor)' : '');
     const r = await page.evaluate(async ([u, o]) => window.renderPhoto(u, o), [`/air/${key}.glb`, { flip: FLIP.has(id), hide, pitch: 18, yaw: 38, tint: TINT[key] }]);
     save('pic_air_' + key, r);
   }
