@@ -179,8 +179,17 @@ if SHOT then dofile(MOCK_DIR .. "/uidump.lua")(T, me, SHOT .. "/gunsight_type59_
 
 print("④ 炮管指向的小十字")
 local dyn = find("Dyn")
+-- 方位刻度是一条长带（11-27 M3 丝滑）：转一点只挪带子、不重画；转出半个窗口才按新的朝向重画
+local tp0 = gs.tapeState and gs.tapeState()
+R.as("client", function() st.camYaw = st.camYaw + math.rad(1) end)
+R.run(0.1)
+local tp1 = gs.tapeState and gs.tapeState()
+check(tp0 and tp1 and tp1.base == tp0.base and tp1.xo ~= tp0.xo and tp1.clip.ClipsDescendants,
+  string.format("镜头转 1°：方位刻度只挪带子（%s → %s 像素），没重画", tostring(tp0 and tp0.xo), tostring(tp1 and tp1.xo)))
 R.as("client", function() st.camYaw, st.camPitch = st.camYaw + 0.5, -0.01 end)   -- 平着看（59 式炮只能压低 5°，往下看太多炮管够不着，小十字本来就该偏着）
 R.run(0.15)
+local tp2 = gs.tapeState and gs.tapeState()
+check(tp2 and tp2.base ~= tp1.base and visibleKids(find("Tape"), "L") >= 8, "镜头转 28°：转出了带子的范围，按新的朝向重画（" .. visibleKids(find("Tape"), "L") .. " 根刻度）")
 local lagN = visibleKids(dyn, "L")
 check(lagN >= 4, "镜头转过去、炮塔还没跟上：小十字偏在一边（" .. lagN .. " 根线）")
 settle(5)
@@ -254,7 +263,8 @@ end
 check(nSoft >= 40, "两只镜筒的边缘渐暗（" .. nSoft .. " 圈细环）")
 check(find("FringeW") ~= nil and find("Glare") ~= nil, "镜片边上的色散、镀膜反光")
 local bb = R.services.Lighting:FindFirstChild("BinoBlur")
-check(bb ~= nil and bb.Enabled and bb.Size < 1, "举起来的对焦放完了（模糊 " .. tostring(bb and bb.Size) .. "）")
+-- 对焦放完、没在转：模糊几乎是 0 就关掉（11-27 M3 丝滑：Size 0 也开着是白画一遍全屏后期）；转得快才再开
+check(bb ~= nil and bb.Size < 1 and not bb.Enabled, "举起来的对焦放完了：模糊关掉（大小 " .. tostring(bb and bb.Size) .. "）")
 check(not st.sight, "望远镜不是炮长瞄准镜")
 -- 对准靶车：镜头从车长的位置看靶车中心
 R.as("client", function()
@@ -270,6 +280,18 @@ do   -- 镜头到靶车之间挡着什么（调试）
   print(string.format("    镜头到靶车 %.0f 米；射线打到 %s（%.0f 米）；aimPt %.0f 米", dv.Magnitude / 2.8, hit and hit.Instance and hit.Instance:GetFullName() or "nil",
     hit and (hit.Position - o).Magnitude / 2.8 or -1, st.aimPt and (st.aimPt - o).Magnitude / 2.8 or -1))
 end
+-- 望远镜 8 倍看 500 米外的靶车（11-27 审查）：放大了、在视野里的车按「看上去多远」（距离 × 视场 / 70）每帧摆零件，不三帧一跳；
+--   小零件的影子：靶车远（不投），自己的车照旧投
+do
+  local tv = C.viewById and C.viewById(tgt.id)
+  local ov = C.viewById and C.viewById(e.id)
+  check(tv ~= nil and tv.farPut == false, "望远镜里的靶车（" .. string.format("%.0f", tdist) .. " 米）按看上去的远近每帧摆（farPut = " .. tostring(tv and tv.farPut) .. "）")
+  local sOff, sOn = true, true
+  for _, p in ipairs(tv and tv.smallSh or {}) do if p.CastShadow then sOff = false end end
+  for _, p in ipairs(ov and ov.smallSh or {}) do if not p.CastShadow then sOn = false end end
+  check(tv and tv.smallSh and sOff and ov and ov.smallSh and sOn,
+    string.format("小零件的影子：靶车的 %d 块不投、自己车的 %d 块照旧投", tv and tv.smallSh and #tv.smallSh or -1, ov and ov.smallSh and #ov.smallSh or -1))
+end
 st.fcs.R = nil
 T.tap(Enum.KeyCode.R)
 R.run(0.3)
@@ -280,9 +302,16 @@ local bi = find("BinoInfo")
 check(bi ~= nil and bi.Text:find("≈", 1, true) ~= nil, "望远镜下面写着估的距离：" .. tostring(bi and bi.Text))
 if SHOT then dofile(MOCK_DIR .. "/uidump.lua")(T, me, SHOT .. "/gunsight_binoc.json", true) end
 T.tap(Enum.KeyCode.C)
+local fsB = C.sceneFadeState and C.sceneFadeState()
+check(fsB and fsB.on and math.abs(fsB.tr - 0.5) < 0.01, "收望远镜：从半黑很快淡开（不硬切，也不闪全黑）")
 settle(0.5)
 check(st.binoc ~= true and not shown(find("Binoculars")), "再按 C：收起望远镜")
 check(not (bb and bb.Enabled), "收起望远镜：模糊、镀膜调色撤掉")
+check(not C.sceneFadeState().on, "淡开完了收起黑场")
+do
+  local tv = C.viewById and C.viewById(tgt.id)
+  check(tv ~= nil and tv.farPut == true, "收起望远镜（不放大）：远处的靶车照旧三帧一摆")
+end
 T.tap(Enum.KeyCode.C)
 settle(0.5)
 R.as("client", function() C.driveSetSight(true) end)

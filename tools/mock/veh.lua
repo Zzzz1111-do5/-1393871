@@ -198,12 +198,26 @@ if side == "def" then
   check(C.nvgOn() and lighting:FindFirstChild("NVGrade") == nil, "看瞄准镜时夜视仪先让出画面（瞄准镜有自己的夜视 / 热成像）")
   local fb = lighting:FindFirstChild("FarBlur")
   check(fb ~= nil and not fb.Enabled, "瞄准镜里远处不糊（远处景深模糊关掉）")
-  local modes = {}
-  for _ = 1, 3 do
+  -- 热像的高亮（11-27 M3 丝滑）：罩所有实体的那个进热像建一次、一直留着（原来每半秒全拆全建，镜里每半秒一顿）；白热 / 黑热只换颜色
+  --   （新出来的车：罩实体的那个最多 3 秒重建一次，所以这里允许多建 1 个）
+  local hn0, hv0, hm0 = C.driveHlCount()
+  R.run(1.2)
+  local hn1, hv1, hm1 = C.driveHlCount()
+  check(hn0 >= 1 and hv0 ~= nil and hv1 ~= nil and hv1.Parent ~= nil and hm1 - hm0 <= 1,
+    string.format("白热：过了两次半秒挑人，高亮没有拆了重建（%d 个高亮，新建 %d 个；原来每半秒全部重建）", hn1, hm1 - hm0))
+  local modes, hlKeep = {}, nil
+  for i = 1, 3 do
     T.tap(Enum.KeyCode.V)
     R.run(0.6)
     modes[#modes + 1] = tostring(({ "day", "nv", "whot", "bhot" })[C.drive.mode])
+    if i == 1 then
+      local _, hvB, hmB = C.driveHlCount()
+      hlKeep = hvB ~= nil and hvB.FillColor.R < 0.05 and hvB.OutlineColor.R < 0.05 and hmB - hm1 <= 1
+    elseif i == 2 then
+      hlKeep = hlKeep and C.driveHlCount() == 0
+    end
   end
+  check(hlKeep, "白热 → 黑热：高亮只换成黑色（不重建）；切到昼光：高亮全拆")
   -- 观瞄按年代（WtOptics，用户 11-26）：现代坦克的炮长镜只有昼光和热像（白热 / 黑热），没有微光通道——微光、主动红外在 tools/mock/optics.lua 测
   check(modes[1] == "bhot" and modes[2] == "day" and modes[3] == "whot", "瞄准镜默认白热档，V 依次切黑热、昼光、白热（现代坦克没有微光通道）：" .. table.concat(modes, " → "))
   R.run(0.3)
@@ -211,8 +225,11 @@ if side == "def" then
   local hv2 = shown("HintOptic")
   check(hv2 and hv2:find(C.T("sight.whot"), 1, true), "提示跟着换成现在的模式：" .. tostring(hv2))
   T.tap(Enum.KeyCode.LeftShift)
+  local fsS = C.sceneFadeState and C.sceneFadeState()
+  check(fsS and fsS.on and math.abs(fsS.tr - 0.5) < 0.01, "退镜：盖一下半黑很快淡开（不硬切，也不闪全黑）")
   R.run(0.3)
   check(not C.drive.sight and not cc.Enabled, "再按 Shift 退出瞄准镜，调色关了")
+  check(C.driveHlCount() == 0 and not C.sceneFadeState().on, "退镜：热像的高亮拆掉、黑场淡完收起")
   check(shown("HintOptic") == nil, "退出瞄准镜提示也收起来")
   check(C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "退出瞄准镜，夜视仪的画面又回来了")
   check(fb ~= nil and fb.Enabled and not C.sightNv, "退出瞄准镜：远处景深模糊又开了，镜里夜视档的增亮撤掉")
