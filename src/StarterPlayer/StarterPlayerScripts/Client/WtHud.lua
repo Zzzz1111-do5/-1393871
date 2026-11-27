@@ -16,6 +16,14 @@ local WtHud = {}
 function WtHud.init(G)
   local W = require(RS:WaitForChild("WtDamage"))
   local VD = require(RS:WaitForChild("VehDefs"))
+  local XO = nil   -- X 透视（XrayOwn.lua）的共用形状：X 光回放里的乘员也画成零件拼的人
+  do
+    local ms = script.Parent and script.Parent:FindFirstChild("XrayOwn")
+    if ms then
+      local ok, r = pcall(require, ms)
+      if ok and type(r) == "table" then XO = r end
+    end
+  end
   local V2, V3, UD2 = Vector2.new, Vector3.new, UDim2.new
   local CF = CFrame.new
   local RGB = Color3.fromRGB
@@ -421,17 +429,19 @@ function WtHud.init(G)
         end
       end
     end
-    -- ⑤ 打到的乘员 / 模块：到的那一刻红白闪、胀一下，再定成最后的颜色
+    -- ⑤ 打到的乘员 / 模块：到的那一刻红白闪、胀一下，再定成最后的颜色（乘员是零件拼的人：H.ps 每个零件一起闪）
     for _, H in ipairs(A.hitP) do
       local ht = t - H.at
       if ht >= 0 then
         if ht < 0.7 then
-          H.p.Color = (math.floor(ht * 14) % 2 == 0) and RGB(255, 255, 255) or RGB(255, 40, 30)
-          H.p.Transparency = 0
-          H.p.Size = H.size * (1 + 0.3 * (1 - ht / 0.7))
+          local fc = (math.floor(ht * 14) % 2 == 0) and RGB(255, 255, 255) or RGB(255, 40, 30)
+          local gk = 1 + 0.3 * (1 - ht / 0.7)
+          for _, q in ipairs(H.ps or { H }) do
+            q.p.Color, q.p.Transparency, q.p.Size = fc, 0, q.size * gk
+          end
         elseif not H.done then
           H.done = true
-          H.p.Color, H.p.Transparency, H.p.Size = H.col, H.tr, H.size
+          for _, q in ipairs(H.ps or { H }) do q.p.Color, q.p.Transparency, q.p.Size = H.col, H.tr, q.size end
         end
       end
     end
@@ -773,17 +783,19 @@ function WtHud.init(G)
         A.scab.Color = heat(math.clamp(sq, 0, 1), WHITE, ORANGE, EMBER, 0.4)
       end
     end
-    -- ⑥ 打到的乘员 / 模块：到的那一刻红白闪、胀一下，再定成最后的颜色
+    -- ⑥ 打到的乘员 / 模块：到的那一刻红白闪、胀一下，再定成最后的颜色（乘员是零件拼的人：H.ps 每个零件一起闪）
     for _, H in ipairs(A.hitP) do
       local ht = t - H.at
       if ht >= 0 then
         if ht < 0.7 then
-          H.p.Color = (math.floor(ht * 14) % 2 == 0) and RGB(255, 255, 255) or RGB(255, 40, 30)
-          H.p.Transparency = 0
-          H.p.Size = H.size * (1 + 0.3 * (1 - ht / 0.7))
+          local fc = (math.floor(ht * 14) % 2 == 0) and RGB(255, 255, 255) or RGB(255, 40, 30)
+          local gk = 1 + 0.3 * (1 - ht / 0.7)
+          for _, q in ipairs(H.ps or { H }) do
+            q.p.Color, q.p.Transparency, q.p.Size = fc, 0, q.size * gk
+          end
         elseif not H.done then
           H.done = true
-          H.p.Color, H.p.Transparency, H.p.Size = H.col, H.tr, H.size
+          for _, q in ipairs(H.ps or { H }) do q.p.Color, q.p.Transparency, q.p.Size = H.col, H.tr, q.size end
         end
       end
     end
@@ -880,16 +892,37 @@ function WtHud.init(G)
       if it.tur then cf = CF(W.fromTur(d, c, yaw)) * CFrame.Angles(0, -math.rad(yaw), 0)
       else cf = CF(c) end
       local tr = (it.kind == "crew") and 0.1 or ((s == 2 and not hitK[it.k]) and 0.55 or 0.15)
-      local bs = (it.kind == "crew") and size * 0.8 or size
-      local p = box(bs, cf, col, tr)
-      if it.kind == "crew" then
-        local sm = Instance.new("SpecialMesh")
-        sm.MeshType = Enum.MeshType.Sphere
-        sm.Parent = p
+      -- 乘员：零件拼的人（同 X 透视的姿势：驾驶员半躺、炮长贴着瞄准镜、车长头在指挥塔里、装填手站着；XrayOwn.crewSpecs）
+      local ps = nil
+      if it.kind == "crew" and XO and XO.crewSpecs then
+        local okS, specs = pcall(XO.crewSpecs, d, lay, it)
+        if okS and type(specs) == "table" and #specs > 0 then
+          local fr = it.tur and (CF(W.fromTur(d, V3(), yaw)) * CFrame.Angles(0, -math.rad(yaw), 0)) or CF()
+          ps = {}
+          for _, sp in ipairs(specs) do
+            local q = box(sp.s, fr * sp.cf, col, tr)
+            if sp.sh == "S" then q.Shape = Enum.PartType.Ball elseif sp.sh == "C" then q.Shape = Enum.PartType.Cylinder end
+            q.Size = sp.s
+            ps[#ps + 1] = { p = q, size = q.Size }
+          end
+        end
+      end
+      local p
+      if ps then
+        p = ps[1].p
+      else
+        local bs = (it.kind == "crew") and size * 0.8 or size
+        p = box(bs, cf, col, tr)
+        if it.kind == "crew" then
+          local sm = Instance.new("SpecialMesh")
+          sm.MeshType = Enum.MeshType.Sphere
+          sm.Parent = p
+        end
       end
       if anim and hitK[it.k] then
-        table.insert(hitP, { p = p, it = it, col = col, tr = tr, size = p.Size })
-        p.Color, p.Transparency = (it.kind == "crew") and OK or RGB(120, 150, 170), (it.kind == "crew") and 0.1 or 0.55
+        table.insert(hitP, { p = p, ps = ps, it = it, col = col, tr = tr, size = p.Size })
+        local c0, t0 = (it.kind == "crew") and OK or RGB(120, 150, 170), (it.kind == "crew") and 0.1 or 0.55
+        for _, q in ipairs(ps or { { p = p } }) do q.p.Color, q.p.Transparency = c0, t0 end
       end
     end
     -- 弹道：外面一段、弹芯往里一段（橙），破片一锥（黄）；射流打穿的换成慢放动画
