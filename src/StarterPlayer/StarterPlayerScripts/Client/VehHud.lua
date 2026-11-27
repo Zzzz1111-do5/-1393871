@@ -601,19 +601,27 @@ function VehHud.init(G)
   local DIR = { [0] = "N", [45] = "NE", [90] = "E", [135] = "SE", [180] = "S", [225] = "SW", [270] = "W", [315] = "NW" }
   local function deg360(r) return (math.deg(r) % 360 + 360) % 360 end
   local function hdgOf(yaw) return (360 - deg360(yaw or 0)) % 360 end   -- 偏航（逆时针、从 −Z 起）→ 航向（顺时针从北）
+  -- 11-27 M3 丝滑：镜头没转就不重摆；转了只挪刻度的位置，刻度长短、字只在换了一格（5°）时重写（原来每帧 40 格 × 5 个属性）
+  local cmpCam, cmpMark, cmpFirst = nil, nil, nil
   local function stepCompass(camHdg, markHdg)
-    if not compGroup.Visible then return end
+    if not compGroup.Visible then cmpCam = nil return end
+    if camHdg == cmpCam and markHdg == cmpMark then return end
+    cmpCam, cmpMark = camHdg, markHdg
     local first = math.floor((camHdg - CW / 2 / PX) / 5) * 5
+    local relabel = first ~= cmpFirst
+    cmpFirst = first
     for i, tk in ipairs(ticks) do
       local a = first + (i - 1) * 5
       local x = CW / 2 + (a - camHdg) * PX
-      local aa = a % 360
-      local major = aa % 15 == 0
       tk.t.Position = UD2(0, x, 0, 0)
-      tk.t.Size = UD2(0, 1, 0, major and 8 or 4)
       tk.l.Position = UD2(0, x, 0, 8)
-      tk.l.Text = major and (DIR[aa] or string.format("%03d", aa)) or ""
-      tk.l.TextColor3 = DIR[aa] and TXT or MUTE
+      if relabel then
+        local aa = a % 360
+        local major = aa % 15 == 0
+        tk.t.Size = UD2(0, 1, 0, major and 8 or 4)
+        tk.l.Text = major and (DIR[aa] or string.format("%03d", aa)) or ""
+        tk.l.TextColor3 = DIR[aa] and TXT or MUTE
+      end
     end
     compHdg.Text = string.format("%03d", math.floor(camHdg + 0.5) % 360)
     local dg = (markHdg - camHdg + 540) % 360 - 180
@@ -1486,17 +1494,23 @@ function VehHud.init(G)
     if not SG.scale.Visible then return end
     local dist = st.aimPt and (st.aimPt - cam.CFrame.Position).Magnitude / 2.8 or 0
     SG.ptr.Position = UD2(0, 46, 0, 220 - math.clamp(dist / 2000, 0, 1) * 220)
-    -- 小罗盘：炮管朝向
+    -- 小罗盘：炮管朝向（11-27：炮管没转就不重摆；转了只挪位置，刻度长短、字换了一格才重写）
     local h = hdgOf((st.yaw or 0) - math.rad(st.ty or 0))
+    if h == SG.cmpH then return end
+    SG.cmpH = h
     local first = math.floor((h - 150 / 3) / 5) * 5
+    local relabel = first ~= SG.cmpFirst
+    SG.cmpFirst = first
     for i, tk in ipairs(SG.ticks) do
       local a = first + (i - 1) * 5
       local x = 150 + (a - h) * 3
-      local aa = a % 360
       tk.t.Position = UD2(0, x, 0, 0)
-      tk.t.Size = UD2(0, 1, 0, (aa % 15 == 0) and 7 or 4)
       tk.l.Position = UD2(0, x, 0, 8)
-      tk.l.Text = (aa % 30 == 0) and (DIR[aa] or string.format("%03d", aa)) or ""
+      if relabel then
+        local aa = a % 360
+        tk.t.Size = UD2(0, 1, 0, (aa % 15 == 0) and 7 or 4)
+        tk.l.Text = (aa % 30 == 0) and (DIR[aa] or string.format("%03d", aa)) or ""
+      end
     end
   end
 
