@@ -2039,6 +2039,7 @@ function Drive.init(G)
     tap("◎", UDim2.fromOffset(60, 140), toggleSight)
     tap(T("drv.optic"), UDim2.fromOffset(60, 66), nextMode)
     tap(T("drv.smoke"), UDim2.fromOffset(140, 40), smoke)
+    tap(T("gs.bino"), UDim2.fromOffset(-12, 76), function() G.driveBinoc() end)   -- 车长望远镜（用户 11-27；电脑上是 C）
     tap("F", UDim2.fromOffset(0, 0), function() G.R.Drive:FireServer({ op = "exit" }) end)
     tap("1/2", UDim2.fromOffset(170, -30), function() if st then st.wi = (st.wi % #st.d.weapons) + 1 end end)
     G.touchDrive = touch
