@@ -1,0 +1,112 @@
+[
+ {
+  "key": "gs_big",
+  "file": "1b757cde000240cb84d571032946bfe6/scene.gltf",
+  "h": 15,
+  "tris": 20000,
+  "drop": ["House_house", "House002"],
+  "mod": "只取模型里三座房子中的一座（House001）",
+  "name": "合掌造农家（大）",
+  "title": "Japanese house \"minka\"",
+  "author": "kolya5561",
+  "url": "https://sketchfab.com/models/1b757cde000240cb84d571032946bfe6",
+  "uid": "1b757cde000240cb84d571032946bfe6"
+ },
+ {
+  "key": "gs_mid",
+  "file": "f94da738aefc4674ab2062df5c01cd43/scene.gltf",
+  "h": 14,
+  "tris": 30000,
+  "drop": ["Details"],
+  "mod": "去掉屋檐、屋脊上半透明的草束贴片（Details 材质，Roblox 里会画成不透明的方片）",
+  "name": "合掌造农家（中）",
+  "title": "Shirakawago Village Set House 1",
+  "author": "Lokomotto (THEOJANG)",
+  "url": "https://sketchfab.com/models/f94da738aefc4674ab2062df5c01cd43",
+  "uid": "f94da738aefc4674ab2062df5c01cd43"
+ },
+ {
+  "key": "gs_tall",
+  "file": "1b757cde000240cb84d571032946bfe6/scene.gltf",
+  "h": 15.5,
+  "tris": 20000,
+  "drop": ["House_house", "House001"],
+  "mod": "只取模型里三座房子中的一座（House002）",
+  "name": "合掌造农家（三层）",
+  "title": "Japanese house \"minka\"",
+  "author": "kolya5561",
+  "url": "https://sketchfab.com/models/1b757cde000240cb84d571032946bfe6",
+  "uid": "1b757cde000240cb84d571032946bfe6"
+ },
+ {
+  "key": "gs_small",
+  "file": "1b757cde000240cb84d571032946bfe6/scene.gltf",
+  "h": 8.5,
+  "tris": 20000,
+  "drop": ["House001", "House002"],
+  "mod": "只取模型里三座房子中的一座（House）",
+  "name": "合掌造小屋",
+  "title": "Japanese house \"minka\"",
+  "author": "kolya5561",
+  "url": "https://sketchfab.com/models/1b757cde000240cb84d571032946bfe6",
+  "uid": "1b757cde000240cb84d571032946bfe6"
+ },
+ {
+  "key": "jp_shrine",
+  "file": "3b89ad3251bb4b82963c77f7746cad71/scene.gltf",
+  "h": 4.5,
+  "rot": 180,
+  "tris": 42000,
+  "plate": true,
+  "mod": "去掉自带的草地地面",
+  "name": "茅草顶神社本殿",
+  "title": "Shinto shrine",
+  "author": "Venera Zappalà (Vera)",
+  "url": "https://sketchfab.com/models/3b89ad3251bb4b82963c77f7746cad71",
+  "uid": "3b89ad3251bb4b82963c77f7746cad71"
+ },
+ {
+  "key": "jp_hokora",
+  "file": "c74108c3e1c64c5c8dfd83e652a3af4a/scene.gltf",
+  "h": 3.8,
+  "tris": 8000,
+  "name": "小祠",
+  "title": "Japanese Shrine",
+  "author": "Mateja Veljkovic",
+  "url": "https://sketchfab.com/models/c74108c3e1c64c5c8dfd83e652a3af4a",
+  "uid": "c74108c3e1c64c5c8dfd83e652a3af4a"
+ },
+ {
+  "key": "jp_torii",
+  "file": "3ed35b9d45014164a25484043aadd8d1/scene.gltf",
+  "h": 5.2,
+  "tris": 18000,
+  "name": "石鸟居",
+  "title": "Torii gate at Kinosaki, Japan",
+  "author": "HoangHiepVu",
+  "url": "https://sketchfab.com/models/3ed35b9d45014164a25484043aadd8d1",
+  "uid": "3ed35b9d45014164a25484043aadd8d1"
+ },
+ {
+  "key": "jp_toro",
+  "file": "4fb985f5f88449f98b0a20f8d183f31f/scene.gltf",
+  "h": 1.8,
+  "tris": 8000,
+  "name": "石灯笼",
+  "title": "Japanese Stone Lantren",
+  "author": "adibnh",
+  "url": "https://sketchfab.com/models/4fb985f5f88449f98b0a20f8d183f31f",
+  "uid": "4fb985f5f88449f98b0a20f8d183f31f"
+ },
+ {
+  "key": "jp_shoro",
+  "file": "e4094bc0739d4b41866b39914ec123e3/scene.gltf",
+  "h": 5.5,
+  "tris": 54000,
+  "name": "钟楼",
+  "title": "Japanese Bell Tower",
+  "author": "AO-INTERACTIVE",
+  "url": "https://sketchfab.com/models/e4094bc0739d4b41866b39914ec123e3",
+  "uid": "e4094bc0739d4b41866b39914ec123e3"
+ }
+]

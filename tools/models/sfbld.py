@@ -4,6 +4,7 @@
 #   配置 tools/models/sfbld.json：[{ key, file, h 真高（米，没有就按原尺寸）, rot 绕竖轴转几度（长边转到东西向以后再补的）, tris 最多几个三角形, name, author, url, uid }]
 #     雪山的房子（tools/models/sfbld_snow.json → models/bld/snow.glb）多几项：drop 节点名里含这些字的去掉、plate 去掉自带的地台、
 #     part 一块最多几个三角形（默认 19000：一种材质超过的按空间对半切开，不用为了凑 Roblox 一个网格两万面的上限去减面）
+#     合掌村（tools/models/sfbld_vil.json → models/bld/village.glb）：mod 署名里的改动说明（drop 去掉的不是地台时照实写，比如「只取三座里的一座」），没有就照旧写「去掉自带的地台」
 #   每座：所有网格合成一个、按配置转、缩到真高（米）再 × 2.8 换成格、占地中心挪到原点、底面贴地；超过 tris 的减面（collapse）；按材质切块，
 #   块叫 B_<键>__Body_<号>（开服时 Imports.lua 收进 ReplicatedStorage.Imported.Bld.<键>，同 buildings.glb）；贴图最长边缩到 1024；
 #   GLB 里各座沿 X 排开（Studio 里导进来不叠在一起）。坐标约定同 bld2glb.py：glTF 里 X 右、Y 上、−Z 正面（Blender 里 +Y 是正面）
@@ -202,7 +203,7 @@ for c in CFG:
     W, D, H = hi.x - lo.x, hi.y - lo.y, hi.z - lo.z
     meta[key] = {"name": c.get("name", key), "w": round(W, 3), "h": round(H, 3), "d": round(D, 3), "o": [round(xoff, 3), 0, 0], "parts": pm,
                  "credit": "%s：%s，作者 %s（%s），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、%s按材质切块、贴图缩到 1024" % (
-                     c.get("name", key), c["title"], c["author"], c["url"], (("减面到 %d 个三角形、" % cap) if tris > cap else "") + ("去掉自带的地台、" if (c.get("plate") or c.get("drop")) else "")),
+                     c.get("name", key), c["title"], c["author"], c["url"], (("减面到 %d 个三角形、" % cap) if tris > cap else "") + ((c["mod"] + "、") if c.get("mod") else ("去掉自带的地台、" if (c.get("plate") or c.get("drop")) else ""))),
                  "tris": min(tris, cap)}
     xoff += W + 60
     print("BLD %s %.0f x %.0f x %.0f 格  %d 块  %d 三角形" % (key, W, D, H, len(pm), min(tris, cap)))

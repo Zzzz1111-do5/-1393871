@@ -1,12 +1,13 @@
 # tools/models/sfbld.py 写的元数据（JSON）→ src/ReplicatedStorage/CityMeta.lua（格式同 BuildingMeta）+ 署名 models/bld/city_credits.txt
 #   python3 -I tools/models/sfbld_meta.py <meta.json> <CityMeta.lua> <city_credits.txt> [地图名 GLB 名]
 #   雪山的房子：python3 -I tools/models/sfbld_meta.py <snow_meta.json> src/ReplicatedStorage/SnowMeta.lua models/bld/snow_credits.txt 雪山 snow.glb
+#   合掌村（第 6 个参数换掉「房子」：里面还有鸟居、石灯笼）：python3 -I tools/models/sfbld_meta.py <vil_meta.json> src/ReplicatedStorage/VillageMeta.lua models/bld/village_credits.txt 雪山合掌村 village.glb 建筑
 import json, sys
 
 src, out_lua, out_cred = sys.argv[1], sys.argv[2], sys.argv[3]
 LABEL = sys.argv[4] if len(sys.argv) > 4 else '钢城'
 GLB = sys.argv[5] if len(sys.argv) > 5 else 'city.glb'
-WHAT = '房子' if LABEL != '钢城' else '楼房'
+WHAT = sys.argv[6] if len(sys.argv) > 6 else ('房子' if LABEL != '钢城' else '楼房')
 M = json.load(open(src, encoding='utf-8'))
 
 
