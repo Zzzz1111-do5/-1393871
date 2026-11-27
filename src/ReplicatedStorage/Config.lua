@@ -464,6 +464,9 @@ Config.Score = { kill = 100, botKill = 60, assist = 40, capture = 300, captureAs
 Config.QuickSpot = { range = 620, cone = 3, spotTime = 7, cd = 1.5 }
 -- 车里激光测距后报告敌情（M1A2 SEPv2 的 CITV、布雷德利的 CIV：Weapons.lua 的 ACT.vspot）：4 公里、锥 1.2°、标 20 秒
 Config.VehSpot = { range = 11200, cone = 1.2, spotTime = 20, cd = 2 }
+-- 载具里按中键标记（Weapons.lua G.ACT.vmark，同战雷）：地面车 / 船 2 公里、飞机 6 公里，标 15 / 20 秒
+Config.VehMark = { range = 5600, cone = 3, spotTime = 15, cd = 2 }
+Config.VehMarkAir = { range = 16800, cone = 3, spotTime = 20, cd = 2 }
 -- 小队（Squads.lua）：每队自动分成几个小队，能在队友身边出生
 Config.Squad = { size = 4, safe = 6 }   -- 一个小队几个人；队友几秒内没挨打才能往他身边出生
 Config.Revive = {

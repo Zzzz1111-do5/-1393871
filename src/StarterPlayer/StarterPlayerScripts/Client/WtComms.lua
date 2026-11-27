@@ -225,6 +225,13 @@ function WtComms.init(G)
   UIS.InputBegan:Connect(function(io, gp)
     if gp then return end
     local k = io.KeyCode
+    -- 中键：标记准星对着的敌人给全队（用户 11-27「如果发现了敌载具可以进行全队标记 你仿照战雷就行」）——开车、开飞机、开船、炮手位都行；
+    --   服务器 Weapons.lua G.ACT.vmark 从自己的车 / 飞机往准星方向一个窄锥里找看得见的敌人，全队屏幕上红菱形跟着它、小地图上红点。
+    --   Alt + 中键是飞机的标目标点（Fly.lua），这里让开
+    if io.UserInputType == Enum.UserInputType.MouseButton3 and not (UIS:IsKeyDown(Enum.KeyCode.LeftAlt) or UIS:IsKeyDown(Enum.KeyCode.RightAlt)) then
+      if G.drive or G.fly or G.sail or G.gunner then G.R.Act:FireServer("vmark", aimPoint()) end
+      return
+    end
     if k == Enum.KeyCode.O then
       menu.Visible = not menu.Visible
       menuT = os.clock()

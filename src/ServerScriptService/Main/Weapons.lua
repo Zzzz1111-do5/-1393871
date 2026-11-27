@@ -681,6 +681,24 @@ function Weapons.init(G)
     G.spotFrom(P, e.root.Parent or e.root, { Position = from }, aim, W)
   end
 
+  -- 载具里标记敌人（用户 11-27「如果发现了敌载具可以进行全队标记 你仿照战雷就行」）：开车 / 开飞机 / 开船时按中键（WtComms.lua），
+  --   准星方向一个窄锥里、看得见的敌人标给全队（屏幕上红菱形跟着它、小地图上红点）。原点在自己的车 / 飞机上（服务器算，不用客户端给的），
+  --   地面车 / 船 Config.VehMark（2 公里），飞机 / 直升机 Config.VehMarkAir（6 公里）；试驾时也能标训练场的靶子
+  G.ACT.vmark = function(P, aim)
+    if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
+    local e = P.remote or P.vehicle
+    if not P.alive or not e or not e.alive or not e.root then return end
+    if not G.round or (G.round.phase ~= "battle" and not e.testDrive) then return end
+    local W = (e.air and Config.VehMarkAir) or Config.VehMark or { range = 5600, cone = 3, spotTime = 15, cd = 2 }
+    local t = now()
+    P.cd = P.cd or {}
+    if t < (P.cd.vmark or 0) then return end
+    P.cd.vmark = t + W.cd
+    local o = e.root.Position + Vector3.new(0, ((e.def and e.def.H) or 4) * 0.5, 0)
+    local n = G.spotFrom(P, e.model or e.root, { Position = o }, aim, W)
+    if n == 0 then G.msg(P.pl, "bad", "ui.markNone") end
+  end
+
   -- 每半秒把还在标记期里的敌人位置发给那一队
   task.spawn(function()
     while true do
