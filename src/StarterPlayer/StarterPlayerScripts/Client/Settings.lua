@@ -80,7 +80,8 @@ function Settings.init(G)
     G.noShake = P.shake == false
     G.voiceOff = P.voice == false
     if master then pcall(function() master.Volume = P.vol end) end
-    if gammaCC then pcall(function() gammaCC.Brightness = P.gamma gammaCC.Contrast = math.abs(P.gamma) * 0.4 end) end
+    -- 灰度是 0（默认）就把这层调色关掉（11-27 M3 丝滑：亮度、对比都是 0 也开着是白画一遍全屏后期）
+    if gammaCC then pcall(function() gammaCC.Brightness = P.gamma gammaCC.Contrast = math.abs(P.gamma) * 0.4 gammaCC.Enabled = math.abs(P.gamma) > 1e-3 end) end
     if P.lang == "zh" or P.lang == "en" then G.lang = P.lang end
     if G.uiScaleK ~= P.ui then
       G.uiScaleK = P.ui

@@ -188,6 +188,15 @@ function View.init(G)
       local cm = (type(camo) == "string") and SK.CAMO[camo] or nil
       if cm and not cm.base then cm = nil end
       local M = VM.build(d, team, em:GetAttribute("Mods"), cm or (tit and TT.paint(tit)) or nil)   -- 坦克改装：发射器、雷达板、加特林、补贴的爆反块（TankMods）
+      -- 影子（11-27 M3 丝滑）：三边都不到 2 格的小零件（螺栓、灯座、把手、工具、天线座……）不投影子——在阴影图里只有几个像素看不出来，
+      --   车多的时候阴影那一遍少画几百个小物体（太阳一挪整张阴影图重画时也少画）；机库、车库里的车（Garage、TechUI 自己 build）不动
+      for _, it in ipairs(M.parts) do
+        local bp = it[1]
+        if bp:IsA("BasePart") and bp.CastShadow then
+          local sz = bp.Size
+          if sz.X < 2 and sz.Y < 2 and sz.Z < 2 then bp.CastShadow = false end
+        end
+      end
       M.model.Parent = VF
       v.modsAttr = em:GetAttribute("Mods")
       v.treeKey = tk
@@ -803,7 +812,10 @@ function View.init(G)
         for _, pe in ipairs(M.dust) do pe.Color = ColorSequence.new(col) end
       end
     end
-    local rate = land and math.clamp((math.abs(v.speed) - 5) * 1.6, 0, 60) * (v.dustK or 0.5) or 0
+    -- 粒子上限（11-27 M3 丝滑）：大团半透明的尘一层叠一层是显卡最贵的「填充」——一直开着跑的最多每秒 40 团（原来 60），
+    --   420 格外的车三成（远处看是一条尘带，层数少一些看不出来）
+    local rate = land and math.min(math.clamp((math.abs(v.speed) - 5) * 1.6, 0, 60) * (v.dustK or 0.5), 40) or 0
+    if far then rate *= 0.35 end
     -- 侧滑、刚落地：扬尘更浓（自己开的车 Drive 给 slipA）
     if own and own.slipA then rate *= 1 + math.clamp(math.abs(math.sin(own.slipA)) * 4, 0, 2) end
     for _, pe in ipairs(M.dust) do if math.abs(pe.Rate - rate) > 0.5 then pe.Rate = rate end end

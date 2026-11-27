@@ -786,7 +786,13 @@ function VehHud.init(G)
   local fireCC = Instance.new("ColorCorrectionEffect")
   fireCC.Name = "VehFireFlash"
   fireCC.Brightness = 0
+  fireCC.Enabled = false   -- 只在开炮那一亮时开着（11-27：亮度 0 也开着是白画一遍全屏后期）
   fireCC.Parent = Lighting
+  local function setFlash(b)
+    if fireCC.Brightness ~= b then fireCC.Brightness = b end
+    local on = b > 1e-4
+    if fireCC.Enabled ~= on then fireCC.Enabled = on end
+  end
   local kickT = -9
 
   ---------------------------------------------------------------- 瞄着谁：实体（workspace.Ents 下的模型）、它的航速
@@ -925,7 +931,7 @@ function VehHud.init(G)
       lagArrow.Position = UD2(0, sp.X + u.X * 40, 0, sp.Y + u.Y * 40)
       lagArrow.Rotation = math.deg(math.atan2(u.Y, u.X))
     end
-    fireCC.Brightness = 0.12 * kick * kick
+    setFlash(0.12 * kick * kick)
   end
   G.tankPen = penState   -- 测试用
 
@@ -935,7 +941,7 @@ function VehHud.init(G)
     for _, x in ipairs(MR.plus) do x.Visible = false end
     SR.lead.Visible, SR.card.Visible, SR.lock.Visible, SR.lockTxt.Visible = false, false, false, false
     for _, dd in ipairs(SR.leadDots) do dd.Visible = false end
-    fireCC.Brightness = 0
+    setFlash(0)
   end
 
   ---------------------------------------------------------------- 每帧：坦克
@@ -1152,7 +1158,7 @@ function VehHud.init(G)
     SR.tof.Text = ready and string.format("T %.1f s", tof or 0) or string.format("%s %.1f", T("vh.reload"), left)
     SR.tof.TextColor3 = ready and CYAN or AMBER
     SR.wpn.Text = wname or ""
-    fireCC.Brightness = 0.1 * kick * kick
+    setFlash(0.1 * kick * kick)
     -- 瞄着的敌人（落点附近 90 像素内最近的）
     local em = on and enemyNear(sp.X, sp.Y, 90) or nil
     local r = em and em:FindFirstChild("Root")
@@ -1299,7 +1305,7 @@ function VehHud.init(G)
     else
       SR.root.Visible, SR.lead.Visible, SR.card.Visible = false, false, false
       for _, dd in ipairs(SR.leadDots) do dd.Visible = false end
-      fireCC.Brightness = 0
+      setFlash(0)
     end
     placeLock(st)
   end
@@ -1522,7 +1528,7 @@ function VehHud.init(G)
     local showTank = driving and not inSight and not inBino and not (G.interiorOn and G.interiorOn())   -- 坐在车里看（Interior.lua）：车里的屏幕就是仪表
     gui.Enabled, sg.Enabled = showTank or sailing, inSight and not G.interiorOptic
     if not gui.Enabled then
-      if fireCC.Brightness ~= 0 then fireCC.Brightness = 0 end
+      setFlash(0)
       hp0 = nil
       mwtOn, wtMode = false, false
       G.tankHudActive = false
