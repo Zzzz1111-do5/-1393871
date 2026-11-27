@@ -742,10 +742,17 @@ function Warfx.init(G)
   end
 
   local function setWeatherLook(k)
+    -- 风的基数：DayNight 按图 / 区块设的那个（G.windBase）。换图、在训练场和战场之间瞬移时它会变，跟着重新取——
+    --   原来只在暴风雨开始那一下记一次 GlobalWind：暴风雨里瞬移到别处，DayNight 写的新风会被旧基数插出来的值盖掉，雨停了还回到旧地方的风
+    local base = G.windBase
+    if base ~= nil and base ~= wind then
+      wind = base
+      if lastLook > 0 then pcall(function() workspace.GlobalWind = wind:Lerp(V(20, 0, 10), lastLook) end) end
+    end
     if k == lastLook or (k > 0 and math.abs(k - lastLook) < 0.012) then return end
     if lastLook == 0 then
       if terr then waterSize, waterSpeed = terr.WaterWaveSize, terr.WaterWaveSpeed end
-      pcall(function() wind = workspace.GlobalWind end)
+      if base == nil then pcall(function() wind = workspace.GlobalWind end) end   -- 没有 DayNight 给的基数（LightLooks 没换进来）：照旧记暴风雨开始时的
     end
     lastLook = k
     if clouds then

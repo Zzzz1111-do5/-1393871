@@ -219,7 +219,13 @@ function Battle.init(G)
     local burn, fall = IL.burn or 32, IL.fall or 2.6
     local okW, wind = pcall(function() return workspace.GlobalWind end)
     if not okW or typeof(wind) ~= "Vector3" or wind.Magnitude < 0.1 then wind = V(2.2, 0, 1.1) end
-    G.fx({ k = "illum", o = o, p = p, t = workspace:GetServerTimeNow(), fl = fl, burn = burn, fall = fall, w = V(wind.X, 0, wind.Z) * 0.6, by = by })
+    -- 挂着伞顺风飘：原来按风 ×0.6、烧 32 秒——11-27 每张图设了全局风（LightLooks.WIND：雪山 12 格/秒、钢城 5.4）以后，
+    --   雪山上要飘出两百三十格、钢城一百格，飘离要照的据点（据点半径 80）。改成风 ×0.15（再乘原来的四分之一），整段烧完最多飘 60 格：
+    --   雪山 58 格、沙海 45、钢城 26，看得出在飘，落点还在据点边上
+    local drift = V(wind.X, 0, wind.Z) * 0.15
+    local dmax = 60 / math.max(burn, 1)
+    if drift.Magnitude > dmax then drift = drift.Unit * dmax end
+    G.fx({ k = "illum", o = o, p = p, t = workspace:GetServerTimeNow(), fl = fl, burn = burn, fall = fall, w = drift, by = by })
     table.insert(alive, { die = now() + fl + burn })
     fired += 1
     return true

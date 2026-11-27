@@ -26,6 +26,22 @@
 
 ## 正在做
 
+- F（11-27，光影照战雷审查后的修：分支 fix-light，在 wip/vfxlight 的 4c70454 上，只改光照这一侧）——**光照的规矩（别互相覆盖）**：
+  · **ReplicatedStorage/LightLooks.lua 是唯一的光照数据源**（各图白天 / 黄昏 / 清晨 / 夜里 24 个字段、纬度 LAT、全局风 WIND）：服务器 World.lighting、
+    客户端 DayNight 都读它；要改光照的数就改这里，别在别的模块里另写一套（World.lua 里只留一份 LightLooks 读不到时的兜底）。
+  · **客户端只有 DayNight 写 Lighting 的亮度、环境光（Ambient / OutdoorAmbient）、曝光、ClockTime**（还有大气、NightBloom、NightGrade、SunShafts、FarBlur）。
+    夜视（Night.lua 的 G.nvLight）、照明弹（Warfx 的 G.illum）、暴风雨（G.weather）都是给 DayNight 一个量，由它叠上去；别的模块要变亮变暗就加自己的
+    PostEffect 或者给 DayNight 一个量——直接写这几项会被它下一次更新改回来（它只在值变了才写），两边来回写就一闪一闪。
+  · **新模块 LightLooks（光照）、VfxLib（特效）必须进地点**：发包前重新生成 RobloxTotalBattlefield.rbxlx 和 ScriptsUpdate.rbxmx（`lune run tools/build.luau`）。
+    少了 VfxLib，Fx 起不来（它等 VfxLib 要是没超时，后面的客户端模块跟着卡住）；少了 LightLooks，DayNight 等 20 秒报错跳过、
+    开服用 World 里写死的兜底那套（不动的光照）。
+  · 全局风的基数在 G.windBase（DayNight 换图 / 换区块时设），暴风雨（Warfx）在它上面往大了插；要改风改 LightLooks.WIND。
+  · Lighting.LightingStyle、PrioritizeLightingQuality 游戏脚本写不了（API 写权限 PluginOrOpenCloud，同 Terrain.Decoration），只能写进地点文件
+    （build.luau / build_rbxlx.py 现在写 Realistic + false，不再写 Technology = Future）；用户已经导入过的地点要在 Studio 里改一次（import_guide「三」）。
+  · 用户要过的别悄悄推翻：地面上的远处景深 FarBlur 0.06（11-22「远处模糊这样」、11-25 压淡）照旧开；大气按 11-22「视野无限远」的量级
+    （白天 0.07～0.09、黄昏 0.1、夜里 0.085，lightreal 查着白天 ≤ 0.1）。这次还改了：照明弹顺风飘 ×0.15、最多 60 格；纬度自检退到 23° 就停、打提示；
+    夜视总曝光补回改之前的数。测试 tools/mock/lightreal.lua、battle.lua（照明弹漂移、暴风雨里换风的基数）、veh.lua（退出瞄准镜景深又开）。
+
 - F（11-27，用户：「坦克的开镜你直接去按照战雷的做」+ 一张战雷开镜截图「这个样子」、「然后再做一个望远镜」、「镜子里的线条和字太粗了而且不够清晰 光学渐变也有些生硬」；
   11-26 的「照真镜子重画」）——**新：ReplicatedStorage/SightDefs.lua（数据、算法）+ Client/GunSight.lua（画）**，Drive.lua 建它、每帧调：
   · 全屏开镜（圆形目镜、热像框、红色发光分划、镜下红字都收了；Interior 的 ScopeFx 车外开炮长镜只从黑淡入 0.2 秒、不留暗边，车里的观瞄设备暗边改成 16 圈细环）；

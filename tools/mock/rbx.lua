@@ -1687,8 +1687,14 @@ R.services.Lighting = service("Lighting", {
   Ambient = { T.Color3, newC3(0, 0, 0) }, EnvironmentDiffuseScale = { T.number, 0 }, EnvironmentSpecularScale = { T.number, 0 }, ExposureCompensation = { T.number, 0 },
   GeographicLatitude = { T.number, 41.7 }, ColorShift_Top = { T.Color3, newC3(0, 0, 0) }, ColorShift_Bottom = { T.Color3, newC3(0, 0, 0) }, ShadowSoftness = { T.number, 0.2 },
   FogColor = { T.Color3, newC3(0.75, 0.75, 0.75) }, FogEnd = { T.number, 100000 }, FogStart = { T.number, 0 },
-  LightingStyle = { E("LightingStyle"), Enum.LightingStyle.Realistic }, PrioritizeLightingQuality = { T.bool, true },   -- 地点文件里 Future 对成的这两项
-})
+  LightingStyle = { E("LightingStyle"), Enum.LightingStyle.Realistic }, PrioritizeLightingQuality = { T.bool, true },   -- 老地点文件里 Future 对成的这两项（11-27 起生成的写 false：tools/build.luau）
+}, { methods = {
+  -- 太阳方向：模拟器不算天文，测试给 R.sunDir（光影的纬度自检：tools/mock/lightreal.lua）；没给照旧报错（游戏里都包了 pcall）
+  GetSunDirection = function(o)
+    if not R.sunDir then error("模拟器没有太阳方向（测试可以给 R.sunDir）", 2) end
+    return R.sunDir(o)
+  end,
+} })
 R.overrides = {}   -- MaterialService:SetBaseMaterialOverride 记下来（测试看雪山把地形的雪换成了哪个变体）
 R.services.MaterialService = service("MaterialService", {}, { methods = {
   SetBaseMaterialOverride = function(_, mat, name)

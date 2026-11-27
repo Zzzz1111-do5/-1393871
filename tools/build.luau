@@ -135,9 +135,20 @@ do
 	--   「Please keep it as False」；地点文件里不写的话由 Studio 定默认值。Lune 不认这个属性时 build 末尾直接往 XML 里补
 	terrainSV = pcall(function() t.SmoothVoxelsUpgraded = false end)
 end
--- 光照：Future（脚本里改不了，只能写进地图文件）；其余的开服时 Scenery.lighting 还会再设一遍
+-- 光照（11-27）：Technology 弃用了，换成新版的两项（游戏脚本都写不了——写权限要 PluginOrOpenCloud，只能写进地点文件）：
+--   LightingStyle = Realistic（写实：硬的太阳影子、高光，原来 Future 的样子）；
+--   PrioritizeLightingQuality = false：画质档往下降时先保住视野距离、先降光照和着色（true 反过来：先保近处的高级阴影、视野先缩）。
+--   用户 11-22 要「视野无限远」、11-27 要 M3 上非常丝滑（跟不上时 Roblox 自动把画质档往下调）：false；满画质时两样一样。
+--   Technology 不再写：原来写的 Future 对应 Realistic + true，Lune 按属性名排序、它排在这两项后面，Studio 读到它再对一遍就把 false 盖回去了
+--   （World.lighting 开服时也写这两项，但游戏脚本写不了，以这里为准；同 tools/build_rbxlx.py）
 local L = game:GetService("Lighting")
-L.Technology = roblox.Enum.Technology.Future
+if not pcall(function()
+	L.LightingStyle = roblox.Enum.LightingStyle.Realistic
+	L.PrioritizeLightingQuality = false
+end) then
+	L.Technology = roblox.Enum.Technology.Future   -- 老版本的 Lune 不认这两项：照旧写 Future
+	print("注意：这个 Lune 不认 LightingStyle / PrioritizeLightingQuality，地点文件里照旧写 Technology = Future（Studio 里把 Lighting 的 PrioritizeLightingQuality 取消勾选）")
+end
 L.ClockTime = 2.3   -- 夜战（开服时 World.lighting 还会再设一遍）
 L.Brightness = 2.2
 L.GlobalShadows = true

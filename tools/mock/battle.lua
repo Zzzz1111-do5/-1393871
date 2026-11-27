@@ -116,6 +116,9 @@ end
 print("② 照明弹")
 do
   local C = T.C
+  -- 照明弹只在天黑了打（Battle.lua darkNow），11-26 起每局开局拨回早上：钟点钉在半夜（DayFix，同 PvE 夜战关卡），
+  --   ④ 夜空、探照灯也是夜里的，看完再放开（原来这里等不到照明弹，后面整段都没跑）
+  WS:SetAttribute("DayFix", 1)
   G.Config.Battle.illum.burn = 6
   local f0 = G.illumFired()
   T.runUntil(function() return G.illumFired() > f0 end, 40)
@@ -123,6 +126,13 @@ do
   R.run(0.2)
   check(C.flares and #C.flares >= 1, "客户端收到照明弹")
   local f = C.flares[#C.flares]
+  -- 顺风飘（11-27 每张图设了全局风）：风 ×0.15、整段烧完最多飘 60 格（原来 ×0.6：雪山上飘出两百多格、离开据点）
+  local gw = WS.GlobalWind
+  local hw = V3(gw.X, 0, gw.Z).Magnitude
+  local fw = (f and f.e.w) and f.e.w.Magnitude or -1
+  local fb = f and f.e.burn or 1
+  check(math.abs(fw - math.min(hw * 0.15, 60 / fb)) < 0.01 and fw * fb <= 60.01,
+    string.format("照明弹顺风飘 %.2f 格/秒（风 %.1f × 0.15）、烧 %.0f 秒飘 %.0f 格（最多 60）", fw, hw, fb, fw * fb))
   T.runUntil(function() return f.core ~= nil end, 15)
   local camD = f.core and (f.core.Position - WS.CurrentCamera.CFrame.Position).Magnitude or 0
   check(f.core ~= nil and f.chute ~= nil and f.groundLight ~= nil and f.halo ~= nil, "炸开：亮光、降落伞、照地面的灯都挂上了")
@@ -165,6 +175,8 @@ do
   R.run(20)
   check(C.rumbleCount() > r0, "远处时不时传来闷闷的炮声（20 秒 " .. (C.rumbleCount() - r0) .. " 次）")
 end
+
+WS:SetAttribute("DayFix", nil)   -- ②～④ 钉的半夜放开
 
 print("⑤ 房子：炸掉一半着火、炸光了塌成废墟")
 local B
@@ -218,6 +230,13 @@ do
   local k = WS:GetAttribute("StormK") or 0
   check(k > 0.9, string.format("服务器：暴风雨来了（强度 %.2f）", k))
   check(C.weather.k > 0.3, string.format("客户端跟上强度（%.2f）", C.weather.k))
+  -- 风：暴风雨在 DayNight 按图设的基数（G.windBase）上往大了插；暴风雨里换图 / 换区块（基数变了）跟着重新取，雨停了回到新的那个
+  local base0 = C.windBase
+  local nb = V3(-10, 0, 12)   -- 像瞬移到别处：DayNight 换了基数、先写一遍没暴风雨的风
+  C.windBase = nb
+  WS.GlobalWind = nb
+  R.run(0.3)
+  check(base0 ~= nil and (WS.GlobalWind - nb).Magnitude > 1, string.format("暴风雨里换了风的基数（%s → %s）：暴风雨照样在新的上面加大（%s）", tostring(base0), tostring(nb), tostring(WS.GlobalWind)))
   local rain = C.fxFolder and C.fxFolder:FindFirstChild("Rain")
   local pe = rain and rain:FindFirstChildOfClass("ParticleEmitter")
   local camY = WS.CurrentCamera.CFrame.Position.Y
@@ -237,6 +256,9 @@ do
   T.runUntil(function() return (WS:GetAttribute("StormK") or 0) == 0 end, 30)
   R.run(8)
   check((WS:GetAttribute("StormK") or 0) == 0 and pe and pe.Rate == 0, "暴风雨过去：雨停了")
+  check((WS.GlobalWind - nb).Magnitude < 0.01, "雨停了：风回到新的基数 " .. tostring(WS.GlobalWind) .. "（不是暴风雨开始时记下的旧风 " .. tostring(base0) .. "）")
+  C.windBase = base0
+  if base0 then WS.GlobalWind = base0 end
   G.Config.Battle.storm.ramp = 25
 end
 
