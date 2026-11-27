@@ -130,6 +130,12 @@ local y16 = ladderY(1600)
 check(t16 ~= nil and y16 ~= nil and math.abs(t16.Position.Y.Offset - geomNow().m(y16)) <= 1.5,
   string.format("表尺「16」在按弹道算的位置（%s 像素，算的 %.1f）", t16 and tostring(t16.Position.Y.Offset) or "-", y16 and geomNow().m(y16) or -1))
 check(shown(find("Tape")) and visibleKids(find("Tape"), "L") >= 8 and visibleKids(find("Tape"), "T") >= 1, "顶上有方位刻度")
+-- 光学感（用户 11-27「没有3a游戏的感觉」）：四角暗角一圈圈细环、进镜对焦的模糊放完撤掉
+local nVig = 0
+for _, f in ipairs(find("GunSight") and find("GunSight"):GetChildren() or {}) do if f.Name == "Vig" and f.Visible then nVig = nVig + 1 end end
+check(nVig >= 16, "炮长镜四角暗角（" .. nVig .. " 圈细环）")
+local focusB = R.services.Lighting:FindFirstChild("SightFocus")
+check(focusB ~= nil and (not focusB.Enabled or focusB.Size < 0.1), "进镜对焦放完：模糊撤掉（" .. tostring(focusB and focusB.Size) .. "）")
 if SHOT then dofile(MOCK_DIR .. "/uidump.lua")(T, me, SHOT .. "/gunsight_type59.json", true) end
 
 print("② 分划按密位随倍率缩放")
@@ -217,6 +223,16 @@ settle(1.5)
 check(st.binoc == true and shown(find("Binoculars")), "C：打开车长望远镜")
 check(math.abs(cam.FieldOfView - 70 / SD.BINOC.mag) < 0.3, string.format("望远镜 %d 倍（视场 %.2f°）", SD.BINOC.mag, cam.FieldOfView))
 check(visibleKids(find("BinoRet"), "L") >= 20, "望远镜的密位刻度（" .. visibleKids(find("BinoRet"), "L") .. " 根线）")
+-- 「望远镜没有渐变啊」：每只镜筒里一圈圈细环叠成的边缘渐暗、色散、镀膜反光；举起来的模糊放完只剩转动时那一点
+local nSoft = 0
+for _, side in ipairs({ "ClipL", "ClipR" }) do
+  local c = find(side)
+  for _, f in ipairs(c and c:GetChildren() or {}) do if f.Name == "Soft" then nSoft = nSoft + 1 end end
+end
+check(nSoft >= 40, "两只镜筒的边缘渐暗（" .. nSoft .. " 圈细环）")
+check(find("FringeW") ~= nil and find("Glare") ~= nil, "镜片边上的色散、镀膜反光")
+local bb = R.services.Lighting:FindFirstChild("BinoBlur")
+check(bb ~= nil and bb.Enabled and bb.Size < 1, "举起来的对焦放完了（模糊 " .. tostring(bb and bb.Size) .. "）")
 check(not st.sight, "望远镜不是炮长瞄准镜")
 -- 对准靶车：镜头从车长的位置看靶车中心
 R.as("client", function()
@@ -244,6 +260,7 @@ if SHOT then dofile(MOCK_DIR .. "/uidump.lua")(T, me, SHOT .. "/gunsight_binoc.j
 T.tap(Enum.KeyCode.C)
 settle(0.5)
 check(st.binoc ~= true and not shown(find("Binoculars")), "再按 C：收起望远镜")
+check(not (bb and bb.Enabled), "收起望远镜：模糊、镀膜调色撤掉")
 T.tap(Enum.KeyCode.C)
 settle(0.5)
 R.as("client", function() C.driveSetSight(true) end)

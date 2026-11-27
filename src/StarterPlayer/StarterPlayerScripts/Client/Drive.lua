@@ -798,7 +798,7 @@ function Drive.init(G)
     if not st or st.sight == on then return end
     if on and st.binoc then setBinoc(false) end
     st.sight = on
-    GS.reset()
+    GS.reset(on)
     ownVisible(not on)
     applyMode()
   end
@@ -919,6 +919,7 @@ function Drive.init(G)
       ownVisible(true)
       st.binoc = false
       GS.binoShow(false)
+      GS.reset(false)   -- 开着镜下车 / 车没了：对焦的模糊撤掉
       st.sight = false
       applyMode()
       local m = ownModel()
@@ -2238,6 +2239,7 @@ function Drive.init(G)
       cam.FieldOfView = cam.FieldOfView + (GS.binoFov - cam.FieldOfView) * math.min(1, dt * 10)
       cam.CFrame = CFrame.lookAt(eye, eye + dirCam.LookVector)
       st.aimPt = aimPoint()
+      cam.CFrame = cam.CFrame * GS.binoSway()   -- 手持的呼吸晃动：只晃画面（瞄准点上面已经按没晃的算了）
       st.camShake = CFrame.new()
     elseif st.sight then
       local base = st.root * CF(0, -d.H / 2, 0)

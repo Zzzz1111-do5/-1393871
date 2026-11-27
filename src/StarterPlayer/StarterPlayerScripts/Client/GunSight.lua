@@ -8,6 +8,7 @@
 --   · 车长望远镜（C）：两个圆的视场、8 倍、6000 制密位刻度（横、竖）和 2.7 米测距曲线；R 车长估距
 --   外观（字体）用游戏自己的 Theme；分划的样子照真镜子
 local RS = game:GetService("ReplicatedStorage")
+local Lighting = game:GetService("Lighting")
 
 local GunSight = {}
 
@@ -103,6 +104,47 @@ function GunSight.new(G, sightFrame, gui)
   root.Size = UDim2.fromScale(1, 1)
   root.ZIndex = 6
   root.Parent = sightFrame
+  -- 光学感（用户 11-27「这个做的没有3a游戏的感觉啊」）：四角很轻的暗角（18 圈细环叠成平滑渐变，中间六成完全不暗）、
+  --   进镜对焦（从糊到清楚 0.28 秒）、开炮那一下画面一糊（炮口冲击、镜子震）
+  local NVIG = 18
+  local VIG = {}
+  for i = 1, NVIG do
+    local f = Instance.new("Frame")
+    f.Name = "Vig"
+    f.BackgroundTransparency = 1
+    f.AnchorPoint = V2(0.5, 0.5)
+    f.Position = UDim2.fromScale(0.5, 0.5)
+    f.ZIndex = 5
+    f.Parent = root
+    local cr = Instance.new("UICorner")
+    cr.CornerRadius = UDim.new(0.5, 0)
+    cr.Parent = f
+    local sk = Instance.new("UIStroke")
+    sk.Color = Color3.new(0, 0, 0)
+    sk.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+    sk.Transparency = 1 - 0.42 * ((NVIG - i + 1) / NVIG) ^ 1.8
+    sk.Parent = f
+    VIG[i] = { f = f, s = sk }
+  end
+  local vigSig = nil
+  local function layoutVig(vp)
+    local sig = vp.X .. "x" .. vp.Y
+    if sig == vigSig then return end
+    vigSig = sig
+    local Rd = math.sqrt(vp.X * vp.X + vp.Y * vp.Y) / 2 * 1.02
+    local step = Rd * 0.38 / NVIG
+    for i, v in ipairs(VIG) do
+      local outer = Rd - (i - 1) * step
+      local d = 2 * (outer - step)
+      v.f.Size = UDim2.fromOffset(d, d)
+      v.s.Thickness = step
+    end
+  end
+  local focus = Instance.new("BlurEffect")
+  focus.Name = "SightFocus"
+  focus.Size = 0
+  focus.Enabled = false
+  focus.Parent = Lighting
   local RC = canvas(root, "Reticle", 6)      -- 分划（视场、弹种、装定距离变了才重画）
   local DC = canvas(root, "Dyn", 7)          -- 每帧：炮管指向、跟踪框
   local HC = canvas(root, "Tape", 7)         -- 方位刻度
@@ -339,6 +381,20 @@ function GunSight.new(G, sightFrame, gui)
     if nightNow ~= cur.night and cur.kit then o.mode(cur.mode, cur.kit, st) end
     local fov = cam.FieldOfView
     local P = geom(fov, fam.unit)
+    layoutVig(P.vp)
+    -- 对焦、开炮的一糊
+    do
+      local now = os.clock()
+      if st.fireT and st.fireT ~= cur.lastFire then cur.lastFire, cur.fireSeen = st.fireT, now end
+      local fs = 0
+      if cur.focusT then
+        local u = math.clamp((now - cur.focusT) / 0.28, 0, 1)
+        fs = 9 * (1 - u) ^ 3
+      end
+      if cur.fireSeen then fs += 3 * math.exp(-(now - cur.fireSeen) * 10) end
+      focus.Size = fs
+      focus.Enabled = fs > 0.05
+    end
     -- 表尺、上方表尺（弹种、装定距离变了才重算）
     local R0 = info.R0 or 0
     local key = info.amKey or ""
@@ -425,11 +481,23 @@ function GunSight.new(G, sightFrame, gui)
     end
   end
 
-  function o.reset()   -- 出镜 / 换车：下次进镜从头画
+  function o.reset(on)   -- 进镜 / 出镜（Drive setSight）：下次进镜从头画；进镜对焦、出镜撤掉模糊
     cur.sig, cur.lastR, cur.setMsg = nil, nil, nil
+    if on then
+      cur.focusT, cur.lastFire = os.clock(), nil
+      focus.Size, focus.Enabled = 9, true
+    else
+      cur.focusT = nil
+      focus.Size, focus.Enabled = 0, false
+    end
   end
 
   ---------------------------------------------------------------- 车长望远镜
+  -- 用户 11-27：「再做一个望远镜」，又「望远镜没有渐变啊」「这个做的没有3a游戏的感觉啊」——
+  --   镜筒：两个圆（左右各在半边屏幕的裁剪框里：半边里两圆的并集正好是那一边的圆），圆外纯黑；
+  --   圆里：边缘 24 圈细环叠成平滑的渐暗（越靠边越暗）、边上一道很淡的色散（外暖内冷）、斜着一片镀膜反光（对着太阳亮）；
+  --   举起来：先黑、镜筒从小放到正常、画面从糊到清楚（0.35 秒）；转得快画面微糊、停下来清楚；镀膜偏暖、对比高一点；
+  --   手的呼吸晃动在 Drive 的镜头上（只晃画面，不带炮塔）
   -- 单独一层、压在界面下面（DisplayOrder 2）：两个圆外面的黑只盖画面，比分条、小地图、弹药栏、损伤图照样在上面（战雷的望远镜也是这样）
   local bgui = Instance.new("ScreenGui")
   bgui.Name = "BinoView"
@@ -444,7 +512,7 @@ function GunSight.new(G, sightFrame, gui)
   bino.Visible = false
   bino.ZIndex = 8
   bino.Parent = bgui
-  -- 两个圆（左右各在半边屏幕的裁剪框里：半边里两圆的并集就是那一边的圆）
+  local NRING = 24
   local function half(x)
     local clip = Instance.new("Frame")
     clip.Name = (x == 0) and "ClipL" or "ClipR"
@@ -454,25 +522,81 @@ function GunSight.new(G, sightFrame, gui)
     clip.Position = UDim2.fromScale(x, 0)
     clip.ZIndex = 8
     clip.Parent = bino
-    local circ = Instance.new("Frame")
-    circ.Name = "Eye"
-    circ.BackgroundTransparency = 1
-    circ.AnchorPoint = V2(0.5, 0.5)
-    circ.ZIndex = 8
-    circ.Parent = clip
-    local cr = Instance.new("UICorner")
-    cr.CornerRadius = UDim.new(0.5, 0)
-    cr.Parent = circ
-    local stk = Instance.new("UIStroke")
-    stk.Thickness = 1600
-    stk.Color = Color3.new(0, 0, 0)
-    stk.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    stk.Parent = circ
-    return clip, circ
+    local function circle(name)
+      local f = Instance.new("Frame")
+      f.Name = name
+      f.BackgroundTransparency = 1
+      f.AnchorPoint = V2(0.5, 0.5)
+      f.ZIndex = 8
+      f.Parent = clip
+      local cr = Instance.new("UICorner")
+      cr.CornerRadius = UDim.new(0.5, 0)
+      cr.Parent = f
+      return f
+    end
+    local function ring(name, col, tr)
+      local f = circle(name)
+      local sk = Instance.new("UIStroke")
+      sk.Color = col or Color3.new(0, 0, 0)
+      sk.Transparency = tr or 0
+      sk.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
+      sk.Parent = f
+      return { f = f, s = sk }
+    end
+    local L = { clip = clip }
+    L.eye = ring("Eye")
+    L.eye.s.Thickness = 1600
+    L.rings = {}
+    for i = 1, NRING do   -- 边缘渐暗：第 1 圈贴着镜筒最暗，往里一圈比一圈淡（指数 2.4，没有一道道的环）
+      L.rings[i] = ring("Soft", nil, 1 - 0.93 * ((NRING - i + 1) / NRING) ^ 2.4)
+    end
+    L.warm = ring("FringeW", RGB(255, 150, 70), 0.8)    -- 色散：最外一道偏暖
+    L.cool = ring("FringeC", RGB(110, 200, 205), 0.87)  -- 往里一点偏冷
+    L.glare = circle("Glare")   -- 镀膜反光：左上方斜着一片，往右下淡没
+    L.glare.BackgroundColor3 = Color3.new(1, 1, 1)
+    L.glare.BackgroundTransparency = 0.9
+    local g = Instance.new("UIGradient")
+    g.Rotation = 35
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.5), NumberSequenceKeypoint.new(0.28, 0.86),
+      NumberSequenceKeypoint.new(0.5, 1), NumberSequenceKeypoint.new(1, 1) })
+    g.Parent = L.glare
+    return L
   end
-  local clipL, eyeL = half(0)
-  local clipR, eyeR = half(0.5)
+  local LL = half(0)
+  local RR = half(0.5)
+  local function layoutLens(L, cx, cy, D)
+    local pos = UDim2.fromOffset(cx, cy)
+    L.eye.f.Size, L.eye.f.Position = UDim2.fromOffset(D, D), pos
+    local R = D / 2
+    local step = math.max(1, R * 0.011)
+    for i, r in ipairs(L.rings) do
+      local outer = R - (i - 1) * step
+      local d = math.max(2, 2 * (outer - step))
+      r.f.Size, r.f.Position = UDim2.fromOffset(d, d), pos
+      r.s.Thickness = step
+    end
+    L.warm.f.Size, L.warm.f.Position, L.warm.s.Thickness = UDim2.fromOffset(D - 4, D - 4), pos, 1.5
+    L.cool.f.Size, L.cool.f.Position, L.cool.s.Thickness = UDim2.fromOffset(D - 9, D - 9), pos, 1.5
+    L.glare.Size, L.glare.Position = UDim2.fromOffset(D * 0.96, D * 0.96), pos
+  end
+  o.binoLens = { LL, RR }   -- 测试看
   local BC = canvas(bino, "BinoRet", 9)
+  -- 底下的读数：垫一条两头渐隐的暗底（亮的天、雪地上也看得清）
+  local strip = Instance.new("Frame")
+  strip.Name = "BinoStrip"
+  strip.AnchorPoint = V2(0.5, 1)
+  strip.Size = UDim2.fromOffset(560, 52)
+  strip.Position = UD2(0.5, 0, 1, -94)
+  strip.BackgroundColor3 = Color3.new(0, 0, 0)
+  strip.BackgroundTransparency = 0.45
+  strip.BorderSizePixel = 0
+  strip.ZIndex = 9
+  strip.Parent = bino
+  do
+    local g = Instance.new("UIGradient")
+    g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.22, 0), NumberSequenceKeypoint.new(0.78, 0), NumberSequenceKeypoint.new(1, 1) })
+    g.Parent = strip
+  end
   local binoT = Instance.new("TextLabel")
   binoT.Name = "BinoInfo"
   binoT.BackgroundTransparency = 1
@@ -490,6 +614,26 @@ function GunSight.new(G, sightFrame, gui)
   binoH.TextColor3 = (G.Theme and (G.Theme.C.MUTE or G.Theme.C.FAINT)) or RGB(170, 174, 168)
   binoH.Position = UD2(0.5, 0, 1, -124)
   binoH.Parent = bino
+  -- 举起来那一下：先黑再亮
+  local fade = Instance.new("Frame")
+  fade.Name = "BinoFade"
+  fade.BackgroundColor3 = Color3.new(0, 0, 0)
+  fade.BorderSizePixel = 0
+  fade.Size = UDim2.fromScale(1, 1)
+  fade.BackgroundTransparency = 1
+  fade.ZIndex = 12
+  fade.Parent = bino
+  local blurB = Instance.new("BlurEffect")   -- 对焦：举起来时从糊到清楚；转得快微糊
+  blurB.Name = "BinoBlur"
+  blurB.Size = 0
+  blurB.Enabled = false
+  blurB.Parent = Lighting
+  local ccB = Instance.new("ColorCorrectionEffect")   -- 镀膜：偏暖、对比高一点、饱和度低一点
+  ccB.Name = "BinoCC"
+  ccB.Contrast, ccB.Saturation, ccB.Brightness, ccB.TintColor = 0.07, -0.06, 0.015, RGB(255, 247, 234)
+  ccB.Enabled = false
+  ccB.Parent = Lighting
+  local banim = { t0 = -99, look = nil, pan = 0, lastT = nil }
   local binoSig = nil
   o.binoFov = 70 / SD.BINOC.mag
 
@@ -497,17 +641,49 @@ function GunSight.new(G, sightFrame, gui)
     bino.Visible = on and true or false
     binoSig = nil
     if kit then cur.east = kit.east == true end   -- 望远镜的密位制跟着东西方（北约 6400）
+    blurB.Enabled, ccB.Enabled = bino.Visible, bino.Visible
+    if on then
+      banim.t0, banim.look, banim.pan, banim.lastT = os.clock(), nil, 0, nil
+      blurB.Size = 14
+      fade.BackgroundTransparency = 0
+    else
+      blurB.Size = 0
+    end
   end
   function o.binoOn() return bino.Visible end
+  -- 手持的呼吸晃动（Drive 乘在镜头上；瞄准点、炮塔照旧按没晃的算）：两三个慢正弦叠起来，±0.05° 左右，8 倍下是几个像素的漂
+  function o.binoSway()
+    local t = os.clock()
+    return CFrame.Angles(math.sin(t * 0.9 + 2) * 0.0006 + math.sin(t * 2.3) * 0.00022, math.sin(t * 1.1) * 0.0008 + math.sin(t * 2.7 + 1) * 0.00025, 0)
+  end
 
   -- info：{ R 估的距离（米）, est 正在估, yaw 镜头偏航 }
   function o.binoStep(info)
     local vp = cam.ViewportSize
-    local D = vp.Y * 0.9
+    local now = os.clock()
+    local u = math.clamp((now - banim.t0) / 0.35, 0, 1)
+    local e = 1 - (1 - u) ^ 3
+    local D = vp.Y * 0.9 * (0.9 + 0.1 * e)   -- 举起来：镜筒从小放到正常
     local off = D * 0.27
-    eyeL.Size, eyeR.Size = UDim2.fromOffset(D, D), UDim2.fromOffset(D, D)
-    eyeL.Position = UDim2.fromOffset(vp.X / 2 - off, vp.Y / 2)
-    eyeR.Position = UDim2.fromOffset(off, vp.Y / 2)
+    layoutLens(LL, vp.X / 2 - off, vp.Y / 2, D)
+    layoutLens(RR, off, vp.Y / 2, D)
+    fade.BackgroundTransparency = math.clamp((now - banim.t0) / 0.16, 0, 1)
+    -- 转得快：画面微糊（眼睛、焦距跟不上），停下来清楚
+    local lv = cam.CFrame.LookVector
+    local dtv = banim.lastT and (now - banim.lastT) or 0
+    banim.lastT = now
+    if banim.look and dtv > 0 then
+      local ang = math.acos(math.clamp(lv:Dot(banim.look), -1, 1)) / dtv
+      local target = math.clamp((ang - 0.12) * 5, 0, 3)
+      banim.pan += (target - banim.pan) * math.min(1, dtv * 8)
+    end
+    banim.look = lv
+    blurB.Size = 14 * (1 - e) + banim.pan
+    -- 镀膜反光：对着太阳亮（夜里不亮）
+    local okS, sun = pcall(function() return Lighting:GetSunDirection() end)
+    local k = okS and sun and math.clamp((lv:Dot(sun) - 0.55) / 0.45, 0, 1) or 0
+    local gt = (G.isNight and G.isNight()) and 0.97 or (0.9 - 0.42 * k)
+    LL.glare.BackgroundTransparency, RR.glare.BackgroundTransparency = gt, gt
     local B = SD.BINOC
     local unit = (cur.east == false) and 6400 or B.unit   -- 北约的车：6400 制望远镜（M22 一类）
     local P = geom(cam.FieldOfView, unit)
@@ -515,23 +691,23 @@ function GunSight.new(G, sightFrame, gui)
     if sig ~= binoSig then
       binoSig = sig
       BC.begin()
-      BC.col, BC.tr = RGB(16, 16, 16), 0
+      BC.col, BC.tr = RGB(22, 22, 20), 0.08   -- 刻在镜片上的线：深灰、一点点透（不是死黑的贴纸）
       local m = P.m
       -- 横的密位尺：每 5 密位一格、每 10 写数（苏式 BPC 望远镜的分划：10 20 30 40）
       local ext = m(B.lat.ext)
       BC.line(-ext, 0, ext, 0, 1)
-      local k = B.lat.step
-      while k <= B.lat.ext do
-        local x = m(k)
-        local lab = (k % B.lat.label) == 0
+      local k2 = B.lat.step
+      while k2 <= B.lat.ext do
+        local x = m(k2)
+        local lab = (k2 % B.lat.label) == 0
         local len = lab and 9 or 5
         BC.line(x, 0, x, -len, 1)
         BC.line(-x, 0, -x, -len, 1)
         if lab then
-          BC.text(x, -len - 8, tostring(k), 11)
-          BC.text(-x, -len - 8, tostring(k), 11)
+          BC.text(x, -len - 8, tostring(k2), 11)
+          BC.text(-x, -len - 8, tostring(k2), 11)
         end
-        k += B.lat.step
+        k2 += B.lat.step
       end
       -- 竖的密位尺：中心往下
       BC.line(0, 4, 0, m(B.vext), 1)
