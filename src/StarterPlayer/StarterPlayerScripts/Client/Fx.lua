@@ -2133,40 +2133,40 @@ function Fx.init(G)
 
   local spotMarks = {}
   -- 被标记的敌人（用户 11-27「如果发现了敌载具可以进行全队标记 你仿照战雷就行」）：服务器每半秒发一次位置——
-  --   车 / 飞机 / 船的红菱形挂在离那个位置最近的那辆车的模型上（跟着它走，不再半秒一跳一跳）；远处也画（原来 2500 格外就不画了）；
-  --   找不到车的（人）照旧摆在那个位置上
+  --   车 / 飞机的红菱形按服务器给的实体编号挂在那辆车上（跟着它走，不再半秒一跳一跳）；远处也画（原来 2500 格外就不画了）；
+  --   人照旧摆在那个位置上
   local spotGui = Instance.new("Folder")
   spotGui.Name = "SpotMarks"
   spotGui.Parent = me:WaitForChild("PlayerGui")
-  local function nearestView(p)
-    local vf = G.viewFolder
-    if not vf then return nil end
-    local best, bd = nil, 60
-    for _, m in ipairs(vf:GetChildren()) do
-      if m:IsA("Model") then
-        local ok, pv = pcall(function() return m:GetPivot().Position end)
-        if ok then
-          local d = (pv - p).Magnitude
-          if d < bd then best, bd = m, d end
-        end
+  -- 被标记的那辆车挂红菱形的零件：客户端这辆车的视图（View.lua）上挂血条的锚点 / 模型里的零件；没有视图就用服务器复制过来的实体根零件
+  local function hostFor(id)
+    local v = id and G.viewById and G.viewById(id)
+    if v then
+      local a = v.anchor or (v.model and (v.model.PrimaryPart or v.model:FindFirstChildWhichIsA("BasePart", true)))
+      if a then return a, v.model end
+    end
+    local ents = id and workspace:FindFirstChild("Ents")
+    if ents then
+      for _, m in ipairs(ents:GetChildren()) do
+        if m:GetAttribute("EntId") == id and m.PrimaryPart then return m.PrimaryPart, m end
       end
     end
-    return best
+    return nil
   end
-  local function spots(list)
+  local function spots(list, ids)
     for _, m in ipairs(spotMarks) do m:Destroy() end
     spotMarks = {}
-    for _, p in ipairs(list or {}) do
+    for i, p in ipairs(list or {}) do
       local bb = Instance.new("BillboardGui")
       bb.Size = UDim2.fromOffset(16, 16)
       bb.AlwaysOnTop = true
       bb.MaxDistance = 1e5
-      local host = nearestView(p)
-      local root = host and (host.PrimaryPart or host:FindFirstChildWhichIsA("BasePart", true))
+      local root, host = hostFor(ids and ids[i] or nil)
       if root then
-        local _, size = host:GetBoundingBox()
+        local ok, _, size = pcall(function() return host:GetBoundingBox() end)
+        local h = (ok and size) and size.Y or 8
         bb.Adornee = root
-        bb.StudsOffsetWorldSpace = V(0, size.Y * 0.6 + 3, 0)
+        bb.StudsOffsetWorldSpace = V(0, h * 0.6 + 3, 0)
         bb.Parent = spotGui
         table.insert(spotMarks, bb)
       else
@@ -2296,7 +2296,7 @@ function Fx.init(G)
         tween(sp, 0.3, { Size = V(0.1, 0.1, 0.1), Transparency = 1 })
         Debris:AddItem(sp, 0.35)
       elseif k == "capture" then G.playSound("capture")
-      elseif k == "spots" then spots(e.list)
+      elseif k == "spots" then spots(e.list, e.ids)
       elseif k == "ramp" then G.playSound("splash")
       elseif k == "vfire" then vfire(e)
       elseif k == "ricochet" then shellRicochet(e)

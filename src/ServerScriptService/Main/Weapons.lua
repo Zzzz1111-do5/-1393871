@@ -705,7 +705,7 @@ function Weapons.init(G)
       task.wait(0.5)
       local t = now()
       for team, S in pairs(spotted) do
-        local out = {}
+        local out, ids = {}, {}   -- ids[i]：第 i 个是哪个实体（客户端把红菱形挂在那辆车上跟着走；人是 false）
         for key, till in pairs(S) do
           if till < t then
             S[key] = nil
@@ -719,11 +719,14 @@ function Weapons.init(G)
               local e = G.entById[key]
               if e and e.alive then pos = e.root.CFrame.Position end
             end
-            if pos then table.insert(out, pos) else S[key] = nil end
+            if pos then
+              table.insert(out, pos)
+              ids[#out] = (string.sub(key, 1, 1) ~= "p") and key or false
+            else S[key] = nil end
           end
         end
         for pl, Q in pairs(G.P) do
-          if Q.team == team then G.R.Fx:FireClient(pl, { { k = "spots", list = out } }) end
+          if Q.team == team then G.R.Fx:FireClient(pl, { { k = "spots", list = out, ids = ids } }) end
         end
       end
     end
