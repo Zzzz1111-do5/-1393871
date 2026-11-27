@@ -25,6 +25,9 @@ function T.boot()
   if not T.wtMode then T.G.allowInfantry = true end
   -- 匹配（11-26，WtMatch.lua）：老测试都是开服就进准备阶段——默认关着，测匹配的测试在 boot 前设 T.matchMode = true
   if not T.matchMode then T.G.matchOff = true end
+  -- 训练场（Range.lua，11-26 晚）：开服后台按高度逐列写挡弹墙、丘陵——模拟器里一次要多花十几秒 CPU，别的测试用不着：默认不写地形
+  --   （设施照建、G.rangeReady 照样有）；测训练场地形的测试在 boot 前设 T.rangeTerrain = true
+  if not T.rangeTerrain then T.G.rangeTerrainOff = true end
   -- 射线打地形用项目自己的高度函数
   R.terrainHeight = T.G.Map.height
   return T.G

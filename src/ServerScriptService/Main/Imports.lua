@@ -1,6 +1,7 @@
 -- Roblox全面大战场——收导入的模型：Studio 里「导入 3D」导入 models/veh/<模型键>.glb（地面载具）、models/air/<模型键>.glb（飞机直升机）、
 --   models/ship/<型号>.glb（舰艇）、models/optics/<键>.glb（瞄准镜、手持装备）、models/scenery/scenery.glb（花草树木，一个文件全有）、
---   models/bld/buildings.glb（地图建筑：民房、水泥楼、机库、塔台、营房、库房……一个文件全有，块叫 B_<键>__Body_<号>，收进 Imported.Bld）以后，
+--   models/bld/buildings.glb（地图建筑：民房、水泥楼、机库、塔台、营房、库房……一个文件全有，块叫 B_<键>__Body_<号>，收进 Imported.Bld）、
+--   models/snow/<键>.glb（雪山地图谷外的山体，块叫 P_<键>__c<号>，收进 Imported.Peaks.<键>）以后，
 --   MeshPart 叫 V_<模型键>__<块>（Body_1、Turret_2、Gun_1、W01_1……）/ N_<键>__<块>（Bark、Leaves、Body：地图上的树、灌木、石头、草丛、花丛）/
 --   A_<模型键>__<块>（Body_1、Gear_1、Rotor_1……）/ S_<型号>__<块>（Hull_1、T1_1……）/ O_<键>__<块>，不管导进来放在 Workspace、ReplicatedStorage 还是 ServerStorage，
 --   开服时按名字收进 ReplicatedStorage.Imported.Veh / Air / Ship / Optics.<模型键>（第一人称的 M4，models/fps_m4.glb 的 FPS_M4_* 收进 Imported.FPS_M4），
@@ -26,20 +27,20 @@ function Imports.init(G)
   -- V 地面载具、A 飞机直升机、S 舰艇、O 瞄准镜望远镜和手持装备（models/optics/<键>.glb，块叫 O_<键>__<块名>）、
   --   W 机载导弹炸弹（models/wpn/missiles.glb，块叫 W_<型号>__Body_1；WeaponModels 有就用它）
   local dest = { V = folder(imported, "Veh"), A = folder(imported, "Air"), S = folder(imported, "Ship"), O = folder(imported, "Optics"), N = folder(imported, "Scenery"),
-    W = folder(imported, "Wpn"), B = folder(imported, "Bld") }
+    W = folder(imported, "Wpn"), B = folder(imported, "Bld"), P = folder(imported, "Peaks") }
   local n, keys, airKeys, shipKeys = 0, {}, {}, {}
   local emptied = {}
   for _, root in ipairs({ workspace, RS, ServerStorage }) do
     for _, d in ipairs(root:GetDescendants()) do
       if d:IsA("BasePart") and not d:IsDescendantOf(imported) then
-        local kind, key = string.match(d.Name, "^([VASONWB])_([%w_]-)__[%w_]+$")
+        local kind, key = string.match(d.Name, "^([VASONWBP])_([%w_]-)__[%w_]+$")
         if not kind and string.match(d.Name, "^FPS_M4_%w+$") then   -- 第一人称的 M4（models/fps_m4.glb）：收进 Imported.FPS_M4（FPSView 在那里找）
           local parent = d.Parent
           d.Anchored = true
           d.CanCollide, d.CanQuery, d.CanTouch = false, false, false
           d.Parent = folder(imported, "FPS_M4")
           if parent and parent ~= workspace and parent ~= RS and parent ~= ServerStorage then emptied[parent] = true end
-        elseif kind == "O" or kind == "N" or kind == "W" or kind == "B" then   -- B：地图建筑（World.lua 开服时摆）   -- 瞄准镜、花草树木、导弹炸弹：只收好，不算进装备模型（花草树木的键里有下划线：fir1_m、grass_s）
+        elseif kind == "O" or kind == "N" or kind == "W" or kind == "B" or kind == "P" then   -- B：地图建筑（World.lua 开服时摆）；P：雪山的山体（models/snow/<键>.glb，客户端 SnowPeaks.lua 在本机摆）   -- 瞄准镜、花草树木、导弹炸弹：只收好，不算进装备模型（花草树木的键里有下划线：fir1_m、grass_s）
           local parent = d.Parent
           d.Anchored = true
           d.CanCollide, d.CanQuery, d.CanTouch = false, false, false
@@ -75,7 +76,7 @@ function Imports.init(G)
   G.importedVeh, G.importedAir, G.importedShip = sorted(keys), sorted(airKeys), sorted(shipKeys)
   -- 每个模型的文件夹记下有几块（属性 N）：进服时几千块是陆续复制到客户端的，客户端等这些块都到了再用，
   --   不然先到的半架飞机 / 半辆车会一直缺块，或者一直当成「没导入」用零件拼的（用户：很多飞机找不到建模）
-  for _, root in ipairs({ dest.V, dest.A, dest.S, dest.O, dest.N, imported:FindFirstChild("FPS_M4") }) do
+  for _, root in ipairs({ dest.V, dest.A, dest.S, dest.O, dest.N, dest.P, imported:FindFirstChild("FPS_M4") }) do
     if root then
       if root.Name == "FPS_M4" then root:SetAttribute("N", #root:GetChildren())
       else for _, f in ipairs(root:GetChildren()) do if f:IsA("Folder") then f:SetAttribute("N", #f:GetChildren()) end end end

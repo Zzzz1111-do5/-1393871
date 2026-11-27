@@ -46,7 +46,8 @@ R.run(5)
 T.key(Enum.KeyCode.LeftShift, false)
 -- 一直按 Shift 油门推到了加力、快到音障（会冒蒸汽锥）：收到军推、速度放回巡航
 st.thr, st.thrE = 90, 90
-st.spd = math.min(st.spd, e.def.vMil * 0.8)
+-- 飞行物理（11-26 晚）以后加速照真机：起飞爬升五六秒才三百来格 / 秒，这么慢拉满杆升力也只够两三 g——直接给到八成 vMil（测的是拉杆的云雾，不是加速）
+st.spd = e.def.vMil * 0.8
 st.vel = st.vdir * st.spd
 R.run(2)
 local v = C.views and C.views[e.model]
@@ -64,6 +65,7 @@ print("① 平飞没有云雾；拉杆有翼尖涡流、机翼水汽")
 check(v ~= nil and v.M ~= nil, "客户端拼好了飞机")
 check(trailsOn() == 0 and vaporOn() == 0, string.format("平飞：没有拖线、没有水汽（拖线 %d、水汽 %d，%.1f g，%.0f 格 / 秒）", trailsOn(), vaporOn(), st.gLoad or 0, st.spd or 0))
 -- 按住 S 猛拉杆（用户 11-21：WASD 控制方向；过载上限收到七成，歼-20 约 6.5 g）
+local y0 = st.cf.Position.Y   -- 拉杆前的高度（② 摆回这个高度）
 T.key(Enum.KeyCode.S, true)
 local got4, got7, gMax = false, false, 0
 for _ = 1, 60 do
@@ -78,6 +80,20 @@ check(got7, "拉到 5 g 以上：两边机翼上冒水汽")
 R.run(3)
 
 print("② 音障：蒸汽锥、音爆")
+-- ① 拉满杆三秒（飞行物理以后速度够，拉出来是半个筋斗、爬高一大截）：摆回拉杆前的高度、平飞，再看音障（蒸汽锥要低空的湿空气）
+do
+  local p = st.cf.Position
+  local f = st.cf.LookVector
+  local flat = R.Vector3.new(f.X, 0, f.Z)
+  flat = (flat.Magnitude > 0.1) and flat.Unit or R.Vector3.new(0, 0, -1)
+  local np = R.Vector3.new(p.X, y0, p.Z)
+  st.cf = R.CFrame.lookAt(np, np + flat)
+  st.vdir, st.vel = flat, flat * st.spd
+  st.pr, st.rr, st.yr = 0, 0, 0
+  st.aimYaw, st.aimPitch = math.atan2(-flat.X, -flat.Z), 0
+  if G.moveEnt then G.moveEnt(e, st.cf) end
+  R.run(0.5)
+end
 local m1 = C.airMach1 and C.airMach1(e.def)
 check(m1 ~= nil, "歼-20 有音障速度（" .. tostring(m1) .. " 格 / 秒）")
 local booms = 0

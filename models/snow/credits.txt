@@ -1,0 +1,21 @@
+雪山地图（MapSnow）用到的模型——都是 Sketchfab 上 CC-BY 4.0 授权的（http://creativecommons.org/licenses/by/4.0/）
+
+谷外的山体（models/snow/<键>.glb，tools/snow/peaks.py 转的：合并同一种材质、按网格切成每块不超过两万个三角形的小块、贴图切成 1024² 的格子，
+不减面、不降分辨率；山体边上一圈往下收到雪原的高度，好拼在一起）：
+· rockscan：「Rock terrain with light snow」Lassi Kaukonen，https://sketchfab.com/3d-models/rock-terrain-with-light-snow-e37252871af442e2aeb3571d1d11e65a
+· icy：「Icy Terrain Export」josevega，https://sketchfab.com/3d-models/icy-terrain-export-463eef961fc643358a1929bec9f0f18f
+· wmsnow：「Snow Mountain」hkp941111，https://sketchfab.com/3d-models/snow-mountain-e84a8e5edb2040c591be36350e2536f5
+
+天上的云（models/snow/clouds.glb，tools/snow/clouds.py）：
+· 「Fluffy Cloud」Loïc Norgeot，https://sketchfab.com/3d-models/fluffy-cloud-2c887a28840f47cfae6b5dee0d11b842
+  改动：三个方向各挑 19 片切片（原来各 225 片）、按片数补每片的不透明度、烘上云顶白云底灰的明暗、贴图缩到 1024
+
+天空（models/snow/sky.glb，tools/snow/sky.py）：
+· 「Night Sky Visible Spectrum Monochromatic」commonfactory，https://sketchfab.com/3d-models/night-sky-visible-spectrum-monochromatic-cfb156f03a7341b8a0a0ba0445ca742d
+  改动：等距柱状的星空贴图切成天空盒的六个面（1024²）、提亮
+· 「Ganymede (moon)」SebastianSosnowski，https://sketchfab.com/3d-models/ganymede-moon-7021e376ecb04b89b11fcbe017e48e8c
+  改动：球面贴图画成一张侧光的月亮圆盘（512²）
+· 「The Sun」tamminen，https://sketchfab.com/3d-models/the-sun-8f31ed4194e34f91bdacbd85dfc5fb39
+  改动：照模型的颜色画成太阳圆盘（临边昏暗、外面一圈光晕）
+
+房子见 models/bld/snow_credits.txt；树、灌木、地面雪贴图见 models/scenery/credits.txt

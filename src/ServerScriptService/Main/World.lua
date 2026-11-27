@@ -310,18 +310,59 @@ World.terrainCal = function() return CAL end
 
 -- 一块 64 × 64 列（256 × 256 格）：按高度写体素，海平面以下没土的格子是水。
 --   n、yFloor（Battle.lua 填弹坑用）：只写 n × n 列的一小块，至少从 yFloor 往上写（坑底比这一小块里最低的地面还深）
+-- 雪山（MapSnow）：谷边山体模型脚下的体素只写一层壳（Map.shellCol 说这一列是壳）——几百上千格高的山整列填实心要几十亿个体素；
+--   壳从这一列和四邻里最低的那个往下 SHELL 格写到地面（陡坡上相邻两列的壳上下搭得上，侧面不漏缝），下面是空的（模型盖着，进不去）
+local SHELL = 16
 local function writeChunk(T, x0, z0, n, yFloor, baseY)
   local RES, N, D = Map.RES, n or 64, Map.SEA_DEPTH
+  local hfun = Map.voxelHeight or Map.height   -- 雪山：体素比山体模型表面低 4 格（藏在模型下面）
+  local shellCol = Map.shellCol
+  if shellCol and N > 16 and Map.hollowAt and Map.hollowAt(x0, z0) then
+    -- 大块里有壳：拆成 16 × 16 列一份写（一份上下跨度小，空气体素少）
+    local v = 0
+    for q = 0, (N // 16) * (N // 16) - 1 do
+      v += writeChunk(T, x0 + (q % (N // 16)) * 16 * RES, z0 + (q // (N // 16)) * 16 * RES, 16, yFloor, baseY)
+    end
+    return v
+  end
   if Map.colCache then Map.colCache(true) end   -- 沙漠图：先算的高度顺手记下地貌，定材质时不用再算一遍
   local hs = table.create(N * N)
   local ymin, ymax = 1e9, -1e9
   for i = 0, N - 1 do
     local x = x0 + (i + 0.5) * RES
     for k = 0, N - 1 do
-      local h = Map.height(x, z0 + (k + 0.5) * RES)
+      local h = hfun(x, z0 + (k + 0.5) * RES)
       hs[i * N + k + 1] = h
       if h < ymin then ymin = h end
       if h > ymax then ymax = h end
+    end
+  end
+  -- 壳的下沿（只有雪山有）：lo[列] = 这一列和四邻（块外的邻列另算）里最低的往下 SHELL 格；不是壳的列 nil（照旧实心到底）
+  local lo, anyShell = nil, false
+  if shellCol then
+    lo = table.create(N * N, false)
+    local function hAt(i, k)
+      if i >= 0 and i < N and k >= 0 and k < N then return hs[i * N + k + 1] end
+      return hfun(x0 + (i + 0.5) * RES, z0 + (k + 0.5) * RES)
+    end
+    for i = 0, N - 1 do
+      local x = x0 + (i + 0.5) * RES
+      for k = 0, N - 1 do
+        local h = hs[i * N + k + 1]
+        if shellCol(x, z0 + (k + 0.5) * RES, h) then
+          local m = math.min(h, hAt(i - 1, k), hAt(i + 1, k), hAt(i, k - 1), hAt(i, k + 1))
+          lo[i * N + k + 1] = m - SHELL
+          anyShell = true
+          if m - SHELL < ymin then ymin = m - SHELL end
+        end
+      end
+    end
+    if anyShell then
+      baseY = nil   -- 有壳：底下不补实心的底
+      -- 同一份里不是壳的列（山脚和谷底交界）：至少也有 SHELL 格厚（弹坑最深 5.5 格，挖不穿）
+      for q = 1, N * N do
+        if not lo[q] and hs[q] - SHELL < ymin then ymin = hs[q] - SHELL end
+      end
     end
   end
   -- 海底只写上面 30 格（大陆坡再往下是开头铺好的海水和远海海底：深水里看不见，写全了近岸的块要多两三倍体素）
@@ -363,11 +404,14 @@ local function writeChunk(T, x0, z0, n, yFloor, baseY)
       local under = Map.underMat and Map.underMat(top) or ((h > 20) and Rock or (h > 0.3 and Ground or Sand))
       -- 最上面那层：序号 jT、占有率 oT（按开服量的网格器对照表，地面画出来正好在 h；没量出来同原来的写法）
       local jT, oT = surfAt(h, calFor(top))
+      local sl = lo and lo[i * N + k + 1]   -- 壳的下沿（雪山山脚）：再往下是空的
       for j = 0, NY - 1 do
         local ja = yb0 + j
         local yb = ja * RES
         local m, o
-        if ja < jT then
+        if sl and ja < jT and yb + RES <= sl then
+          m, o = Air, 0
+        elseif ja < jT then
           m, o = (yb + RES > h - 5) and top or under, 1
         elseif ja == jT and oT > 0 then
           m, o = top, math.min(oT, 1)
@@ -425,10 +469,17 @@ local function terrainDesert(T, onProgress, G)
       warn("[地形] Workspace → Terrain 的 SmoothVoxelsUpgraded 开着：写地形会慢几千倍（地图生成卡住）。在 Studio 里选中 Terrain，属性里取消勾选再保存")
     end
   end
-  local function fill(x0, z0, w, d, y, mat)
+  local function fill(x0, z0, w, d, y, mat, ybOver)
+    -- 海（雪山冰岛：岛外一圈海）：先铺一层玄武岩海底（Map.COLORS 染成深海底的颜色），上面灌 SEA_FLOOR 格海水
+    if mat == MAT.Water and not ybOver then
+      local SF = Map.SEA_FLOOR or 26
+      fill(x0, z0, w, d, y - SF, MAT.Basalt, y - SF - 4)
+      fill(x0, z0, w, d, y, MAT.Water, y - SF)
+      return
+    end
     -- 作战区里地壳 16 格厚（弹坑挖不穿）；作战区外面那一圈只是远景，8 格（PLAY 正好落在 2048 的格线上，一个大块不会跨两边）
     local inner = math.abs(x0 + w / 2) < PLAY and math.abs(z0 + d / 2) < PLAY
-    local yb = math.max(math.min(DESERT_BASE, y - 8), y - (inner and 16 or 8))
+    local yb = ybOver or math.max(math.min(DESERT_BASE, y - 8), y - (inner and 16 or 8))
     while yb < y do   -- 一次 FillBlock 别超过四百万体素：按 60 格一层（2048 × 2048 × 60 格 ≈ 390 万）
       local h = math.min(60, y - yb)
       if not bg then
@@ -733,7 +784,7 @@ function World.terrain(onProgress, G)
   local T = workspace.Terrain
   local R, D = Map.R, Map.SEA_DEPTH
   pcall(function()
-    T.WaterColor = RGB(30, 112, 136)
+    T.WaterColor = Map.WATER_COLOR or RGB(30, 112, 136)   -- 雪山冰岛：北冰洋那种深灰蓝
     T.WaterTransparency = 0.5
     T.WaterReflectance = 0.5
     T.WaterWaveSize = 0.15
@@ -877,6 +928,14 @@ pcall(function()
   if type(cm) == "table" then
     BM = BM or {}
     for k, v in pairs(cm) do if BM[k] == nil then BM[k] = v end end
+  end
+end)
+-- 雪山的写实房子（SnowMeta，models/bld/snow.glb；用户 11-26 晚「多搞点房屋 你自己去sketchfeb找 再加点坏掉的屋子」）：同上并进来
+pcall(function()
+  local sm = RS:FindFirstChild("SnowMeta") and require(RS.SnowMeta)
+  if type(sm) == "table" then
+    BM = BM or {}
+    for k, v in pairs(sm) do if BM[k] == nil then BM[k] = v end end
   end
 end)
 pcall(function() TURN = require(RS:WaitForChild("ImportTurn", 5)).TURN end)
@@ -1190,7 +1249,7 @@ local function building(f, key, x, z, rot, opt)
       end
     end
     if n > 0 then
-      for _, c in ipairs(spec.coll or COLL_DEF) do   -- 看不见的碰撞盒：挡人、挡车、挡子弹（原模型的网格不参与碰撞：窗洞、门洞会卡人）
+      for _, c in ipairs(opt.coll or spec.coll or COLL_DEF) do   -- 看不见的碰撞盒：挡人、挡车、挡子弹（原模型的网格不参与碰撞：窗洞、门洞会卡人）
         local bx = part(m, V(w * c[4], h * c[5], d * c[6]), base * CF(w * c[1], h * c[2], d * c[3]), C.concrete, MAT.SmoothPlastic, nil, true)
         bx.Name = "Collision"
         bx.Transparency = 1
@@ -1324,6 +1383,8 @@ local function airfield(f, A, team)   -- 跑道东西向、北面停机坪、机
   for i = -1, 1 do floodPole(lights, A.x + i * A.len * 0.24, y, A.z - A.wid / 2 - 84, 22, RGB(255, 222, 170), 120) end
   local _ = team
 end
+
+World.airfield = function(f, A, team) return airfield(f, A, team) end   -- 训练场（Range.lua）也照这个建跑道
 
 local function portTown(f)
   local P = Map.PORT
@@ -2812,6 +2873,13 @@ function World.build(G)
       G.try("主基地 " .. side, function() G.fobParts[side] = FOB.build(World, deco, side) end)
     end
     G.try("城市", function() require(script.Parent:WaitForChild("CityBuild")).build(World, deco, G) end)
+  elseif Map.SNOW then   -- 雪山（MapSnow.lua，用户 11-26 晚）：两边主基地（FOB.lua）+ 谷里的山村、小村落、锯木厂、雷达站、水电站、检查站、桥（SnowBuild.lua）
+    local FOB = require(script.Parent:WaitForChild("FOB"))
+    G.fobParts = {}
+    for _, side in ipairs({ "atk", "def" }) do
+      G.try("主基地 " .. side, function() G.fobParts[side] = FOB.build(World, deco, side) end)
+    end
+    G.try("雪山", function() require(script.Parent:WaitForChild("SnowBuild")).build(World, deco, G) end)
   elseif Map.LANDONLY then   -- 沙漠图：没有港口、灯塔、岸防炮台、海滩
     G.try("指挥所", commandPost, deco)
     -- 两边的主基地（FOB.lua：营区 + 机场 + 车场 + 直升机坪围在一起，用户 11-24「军事基地应该在一起」）；原来的守方营地、红方前进基地、前进机场不建了

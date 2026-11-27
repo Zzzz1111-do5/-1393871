@@ -130,6 +130,13 @@ shiftB()
 check(C.flyBombSeries() == 1, "再按：回到单投")
 
 print("③ Alt + 中键 标目标点 → 落点到了自动投")
+-- ① 里鼠标往右修了十来度航向：飞行物理（11-26 晚）以后轰-6K 照真机慢慢压坡度转过去、再改平，要好几秒；还带着坡度在转的时候航迹是弯的，
+--   照「顺着现在的速度方向」放的目标点会越偏越远（落点偏出七成杀伤半径就不投）——等它转完、改平再标
+T.runUntil(function()
+  local r = js.cf.RightVector
+  return math.abs(math.deg(math.asin(math.max(-1, math.min(1, r.Y))))) < 0.8 and math.abs(js.rr or 0) < 0.02
+end, 15)
+R.run(1)
 T.key(Enum.KeyCode.LeftAlt, true)
 T.mouse(true, 640, 360, Enum.UserInputType.MouseButton3)
 T.mouse(false, 640, 360, Enum.UserInputType.MouseButton3)

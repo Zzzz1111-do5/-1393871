@@ -57,6 +57,14 @@ Config.StagesByMap = {
     { id = "station", points = { "D" }, time = 6 * 60 },
     { id = "tower", points = { "E" }, time = 7 * 60 },
   },
+  -- 雪山（攻方从南边的主基地打进河谷：A 锯木厂 → B 西坡的雷达站 → C 山村 → D 冰湖边的水电站 → E 北边的山口检查站）
+  snow = {
+    { id = "sawmill", points = { "A" }, time = 6 * 60 },
+    { id = "radar", points = { "B" }, time = 6 * 60 },
+    { id = "village", points = { "C" }, time = 6 * 60 },
+    { id = "hydro", points = { "D" }, time = 6 * 60 },
+    { id = "pass", points = { "E" }, time = 7 * 60 },
+  },
   sands = {
     { id = "border", points = { "A" }, time = 6 * 60 },     -- 第一阶段：越过沙墙和反坦克壕，拿下边境哨所
     { id = "oil", points = { "B" }, time = 6 * 60 },        -- 第二阶段：油田（油井在烧）

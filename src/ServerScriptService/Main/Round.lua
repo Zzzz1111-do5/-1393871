@@ -1185,7 +1185,7 @@ function Round.init(G)
       end
     end
     -- ⑱ 这一局的任务：战雷式纯载具对战、沙海上按 突破 → 统治 → 征服 轮着来
-    if G.wtGroundOnly and G.wtGroundOnly() and (Map.id == "sands" or Map.id == "city") then
+    if G.wtGroundOnly and G.wtGroundOnly() and (Map.id == "sands" or Map.id == "city" or Map.id == "snow") then
       R.missionI = ((R.missionI or 0) % #MISSIONS) + 1
       R.mission = MISSIONS[R.missionI]
     else

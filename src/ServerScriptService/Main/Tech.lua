@@ -711,9 +711,10 @@ function Tech.init(G)
 
   ---------------------------------------------------------------- 试驾（用户 11-25「都要做」；又「试驾的时候 飞机就从地面机场开始 然后做几个机器人飞机 我可以去打他们
   --   不会还手 也做几个地面的 然后开坦克 和防空车的时候试驾场也多一点坦克和天上的飞机」）：
-  --   · 坦克、步战车、防空车：人和车放到地图东边远离战场的一块平地（每人一块），车头前 300～2000 米七辆靶车（两辆横着来回开），
+  --   · 用户 11-26 晚「把训练场单独做一张地图吧」：试驾全在训练场（自己一块区块 Zones.RANGE、自己的图 MapRange，Range.lua 建），不在战场里
+  --   · 坦克、步战车、防空车：每人一条靶道（射击线上的水泥坪），车头前 300～2000 米七辆靶车（两辆横着来回开），
   --     天上三架靶机绕圈（两架固定翼、一架直升机）
-  --   · 飞机、直升机：停在自己机场的跑道上（同出击），自己滑跑起飞；基地后面几公里外三架靶机绕圈、地上一排靶车
+  --   · 飞机：停在训练场跑道东头，自己滑跑起飞；直升机：停在直升机坪；空中靶区三架靶机绕圈、地上一排靶车
   --   靶车、靶机都是对面那一队的（界面按队伍上色），没人开、不还手（电脑车也不把它们当目标：testDummy），不给分、不记击毁；
   --     打掉 10 秒后原处再来一个；靶机借无人机断链后的自动盘旋（Air.lua loiterStep）绕圈飞
   --   科技树里随便哪一辆都能试（没研究、没买的也行），改装全装上；不花 SP、不进阵容、阵亡不扣兵力；下车回机库
@@ -722,7 +723,8 @@ function Tech.init(G)
   local DRONE_JET = { "f16", "j10", "f15", "a10c", "j8" }
   local DRONE_HELI = { "ah64e", "z10", "mi28", "mi24" }
   -- 地面试驾的靶车：射击方向多少米、往右多少米、横着来回开的半程（米，没有就不动）
-  local RANGE = { { 300, -40 }, { 500, 70 }, { 700, -90, 110 }, { 1000, 30 }, { 1300, 150, 150 }, { 1600, -130 }, { 2000, 60 } }
+  --   训练场（11-26 晚）：每人一条靶道（960 格 ≈ 340 米宽），横着偏的、来回开的都收在自己的靶道里（最多偏 150 米）
+  local RANGE = { { 300, -40 }, { 500, 60 }, { 700, -70, 70 }, { 1000, 30 }, { 1300, 60, 90 }, { 1600, -110 }, { 2000, 50 } }
   -- 靶机：绕哪儿转（射击方向多少米、往右多少米）、半径（米）、离地多高（米）、速度（米 / 秒）、直升机
   local SKY = { { 1300, -400, 900, 420, 170 }, { 1800, 500, 1300, 650, 210 }, { 900, 250, 450, 70, 32, true } }
   -- 飞机试驾的地面靶：离靶机中心多少米（往前、往右）
@@ -732,22 +734,16 @@ function Tech.init(G)
     local Map = G.Map
     return Map.height(x, z) > 2 and (not Map.slope or Map.slope(x, z) < 0.3)
   end
-  local function testSpot(P)
-    local Map = G.Map
-    local half = (Map.HALF or Map.SIZE or 38000)
-    local i = 0
-    for _ in pairs(tests) do i += 1 end
-    local x0 = math.min(30000, half * 0.78)
-    local dir = Vector3.new(-1, 0, 0)   -- 朝西（地图中间）打靶
-    for k = 0, 30 do   -- 一块块往外找，靶车的位置都平
-      local x, z = x0 - (k % 6) * 900, (i - 2) * 3600 + math.floor(k / 6) * 900
-      local ok = flatOk(x, z)
-      for _, m in ipairs({ 300, 600, 1000, 1600, 2000 }) do
-        if ok and not flatOk(x + dir.X * m * M, z + dir.Z * m * M) then ok = false end
-      end
-      if ok then return Vector3.new(x, Map.height(x, z), z), dir end
-    end
-    return Vector3.new(x0, Map.height(x0, 0), 0), dir
+  -- 训练场（MapRange）：第几个在试驾的人用第几条靶道
+  local RangeMap = G.Map.Range or require(RS:WaitForChild("MapRange"))
+  local function testIndex(P)
+    local used = {}
+    for q, s in pairs(tests) do if q ~= P and s.idx then used[s.idx] = true end end
+    for i = 0, 63 do if not used[i] then return i end end
+    return 0
+  end
+  local function testSpot(idx)
+    return RangeMap.lane(idx % RangeMap.LANES + 1)
   end
   local function pick(list, i, get)
     for k = 0, #list - 1 do
@@ -844,33 +840,36 @@ function Tech.init(G)
     if now() < (P.canDeployAt or 0) then G.msg(P.pl, "info", "tree.waitDeploy", math.ceil((P.canDeployAt or 0) - now())) return end
     local air = it.branch == "air" or it.branch == "heli"
     local heli = it.branch == "heli"
-    local pad = air and padFor(P.team, true, heli) or nil
+    if not G.rangeReady then G.msg(P.pl, "info", "tree.rangeBusy") return end   -- 训练场还在后台建（开服头一会儿）
+    local idx = testIndex(P)
+    -- 出车的地方（训练场里）：车在第 idx 条靶道的射击线上、飞机在跑道东头、直升机在直升机坪
+    local spawnAt, spawnDir
+    if heli then spawnAt, spawnDir = RangeMap.heliPad(idx)
+    elseif air then spawnAt, spawnDir = RangeMap.runwayStart(idx)
+    else spawnAt, spawnDir = testSpot(idx) end
     local function go()
       if not P.alive or not P.char then return end
       testClean(P)
-      local s = { P = P, dummies = {}, drones = {}, foe = (P.team == "atk") and "def" or "atk", air = air }
+      local s = { P = P, idx = idx, dummies = {}, drones = {}, foe = (P.team == "atk") and "def" or "atk", air = air }
+      -- 流式加载：先请服务器把训练场那一片送过去（人在战场那边出生的，十万格外的地形、零件这时还没到客户端）
+      if G.streamAround then G.streamAround(P.pl, spawnAt, 8) end
+      if not P.alive or not P.char then return end
       local e
       if air then
-        -- 飞机：停在自己机场的跑道上（同出击：Depots.lua 的跑道停机位），自己滑跑起飞；靶场在基地后面（离开战场的那一边）
-        local B = G.Map.BASES and G.Map.BASES[P.team]
-        local face = (B and B.face) or ((P.team == "atk") and -1 or 1)   -- 基地朝战场是世界的 ±Z
-        local bx, bz = (B and B.camp.x) or 0, (B and B.camp.z) or 0
-        s.dir = Vector3.new(0, 0, -face)    -- 背着战场
-        s.base = Vector3.new(bx + 5200 * M * 0.35, 0, bz - face * 3200 * M)
-        if pad and pad.base and G.spawnAircraft then   -- 不走 Depots 的召唤（那边要人站在终端旁边、扣 SP、记阵容）：直接摆在这个停机位上
-          local c = pad.base.Position
-          local d = AD.get(it.play)
-          local pos = Vector3.new(c.X, math.max(G.Map.height(c.X, c.Z), 0) + ((d and d.gearH) or 5), c.Z)
-          local okS, ee = pcall(G.spawnAircraft, P.team, it.play, CFrame.lookAt(pos, pos + pad.base.LookVector), nil, P, nil)
+        -- 飞机、直升机：靶区在挡弹墙北面（空中靶区，MapRange.AIRTGT），朝北摆靶
+        s.base, s.dir = RangeMap.airTarget(), Vector3.new(0, 0, -1)
+        local d = AD.get(it.play)
+        local pos = Vector3.new(spawnAt.X, G.Map.height(spawnAt.X, spawnAt.Z) + ((d and d.gearH) or 5), spawnAt.Z)
+        if G.spawnAircraft then
+          local okS, ee = pcall(G.spawnAircraft, P.team, it.play, CFrame.lookAt(pos, pos + spawnDir), nil, P, nil)
           if okS then e = ee end
         end
-        if not e then   -- 没有跑道停机位（老地图）：照旧在靶场上空出来
-          local d = AD.get(it.play)
-          local pos = s.base + Vector3.new(0, G.Map.height(s.base.X, s.base.Z) + (heli and 140 or (W.airSpawnH or 1200)), 0)
-          e = G.spawnAircraftAir and G.spawnAircraftAir(P.team, it.play, CFrame.lookAt(pos, pos + s.dir), nil, P, nil, heli and 0 or (((d and d.vMil) or 200) * 0.8))
+        if not e and G.spawnAircraftAir then   -- 摆不到跑道上：在靶区上空出来
+          local p2 = s.base + Vector3.new(0, G.Map.height(s.base.X, s.base.Z) + (heli and 140 or (W.airSpawnH or 1200)), 0)
+          e = G.spawnAircraftAir(P.team, it.play, CFrame.lookAt(p2, p2 + s.dir), nil, P, nil, heli and 0 or (((d and d.vMil) or 200) * 0.8))
         end
       else
-        s.base, s.dir = testSpot(P)
+        s.base, s.dir = spawnAt, spawnDir
         e = G.spawnGroundVeh(P.team, it.play, CFrame.lookAt(s.base, s.base + s.dir), false, P, nil)
       end
       if not e then return end

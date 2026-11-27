@@ -18,6 +18,11 @@ local Scenery = {}
 function Scenery.init(G)
   local Flora = require(RS:WaitForChild("Flora"))
   local META = require(RS:WaitForChild("SceneryMeta"))
+  -- 冬季树包（雪山地图：WinterMeta，models/scenery/winter.glb）：同样的格式，并进来（键 wt*、ws*、snowtex、slushtex 不和原来的重名）
+  pcall(function()
+    local wm = require(RS:WaitForChild("WinterMeta", 10))
+    for k, v in pairs(wm) do if META[k] == nil then META[k] = v end end
+  end)
   local V = Vector3.new
   local CF = CFrame.new
   local RGB = Color3.fromRGB
@@ -60,6 +65,7 @@ function Scenery.init(G)
       -- 钢城的树（撞得倒的那些，Map.TREES）：阔叶树没有作者给的远景版本，再远到 D.far 的八成画一棵零件拼的（树干 + 一团树冠），远处的林子、行道树不会一下没了
       if kind == "broad" and G.Map and G.Map.TREES and d < D.far * 0.8 then return "broad_p" end
       return nil
+    elseif kind == "winter" then return (d < D.far) and k or nil   -- 冬天的树（雪山）：一棵一两百个三角形，不用远景版本，一直画到最远
     elseif kind == "bush" or kind == "log" then return (d < D.bush) and k or nil
     elseif kind == "rock" or kind == "outcrop" then return (d < D.rock) and k or nil
     elseif kind == "grass" then return (d < D.grass) and k or nil
@@ -117,6 +123,10 @@ function Scenery.init(G)
       ball(list, r * 0.85, V(-r * 0.3, h * 0.74, -r * 0.25), LEAF)
     elseif kind == "dead" then
       trunk(list, h * 0.9, math.max(0.7, h * 0.025), RGB(96, 84, 72))
+    elseif kind == "winter" then   -- 冬天的树（没导入 winter.glb）：深色树干 + 几团挂着雪的灰白树冠
+      trunk(list, h * 0.6, math.max(0.8, h * 0.03), RGB(70, 62, 56))
+      ball(list, r * 1.2, V(0, h * 0.62, 0), RGB(206, 210, 214), Enum.Material.Snow)
+      ball(list, r * 0.85, V(r * 0.3, h * 0.8, r * 0.15), RGB(188, 192, 196), Enum.Material.Snow)
     elseif kind == "bush" then
       ball(list, r * 1.3, V(0, r * 0.45, 0), BUSHC)
       ball(list, r * 0.9, V(r * 0.4, r * 0.35, 0), BUSHC)
@@ -192,7 +202,7 @@ function Scenery.init(G)
     if not t then return nil end
     local s = 0.45 + b * 0.1
     local kind = META[k] and META[k].kind or ""
-    local shadow = (kind == "conifer" or kind == "broad" or kind == "rock" or kind == "outcrop") and quality >= 7
+    local shadow = (kind == "conifer" or kind == "broad" or kind == "winter" or kind == "rock" or kind == "outcrop") and quality >= 7
     local inst = { k = k, b = b, parts = {}, rels = {} }
     for i, it in ipairs(t) do
       local p = Tint.fix(it.p:Clone(), it.p)
@@ -515,20 +525,38 @@ function Scenery.init(G)
   end
   local seaKey = nil
   local shown, moveL, moveCF = {}, {}, {}
-  local RI, SEA_Y = 0, -0.6
+  -- 地形已经铺了的那片（这些格里的平面沉到底下，不和地形打架）：格子下标 [i0, i1] × [k0, k1]（含）
+  local HI0, HI1, HK0, HK1, SEA_Y = 0, -1, 0, -1, -0.6
+  local zoneNow = nil
+  -- 镜头在哪块（Zones.lua，用户 11-26 晚「每个地图单独一个区块」）：战场照这张图的远处（海 / 沙 / 草地）；
+  --   训练场是它自己的草地（顶面同训练场平地，开服先铺好的那片里沉下去）；大厅（主菜单、机库）一圈平地托在场景脚下
   -- 换地图：海岛是海水（地形海水占了 [−RI, RI) 这些格：近海 ±R 深水 + 外面 ±SEA_R 一圈薄水，World.lua）；
   --   沙海（Map.DESERT）也没有海：地形一直写到 ±SEA_R（外面一圈平地），再往外这圈平面是沙地，顶面和平原一样高
-  local function oceanStyle()
+  local function oceanStyle(zn)
+    zoneNow = zn or "battle"
     local desert = Map.DESERT
     local far = Map.FAR   -- 钢城：一圈草地（MapCity 的 FAR：颜色、材质、高度）
-    RI = math.floor((Map.SEA_R or Map.R or 4096) / OS)
+    local RI = math.floor((Map.SEA_R or Map.R or 4096) / OS)
+    HI0, HI1, HK0, HK1 = -RI, RI - 1, -RI, RI - 1
     SEA_Y = (far and far.y) or (Map.DESERT and ((Map.PLAIN or 12) - 0.5) or -0.6)
+    if zoneNow == "range" and Map.Range then
+      local Rg = Map.Range
+      far, desert = Rg.FAR, false
+      SEA_Y = far.y
+      local C0 = Rg.CORE
+      HI0, HI1 = math.floor((Rg.X + C0.u0) / OS), math.floor((Rg.X + C0.u1) / OS) - 1
+      HK0, HK1 = math.floor((Rg.Z + C0.w0) / OS), math.floor((Rg.Z + C0.w1) / OS) - 1
+    elseif zoneNow == "lobby" then
+      far, desert = { color = RGB(70, 82, 54), mat = "Grass" }, false
+      SEA_Y = 899.5   -- 大厅场景的地面都在 900 格高（Zones.HANGAR / HANGAR_AIR / MENU）
+      HI0, HI1, HK0, HK1 = 0, -1, 0, -1
+    end
     local sand = (Map.DESERT and Map.COLORS and Map.COLORS.Sand) or RGB(176, 142, 100)
     for _, p in ipairs(tiles) do
       if far then
         p.Color, p.Material, p.Reflectance, p.Name = far.color, Enum.Material[far.mat] or Enum.Material.Grass, 0, "FarLand"
       else
-        p.Color = desert and sand or RGB(24, 84, 102)
+        p.Color = desert and sand or (Map.SEA_FAR_COLOR or RGB(24, 84, 102))   -- 雪山冰岛：冷海的深灰蓝
         p.Material = desert and Enum.Material.Sand or Enum.Material.SmoothPlastic
         p.Reflectance = desert and 0 or 0.22
         p.Name = desert and "FarSand" or "Sea"
@@ -539,6 +567,8 @@ function Scenery.init(G)
   oceanStyle()
   local function stepOcean()
     local c = cam.CFrame.Position
+    local zn = Map.Zones and Map.Zones.of(c.X, c.Z) or "battle"
+    if zn ~= zoneNow then oceanStyle(zn) end
     local gx, gz = math.floor(c.X / OS), math.floor(c.Z / OS)
     local key = gx * 65536 + gz
     if key == seaKey then return end
@@ -549,7 +579,7 @@ function Scenery.init(G)
     for i = gx - ON, gx + ON do
       for k = gz - ON, gz + ON do
         n += 1
-        local inT = i >= -RI and i < RI and k >= -RI and k < RI
+        local inT = i >= HI0 and i <= HI1 and k >= HK0 and k <= HK1
         moveL[n] = tiles[n]
         moveCF[n] = CF((i + 0.5) * OS, inT and -60000 or SEA_Y, (k + 0.5) * OS)
         shown[n] = not inT
@@ -585,7 +615,7 @@ function Scenery.init(G)
       layersFor()
       maxR = 0
       for _, l in ipairs(LAYERS) do maxR = math.max(maxR, LAYER_R[l] or 0) end
-      oceanStyle()
+      oceanStyle(zoneNow)
     end)
   end
 

@@ -449,7 +449,12 @@ function Armor.init(G)
     local h = Map.height(p1.X, p1.Z)
     local bad = flat > maxD or p1.Y ~= p1.Y or math.abs(p1.Y - math.max(h, -e.def.H) - e.def.H / 2) > e.def.H * 1.5 + 6
     if not e.def.amphib and h < -3 and not e.lcac then bad = true end
-    if math.abs(p1.X) > Map.R or math.abs(p1.Z) > Map.R then bad = true end
+    do   -- 开出地图：按所在的区块算（训练场 Zones.RANGE 在十万格外）
+      local rx, rz, zn = p1.X, p1.Z, "battle"
+      if Map.Zones then rx, rz, zn = Map.Zones.rel(p1.X, p1.Z) end
+      local lim = Map.Zones and Map.Zones.land(zn, Map) or Map.R
+      if math.abs(rx) > lim or math.abs(rz) > lim then bad = true end
+    end
     e.lastSync = t
     if bad then
       e.bad = (e.bad or 0) + 1

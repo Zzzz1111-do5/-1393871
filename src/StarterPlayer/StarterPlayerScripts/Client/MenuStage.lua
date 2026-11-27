@@ -10,7 +10,8 @@ local Stage = {}
 local RGB = Color3.fromRGB
 local V = Vector3.new
 local CF = CFrame.new
-local ORIGIN = CF(9000, 900, -9000)   -- 地图外（地图在 ±3000 格以内）、半空里：周围什么都没有
+-- 大厅那一块（Zones.LOBBY）：原来在 (9000, 900, −9000)，钢城、沙海的地形都铺到那儿了（用户 11-26 晚「几个地图是连起来的 不行」）
+local ORIGIN = require(RS:WaitForChild("Zones")).MENU
 local UNIFORM = { atk = { RGB(150, 128, 92), RGB(110, 96, 70) }, def = { RGB(84, 104, 70), RGB(64, 78, 54) } }   -- 同 Round.lua 的迷彩色
 local HELMET = { atk = RGB(96, 104, 72), def = RGB(146, 128, 96) }
 local GEAR = { atk = RGB(70, 76, 56), def = RGB(118, 104, 80) }   -- 背心、弹匣包

@@ -1,0 +1,23 @@
+雪山的写实房子（models/bld/snow.glb）——都是 Sketchfab 上 CC-BY-4.0 授权的模型（http://creativecommons.org/licenses/by/4.0/），
+改动：按真高缩放、换成 Roblox 的格、按材质切块（有的减了面）、贴图缩到最长边 1024；游戏里按地块的大小可能再整体缩放。
+
+· 旧木棚：Old wooden barn，作者 mitin41401（https://sketchfab.com/models/4887c7e3de244a9db3eb5b4974418b1b），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 红谷仓：Red Barn，作者 volvor（https://sketchfab.com/models/906b74a1b8d7443eb66545dcc8a1b1c7），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 原木小屋：Log Cabin，作者 ciolan（https://sketchfab.com/models/459f2d5fa81f44d1a006962072e59187），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 北欧原木屋：Scandinavian Log Cabin，作者 rivetech（https://sketchfab.com/models/e89718f746484189902162a91ae0b504），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 阿尔卑斯木屋：Alpine Chalet house，作者 Gerhald（https://sketchfab.com/models/2ac40506a2d74e60be6e9df6657a6367），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 积雪木屋：Snowy North American Chalet Cabin – Low Poly，作者 artel_3D（https://sketchfab.com/models/44ed4093f2904361898b9cbc3dcc1aa9），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 废弃木楼：Abandoned House，作者 AspectStudio（https://sketchfab.com/models/c876fa6c530f4946a5234666752803ce），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 空置民房：Abandoned house，作者 aj1stly（https://sketchfab.com/models/76ccbc5f882744c29b3ffee31c4bc697），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 三层老木楼：Old wooden house，作者 Major_Nasya（https://sketchfab.com/models/46a06fe6dbbe4be6999c5c51dde9ec4b），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 木板房：Wooden house (House in the woods project)，作者 Helindu（https://sketchfab.com/models/2b90d4b8ffa64ace97c293b770d00e48），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 石砌民房（二战）：French House WW2，作者 TakeAndPlay（https://sketchfab.com/models/b79fc74625354c2c8b693ae3b5645cf0），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 炸塌的楼：War Damaged Building，作者 local.yany（https://sketchfab.com/models/bfb47d88f9bd41939cb8ad75af16c197），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、减面到 60000 个三角形、按材质切块、贴图缩到 1024
+· 炸毁的四层楼：War Damaged building 2，作者 local.yany（https://sketchfab.com/models/03c5583c895b432697dbfa62ed5d35f3），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、减面到 60000 个三角形、按材质切块、贴图缩到 1024
+· 炸毁的教堂：War Damaged  Church，作者 local.yany（https://sketchfab.com/models/c82833ce9bb644d9ae3ee5e1c8db7297），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、减面到 60000 个三角形、按材质切块、贴图缩到 1024
+· 炸毁的会堂：War Damaged Hall，作者 local.yany（https://sketchfab.com/models/2daf2f16bdb848dcaa9349366b6f5174），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、减面到 60000 个三角形、按材质切块、贴图缩到 1024
+· 散架的木屋：Abandoned House，作者 Sengchor（https://sketchfab.com/models/a0c01ce35a474545b805c0739806aace），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 炸坏的小屋：Destroyed House With Textures，作者 flatalex123（https://sketchfab.com/models/177e494fdada4b64b02acf041ae8cfdd），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、去掉自带的地台、按材质切块、贴图缩到 1024
+· 炸坏的农舍：Abandoned house，作者 Linker_34（https://sketchfab.com/models/2f220af6ed4a45c792574da843093c3f），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、去掉自带的地台、按材质切块、贴图缩到 1024
+· 烧剩的空壳：Destroyed Building shell，作者 FWTeastwood（https://sketchfab.com/models/d74a108fc7814ad9944138a6e9f5ee71），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 塌了的木房：Church，作者 local.yany（https://sketchfab.com/models/20595bb2a0ab4572bbe398514d55a39e），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024

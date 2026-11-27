@@ -573,14 +573,17 @@ end
 Map.id = "island"
 -- 用户 11-24：「沙漠风暴删掉」「全部默认沙海地图吧，登岛那个也删了」——只剩沙海；11-26：「改地图……这个图不适合对抗」「做一个两边带机场的城市地图吧」——
 --   换成「钢城」（MapCity）：开服直接建（只有一张就不用投票），沙海留着（extra：Studio、测试台给 Workspace 设 MapName = "sands" 还能开）
-Map.ids = { "city" }
+-- 用户 11-26 晚：「我要求你做一个雪山地图 一定要做到极高质量」——加「雪山」（MapSnow），两张一起投票
+Map.ids = { "city", "snow" }
 Map.extra = { "sands" }
 -- 选地图界面（MapPick.lua）用的：尺寸（公里）、模式
 Map.info = {
   city = { km = 6.2, mode = "assault", sea = false },    -- 「钢城」（MapCity）：两边基地带跑道，中间一座城，据点 A～E
   sands = { km = 27.8, mode = "assault", sea = false },   -- 「沙海」（MapSands）：海湾战争式，五个阶段一个一个打
+  snow = { km = 24.6, mode = "assault", sea = false },    -- 「雪山」（MapSnow）：高山河谷，两头主基地带跑道，谷外 Sketchfab 的雪峰望不到头
 }
-local KEEP = { use = true, profile = true, ids = true, extra = true, id = true, info = true, clamp = true, smooth = true, lerp = true, rayGround = true }
+local KEEP = { use = true, profile = true, ids = true, extra = true, id = true, info = true, clamp = true, smooth = true, lerp = true, rayGround = true,
+  Zones = true, Range = true, zoneOf = true }
 local PROFILES = { island = {} }
 for k, v in pairs(Map) do
   if not KEEP[k] then PROFILES.island[k] = v end
@@ -601,6 +604,44 @@ function Map.profile(id)
   end
   return PROFILES[id] or nil
 end
+-- 地图分区（Zones.lua，用户 11-26 晚「每个地图单独一个区块」）：训练场那一块（Zones.RANGE）里的点问训练场自己的图（MapRange），
+--   别处照旧问战场那张——高度、地面、坡度、材质、视线这些函数按坐标分派。换图（Map.use）以后重新包一遍
+local okZ, Zones = pcall(function() return require(script.Parent:WaitForChild("Zones", 30)) end)
+local okR, Range = pcall(function() return require(script.Parent:WaitForChild("MapRange", 30)) end)
+if okZ and okR and type(Zones) == "table" and type(Range) == "table" then
+  Map.Zones, Map.Range = Zones, Range
+  function Map.zoneOf(x, z) return Zones.of(x, z) end
+else
+  warn("[地图] 分区模块没载上：训练场照战场的图算")
+end
+local function zoneWrap()
+  if not Map.Zones then return end
+  local inR = Zones.inRange
+  for _, k in ipairs({ "height", "ground", "isLand", "slope", "flatW", "material", "navBlocked", "roadDist" }) do
+    local f, g = Map[k], Range[k]
+    if type(f) == "function" and type(g) == "function" then
+      Map[k] = function(x, z, ...)
+        if type(x) == "number" and type(z) == "number" and inR(x, z) then return g(x, z, ...) end
+        return f(x, z, ...)
+      end
+    end
+  end
+  local fs = Map.segBlocked
+  if type(fs) == "function" then
+    Map.segBlocked = function(ax, az, ...)
+      if type(ax) == "number" and type(az) == "number" and inR(ax, az) then return false end
+      return fs(ax, az, ...)
+    end
+  end
+  local fl = Map.lineClear
+  if type(fl) == "function" then
+    Map.lineClear = function(a, b, step)
+      if typeof(a) == "Vector3" and inR(a.X, a.Z) then return Range.lineClear(a, b, step) end
+      return fl(a, b, step)
+    end
+  end
+end
+
 function Map.use(id)
   if Map.id == id then return true end
   local P = Map.profile(id)
@@ -612,6 +653,7 @@ function Map.use(id)
     if not KEEP[k] then Map[k] = v end
   end
   Map.id = id
+  zoneWrap()
   return true
 end
 

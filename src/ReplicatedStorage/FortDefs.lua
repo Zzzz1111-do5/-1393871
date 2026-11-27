@@ -224,7 +224,7 @@ end
 
 -- 全部工事：{ id, kind（bunker / coastal / aaa）, cf（底面中心，−Z 朝前）, pt（附近的据点：据点被攻方拿下后这处工事就废了）, tag（位置名） }
 function FortDefs.layout(Map)
-  if Map.CITY then return layoutCity(Map) end
+  if Map.CITY or Map.SNOW then return layoutCity(Map) end   -- 钢城、雪山：两边主基地的防空阵地
   if Map.LANDONLY then return layoutDesert(Map) end
   local out = {}
   local n = 0
@@ -304,7 +304,7 @@ end
 
 -- 滩头障碍：钢刺猬（水线一带两排，留出通道和缺口）、铁丝网（两道、隔段留缺口）、雷区（滩的两翼各一片）；用固定种子，每局一样
 function FortDefs.obstacles(Map)
-  if Map.CITY then return { hog = {}, wire = {}, mines = {}, signs = {} } end   -- 钢城：没有滩头障碍、雷区（城里的掩护是楼、车厢、水泥墩）
+  if Map.CITY or Map.SNOW then return { hog = {}, wire = {}, mines = {}, signs = {} } end   -- 钢城：没有滩头障碍、雷区（城里的掩护是楼、车厢、水泥墩）
   if Map.LANDONLY then return obstaclesDesert(Map) end   -- 沙海：边境沙墙前的钢刺猬、铁丝网、雷区
   local rng = Random.new(20240611)
   local L = FortDefs.LANE

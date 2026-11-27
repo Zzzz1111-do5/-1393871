@@ -33,9 +33,20 @@
   想一次全部换成最新的（所有文件夹都重导，比如歼-20 修好机头镂空那版、舰艇翻正、M1A2 原色、建筑一起换）：
     先在命令栏（要在编辑状态下，不是测试运行中）粘下面这一行，删掉以前导入过的全部零件，再照「一、导入」把上面每个文件夹都导一遍：
 
-local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWB]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
+local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWBP]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日起 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～八包、E 第一～七包，新的在上面）
+  E 11-26 深夜这一包：新地图「雪山」（选地图界面投票选它）要导的 11 个文件，都是「导入 3D」导进 Workspace，开服自动收好——
+    · snow/rockscan.glb、icy.glb、wmsnow.glb：谷边的雪山（3 种模型拼成连绵的山脊，原模型不减面，一共约 70 MB；块叫 P_<键>__c<号>，
+      收进 ReplicatedStorage.Imported.Peaks）。游戏里在你自己的电脑上把它们转着拼成一百七十来座，一直铺到四十多公里外。
+      没导的那几座不摆（输出窗口会说缺哪几个），地形照样在：坦克、飞机撞山照旧算
+    · snow/clouds.glb：天上的体积云（Fluffy Cloud，很小）
+    · snow/sky.glb：夜里的银河天空、木卫三月亮、太阳（七张贴图）
+    · bld/snow.glb：山村、小村落、农庄的 20 种房子（积雪木屋、阿尔卑斯木屋、谷仓、二战石屋……被炸毁的楼、教堂废墟、塌了的木屋，76 MB）；
+      没导入的话照同样的大小用零件拼
+    · scenery/winter.glb：冬季树包拆出来的 15 种树、15 种灌木，还有地面的积雪、化雪泥地两张贴图（游戏里拿来换掉地形的雪、泥地）
+    · 地面贴图、天空贴图换不上的话（老版本 Studio），输出窗口有一行说明，照着在 MaterialService 里手动建 MaterialVariant 也行
+    · 署名：models/snow/credits.txt、models/bld/snow_credits.txt、models/scenery/credits.txt（主菜单「制作人员」里也有）
   E 11-26 下午这一包：重导一个文件——
     · air/mq9.glb：MQ-9 / 攻击-2 的螺旋桨拆成了会转的部件（里面的零件换成 A_mq9_v5__…；不重导照旧能用，只是螺旋桨不转）
     其余（喷口位置、履带）只换游戏文件就行

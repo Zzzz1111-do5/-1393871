@@ -82,7 +82,7 @@ add("pve.n16", "最终决战", "Final Battle")
 -- 作战简报（敌情、任务、友军）：关卡卡片上写、开局时在屏幕上播一遍
 add("pve.brief", "作战简报", "BRIEFING")
 add("air.mouseAimOn", "战雷式鼠标瞄准：鼠标给方向、飞机自己追过去；按 WASD 直接操纵，按住 C 自由看（M 切换）", "Mouse aim (War Thunder style): the plane follows the mouse; WASD flies directly, hold C to look around (M toggles)")
-add("air.mouseAimOff", "纯键盘驾驶：W / S 俯仰、A / D 滚转、Q / E 方向舵，鼠标只转视角（M 切换）", "Keyboard flight: W/S pitch, A/D roll, Q/E rudder, mouse only looks (M toggles)")
+add("air.mouseAimOff", "纯键盘驾驶：W / S 俯仰、A / D 滚转、Q / E 方向舵，按住右键拖动自由看（M 切换）", "Keyboard flight: W/S pitch, A/D roll, Q/E rudder, hold RMB to look around (M toggles)")
 -- 战雷的投弹（Fly.lua / Bombsight.lua）
 add("air.bombN1", "投弹：单投（一次一枚）", "Bombs: single")
 add("air.bombN2", "投弹：双投（两枚一起）", "Bombs: pair")
@@ -420,8 +420,9 @@ add("tree.modLocked", "这项改装还没开：上一级先研究完两项", "Lo
 add("tree.crewLv", "阵容第 {1} 位的乘员升到 {2} 级：有新的技能点", "Crew in slot {1} reached level {2}: new skill points")
 add("tree.crewNoPts", "技能点不够", "Not enough skill points")
 add("tree.waitDeploy", "{1} 秒后出击", "Deploying in {1} s")
-add("tree.testOn", "试驾：{1}（改装全装上；前面 300～2000 米七辆靶车，两辆在跑；天上三架靶机；都不还手；下车回机库）", "Test drive: {1} (all modifications; seven target vehicles at 300-2000 m, two moving; three target aircraft overhead; none shoot back; leave the vehicle to return)")
-add("tree.testOnAir", "试驾：{1}（改装全装上；在自己的跑道上，推油门起飞；基地后面三架靶机绕圈、地上一排靶车，都不还手；下飞机回机库）", "Test flight: {1} (all modifications; you start on your runway; three target aircraft circle behind the base and a row of targets sits on the ground; none shoot back; bail out to return)")
+add("tree.testOn", "训练场试驾：{1}（改装全装上；你的靶道前面 300～2000 米七辆靶车，两辆在跑；天上三架靶机；都不还手；下车回机库）", "Test range: {1} (all modifications; seven target vehicles down your lane at 300-2000 m, two moving; three target aircraft overhead; none shoot back; leave the vehicle to return)")
+add("tree.testOnAir", "训练场试飞：{1}（改装全装上；在训练场跑道上，推油门起飞；北边靶区三架靶机绕圈、地上一排靶车，都不还手；下飞机回机库）", "Test flight: {1} (all modifications; you start on the test range runway; three target aircraft circle over the target area to the north and a row of targets sits on the ground; none shoot back; bail out to return)")
+add("tree.rangeBusy", "训练场还在准备（刚开服），稍等几秒再试驾", "The test range is still being set up (server just started) — try again in a few seconds")
 add("wt.needParts", "修不了：这辆车还没研究改装「零件」", "Can't repair: research the \"Parts\" modification first")
 add("wt.needFpe", "灭不了火：这辆车还没研究改装「灭火器」", "No extinguisher: research the \"FPE\" modification first")
 add("ui.youKilled", "击毙 {1}", "Killed {1}")
@@ -595,10 +596,10 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住 C 自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门 · 滚轮 油门（地上收到底按住倒退）· B 减速板 · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 / 炸弹（雷达弹要雷达锁住，对方侧着飞会丢锁） · 1-6 选弹 · R 换目标 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
-  "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold C to look around · M keyboard flight · Shift/Ctrl/mouse wheel throttle (hold Ctrl at idle on the ground to back up) · B airbrake · LMB gun (fires along the nose; the small circle ahead of enemy planes is the lead) · F missile / bomb (radar missiles need a radar lock; beaming breaks it) · 1-6 select · R next target · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
-add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 滚轮 油门 · B 减速板 · 鼠标只转视角（不管飞行方向；停 2.5 秒回到身后、C 立刻回正） · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
-  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · mouse looks around (recenters after 2.5 s, C at once) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
+add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住右键（或 C）拖动自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门 · 滚轮 油门（地上收到底按住倒退）· B 减速板 · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 / 炸弹（雷达弹要雷达锁住，对方侧着飞会丢锁） · 1-6 选弹 · R 换目标 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
+  "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold RMB (or C) and drag to look around · M keyboard flight · Shift/Ctrl/mouse wheel throttle (hold Ctrl at idle on the ground to back up) · B airbrake · LMB gun (fires along the nose; the small circle ahead of enemy planes is the lead) · F missile / bomb (radar missiles need a radar lock; beaming breaks it) · 1-6 select · R next target · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 滚轮 油门 · B 减速板 · 按住右键拖动自由看（看的方向不跟着飞机转，松开回到身后） · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
+  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · hold RMB and drag to look around (view stays put while the plane maneuvers) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
 add("air.helpHeli", "鼠标准心 决定机头朝向：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· E 升 / Q 降 · A/D 侧飞 · W/S 也能前推后拉 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
   "Aim decides where the nose points: aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · E up / Q down · A/D sidestep · W/S also push / pull the cyclic · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
@@ -1400,6 +1401,48 @@ add("stage.tower@city", "攻下电视塔", "TAKE THE TV TOWER")
 add("stage.tower.atk@city", "最后一个：拿下北边的电视塔 E，结束战斗", "Last one: take the TV Tower E in the north to win")
 add("stage.tower.def@city", "最后一道防线：死守电视塔 E", "Last line: hold the TV Tower E at all costs")
 add("stage.tower.short@city", "电视塔", "TOWER")
+
+---------------------------------------------------------------- 雪山（MapSnow.lua，地图 id snow；用户 11-26 晚「我要求你做一个雪山地图 一定要做到极高质量」）
+add("map.snow.name", "雪山", "SNOW PEAKS")
+add("map.snow.mode", "高山突破", "ALPINE BREAKTHROUGH")
+add("map.snow.desc", "一条冰封的高山河谷（约 7 × 18 公里），两头主基地带跑道，谷外的雪峰望不到头：山梁、冲沟、岩石包，打过仗的山村、锯木厂、山坡上的雷达站、冰湖边的水电站、北边的山口 · 树撞得倒，房子炸得塌",
+  "A frozen alpine valley (about 7 × 18 km) with a runway at each main base and snow peaks as far as the eye can see: ridges, gullies and rock outcrops, a war-torn village, a sawmill, a hillside radar station, a hydro plant by the ice lake and the mountain pass · trees fall, houses collapse")
+add("faction.sub@snow", "雪山 · 高山装甲战", "SNOW PEAKS · ALPINE ARMOR")
+add("faction.atk.role@snow", "进攻  ·  从南边打进河谷", "ATTACK  ·  PUSH UP THE VALLEY")
+add("faction.def.role@snow", "防守  ·  守住山口", "DEFEND  ·  HOLD THE PASS")
+add("faction.atk.desc@snow", "从南边的主基地出发（车场、直升机坪、跑道都在基地里）：先拿下锯木厂 A，再打西坡上的雷达站 B、河边的山村 C、冰湖边的水电站 D，最后攻下北边的山口检查站 E。谷里到处是山梁和冲沟：车体藏在梁后面打，冰面上没有掩护。",
+  "Roll out of the southern main base (motor pool, helipads and runway are all inside): take the Sawmill A, then the Radar Station B on the west slope, the Village C by the river, the Hydro Plant D by the ice lake, and finally the Mountain Pass E in the north. The valley is full of ridges and gullies: fight hull-down behind the crests — there is no cover on the ice.")
+add("faction.def.desc@snow", "守住河谷：锯木厂 A、雷达站 B、山村 C、水电站 D、山口 E 一个一个守。占着高处（雷达站的台地、山口两边的山肩）往下打，山村的废墟里能藏车。",
+  "Hold the valley point by point: Sawmill A, Radar Station B, Village C, Hydro Plant D and the Pass E. Fight from the high ground (the radar plateau, the shoulders of the pass); the village ruins can hide a tank.")
+add("point.A@snow", "A 锯木厂", "A Sawmill")
+add("point.B@snow", "B 雷达站", "B Radar Station")
+add("point.C@snow", "C 山村", "C Village")
+add("point.D@snow", "D 水电站", "D Hydro Plant")
+add("point.E@snow", "E 山口", "E Mountain Pass")
+add("spawn.redbase@snow", "攻方主基地（营区、车场、直升机）", "Main Base (camp, motor pool, helos)")
+add("spawn.af2@snow", "攻方主基地机场（固定翼）", "Main Base Airfield (jets)")
+add("spawn.camp@snow", "守方主基地（营区、车场、直升机）", "Main Base (camp, motor pool, helos)")
+add("operation.day@snow", "雪山突破", "SNOW PEAKS BREAKTHROUGH")
+add("stage.sawmill@snow", "拿下锯木厂", "TAKE THE SAWMILL")
+add("stage.sawmill.atk@snow", "冲进南边的锯木厂，拿下 A（原木堆后面能藏步兵）", "Storm the sawmill in the south and take A (log piles give cover)")
+add("stage.sawmill.def@snow", "守住锯木厂 A，别让敌人进谷", "Hold the Sawmill A, keep them out of the valley")
+add("stage.sawmill.short@snow", "锯木厂", "SAWMILL")
+add("stage.radar@snow", "夺取雷达站", "TAKE THE RADAR")
+add("stage.radar.atk@snow", "爬上西坡的台地，拿下雷达站 B", "Climb the west plateau and take the Radar Station B")
+add("stage.radar.def@snow", "守住雷达站 B：台地上看得远，压住谷底", "Hold the Radar Station B: the plateau overlooks the valley floor")
+add("stage.radar.short@snow", "雷达站", "RADAR")
+add("stage.village@snow", "攻占山村", "TAKE THE VILLAGE")
+add("stage.village.atk@snow", "过石桥打进山村，拿下 C（废墟后面小心伏击）", "Cross the stone bridge and take the Village C (watch for ambushes in the ruins)")
+add("stage.village.def@snow", "守住山村 C，废墟里打巷战", "Hold the Village C among the ruins")
+add("stage.village.short@snow", "山村", "VILLAGE")
+add("stage.hydro@snow", "夺取水电站", "TAKE THE HYDRO PLANT")
+add("stage.hydro.atk@snow", "绕过冰湖，拿下水电站 D（冰面上没有掩护）", "Skirt the ice lake and take the Hydro Plant D (no cover on the ice)")
+add("stage.hydro.def@snow", "守住水电站 D", "Hold the Hydro Plant D")
+add("stage.hydro.short@snow", "水电站", "HYDRO")
+add("stage.pass@snow", "攻下山口", "TAKE THE PASS")
+add("stage.pass.atk@snow", "最后一个：拿下北边的山口检查站 E，结束战斗", "Last one: take the Mountain Pass E in the north to win")
+add("stage.pass.def@snow", "最后一道防线：死守山口 E（两边山肩居高临下）", "Last line: hold the Pass E — the shoulders on both sides look down on the road")
+add("stage.pass.short@snow", "山口", "PASS")
 
 ---------------------------------------------------------------- 沙漠图「沙海」（MapSands.lua，地图 id sands）：据点、阶段、出生点、阵营说明换成沙漠的说法（键后面加 @sands）
 add("faction.sub@sands", "海湾风暴 · 沙漠装甲突击", "SEA OF SAND · ARMORED ASSAULT")   -- 英文别叫 DESERT STORM：另一张沙漠图叫这个

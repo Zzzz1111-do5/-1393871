@@ -3,7 +3,7 @@
 --   ① 召唤、坐上，V 进座舱：座舱拼出来了（零件、屏幕、平显、座舱盖玻璃和划痕），镜头在飞行员眼位；外模型的飞行员、座舱盖玻璃不画；外面的 2D 平显不画
 --   ② 屏幕边的按键：中间小点对准、左键按（换页，不开炮）
 --   ③ 起飞：油门杆往前推、驾驶杆跟着拉、收起落架（手柄、三个绿灯灭）；屏幕和平显是实时的速度、高度、航向；平显的机头符号在组合玻璃中间
---   ④ 头跟着鼠标瞄准转；按住 Alt 自由看：准心不动
+--   ④ 头跟着鼠标瞄准转；按住右键拖动自由看（11-26 晚）
 --   ⑤ K 导演镜头、U 藏界面
 --   ⑥ V 出座舱：外模型放回来；下飞机：座舱拆掉
 --   dump=<目录>：写出 interior_<型号>.json，tools/mock/interior_view.cjs 画成图
@@ -387,7 +387,7 @@ if hs and d.hudProj then
   check(found, "平显上写着空速 " .. spdTxt .. "（" .. table.concat(txt, " / ") .. "）")
 elseif cur.spec.hud then check(false, "平显有投影") end
 
-print("④ 头跟着鼠标瞄准转；按住 Alt 自由看时准心不动")
+print("④ 头跟着鼠标瞄准转；按住右键拖动自由看")
 local function relYaw(dir)
   local l = v.cf:VectorToObjectSpace(dir)
   return math.deg(math.atan2(-l.X, -l.Z))
@@ -403,9 +403,8 @@ if heli then   -- 直升机：头跟着镜头方向（鼠标转的就是它，�
   fst.camYaw, fst.camPitch = math.atan2(-lk3.X, -lk3.Z), 0
   R.run(0.5)
 else
-  -- 用户 11-21：飞机 WASD 飞、没有准心——头看前方（航迹）；用户 11-21（晚）：飞机要允许用鼠标转视角——
-  --   不按 Alt 动鼠标头就转、停在那里；鼠标 2.5 秒不动回到前方；C 立刻回正；按住 Alt 照旧能转头（对准屏幕边的按键），松开回到前方
-  --   （用户 11-24 起固定翼默认是战雷式鼠标瞄准——鼠标给方向、头跟着想去的方向；这一段测的是按 M 切回去的纯键盘驾驶的看法）
+  -- 用户 11-26 晚：「自由视角不要因为飞机的机动动作而影响」「自由视角的移动改成鼠标右键拖动」——纯键盘驾驶（按 M 切回去的那种）：
+  --   不按右键动鼠标头不转；按住右键拖动头转过去、按着不放一直看着那边；松开右键回到前方（原来不按键动鼠标就转头、2.5 秒自己回、Alt 自由看）
   if C.flyMouseAim then C.flyMouseAim(false) end
   local function offFwd() return math.deg(math.acos(math.max(-1, math.min(1, cam.CFrame.LookVector:Dot(fst.vdir or fst.cf.LookVector))))) end
   for _ = 1, 15 do
@@ -413,32 +412,20 @@ else
     R.run(1 / 30)
   end
   R.mouseDelta = R.Vector2.new(0, 0)
-  check(offFwd() > 15, string.format("不按 Alt 动鼠标：头转开了（离前方 %.0f°）", offFwd()))
-  R.run(1.2)
-  check(offFwd() > 15, string.format("鼠标停 1.2 秒：头还看着那边（离前方 %.0f°）", offFwd()))
-  R.run(4.5)
-  check(offFwd() < 12, string.format("鼠标停 2.5 秒以上：头回到前方（差 %.1f°）", offFwd()))
-  for _ = 1, 15 do
-    R.mouseDelta = R.Vector2.new(-40, 0)
-    R.run(1 / 30)
-  end
-  R.mouseDelta = R.Vector2.new(0, 0)
-  T.key(Enum.KeyCode.C, true)
-  R.run(1 / 30)
-  T.key(Enum.KeyCode.C, false)
-  R.run(0.6)
-  check(offFwd() < 12, string.format("按 C：头立刻回到前方（差 %.1f°）", offFwd()))
-  T.key(Enum.KeyCode.LeftAlt, true)
+  check(offFwd() < 10, string.format("不按右键动鼠标：头不转（离前方 %.0f°）", offFwd()))
+  T.mouse(true, 640, 360, Enum.UserInputType.MouseButton2)
   for _ = 1, 15 do
     R.mouseDelta = R.Vector2.new(-40, 25)
     R.run(1 / 30)
   end
   R.mouseDelta = R.Vector2.new(0, 0)
   local diff2 = offFwd()
-  check(diff2 > 15, string.format("按住 Alt 动鼠标：头转开了（离前方 %.0f°、相对机头 %.0f°）", diff2, relYaw(cam.CFrame.LookVector)))
-  T.key(Enum.KeyCode.LeftAlt, false)
-  R.run(0.8)
-  check(offFwd() < 12, string.format("松开 Alt：头回到前方（差 %.1f°）", offFwd()))
+  check(diff2 > 15, string.format("按住右键拖动：头转开了（离前方 %.0f°、相对机头 %.0f°）", diff2, relYaw(cam.CFrame.LookVector)))
+  R.run(1.2)
+  check(offFwd() > 15, string.format("右键按着不放：头还看着那边（离前方 %.0f°）", offFwd()))
+  T.mouse(false, 640, 360, Enum.UserInputType.MouseButton2)
+  R.run(1.0)
+  check(offFwd() < 12, string.format("松开右键：头回到前方（差 %.1f°）", offFwd()))
   R.run(0.5)
   if C.flyMouseAim then C.flyMouseAim(true) end   -- 后面照默认（战雷式鼠标瞄准）
 end

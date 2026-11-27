@@ -13,9 +13,12 @@ local CF = CFrame.new
 local ANG = CFrame.Angles
 local MAT = Enum.Material
 local UP = ANG(0, 0, math.pi / 2)   -- 圆柱的轴（X）竖起来
-local ORIGIN = CF(-9000, 900, 9000)   -- 地图外、半空里：周围什么都没有（主菜单的场景在另一个角上，同一个高度）
--- 看飞机、直升机（用户 11-25「查看飞机和直升机的时候单独做个背景吧」）：另一个角上搭一块露天机场停机坪，选中飞机就切过去
-local ORIGIN_AIR = CF(-9000, 900, -9000)
+-- 搭在大厅那一块（Zones.LOBBY，x = −100000）：用户 11-26 晚「目前游戏里的几个地图是连起来的 不行」——原来在 (−9000, 900, 9000)，
+--   钢城地形铺到 ±12288，厂房就悬在战场上空（开飞机看得见，从厂房里也看得见底下的城）
+local Zones = require(game:GetService("ReplicatedStorage"):WaitForChild("Zones"))
+local ORIGIN = Zones.HANGAR
+-- 看飞机、直升机（用户 11-25「查看飞机和直升机的时候单独做个背景吧」）：大厅里另一处搭一块露天机场停机坪（隔三万格），选中飞机就切过去
+local ORIGIN_AIR = Zones.HANGAR_AIR
 local BUILD_AT = ORIGIN   -- part() 摆零件用哪个原点（搭停机坪时换成 ORIGIN_AIR）
 local HX, Z0, Z1, HY, RISE = 96, -124, 156, 62, 15   -- 半宽、近端墙、远端墙、檐口高、屋脊比檐口高多少
 local FOV = 40

@@ -1131,7 +1131,10 @@ def("WedgePart", "BasePart", {})
 def("Clouds", "Instance", { Cover = { T.number, 0.5 }, Density = { T.number, 0.7 }, Color = { T.Color3, newC3(1, 1, 1) }, Enabled = { T.bool, true } })
 def("MeshPart", "BasePart", { TextureID = { T.string, "" }, MeshId = { T.string, "" }, DoubleSided = { T.bool, false },
   TextureContent = { function(v) return v == nil or (type(v) == "table" and v.__content) end, nil } })
-def("SurfaceAppearance", "Instance", {})
+def("SurfaceAppearance", "Instance", { ColorMap = { T.string, "" }, NormalMap = { T.string, "" }, RoughnessMap = { T.string, "" }, MetalnessMap = { T.string, "" } })
+-- 材质变体（雪山的地面雪贴图：Client/SnowLook.lua 运行时建，MaterialService:SetBaseMaterialOverride 换掉地形的材质）
+def("MaterialVariant", "Instance", { BaseMaterial = { E("Material"), Enum.Material.Plastic }, ColorMap = { T.string, "" }, NormalMap = { T.string, "" },
+  RoughnessMap = { T.string, "" }, MetalnessMap = { T.string, "" }, StudsPerTile = { T.number, 10 } })
 def("Attachment", "Instance", { Position = { T.Vector3, v3() }, CFrame = { T.CFrame, CFrame.new() } }, { ro = {
   WorldPosition = function(o)
     local p = rawget(o, "_parent")
@@ -1673,6 +1676,14 @@ R.services.Lighting = service("Lighting", {
   GeographicLatitude = { T.number, 41.7 }, ColorShift_Top = { T.Color3, newC3(0, 0, 0) }, ColorShift_Bottom = { T.Color3, newC3(0, 0, 0) }, ShadowSoftness = { T.number, 0.2 },
   FogColor = { T.Color3, newC3(0.75, 0.75, 0.75) }, FogEnd = { T.number, 100000 }, FogStart = { T.number, 0 },
 })
+R.overrides = {}   -- MaterialService:SetBaseMaterialOverride 记下来（测试看雪山把地形的雪换成了哪个变体）
+R.services.MaterialService = service("MaterialService", {}, { methods = {
+  SetBaseMaterialOverride = function(_, mat, name)
+    if typeof(mat) ~= "EnumItem" or type(name) ~= "string" then error("SetBaseMaterialOverride(Material, 名字) 参数不对", 2) end
+    R.overrides[mat.Name] = (name ~= "") and name or nil
+  end,
+  GetBaseMaterialOverride = function(_, mat) return R.overrides[mat.Name] or "" end,
+} })
 R.services.SoundService = service("SoundService", { AmbientReverb = { E("ReverbType"), nil }, RespectFilteringEnabled = { T.bool, true } })
 R.services.StarterGui = service("StarterGui", {}, { methods = {
   SetCoreGuiEnabled = function(_, t, on)
@@ -1800,6 +1811,16 @@ R.buffer = {
     b.d[o] = v % 256
   end,
   readu8 = function(b, o) return b.d[o] or 0 end,
+  writeu16 = function(b, o, v)   -- 小端（同 Roblox）
+    if o < 0 or o + 1 >= b.n then error("buffer.writeu16 越界：" .. tostring(o), 2) end
+    v = math.floor(v) % 65536
+    b.d[o] = v % 256
+    b.d[o + 1] = v // 256
+  end,
+  readu16 = function(b, o)
+    if o < 0 or o + 1 >= b.n then error("buffer.readu16 越界：" .. tostring(o), 2) end
+    return (b.d[o] or 0) + (b.d[o + 1] or 0) * 256
+  end,
 }
 R.editStats = { meshes = 0, verts = 0, tris = 0, images = 0 }
 local function editableMesh()

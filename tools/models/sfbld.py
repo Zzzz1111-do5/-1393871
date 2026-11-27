@@ -2,6 +2,8 @@
 #   用户 11-26：「地图建模要精细 3a」——钢城的楼换成 Sketchfab 上 CC-BY 的写实楼房（带贴图），没导入时游戏里照旧用零件拼的（CityBuild.lua）
 #   blender -b --python tools/models/sfbld.py -- <配置 json> <下载目录> <输出 glb> <输出元数据 json>
 #   配置 tools/models/sfbld.json：[{ key, file, h 真高（米，没有就按原尺寸）, rot 绕竖轴转几度（长边转到东西向以后再补的）, tris 最多几个三角形, name, author, url, uid }]
+#     雪山的房子（tools/models/sfbld_snow.json → models/bld/snow.glb）多几项：drop 节点名里含这些字的去掉、plate 去掉自带的地台、
+#     part 一块最多几个三角形（默认 19000：一种材质超过的按空间对半切开，不用为了凑 Roblox 一个网格两万面的上限去减面）
 #   每座：所有网格合成一个、按配置转、缩到真高（米）再 × 2.8 换成格、占地中心挪到原点、底面贴地；超过 tris 的减面（collapse）；按材质切块，
 #   块叫 B_<键>__Body_<号>（开服时 Imports.lua 收进 ReplicatedStorage.Imported.Bld.<键>，同 buildings.glb）；贴图最长边缩到 1024；
 #   GLB 里各座沿 X 排开（Studio 里导进来不叠在一起）。坐标约定同 bld2glb.py：glTF 里 X 右、Y 上、−Z 正面（Blender 里 +Y 是正面）
@@ -51,12 +53,86 @@ def join_meshes(objs):
     return ob
 
 
+def world_bounds(o):
+    bb = [o.matrix_world @ mathutils.Vector(v) for v in o.bound_box]
+    lo = mathutils.Vector((min(v.x for v in bb), min(v.y for v in bb), min(v.z for v in bb)))
+    hi = mathutils.Vector((max(v.x for v in bb), max(v.y for v in bb), max(v.z for v in bb)))
+    return lo, hi
+
+
+def drop_objects(new, c):
+    """配置 drop（节点名里含这些字的去掉）、plate（自带的地台：扁平、占地比别的部分大 1.3 倍以上的去掉）"""
+    meshes = [o for o in new if o.type == 'MESH']
+    out = []
+    for o in meshes:
+        if any(d in o.name for d in c.get("drop", [])):
+            print("  去掉", o.name)
+            continue
+        out.append(o)
+    if c.get("plate"):
+        keep = []
+        bnd = {o: world_bounds(o) for o in out}
+        for o in out:
+            lo, hi = bnd[o]
+            e = hi - lo
+            if e.z < 0.06 * max(e.x, e.y):
+                rest = [bnd[q] for q in out if q is not o]
+                if rest:
+                    rlo = mathutils.Vector((min(b[0].x for b in rest), min(b[0].y for b in rest), 0))
+                    rhi = mathutils.Vector((max(b[1].x for b in rest), max(b[1].y for b in rest), 0))
+                    if (e.x * e.y) > 1.3 * (rhi.x - rlo.x) * (rhi.y - rlo.y):
+                        print("  去掉地台", o.name, round(e.x, 2), round(e.y, 2))
+                        continue
+            keep.append(o)
+        out = keep
+    return out
+
+
+def split_big(p, cap):
+    """一块超过 cap 个三角形（Roblox 一个网格最多两万）：沿最长的方向按面中心对半切，切到每块都够小"""
+    out = []
+    todo = [p]
+    while todo:
+        o = todo.pop()
+        o.data.calc_loop_triangles()
+        if len(o.data.loop_triangles) <= cap:
+            out.append(o)
+            continue
+        lo, hi = world_bounds(o)
+        e = hi - lo
+        ax = 0 if e.x >= e.y and e.x >= e.z else (1 if e.y >= e.z else 2)
+        cs = sorted((f.center[ax], f.index) for f in o.data.polygons)
+        mid = cs[len(cs) // 2][0]
+        bpy.ops.object.select_all(action='DESELECT')
+        o.select_set(True)
+        bpy.context.view_layer.objects.active = o
+        bpy.context.tool_settings.mesh_select_mode = (False, False, True)   # 按面选（只设了面的选中标记）
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.select_all(action='DESELECT')
+        bpy.ops.object.mode_set(mode='OBJECT')
+        n = 0
+        for f in o.data.polygons:
+            if f.center[ax] < mid or (f.center[ax] == mid and n < len(cs) // 2):
+                f.select = True
+                n += 1
+        bpy.ops.object.mode_set(mode='EDIT')
+        bpy.ops.mesh.separate(type='SELECTED')
+        bpy.ops.object.mode_set(mode='OBJECT')
+        two = [q for q in bpy.context.selected_objects if q.type == 'MESH']
+        if len(two) < 2:   # 切不开（全在一点上）：照原样
+            out.append(o)
+            continue
+        todo += two
+    return out
+
+
 for c in CFG:
     key = c["key"]
     before = set(bpy.data.objects)
     bpy.ops.import_scene.gltf(filepath=src_dir + "/" + c["file"])
     new = [o for o in bpy.data.objects if o not in before]
-    ob = join_meshes(new)
+    use = drop_objects(new, c)
+    ob = join_meshes(use)
     for o in new:
         bpy.data.objects.remove(o, do_unlink=True)
     me = ob.data
@@ -97,6 +173,10 @@ for c in CFG:
     bpy.ops.mesh.separate(type='MATERIAL')
     bpy.ops.object.mode_set(mode='OBJECT')
     parts = [o for o in bpy.context.selected_objects if o.type == 'MESH' and len(o.data.polygons) > 0]
+    big = []
+    for p in parts:
+        big += split_big(p, c.get("part", 19000))
+    parts = [o for o in big if len(o.data.polygons) > 0]
     W = D = H = 0
     allv = []
     pm = {}
@@ -122,7 +202,7 @@ for c in CFG:
     W, D, H = hi.x - lo.x, hi.y - lo.y, hi.z - lo.z
     meta[key] = {"name": c.get("name", key), "w": round(W, 3), "h": round(H, 3), "d": round(D, 3), "o": [round(xoff, 3), 0, 0], "parts": pm,
                  "credit": "%s：%s，作者 %s（%s），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、%s按材质切块、贴图缩到 1024" % (
-                     c.get("name", key), c["title"], c["author"], c["url"], ("减面到 %d 个三角形、" % cap) if tris > cap else ""),
+                     c.get("name", key), c["title"], c["author"], c["url"], (("减面到 %d 个三角形、" % cap) if tris > cap else "") + ("去掉自带的地台、" if (c.get("plate") or c.get("drop")) else "")),
                  "tris": min(tris, cap)}
     xoff += W + 60
     print("BLD %s %.0f x %.0f x %.0f 格  %d 块  %d 三角形" % (key, W, D, H, len(pm), min(tris, cap)))

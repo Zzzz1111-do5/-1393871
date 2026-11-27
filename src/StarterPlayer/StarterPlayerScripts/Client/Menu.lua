@@ -203,6 +203,20 @@ function Menu.init(G)
       end
       local okW, WMeta = pcall(function() return require(RS:WaitForChild("ImportedWpn", 3)) end)   -- 导弹合集（CC BY-NC-SA）
       if okW and type(WMeta) == "table" and WMeta.credit then table.insert(lines, (string.gsub(WMeta.credit, "（https?://[^）]*）", ""))) end
+      -- 地图：钢城的楼、雪山的房子和山体（元数据里各带 credit），雪山的树、云、天空（SnowCredits）
+      for _, name in ipairs({ "CityMeta", "SnowMeta", "SnowPeaksMeta" }) do
+        local ok, M = pcall(function() return require(RS:WaitForChild(name, 3)) end)
+        if ok and type(M) == "table" then
+          local keys = {}
+          for key, v in pairs(M) do if type(v) == "table" and v.credit then table.insert(keys, key) end end
+          table.sort(keys)
+          for _, key in ipairs(keys) do table.insert(lines, (string.gsub(M[key].credit, "（https?://[^）]*）", ""))) end
+        end
+      end
+      local okS, SC = pcall(function() return require(RS:WaitForChild("SnowCredits", 3)) end)
+      if okS and type(SC) == "table" then
+        for _, c in ipairs(SC) do table.insert(lines, (string.gsub(c, "（https?://[^）]*）", ""))) end
+      end
       pBody.Text = table.concat(lines, "\n\n")
     end
   end

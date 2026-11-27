@@ -236,6 +236,10 @@ task.spawn(function()
   if G.navBuild then G.try("寻路", G.navBuild) end   -- 后台算机器人走路的流场
   if G.roundStart then G.try("开局", G.roundStart) end
   print("[全面大战场] " .. Config.Version .. " 地图好了：" .. tostring(G.terrainChunks) .. " 块地形、" .. tostring(G.terrainVoxels) .. " 个体素")
+  -- 训练场（用户 11-26 晚「把训练场单独做一张地图吧」）：自己一块区块（Zones.RANGE），战场开局以后在后台建（Range.lua）；建好以前试驾先等等
+  task.spawn(function()
+    G.try("训练场", function() require(script:WaitForChild("Range")).build(G.World, G, workspace:FindFirstChild("Map")) end)
+  end)
 end)
 
 ---------------------------------------------------------------- 特效：枪声只发给附近的人

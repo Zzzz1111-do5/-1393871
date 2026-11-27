@@ -1,5 +1,6 @@
 -- 试驾（用户 11-25「都要做」）：python3 tools/mock/run.py tools/mock/wttest.lua
---   ① 科技树详情点「试驾」（没研究、没买的车也行）：人坐在车里，在东边单独一块场地；改装全装；前面三辆靶车
+--   ① 科技树详情点「试驾」（没研究、没买的车也行）：人坐在车里，在训练场（自己一块区块 Zones.RANGE，用户 11-26 晚「把训练场单独做一张地图吧」）
+--      自己那条靶道的射击线上；改装全装；前面七辆靶车
 --   ② 打掉靶车：不加分、不记击毁；10 秒后再摆一辆
 --   ③ 下车：回机库，靶车清掉，兵力不扣
 local T = dofile(MOCK_DIR .. "/common.lua")
@@ -51,7 +52,13 @@ local e = P.vehicle
 check(e ~= nil and e.testDrive and e.model:GetAttribute("TreeKey") == key, "坐在试驾的车里（" .. tostring(e and e.def and e.def.id) .. "）")
 if e then
   local p = e.root.CFrame.Position
-  check(p.X > 15000, string.format("在东边的试驾场（x = %.0f）", p.X))
+  local Zn, RM = G.Map.Zones, G.Map.Range
+  check(Zn ~= nil and Zn.of(p.X, p.Z) == "range", string.format("在训练场那一块（%.0f, %.0f）", p.X, p.Z))
+  if RM then
+    local lp = RM.lane(1)
+    check(math.abs(p.Z - lp.Z) < 60 and math.abs(p.Y - (RM.ground(p.X, p.Z) + (e.def.H or 4) / 2)) < 12,
+      string.format("停在射击线上（离射击线 %.0f 格）", p.Z - lp.Z))
+  end
   check((e.model:GetAttribute("ModSpd") or 1) > 1.1 and e.wtFx and e.wtFx.repair and e.wtFx.ext, "改装全装上了（车速 ×" .. tostring(e.model:GetAttribute("ModSpd")) .. "、能修、有灭火器）")
 end
 local dummies = {}
@@ -104,7 +111,7 @@ local nd = 0
 for _, x in ipairs(G.ents or {}) do if x.alive and x.testDummy then nd = nd + 1 end end
 check(nd == 0, "靶机也收走了（剩 " .. nd .. "）")
 
-print("④ 试驾飞机：停在自己的跑道上，基地后面有靶机、靶车")
+print("④ 试驾飞机：停在训练场跑道上，北边空中靶区有靶机、靶车")
 R.run(8)
 local akey = (P.team == "atk") and "cn_j6" or "us_f16c"
 T.act("testDrive", akey)
@@ -115,10 +122,10 @@ if ea then
   local pa = ea.root.CFrame.Position
   local gh = G.Map.height(pa.X, pa.Z)
   check(pa.Y - math.max(gh, 0) < 25, string.format("停在地上（离地 %.1f 格）", pa.Y - math.max(gh, 0)))
-  local B = G.Map.BASES and G.Map.BASES[P.team]
-  if B then
-    local dd = math.sqrt((pa.X - B.airfield.x) ^ 2 + (pa.Z - B.airfield.z) ^ 2)
-    check(dd < 2600, string.format("在自己的机场（离跑道中心 %.0f 格）", dd))
+  local RM = G.Map.Range
+  if RM then
+    local A = RM.airfield()
+    check(math.abs(pa.Z - A.z) < A.wid / 2 and math.abs(pa.X - A.x) < A.len / 2, string.format("在训练场跑道上（离跑道中心 %.0f, %.0f 格）", pa.X - A.x, pa.Z - A.z))
   end
 end
 R.run(1)

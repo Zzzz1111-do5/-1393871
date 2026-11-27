@@ -13,3 +13,8 @@
 
 改动：挑出其中几棵树 / 灌木 / 石头 / 草 / 花，单位换成 Roblox 的格（1 米 = 2.8 格）并按需要放大，树干减面，贴图缩小（树叶 512、树干 256），
 树叶、草、花的面片做成双面；草丛、花丛是把几株随机撒成一片。
+
+冬季树包（models/scenery/winter.glb，tools/snow/winter.py，雪山地图用；2026-11-26 加）：
+- 「Low Poly Winter Tree Pack」，作者 99.Miles，https://sketchfab.com/3d-models/low-poly-winter-tree-pack-824b124215fe4e459b895c9a5ff6f5a5，CC-BY 4.0
+  改动：原包是一个小场景，按节点和位置拆成 15 棵树（wt1～wt15）、15 丛灌木（ws1～ws15）（场景里重复摆的只留一棵）、面片做成双面、换成 Roblox 的格（1 米 = 2.8 格）、
+  贴图缩到 1024；雪堆、化雪泥地的贴图各放在一块薄片上（snowtex、slushtex），游戏里拿来换地形的雪、泥地材质

@@ -1,0 +1,15 @@
+{
+  "说明": "雪山地图谷外的山体（用户 11-26 晚：「坦克交战区外你就用这几个拿去拼」「雪山你直接用这个原封不动」「让这个地图望不到头」）：Sketchfab 上 CC-BY 4.0 的山体模型，tools/snow/peaks.py 原样转成 Studio 能导入的 GLB（不减面、贴图不降分辨率——只是按 Roblox 的限制切块：一块网格最多 2 万个三角形、零件每边最多 2048 格，贴图按 UV 切成最大 1024² 的小图）。scale 是烘焙时一个原模型单位折合多少格（运行时还能整体再放大到 kmax 倍：默认 1，不放大），cell 是切块的格子边长（格；grid 是 uv 的按贴图的平铺投影切，和贴图的边界对齐）。拼接：模型四周的边是切开的，拼起来会露出一道道直上直下的断面——外圈 taper（占边长的比例）里高出 flat（平地高度，格，约第 35 百分位）的部分平滑压到 flat，里面原样；摆的时候平地埋进雪原 / 谷底，边就都藏住了",
+  "kmax": 1.0,
+  "sources": {
+    "rockscan": { "uid": "e37252871af442e2aeb3571d1d11e65a", "name": "Rock terrain with light snow", "author": "Lassi Kaukonen", "user": "thesidekick", "scale": 52, "cell": 1400, "kmax": 1.05, "grid": "tile" },
+    "smv2": { "uid": "4c70cd82edd44951b7af6c144545df34", "name": "Snowy Mountain V2 - Terrain", "author": "artfromheath", "user": "artfromheath", "scale": 600, "cell": 1500, "grid": "uv", "flat": 259, "taper": 0.08 },
+    "glacier": { "uid": "9cc3e45bc7d24231b2cea8b75216feb1", "name": "Rocky Glacier - Snowy Landscape - Terrain", "author": "artfromheath", "user": "artfromheath", "scale": 12000, "cell": 1500, "grid": "uv", "flat": 458, "taper": 0.08 },
+    "kerem": { "uid": "6b0573c76fcc40a0a7efee12c751eb5f", "name": "Snowy Mountain", "author": "keremakgn", "user": "keremakgn", "scale": 13000, "cell": 1500, "grid": "uv", "flat": 785, "taper": 0.08 },
+    "icy": { "uid": "463eef961fc643358a1929bec9f0f18f", "name": "Icy Terrain Export", "author": "josevega", "user": "josevega", "scale": 1145, "cell": 1400, "grid": "uv", "flat": 102, "taper": 0.08 },
+    "wmsnow": { "uid": "e84a8e5edb2040c591be36350e2536f5", "name": "Snow Mountain", "author": "hkp941111", "user": "hkp941111", "scale": 55.6, "cell": 1250, "grid": "uv", "flat": 183, "taper": 0.08 }
+  },
+  "rejected": {
+    "09ed3babc1784b9a8a40b62d4f765f66": "James Lucas「Snowy Mountain」：CC BY-NC（不许商用），不收"
+  }
+}

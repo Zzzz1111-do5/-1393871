@@ -63,7 +63,10 @@ R.run(1.5)
 T.key(Enum.KeyCode.LeftShift, false)
 print(string.format("  油门 %.0f → %.0f，推力 %.2f，表速 %.0f", thr0, st.thr, st.thrust or -1, st.spd or 0))
 check(st.thr > 100, string.format("推满进了加力（%.0f）", st.thr))
-check((st.thrE or 0) > 90, string.format("发动机跟上来了（%.0f）", st.thrE or 0))
+-- 飞行物理（FlightModel.engine，11-26 晚）：转速照这一型的加速时间往上走（歼-20 慢车到军推 4 秒，真涡扇三到五秒），油门推上去的同时一路跟着
+check((st.thrE or 0) > 60, string.format("发动机在跟上来（推满后 %.0f）", st.thrE or 0))
+R.run(1.6)
+check((st.thrE or 0) > 95, string.format("再过一会儿到军推、点上加力（%.0f）", st.thrE or 0))
 local snd = st.engSnd
 if snd then
   print(string.format("  发动机声：音量 %.2f、音高 %.2f", snd.Volume, snd.PlaybackSpeed))

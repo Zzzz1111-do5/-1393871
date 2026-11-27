@@ -229,6 +229,7 @@ function Hud.init(G)
   if P.feed and not mobile then P.feed.Position = UDim2.new(1, -16, 0, 18 + MS + 14) end
   -- 雷达范围跟着坐的东西变（用户：飞机的雷达有点近）：步兵 RC.range，地面载具 RC.veh，直升机 RC.heli，固定翼 RC.jet；换的时候慢慢缩放
   local curR = RC.range
+  local hudMapHid = false   -- 训练场里把小地图收起来了（出来时放回去）
   local function wantRange()
     local f = G.fly
     if f and f.d then return (f.d.kind == "jet") and (RC.jet or 9000) or (RC.heli or 4000) end
@@ -624,6 +625,17 @@ function Hud.init(G)
     rangeL.Text = (curR >= 2000 * M_PER) and string.format("%.1fkm", curR / M_PER / 1000) or (math.floor(curR / M_PER + 0.5) .. "m")
     -- 整张图多宽按 MapUI 现在的范围（G.mapSpan）：沙漠 ±EXT 比海岛宽两倍多，原来按海岛的 6100 × K 算，沙漠的小地图比雷达范围小了一截、亮点和地图对不上
     local ZOOM = (G.mapSpan or MAPW) * (MS / 2) / curR
+    -- 训练场（Zones.RANGE，十万格外的另一张图）：小地图那张是战场的图，在训练场里收起来（雷达的亮点照旧）
+    local Zn = G.Map and G.Map.Zones
+    if root and Zn then
+      if Zn.inRange(pos.X, pos.Z) then
+        root.Visible = false
+        hudMapHid = true
+      elseif hudMapHid then
+        hudMapHid = false
+        root.Visible = not G.scopeOn
+      end
+    end
     if root and (root.Parent == box or (P.miniClip ~= nil and root.Parent == P.miniClip)) and G.mapUV then
       if G.mapTheme then G.mapTheme("mini") end
       if G.mapFocus then G.mapFocus(pos.X, pos.Z, curR) end   -- 身边画细节块（MapUI 的卫星图）

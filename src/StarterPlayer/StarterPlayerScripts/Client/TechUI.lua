@@ -20,6 +20,8 @@ function TechUI.init(G)
   local Config = G.Config
   local VD = require(RS:WaitForChild("VehDefs"))
   local AD = require(RS:WaitForChild("AirDefs"))
+  local FMok, FM = pcall(function() return require(RS:WaitForChild("FlightModel", 10)) end)   -- 飞行物理（每型的真实物理量，资料卡上列出来）
+  if not FMok then FM = nil end
   local WM = require(RS:WaitForChild("WtMods"))   -- 每辆车的改装
   local WC = require(RS:WaitForChild("WtCrew"))   -- 乘员
   local WD = require(RS:WaitForChild("WtDamage"))   -- 装甲、穿深（资料卡）
@@ -1714,6 +1716,30 @@ function TechUI.init(G)
         if a.vMax then add(L("最大速度（加力）", "Max speed (AB) ") .. math.floor(a.vMax * k + 0.5) .. " km/h") end
         if a.vMil then add(L("最大速度（军推）", "Max speed (mil) ") .. math.floor(a.vMil * k + 0.5) .. " km/h") end
         if a.stall then add(L("失速速度 ", "Stall speed ") .. math.floor(a.stall * k + 0.5) .. " km/h") end
+        -- 飞行物理（用户 11-26 晚「每个飞机要有不同的参数」）：这一型（科技树的版本）自己的重量、推力、翼面积、升力、阻力、过载、失速迎角、
+        --   转动惯量、静稳定、操纵方式；下面的转弯是按这些量用能量机动公式算的（1000 米、一半内油 + 两枚中距弹）
+        local D = FM and a.kind == "jet" and (FM.get(a.id, it.key) or FM.get(a.like or ""))
+        if D then
+          local c = FM.card(D)
+          local dg = 180 / math.pi
+          local fcsName = ({ fbw = L("数字 / 模拟电传", "fly-by-wire"), cas = L("机械 + 控制增强", "mechanical + CAS"), mech = L("机械操纵", "mechanical") })[D.fcs] or D.fcs
+          add(L("飞行物理", "Flight physics"), WHITE, 15)
+          add(L("平飞最大速度 ", "Top speed ") .. math.floor(FM.vTop(D, c.m, 100) * 3.6 + 0.5) .. ((D.Ta > D.Tm) and (" / " .. math.floor(FM.vTop(D, c.m, 130) * 3.6 + 0.5)) or "")
+            .. L(" km/h（军推 / 加力，1000 米）", " km/h (mil / AB, 1000 m)"), DIM, 12)
+          add(L("作战重量 ", "Combat weight ") .. math.floor(c.m / 10 + 0.5) * 10 .. " kg" .. L("（空重 ", " (empty ") .. D.m0 .. L("，满内油 ", ", int. fuel ") .. D.fi .. "）", DIM, 12)
+          add(L("推力 ", "Thrust ") .. math.floor(D.Tm / 100 + 0.5) / 10 .. ((D.Ta > D.Tm) and (" / " .. math.floor(D.Ta / 100 + 0.5) / 10 .. L(" 千牛（军推 / 加力）", " kN (mil / AB)")) or L(" 千牛", " kN"))
+            .. L(" · 推重比 ", " · T/W ") .. string.format("%.2f", c.tw), DIM, 12)
+          add(L("翼面积 ", "Wing area ") .. D.S .. " m²" .. L(" · 翼载 ", " · loading ") .. math.floor(c.wl + 0.5) .. " kg/m²" .. L(" · 展弦比 ", " · AR ") .. string.format("%.1f", D.AR), DIM, 12)
+          add(L("最大升力系数 ", "CLmax ") .. string.format("%.2f", D.CLm) .. L(" · 失速迎角 ", " · stall AoA ") .. D.aS .. "°" .. (D.aL and (L(" · 迎角限制 ", " · AoA limit ") .. D.aL .. "°") or ""), DIM, 12)
+          add(L("零升阻力 ", "CD0 ") .. string.format("%.4f", D.CD0) .. L(" · 诱导阻力因子 ", " · K ") .. string.format("%.3f", D.Kc) .. L(" · 波阻峰值 ", " · wave ") .. string.format("%.3f", D.CDw), DIM, 12)
+          add(L("过载 ", "G limits ") .. D.nzN .. " / +" .. D.nzP .. " g" .. L(" · 最大滚转 ", " · roll ") .. D.pmax .. "°/s", DIM, 12)
+          local mI = c.m
+          add(L("转动惯量 ", "Inertia ") .. string.format("%.0f / %.0f / %.0f", mI * D.rx2 / 1000, mI * D.ry2 / 1000, mI * D.rz2 / 1000) .. L(" 吨·米²（滚 / 俯 / 偏）", " t·m² (roll/pitch/yaw)"), DIM, 12)
+          add(L("静稳定裕度 ", "Static margin ") .. string.format("%+.0f%%", D.sm * 100) .. (D.sm < 0 and L("（放宽静稳定）", " (relaxed)") or "") .. L(" · 操纵 ", " · controls ") .. fcsName
+            .. (D.tvc and L(" · 推力矢量", " · thrust vectoring") or ""), DIM, 12)
+          add(L("持续转弯 ", "Sustained turn ") .. string.format("%.1f°/s", c.str * dg) .. (c.strV and string.format(" @ %d km/h", math.floor(c.strV * 3.6 + 0.5)) or "")
+            .. L(" · 瞬时转弯 ", " · instant. ") .. string.format("%.1f°/s", c.itr * dg), DIM, 12)
+        end
         add(L("默认挂载", "Default loadout"), WHITE, 15)
         local okG, list = pcall(AD.groups, a, AD.presetLoad(a))
         for _, wid in ipairs(okG and list or {}) do add("   " .. T2("aw." .. wid), DIM, 12) end

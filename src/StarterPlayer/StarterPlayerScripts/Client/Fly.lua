@@ -30,12 +30,9 @@ function Fly.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local GR = AD.GRAV
-  -- 用户 11-21：飞机过于灵活——玩家开的固定翼滚转、俯仰角速度和最大过载都收一截（起转、停住的快慢跟着一起慢下来）
-  local AGIL = { roll = 0.45, pitch = 0.65, g = 0.72 }
-  -- 用户 11-24 夜：「把飞机的驾驶感完全还原战争雷霆」——战雷的喷气战斗机滚转快（侧卫一秒两百多度）、能拉到八九个 g，
-  --   沉重感来自能量：转得狠掉速快、爬升掉速、慢了拉不动——滚转、过载放开到 0.75 / 0.85（原来 11-21 嫌太灵活收到 0.45 / 0.72，
-  --   那时速度是「油门给目标速度」，转弯、爬升几乎不掉速，只能靠收灵活度）；俯仰角速度照旧
-  AGIL.roll, AGIL.g = 0.75, 0.85
+  -- 固定翼的飞行物理（用户 11-26 晚：「每个飞机要有不同的参数」「现在飞机驾驶感觉过于灵敏」）：FlightModel.lua 的六自由度——
+  --   每型按自己的重量、推力、翼面积、升力、阻力、过载 / 失速迎角、转动惯量、稳定性、阻尼飞；原来「滚转 / 俯仰角速度乘个系数」（AGIL）的手调法去掉了
+  local FM = require(RS:WaitForChild("FlightModel"))
   local function T(k, ...) return G.T(k, ...) end
   local function clamp(v, a, b) return v < a and a or (v > b and b or v) end
   local function approach(a, b, s)
@@ -48,6 +45,7 @@ function Fly.init(G)
 
   local st = nil   -- 正在开 / 坐的飞机
   G.fly = nil
+  local flStart, flStop   -- 自由视角（下面定义）
   G.AD = AD
 
   ---------------------------------------------------------------- 样子
@@ -898,6 +896,14 @@ function Fly.init(G)
       if d.kind == "jet" then st.spd = d.vMil * 0.8 else st.hv = look * d.vMax * 0.6 end
       st.vel = look * ((d.kind == "jet") and st.spd or d.vMax * 0.6)
     end
+    -- 固定翼的飞行物理（FlightModel）：这一型（科技树的版本优先）的物理量；没登记的按同类借一型
+    if d.kind == "jet" then
+      local tk = em:GetAttribute("TreeKey")
+      st.fmD = FM.get(d.id, tk) or FM.get(d.like or "") or FM.get(d.prop and "mq9" or ((d.g or 9) < 4 and "h6k" or "f16"))
+      local _, _, _, r00, r01, r02, r10, r11, r12, r20, r21, r22 = cf:GetComponents()
+      st.fm = FM.new(st.fmD, { r00, r01, r02, r10, r11, r12, r20, r21, r22 }, st.vel.X / AD.M, st.vel.Y / AD.M, st.vel.Z / AD.M, st.thr)
+      st.fm.live = false
+    end
     -- 遥控无人机（服务器 vs.uav）：人在地上端着战术平板，画面是平板（Tablet.lua）；默认前视光电，右键 / V 换外部视角，Z 变焦
     st.uav = vs.uav == true and d.drone == true
     st.dcam, st.zoom, st.zoomS = st.uav and "nose" or nil, 1, 1
@@ -1208,6 +1214,18 @@ function Fly.init(G)
   --   早上照战雷改的时候默认换成了鼠标瞄准，又成了准心带着飞）：鼠标只转视角；想要战雷鼠标瞄准的按 M
   local mouseAim = false
   G.flyMouseAim = function(v) if v ~= nil then mouseAim = v == true end return mouseAim end
+  -- 自由视角（用户 11-26 晚：「自由视角不要因为飞机的机动动作而影响 然后 自由视角的移动改成鼠标右键拖动」）：
+  --   按住右键（战雷鼠标瞄准时 C 也行）拖动——看的是世界里的一个方向（方位、俯仰），飞机怎么滚、怎么拉都不带着它转；地平线是平的；
+  --   松开 0.35 秒滑回追尾镜头。原来鼠标一动就绕着飞机转（跟着机身坐标走，飞机一滚画面也滚），2.5 秒不动才回去
+  flStart = function(by)
+    if not st or st.fl then return end
+    local lk = cam.CFrame.LookVector
+    st.fl = { by = by, yaw = math.atan2(-lk.X, -lk.Z), pitch = math.asin(clamp(lk.Y, -1, 1)) }
+  end
+  flStop = function()
+    if st then st.fl = nil end
+  end
+  G.flyFreeLook = function(on) if on then flStart("rmb") else flStop() end end   -- 测试用
   -- 战雷的投弹（用户 11-24：「……包括投弹以及各方面操作细节和手感」）：Shift + B 投弹数量（单投 → 双投 → 齐投，整局记着）；
   --   F7 轰炸瞄准镜（战雷的「轰炸机视角」）；Alt + 中键在镜头中心对着的地面标目标点（战雷的「兴趣点」）：落点走到目标点自动投
   --   （航向偏太多这一趟不投）。画面在 Bombsight.lua，地上的红方框在 Marks.lua
@@ -1337,9 +1355,29 @@ function Fly.init(G)
     if G.shake then G.shake(1) end
   end
 
+  -- 质量（kg）和外挂的阻力系数增量：空重 + 内油（st.fuel 几成）+ 副油箱里的油（st.fuelX，按内油的几成）+ 挂着的弹 / 副油箱（按外形估的重量）；
+  --   弹舱里的不算阻力
+  local function fmMass(D)
+    local d = st.d
+    local m = D.m0 + D.fi * clamp(st.fuel or 1, 0, 1) + D.fi * math.max(st.fuelX or 0, 0)
+    local dS = 0
+    for i, s in ipairs(d.st or {}) do
+      local wid = st.load and st.load[i]
+      local w = wid and AD.W[wid]
+      local n = (st.stores and st.stores[i]) or 0
+      if w and n > 0 then
+        m += FM.storeMass(w, AD.M) * n
+        if not s.bay then dS += FM.storeDrag(w, AD.M) * n end
+      end
+    end
+    return m, dS / D.S
+  end
+  G.flyMass = function() return st and st.fmD and fmMass(st.fmD) end   -- 测试用
+
   local function jetPhysics(dt)
     local d = st.d
-    local ROLL, PITCH, GMAX = rad(d.roll) * AGIL.roll, rad(d.pitch) * AGIL.pitch, d.g * AGIL.g
+    local D = st.fmD
+    local ROLL, PITCH, GMAX = D.pmaxr, D.qmax, D.nzP   -- 教官用：最大滚转角速度、拉杆的俯仰角速度、过载上限（照这一型）
     -- 用户 11-21：飞机改成 WASD 控制方向、不要准心控制（原来 11-18 是鼠标给方向的纯准心控制、W / S 油门）——
     --   有人开的固定翼键盘就是驾驶杆：W 低头、S 抬头（跟摇杆一样往前推是低头）、A / D 滚转、Q / E 方向舵；油门挪到 Shift 加、Ctrl 收（↑ / ↓ 也行），
     --   地上油门收到底按住 Ctrl 倒退。键是开关量：杆量 0.3 秒推满、松开 0.2 秒回中，不会一按就猛地一转。
@@ -1362,10 +1400,13 @@ function Fly.init(G)
     local rollIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
     local yawIn, pitchIn = 0, 0   -- 无人机：键盘不管俯仰、方向舵（鼠标给方向）；手机上摇杆当驾驶杆
     if kb then
-      -- 推上去 0.12 秒到头、松开 0.08 秒回中，反着按先回中再推（用户 11-25 晚「纸片 / 薯片一样脆」：原来 0.3 / 0.2 秒，按下去要等、松了还在动）
+      -- 键盘当驾驶杆（用户 11-26 晚「飞机驾驶感觉过于灵敏」；原来 0.12 秒推满杆）：按住是往满杆指数地推（时间常数 0.28 秒：点一下只有三成杆、
+      --   按住半秒八成、一秒才满），松开 0.05 秒回中、反着按先回中再推——小修正点一下就够，猛拉要按住；杆量再过飞控的非线性（小杆量更细）
       local function ramp(cur, want)
-        local rate = (want ~= 0 and (cur == 0 or (cur > 0) == (want > 0))) and (1 / 0.12) or (1 / 0.08)
-        return approach(cur, want, rate * dt)
+        if want ~= 0 and (cur == 0 or (cur > 0) == (want > 0)) then
+          return cur + (want - cur) * (1 - math.exp(-dt / 0.28))
+        end
+        return approach(cur, want, dt / 0.05)
       end
       st.kP = ramp(st.kP or 0, (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0))
       st.kR = ramp(st.kR or 0, rollIn)
@@ -1391,69 +1432,47 @@ function Fly.init(G)
       if agl < 45 and (gH > 0.4 or AD.onDeck(Map, p0.X, p0.Z) ~= nil) then landAid = math.max(agl, 0) end
     end
     st.landAid = landAid
-    -- 速度：油门给目标速度（加力到 vAB），往目标加减速；爬升掉速、俯冲加速、拉杆转弯掉能量；地上没油门时滚着慢下来
-    -- 重量感（用户：飞机驾驶没有重量感）：W 越大越「沉」——F-22、歼-20 约 1，A-10 约 2，轰-6K、B-2、MQ-9 是 3
-    local W = math.clamp(220 / math.max(d.roll or 200, 1), 1, 3)
-    -- 发动机有迟滞：推力跟着油门慢慢起来（加力点着要一下）
-    st.thrE = approach(st.thrE or st.thr, st.thr, (st.thr > (st.thrE or 0) and 38 or 55) / W * dt)
-    local thr = st.thrE
-    local tgt = (thr <= 100) and d.vMil * thr / 100 or (d.vMil + (d.vMax - d.vMil) * (thr - 100) / 30)
-    local acc = (thr > 100) and (d.accel + (d.abAccel or 0)) or d.accel
-    -- 副油箱的阻力：最大速度、加速度都少几成；油多就重：加速慢（满内油 + 两个副油箱比一半内油重三成多）
-    tgt *= 1 - (st.drag or 0)
-    acc *= (1 - (st.drag or 0)) / (st.heavy or 1)
-    -- 战雷式受伤（WtAir.lua）：发动机受损推力打折、打坏了没推力只能滑翔
-    local wa = G.wtaFlight and G.wtaFlight(st.em)
-    if wa then
-      tgt *= wa.eng
-      acc *= math.max(0.12, wa.eng)
+    -- 发动机（FlightModel.engine：转速有惯性、加力要点火）：地上滑跑、天上都按它；st.thrE 给声音、尾焰（0 ~ 130）
+    local F = st.fm
+    local wa = G.wtaFlight and G.wtaFlight(st.em)   -- 战雷式受伤（WtAir.lua）：发动机、操纵面、平尾、断翼、飞行员昏迷
+    if st.thrE and st.fmThrE and math.abs(st.thrE - st.fmThrE) > 0.5 then   -- 别处直接设了发动机状态（重生、测试摆状态）：转速照它
+      F.N = clamp(st.thrE, 0, 100) / 100
+      F.abf = (st.thrE > 100 and D.Ta > D.Tm) and clamp((st.thrE - 100) / 30, 0, 1) or 0
+      F.abLit = F.abf > 0
     end
+    FM.engine(F, D, dt, st.thr, st.out)
+    st.thrE = F.N * 100 + F.abf * 30
+    st.fmThrE = st.thrE
+    -- 质量（空重 + 内油 + 副油箱的油 + 挂的弹）、外挂阻力；科技树改装（WtMods：散热器、压缩机、发动机）、受伤的推力
+    local mass, dCD0 = fmMass(D)
+    local thrK = ((st.em and st.em:GetAttribute("ModThr")) or 1) * (wa and wa.eng or 1)
+    local rho = FM.atmo(cf.Position.Y / AD.M)
+    local tgt = (st.thr <= 100) and d.vMil * st.thr / 100 or d.vMax   -- 地上：油门给滑行的目标速度（推力按真的算）
     if rev then tgt = -12 end   -- 倒退：慢慢往后滑（约 4 米 / 秒）
-    -- 进近自动油门（真飞机的速度保护 / 迎角地板）：起落架放着在天上，速度不掉到 1.2 倍失速以下——
+    -- 进近自动油门（真飞机的速度保护 / 迎角地板）：起落架放着在天上，速度掉到 1.3 倍（带襟翼的）失速速度以下自动加油门——
     --   油门收太多也不至于失速、掉在跑道前面的海里（收起落架就没有这个保护）
-    local apc = st.gear > 0.9 and not st.ground and not st.out and (tgt < d.stall * 1.2 or st.spd < d.stall * 1.25)
-    if apc then tgt = math.max(tgt, d.stall * 1.2) end
+    local vsFM = math.sqrt(2 * mass * FM.G / (rho * D.S * (D.CLm + D.flapCL))) * AD.M
+    local apc = st.gear > 0.9 and not st.ground and not st.out and st.spd < vsFM * 1.3
     st.apc = apc
-    -- 地上滑跑：推力要先克服整架飞机的重量和轮子的阻力，加速度只有天上的四分之一（战斗机滑跑两三百米、轰炸机五百米上下，
-    --   一推油门不再四五十米就飞起来；弹射器单独算）
-    if st.ground and not st.cat then acc *= 0.25 end
     st.airbrake = false
     if st.trap then   -- 挂着拦阻索：发动机推力不算，地上那段按拦阻索减速
     elseif st.ground then
-      -- 地上减速：B 刹车 70；油门收到底自动刹车 36（落地滑跑五六秒停住，不用一直按 B）；带着点油门滑行只有轮子阻力 22
-      if tgt > st.spd then st.spd += math.min(tgt - st.spd, acc * dt)
-      else st.spd -= math.min(st.spd - tgt, (((key(Enum.KeyCode.B) or key(Enum.KeyCode.Space)) and 70) or (st.thr < 5 and 36) or 22) * dt) end   -- 空格也是机轮刹车
-    else
-      -- 天上：战雷式能量（用户 11-24 夜：「把飞机的驾驶感完全还原战争雷霆」）——原来是「油门给目标速度、按固定加速度追过去」，
-      --   军推推力折算 1.6 g（军推就能一直竖着往上爬，转弯、爬升几乎不掉速）。现在按力算：
-      --   推力（军推按真推重比 0.75 g 左右，按机型的 accel 比例；加力在 vAB 正好被废阻抵消）− 废阻（∝ 速度²：军推最大平飞速度正好 vMil，
-      --   越接近越加不上去，高速时收油门减速快、低速慢）− 诱导阻力（下面按过载算）+ 重力沿航迹的分量（爬升掉速、俯冲加速，g·sinγ 全算）；
-      --   起落架、减速板（天上按 B）、襟翼、副油箱加废阻；重了推力打折
-      local Tmil = clamp((d.accel or 30) / 45, 0.35, 1.25) * 0.75 * GR
-      local kD = Tmil / (d.vMil * d.vMil)
-      local Tab = kD * d.vMax * d.vMax
-      local T = (thr <= 100) and (0.05 + 0.95 * thr / 100) * Tmil or (Tmil + (Tab - Tmil) * math.min(thr - 100, 30) / 30)
-      if st.out then T = 0 end
-      if wa then T *= wa.eng end
-      T *= (st.em and st.em:GetAttribute("ModThr")) or 1   -- 科技树改装（WtMods）：散热器、压缩机、发动机
-      T /= (st.heavy or 1)
-      local brk = not G.mobile and key(Enum.KeyCode.B)
-      local Dk = 1 + 2 * (st.drag or 0) + 0.9 * (st.gear or 0) + (brk and 1.6 or 0) + 0.45 * (st.flapK or 0)
-      st.spd += (T - kD * Dk * st.spd * math.abs(st.spd)) * dt
-      local vd = st.vdir or fwd
-      st.spd -= GR * vd.Y * dt   -- 沿航迹爬升掉速、俯冲加速（拉杆掉的能量在下面按过载算：诱导阻力）
-      if apc and st.spd < d.stall * 1.2 then st.spd = math.min(d.stall * 1.2, st.spd + Tmil * dt) end
-      st.airbrake = brk
-      st.thrust = T   -- 测试用
+      -- 地上：推力 − 气动阻力 − 机轮滚动阻力（真的推重比：战斗机开加力十来秒就到离地速度，轰炸机要跑很远）；
+      --   减速：B / 空格刹车 70、油门收到底自动刹车 36（落地滑跑五六秒停住，不用一直按 B）、带着点油门滑行 22
+      if tgt > st.spd then
+        local V0 = math.max(st.spd, 0) / AD.M
+        local T = FM.thrust(D, F.N, F.abf, V0 / 340, rho, V0) * thrK
+        local Dr = 0.5 * rho * V0 * V0 * D.S * (D.CD0 + dCD0 + D.gearCD + 0.03 * (st.flapK or 0))
+        local a = (T - Dr - 0.03 * mass * FM.G) / mass * AD.M
+        st.spd += clamp(a, 0, math.max(tgt - st.spd, 0) / math.max(dt, 1e-3)) * dt
+      else
+        st.spd -= math.min(st.spd - tgt, (((key(Enum.KeyCode.B) or key(Enum.KeyCode.Space)) and 70) or (st.thr < 5 and 36) or 22) * dt)   -- 空格也是机轮刹车
+      end
+      st.spd = clamp(st.spd, -12, d.vMax)
     end
-    if st.trig and (st.gunAmmo or 0) > 0 then st.spd -= 5 * dt end   -- 航炮的后坐：开火时掉一点速度（30 毫米炮的后坐力有几吨）
-    st.spd = clamp(st.spd, (st.ground and not st.cat) and -12 or 0, d.vMax * 1.3)
-    local q = clamp((st.spd - d.stall * 0.5) / (d.stall * 1.1), 0.12, 1)   -- 舵效：慢了舵不灵（1.1 倍失速速度只剩一半多，1.6 倍以上才满）
-    local qHi = 1 - 0.35 * Map.smooth(d.vMax * 0.85, d.vMax * 1.2, st.spd)   -- 战雷：飞得太快舵面变沉，滚转慢下来（俯冲时最明显）
-    -- 滚转响应的时间常数（下面滚转那段用）；教官摆坡度的增益跟它配成阻尼比 0.75 左右——到了就稳稳停住、不来回甩
-    local tauR = 0.085 * W ^ 0.6 / math.max(q, 0.3) ^ 0.5
+    -- 教官摆坡度的增益：配飞控滚转响应的时间常数（前置滤波 + 内回路），到了就稳稳停住、不来回甩
+    local tauR = D.tp + 1 / (10 * D.bw) + 0.05
     local kRoll = clamp(0.42 / (tauR * math.max(ROLL, 0.3)), 1.4, 3.2)
-    if wa then q *= wa.ctl * (wa.tail and 0.3 or 1) end   -- 操纵面打坏、尾翼没了：舵不灵
     -- 想怎么转（用户 11-18：方向只听鼠标准心，A / D 滚转不把准心拽回）：纯准心控制——像《战争雷霆》的教官，鼠标给想去的方向，
     --   自动压坡度让准心落到升力方向上、按偏差要过载（拉杆）转过去；按着 A / D 时滚转听键盘，俯仰照旧往准心拉
     --   飞机本身按升力物理飞（用户：操作感像玩具）：教官给的是「要几个 g」，飞控找迎角、升力带着航迹转，机头先抬、航迹慢半拍，拉得狠掉速；
@@ -1484,7 +1503,6 @@ function Fly.init(G)
       local w = Map.smooth(rad(2), rad(10), off)
       local toTarget = math.atan2(l.X, l.Y)   -- 让目标落到机头正上方（升力方向）要滚多少
       if fz < -0.2 and math.abs(l.X) < 0.15 then toTarget = 0 end   -- 目标在正后方偏一点点：先拉起来（筋斗），别来回滚
-      local level = clamp(bank * kRoll * 0.8, -1, 1)   -- 摆平机翼的滚转（bank 右翼抬起为正，rc 为正往右滚）
       local vd0 = st.vdir or cf.LookVector
       -- 准心相对航迹偏左 / 右多少（世界坐标里水平量，右为正）
       local vdH = V(vd0.X, 0, vd0.Z)
@@ -1494,6 +1512,9 @@ function Fly.init(G)
         vdH, aimH = vdH.Unit, aimH.Unit
         psi = math.atan2(aimH:Dot(V(-vdH.Z, 0, vdH.X)), aimH:Dot(vdH))
       end
+      -- 摆平机翼的滚转（bank 右翼抬起为正，rc 为正往右滚）；准心只偏一点点时带一个小坡度转过去（自动驾驶的航向保持：偏 1° 压 2.5°，最多 12°）——
+      --   飞行物理以后只靠方向舵修，航迹一直慢慢漂（wtfeel / bombsight：轰-6K 照航向飞 3 秒偏出去十几米，自动投弹不投）
+      local level = clamp((bank + clamp(psi * 2.5, -rad(12), rad(12))) * kRoll * 0.8, -1, 1)
       -- 降落辅助：离地 30 格以内拉平——航迹最陡只到下沉 6～14 格 / 秒（越低越平），准心压得再低也不往跑道上扎
       --   （原来下面只把航迹托平、机头照样压向准心，接地时机头朝下二十度判摔）：把要去的方向抬到这个下滑角
       --   准心不在前方 45° 以内（飞过了瞄的那一点、准心落到身后）就顺着现在的航向拉平，不往回拽
@@ -1532,7 +1553,9 @@ function Fly.init(G)
           dnP = dnP.Unit
           local sdP = vd0:Cross(dnP)   -- 垂直于航迹的水平方向
           local cD, cS = aDes:Dot(dnP), aDes:Dot(sdP)
-          local sMax = ((st.gear > 0.9) and 0.58 or 4) * GR
+          -- 左右最多：放着起落架 0.58 g（坡度 30° 以内）；平时按这一型的最大过载（满过载平转的水平分量 √(n² − 1)）——
+          --   原来卡在 4 g：准心偏 60° 以内（大多数缠斗）教官最多拉 4 g 出头，满过载转不出来（wtfeel ⑤）
+          local sMax = ((st.gear > 0.9) and 0.58 or math.sqrt(math.max(GMAX * GMAX - 1, 1))) * GR
           aDes = dnP * math.min(cD, 0.8 * GR) + sdP * clamp(cS, -sMax, sMax)
         end
         local aL = aDes - (V(0, -GR, 0) - vd0 * (-GR * vd0.Y))   -- 升力要给的加速度 = 想要的 − 重力（垂直于航迹那份）
@@ -1544,7 +1567,34 @@ function Fly.init(G)
         nGentle = math.max(aL:Dot(lh), 0) / GR
         gentleW = wg
       else
-        rc = (w * clamp(toTarget * kRoll, -1, 1) + (1 - w) * level) * ROLL
+        -- 准心在侧面、后面、上面（不是往下俯冲攻击、也不是正后方要翻筋斗）：同上面按升力矢量算——想要的加速度（这一型最大过载以内）减去重力，
+        --   坡度刚好让升力的竖直分量托住飞机（满过载平转：坡度 = arccos(1 / n)）。原来把准心滚到机头正上方再拉：准心在水平线上时一滚就是
+        --   90° 坡度、升力全朝侧面，满过载转一圈掉几百米高、越转越快（wtfeel ⑤：米格-29 军推盘旋 5 秒反倒加速 2%）
+        local ev = aimL - vd0 * vd0:Dot(aimL)
+        if aimL.Y > -math.sin(rad(15)) and not (fz < -0.2 and math.abs(l.X) < 0.15) and ev.Magnitude > 1e-3 then
+          local e = ev.Unit
+          local gp = V(0, -GR, 0) - vd0 * (-GR * vd0.Y)   -- 重力垂直于航迹的那份
+          local eg = e:Dot(gp)
+          local aN = GMAX * GR
+          local sMax = eg + math.sqrt(math.max(0, eg * eg - gp:Dot(gp) + aN * aN))   -- 朝准心那边最多能给多大的加速度（升力不超过最大过载）
+          local ang = math.acos(clamp(vd0:Dot(aimL), -1, 1))
+          local aL = e * math.min(ang * 2.1 * math.max(st.spd, 30), math.max(sMax, 0)) - gp
+          if aL.Magnitude > 1e-3 then
+            local lhat = aL.Unit
+            local th = math.atan2(vd0:Dot(lh:Cross(lhat)), lh:Dot(lhat))
+            rc = (w * clamp(th * kRoll * 0.8, -1, 1) + (1 - w) * level) * ROLL
+            -- 先滚后拉：升力方向还差 40° 以上时少拉（不然一边滚一边满过载，航迹先被拽向错的那边）
+            local nG = aL.Magnitude / GR
+            local al = math.abs(th)
+            if al > rad(40) then nG = 1 + (nG - 1) * clamp(1 - (al - rad(40)) / rad(60), 0.15, 1) end
+            nGentle, gentleW = nG, 1
+            toTarget = th
+          else
+            rc = (w * clamp(toTarget * kRoll, -1, 1) + (1 - w) * level) * ROLL
+          end
+        else
+          rc = (w * clamp(toTarget * kRoll, -1, 1) + (1 - w) * level) * ROLL
+        end
       end
       -- 贴着跑道 / 甲板：机翼自动摆平，只留几度坡度对准跑道
       if landAid and rollIn == 0 then rc = clamp((bank + clamp(psi * 1.5, -rad(8), rad(8))) * 2.5, -1, 1) * ROLL end
@@ -1561,23 +1611,11 @@ function Fly.init(G)
       yc = clamp(psi * 2.2, -rad(d.yaw) * 0.6, rad(d.yaw) * 0.6) * (1 - Map.smooth(rad(6), rad(12), off)) * bankK
       if rollIn ~= 0 then rc = rollIn * ROLL end
     end
-    if wa and not st.ground then
-      if wa.ko then rc, yc, nCmd = 0, 0, 0.55 end   -- 飞行员昏迷：松了杆，机头慢慢掉下去
-      if wa.wing then   -- 断翼：往断的那边滚、升力少一大半
-        rc = rc * 0.2 + ((wa.wing == "L") and -1 or 1) * ROLL * 0.85
-        nCmd = math.min(nCmd, 0.45)
-      end
-      if wa.tail then nCmd = nCmd * 0.5 + 0.35 + 0.5 * math.sin(os.clock() * 2.3) end   -- 没了平尾：俯仰不受控、上下乱晃
-    end
-    st.nCmd = clamp(nCmd, -2, GMAX / math.sqrt(st.heavy or 1))   -- 重了拉不了那么多 g
-    st.yawCmd = yc * q
-    -- 滚转（用户 11-25 晚：战雷开飞机「像纸片、薯片一样脆，很丝滑，但又不会觉得没有质量」）——机头这一层要脆：
-    --   原来按固定角加速度线性爬（0.45 秒才到最快、松手还要 0.45 秒才停，多滚三十来度、准星来回甩）；
-    --   改成一阶响应：时间常数 0.085 秒（重的按 W 慢一些、慢速舵效差时软一些），按住马上滚起来、松手一两帧就收住，不过冲。
-    --   「有质量」那一层在航迹：下面的升力、迎角、掉速照旧（机头先转、航迹慢半拍跟过去）
-    st.rr += (rc * q * qHi - st.rr) * (1 - math.exp(-dt / tauR))
-    if st.ground then st.rr, st.yr = 0, 0 end
-    st.c.pit, st.c.rol, st.c.yaw = clamp(st.pr / math.max(PITCH, 1e-3), -1, 1), clamp(st.rr / math.max(ROLL, 1e-3), -1, 1), clamp(st.yr / math.max(rad(d.yaw), 1e-3), -1, 1)
+    -- 教官给的过载、滚转角速度、偏航（飞行员昏迷、断翼、平尾没了这些交给 FlightModel 按受伤算）
+    st.nCmd = clamp(nCmd, -2, GMAX)
+    st.yawCmd = yc
+    local stickMode = G.mobile or (kb and not st.eo and not st.oob and (not mAim or stickHeld))   -- 键盘 / 手机摇杆直接操纵（不然教官飞）
+    if st.ground then st.pr, st.rr, st.yr = 0, 0, 0 st.c.pit, st.c.rol, st.c.yaw = 0, 0, 0 end
     local pos = cf.Position
     if st.ground and st.cat then
       -- 航母弹射器：卡上以后原地不动，油门推满按空格（手机：推满等一秒半）沿轨道加速，冲到舰艏就离舰
@@ -1594,7 +1632,7 @@ function Fly.init(G)
           if G.playSound then G.playSound("boom", pos, 1.6) end
         end
       else
-        local vEnd = math.max(d.vRot * 1.2, d.stall * 1.35)
+        local vEnd = d.stall * 1.8   -- 冲出舰艏的速度（原来按 1.5 倍失速速度的抬头速度再乘 1.2；抬头速度改成 1.2 倍以后弹射照旧）
         st.cat.v += vEnd * vEnd / (2 * len) * dt
         st.cat.s += st.cat.v * dt
         st.spd = st.cat.v
@@ -1653,86 +1691,138 @@ function Fly.init(G)
       pos += look * st.spd * dt
       local g = ground(pos.X, pos.Z)
       local wantUp = pitchIn < -0.3 or (not G.mobile and aimG.Y > math.sin(rad(3)))
-      if st.spd >= d.vRot and wantUp then   -- 离地
+      -- 抬头、离地（飞行物理，11-26 晚：原来一到抬头速度就整架抬 4° 飞起来，升力只够一半，离地马上又落回跑道）：到抬头速度拉杆，
+      --   机头绕主轮往上抬（每秒 3.5°，最多到擦尾角）；按这一型的升力曲线（带着襟翼）算升力，够托住飞机了才离地——离地时迎角就是抬起的角度；
+      --   松杆机头慢慢放回去；刚接地时机头还抬着，也是慢慢放下来（离地时迎角 = 抬起的角度）
+      local big = (d.g or 9) < 4   -- 轰炸机、运输机：擦尾角小、抬头慢
+      local rotMax = rad(big and 9 or 12)
+      if st.spd >= d.vRot and wantUp then
+        st.rotP = math.min((st.rotP or 0) + rad(big and 3 or 6) * dt, rotMax)   -- 战斗机一秒多抬到离地姿态（开加力抬头那几秒还在猛加速）
+      else
+        st.rotP = math.max((st.rotP or 0) - rad(3) * dt, 0)
+      end
+      local lifted = false
+      if (st.rotP or 0) > rad(2) and st.spd >= d.vRot then
+        local mass = fmMass(D)
+        local rho = FM.atmo(pos.Y / AD.M)
+        local Vm = st.spd / AD.M
+        local L = 0.5 * rho * Vm * Vm * D.S * FM.CL(D, st.rotP, st.flapK or 0)
+        lifted = L >= mass * FM.G * 1.02
+      end
+      local function pitched(p)   -- 绕主轮（重心正下方的地面）抬机头
+        local gp = p - V(0, d.gearH, 0)
+        return CFrame.lookAt(gp, gp + look) * CFrame.Angles(st.rotP or 0, 0, 0) * CFrame.new(0, d.gearH, 0)
+      end
+      if lifted then   -- 离地：高出接地判定线一点、带一点往上的速度（原来只高 0.3 格、速度是平的，下一帧正好又判成接地，一路在跑道上弹）
         st.ground = false
-        st.pr = rad(6)
-        cf = CFrame.lookAt(pos + V(0, 0.5, 0), pos + V(0, 0.5, 0) + look) * CFrame.Angles(rad(4), 0, 0)
+        st.pr = rad(2)
+        pos = V(pos.X, g + d.gearH + 1.2, pos.Z)
+        cf = pitched(pos)
+        st.rotP = 0
+        st.liftVy = 1.5 * AD.M   -- 下面算 st.vel 时加上（离地瞬间的爬升率约 1.5 米 / 秒）
       elseif pos.Y - d.gearH > g + 2.5 then   -- 冲出甲板 / 跑道尽头：掉下去
         st.ground = false
+        st.rotP = 0
         cf = CFrame.lookAt(pos, pos + look)
       else
         pos = V(pos.X, g + d.gearH, pos.Z)
-        cf = CFrame.lookAt(pos, pos + look)
+        cf = ((st.rotP or 0) > 1e-4) and pitched(pos) or CFrame.lookAt(pos, pos + look)
       end
       st.vel = look * st.spd
+      if st.liftVy then
+        st.vel = st.vel + V(0, st.liftVy, 0)
+        st.liftVy = nil
+      end
       st.vdir, st.accV = (st.ground and look) or cf.LookVector, nil
       st.sink = 0
     else
-      -- 天上（用户：很像玩具——原来航迹直接被拉向机头，压坡度不拉杆就不转）：按真飞机的道理——
-      --   升力 ∝ 速度² × 迎角，方向垂直于航迹、在机翼的上方；压坡度升力就斜过去，带着航迹转弯（竖直的那份不够重力就掉高度）；
-      --   失速速度上用最大迎角正好 1 g，再慢就托不住；过了失速迎角升力往下掉。拉得越狠诱导阻力越大（∝ 过载² / 速度²），掉速
-      --   飞控：要 nCmd 个 g 需要多大迎角（限在最大迎角里），机体俯仰角速度 = 航迹转的角速度 + 把迎角往要的那个收（零点几秒）
-      cf = cf * CFrame.Angles(st.pr * dt, -st.yr * dt, -st.rr * dt)
-      local fw, upB, rtB = cf.LookVector, cf.UpVector, cf.RightVector
-      local spd = math.max(st.spd, 1)
-      local vd = st.vdir or fw
-      local aoa = math.atan2(-vd:Dot(upB), math.max(vd:Dot(fw), 0.05))
-      local beta = math.asin(clamp(vd:Dot(rtB), -1, 1))
-      local aMax = rad(d.aoaMax or 24)
-      local ka = GR / (d.stall * d.stall * aMax) * spd * spd * (1 + 0.25 * (st.flapK or 0))   -- 放襟翼升力大一点（失速速度低一成）
-      local function liftOf(a)
-        if a > aMax then return ka * aMax * math.max(0.35, 1 - (a - aMax) / aMax * 1.5) end
-        if a < -aMax * 0.6 then return -ka * aMax * 0.6 end
-        return ka * a
+      -- 天上：六自由度飞行物理（FlightModel.lua，用户 11-26 晚：每型自己的重量、推力、翼面积、升力、阻力、过载上限、失速迎角、转动惯量、稳定性、阻尼）——
+      --   键盘 / 手机摇杆是驾驶杆（电传：拉杆要过载、压杆要滚转角速度、松杆保持航迹和坡度；机械操纵：杆对舵面，松杆按自己的短周期回稳）；
+      --   鼠标瞄准、光电吊舱、飞出作战区自动掉头是教官给过载、滚转角速度。原来那套「要几个 g 就有几个 g、滚转一阶 0.085 秒」的运动学去掉了
+      -- 别处直接改了位置、姿态、速度（服务器拉回、测试摆姿态、出界拦回……）：按改过的重新起步（航炮后坐那点抖动不算）
+      if F.live and st.fmCF and ((cf.Position - st.fmCF.Position).Magnitude > 0.05 or cf.LookVector:Dot(st.fmCF.LookVector) < 0.99995
+        or cf.UpVector:Dot(st.fmCF.UpVector) < 0.99995 or (st.vel - st.fmVel).Magnitude > 0.05) then
+        F.live = false
       end
-      -- 失速（战雷）：迎角过了最大迎角，一边机翼先掉（翼尖先失速）、机头往下沉（升力在 liftOf 里掉）；用鼠标瞄准（教官）时轻一些
-      --   ——教官本来就不拉过最大迎角，只有太慢、托不住的时候才会失速。迎角回到八成以下慢慢恢复
-      if aoa > aMax * 1.02 then
-        if not st.dropDir then st.dropDir = (math.abs(beta) > 0.02) and ((beta > 0) and -1 or 1) or ((math.random() < 0.5) and -1 or 1) end
-        st.stallK = approach(st.stallK or 0, 1, 1.8 * dt)
+      if not F.live then   -- 刚离地 / 弹射离舰 / 服务器拉回 / 空中出生：按现在的姿态、速度起步（发动机转速接着用）
+        local _, _, _, r00, r01, r02, r10, r11, r12, r20, r21, r22 = cf:GetComponents()
+        local v0 = (st.vel and st.vel.Magnitude > 1) and st.vel or cf.LookVector * st.spd
+        FM.reset(F, { r00, r01, r02, r10, r11, r12, r20, r21, r22 }, v0.X / AD.M, v0.Y / AD.M, v0.Z / AD.M, st.pr or 0)
+        F.flap = st.flapK or 0   -- 襟翼是放着的（地上滑跑时 FlightModel 不推演，它那份襟翼还停在 0：离地头两秒少了襟翼的升力）
+        F.live = true
+      end
+      local p0 = cf.Position
+      local gH = ground(p0.X, p0.Z)
+      local inp = { thr = apc and math.max(st.thr, 92) or st.thr, gear = st.gear, flap = st.flapK or 0, brake = (not G.mobile and key(Enum.KeyCode.B)) or false }
+      if stickMode then
+        inp.mode, inp.sx, inp.sy, inp.sz = "stick", rollIn, -pitchIn, yawIn   -- W 推杆（低头）、S 拉杆
+        inp.level = rollIn == 0
+        inp.levelHard = landAid ~= nil and rollIn == 0   -- 贴着跑道 / 甲板：机翼自动摆平
       else
-        st.stallK = approach(st.stallK or 0, 0, ((aoa < aMax * 0.8) and 2.5 or 0.8) * dt)
-        if st.stallK <= 0 then st.dropDir = nil end
+        inp.mode, inp.n, inp.p, inp.r = "cmd", st.nCmd, rc, st.yawCmd
       end
-      if st.stallK > 0.05 and st.dropDir then
-        st.rr = st.rr + st.dropDir * ROLL * ((mAim and not stickHeld) and 0.6 or 1.4) * st.stallK * dt
+      local env = { m = mass, h = p0.Y / AD.M, agl = math.max(0, (p0.Y - d.gearH - math.max(gH, 0)) / AD.M), dCD0 = dCD0, thrK = thrK, out = st.out,
+        nzK = math.min(1, (D.m0 + 0.6 * D.fi + 1000) / mass) }   -- 重了过载上限按重量打折
+      if wa then
+        env.ctlK = wa.ctl
+        if wa.tail then env.pitchK, env.Mext = 0.25, 0.04 * math.sin(os.clock() * 2.3) end   -- 没了平尾：俯仰不受控、上下乱晃
+        if wa.wing then env.liftK, env.Lext = 0.55, (wa.wing == "L") and -0.045 or 0.045 end   -- 断翼：升力少一半、往断的那边滚
+        env.ko = wa.ko   -- 飞行员昏迷：松了杆，机头慢慢掉下去
       end
-      local lhat = upB - vd * vd:Dot(upB)
-      lhat = (lhat.Magnitude > 1e-3) and lhat.Unit or upB
-      local gv = V(0, -GR, 0)
-      local gPerp = gv - vd * vd:Dot(gv)
-      local L = liftOf(aoa)
-      local aNeed = clamp((st.nCmd or 1) * GR / math.max(ka, 1e-3), -aMax * 0.5, aMax * 0.95)
-      local pc = (L + gPerp:Dot(lhat)) / spd + (aNeed - aoa) * 5.5
-      pc = clamp(pc, -PITCH * 0.7, PITCH)
-      -- 俯仰角速度：一阶响应（时间常数 0.07 秒，重的慢一些）——和上面迎角回路合起来阻尼比约 0.8：一拉杆机头马上跟上、
-      --   过载零点三秒左右起来、不冲过头（原来按固定角加速度线性爬，过载起得慢、松杆还往上带）
-      local tauP = 0.07 * W ^ 0.7 / math.max(q, 0.3) ^ 0.5
-      st.pr += (pc - st.pr) * (1 - math.exp(-dt / tauP))
-      st.yr = approach(st.yr, clamp(beta * 3, -rad(d.yaw), rad(d.yaw)) + (st.yawCmd or 0), 1.5 / W ^ 0.6 * dt)   -- 自动协调：侧滑往零收
-      local aPerp = lhat * L + gPerp - rtB * vd:Dot(rtB) * spd * 1.5   -- 升力 + 重力（垂直于航迹那份）+ 侧滑的侧力
-      vd = vd + aPerp / spd * dt
-      st.vdir = (vd.Magnitude > 1e-3) and vd.Unit or fw
+      st.airbrake = inp.brake
+      local dx, dy, dz = FM.step(F, D, dt, inp, env)
+      if st.trig and (st.gunAmmo or 0) > 0 then   -- 航炮的后坐：开火时掉一点速度（30 毫米炮的后坐力有几吨）
+        local k = math.max(0, 1 - (5 / AD.M) * dt / math.max(F.Va, 1))
+        F.vx, F.vy, F.vz = F.vx * k, F.vy * k, F.vz * k
+      end
       -- 降落辅助：离地 25 格以内把下沉率收到 6～14 格 / 秒（越低越小）——真飞机接地前的拉平（加上地效）；
-      --   玩家把准心压在跑道上、速度别太快就落得住（原来照直往下扎，下沉过了 24 格 / 秒就判摔）
-      if landAid and landAid < 25 and st.vdir.Y < 0 then
-        local vyT = -(6 + 8 * landAid / 25) / spd
-        if st.vdir.Y < vyT then
-          local h = V(st.vdir.X, 0, st.vdir.Z)
-          if h.Magnitude > 1e-3 then
-            local vy = approach(st.vdir.Y, vyT, 1.2 * dt)
-            st.vdir = h.Unit * math.sqrt(math.max(0, 1 - vy * vy)) + V(0, vy, 0)
+      --   玩家把准心压在跑道上、速度别太快就落得住（下沉过了 30 格 / 秒判摔）
+      if landAid and landAid < 25 then
+        local vyT = -(6 + 8 * landAid / 25) / AD.M
+        if F.vy < vyT then
+          local sp = math.sqrt(F.vx * F.vx + F.vy * F.vy + F.vz * F.vz)
+          local vy = approach(F.vy, vyT, 1.2 * sp * dt)
+          local hz = math.sqrt(F.vx * F.vx + F.vz * F.vz)
+          if hz > 1e-3 then
+            local k = math.sqrt(math.max(0, sp * sp - vy * vy)) / hz
+            F.vx, F.vz, F.vy = F.vx * k, F.vz * k, vy
           end
         end
       end
-      local n = L / GR
+      do   -- 速度上限（服务器只认 1.6 倍最大平飞速度以内；俯冲到这里早该撕翼了）
+        local sp = math.sqrt(F.vx * F.vx + F.vy * F.vy + F.vz * F.vz)
+        local cap = d.vMax * 1.45 / AD.M
+        if sp > cap then
+          local k = cap / sp
+          F.vx, F.vy, F.vz = F.vx * k, F.vy * k, F.vz * k
+        end
+      end
+      pos = p0 + V(dx, dy, dz) * AD.M
+      cf = CFrame.new(pos.X, pos.Y, pos.Z, F.qx, F.qy, F.qz, F.qw)
+      local v0 = st.vel
+      st.vel = V(F.vx, F.vy, F.vz) * AD.M
+      st.spd = st.vel.Magnitude
+      st.vdir = (st.spd > 1e-3) and st.vel.Unit or cf.LookVector
+      if v0 then   -- 加速度（镜头用：过载把镜头甩开）
+        local acc = (st.vel - v0) / math.max(dt, 1e-3)
+        st.accV = (st.accV or acc):Lerp(acc, math.min(1, dt * 6))
+      end
+      st.pr, st.rr, st.yr = F.q, F.p, F.r
+      local n = F.nz
       st.gLoad = n
-      st.aoaDeg = math.deg(aoa)
-      -- 超速 / 过载撕翼（用户 11-25「全部都做」⑪：战雷里超过极限速度、过载撕掉机翼）：超过 vne（默认加力最大平飞 vMax 的 1.12 倍，俯冲才到得了）
-      --   或过载门槛（喷气机 12.5 g）连着 0.8 秒——报服务器（WtAir.lua G.ACT.wtaOver，一边机翼撕掉）；快到了屏幕上警告
+      st.aoaDeg = deg(F.al)
+      st.stallK = F.stallK
+      st.thrust = F.T
+      -- 舵面、推力矢量喷口跟着真的舵偏（AirModels：c.pit 拉杆为正、c.rol 右滚为正、c.yaw 机头往右为正）
+      st.c.pit = clamp(-F.de / D.der, -1, 1)
+      st.c.rol = clamp(F.da / D.dar, -1, 1)
+      st.c.yaw = clamp(-F.dr / D.drr, -1, 1)
+      local spd = st.spd
+      -- 超速 / 过载撕翼（用户 11-25「全部都做」⑪：战雷里超过极限速度、过载撕掉机翼）：超过这一型的海平面最大允许速度（FlightModel 的 vne）
+      --   或过载门槛（设计过载的 1.45 倍：破坏载荷）连着 0.8 秒——报服务器（WtAir.lua G.ACT.wtaOver，一边机翼撕掉）；快到了屏幕上警告
       do
-        local vne = d.vne or ((d.vMax or d.vAB or d.vMil or 300) * 1.12)   -- 喷气机的加力最大平飞是 vMax（同上面推力那段）
-        local gLim = d.gLim or 12.5
+        local vne = d.vne or (D.vne * AD.M * 1.03)
+        local gLim = d.gLim or math.max(3.5, D.nzP * 1.45)
         local over = spd > vne or n > gLim
         if over and not st.ground then
           st.overT = (st.overT or 0) + dt
@@ -1748,16 +1838,7 @@ function Fly.init(G)
           G.toast(T((spd > vne * 0.95) and "wta.warnSpeed" or "wta.warnG"), "bad")
         end
       end
-      st.spd = math.max(0, st.spd - 0.22 * GR * n * n * (d.stall / spd) ^ 2 * dt)   -- 诱导阻力：拉得越狠、越慢掉得越多（最大过载盘旋几秒掉三四成速度）
       st.sink = 0
-      local v0 = st.vel
-      st.vel = st.vdir * st.spd
-      if v0 then   -- 加速度（镜头用：过载把镜头甩开）
-        local acc = (st.vel - v0) / math.max(dt, 1e-3)
-        st.accV = (st.accV or acc):Lerp(acc, math.min(1, dt * 6))
-      end
-      pos += st.vel * dt
-      cf = cf - cf.Position + pos
       -- 撞地 / 落地
       local g = ground(pos.X, pos.Z)
       if pos.Y - d.gearH <= g + 0.3 then
@@ -1776,14 +1857,17 @@ function Fly.init(G)
           st.vdir = V(st.vdir.X, math.max(st.vdir.Y, 0), st.vdir.Z).Unit
           st.spd = math.max(0, st.spd - 14 * dt)   -- 地效 + 拉平的迎角：比空中多掉一点速度
           st.vel = st.vdir * st.spd
+          if st.fm and st.fm.live then st.fm.vx, st.fm.vy, st.fm.vz = st.vel.X / AD.M, st.vel.Y / AD.M, st.vel.Z / AD.M end
           cf = cf - cf.Position + pos
           st.floatT = os.clock()
         elseif attOk and (st.spd < d.landMax or (hookOk and st.spd < d.landMax * 1.5)) then
           st.ground = true
           st.yaw = math.atan2(-fw.X, -fw.Z)
+          st.rotP = clamp(rad(pitch), 0, rad(12))   -- 主轮先着地：机头还抬着，滑跑里慢慢放下来（地上那段每秒 3°）
           pos = V(pos.X, g + d.gearH, pos.Z)
           cf = CFrame.lookAt(pos, pos + V(fw.X, 0, fw.Z))
           st.sink, st.pr, st.rr, st.yr = 0, 0, 0, 0
+          if st.fm then st.fm.live = false end   -- 下次离地按那时的姿态重新起步
           -- 接地：不按 W 就自动收到慢车（地上油门收到底就自动刹车，五六秒停住、停稳补给）；按住 W 是连续起降
           if not up and st.thr <= 100 then st.thr = 0 end
           if G.shake then G.shake(0.15) end
@@ -1799,6 +1883,7 @@ function Fly.init(G)
       end
     end
     st.cf = cf
+    if st.fm and st.fm.live then st.fmCF, st.fmVel = cf, st.vel end   -- 飞行物理这一帧的结果（下一帧看别处改没改过）
     -- 起落架（用户：起飞自动把起落架收了）：离地爬过 15 米、还在往上爬就自动收一次；这次起飞只收一次，之后按 G 放下就听玩家的；
     --   地上一直放着，落地重置
     if st.ground then
@@ -1996,8 +2081,10 @@ function Fly.init(G)
     elseif k == Enum.KeyCode.C and st.d.kind == "jet" and st.uav then   -- 无人机：准星圈回到正前方，按航迹（飞机照直飞）
       local lk = (not st.ground and st.vdir) or st.cf.LookVector
       st.aimYaw, st.aimPitch = math.atan2(-lk.X, -lk.Z), math.asin(clamp(lk.Y, -1, 1))
-    elseif k == Enum.KeyCode.C and st.d.kind == "jet" and st.pilot then   -- 有人开的固定翼：视角立刻回到身后（座舱里回到正前方）
-      st.lookYaw, st.lookPitch, st.lookT = 0, 0, 0
+    elseif io.UserInputType == Enum.UserInputType.MouseButton2 and st.d.kind == "jet" and not st.uav and not st.eo and not st.bsight then
+      flStart("rmb")   -- 自由视角：按住右键拖动
+    elseif k == Enum.KeyCode.C and st.d.kind == "jet" and st.pilot then
+      if mouseAim then flStart("c") else flStop() end   -- 战雷鼠标瞄准：按住 C 也是自由视角；纯键盘：C 视角回到身后
     elseif k == Enum.KeyCode.X then   -- 热诱弹：按住连续放（用户），每帧里按节拍发（stepFly）
       st.flareHold = true
       if os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then   -- 点一下也放一组（按下、松开在同一帧里的话，按住的逻辑一组都发不出去）
@@ -2045,6 +2132,7 @@ function Fly.init(G)
     if st and io.UserInputType == Enum.UserInputType.MouseButton1 then st.firing = false end
     if st and io.KeyCode == Enum.KeyCode.F then st.missile = false end
     if st and io.KeyCode == Enum.KeyCode.X then st.flareHold = false end
+    if st and ((io.UserInputType == Enum.UserInputType.MouseButton2 and st.fl and st.fl.by == "rmb") or (io.KeyCode == Enum.KeyCode.C and st.fl and st.fl.by == "c")) then flStop() end
   end)
   UIS.InputChanged:Connect(function(io, gp)
     if gp or not st or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
@@ -2067,6 +2155,7 @@ function Fly.init(G)
       -- 航迹方向跟着拉回去（不然留着原来的航迹，机头和航迹差得远，一下子掉光速度失速）
       st.vdir = (typeof(m.v) == "Vector3" and m.v.Magnitude > 1) and m.v.Unit or m.cf.LookVector
       st.accV = nil
+      if st.fm then st.fm.live = false end   -- 飞行物理按拉回来的姿态、速度重新起步
     elseif m.op == "rwr" then   -- 有导弹朝我来了
       st.rwrT = os.clock() + 4
       if G.wtRwrEvent then G.wtRwrEvent("rwr", m) end   -- 战雷式雷达告警圆盘（WtFlight.lua）
@@ -2358,19 +2447,15 @@ function Fly.init(G)
           st.aimPitch += (0 - st.aimPitch) * math.min(1, dt * 1.2)
         end
       elseif d.kind == "jet" and not G.mobile and not pitLook then
-        if st.pilot and not st.uav and mouseAim and not key(Enum.KeyCode.C) then
+        if st.fl then   -- 自由视角（右键拖着）：鼠标转世界里的方向（准心、飞机照旧）
+          st.fl.yaw -= md.X * SENS
+          st.fl.pitch = clamp(st.fl.pitch - md.Y * SENS, -1.45, 1.45)
+        elseif st.pilot and not st.uav and mouseAim and not key(Enum.KeyCode.C) then
           -- 战雷式鼠标瞄准：鼠标转想去的方向（世界里的方向，可以转到身后——飞机掉头追过去）
           st.aimYaw -= md.X * SENS
           st.aimPitch = clamp(st.aimPitch - md.Y * SENS, -1.45, 1.45)
         elseif st.pilot and not st.uav then
-          -- 有人开的固定翼（用户 11-21：WASD 控制方向、不要准心控制）：鼠标不管方向，只转视角——
-          --   用户 11-21（晚）：飞机要允许用鼠标转视角：不用再按住 Alt，鼠标一动镜头就绕着飞机转（座舱里就是转头看，Interior.lua），
-          --   停在拨到的地方；鼠标 2.5 秒不动才慢慢回到身后，C 立刻回正
-          if md.X ~= 0 or md.Y ~= 0 then
-            st.lookYaw = clamp((st.lookYaw or 0) - md.X * SENS, -2.8, 2.8)
-            st.lookPitch = clamp((st.lookPitch or 0) - md.Y * SENS, -1.2, 1.2)
-            st.lookT = os.clock()
-          end
+          -- 有人开的固定翼（用户 11-21：WASD 控制方向、不要准心控制）：鼠标不管方向；转视角改成按住右键拖动（上面 st.fl，用户 11-26 晚）
         elseif st.pilot then   -- 无人机：鼠标推的是想去的方向（飞机自动转过去）
           -- 镜头跟着机身：按镜头的左右、上下转（倒飞、竖直爬升时鼠标往上照样是画面上方），再限制在机头前方的椭圆里
           --   （鼠标没动就不管：自动驾驶、降落辅助给的方向照原样）
@@ -2414,19 +2499,29 @@ function Fly.init(G)
       end
       -- 飞出作战区（±Map.PLAY，约 5 公里）：自动掉头（喷气机掉头半径七八百格）；再往外硬拦住（服务器在 Map.PLAY + 1200 以外不认）
       local p = st.cf.Position
-      local lim = Map.PLAY
-      st.oob = math.abs(p.X) > lim or math.abs(p.Z) > lim
+      -- 作战区按所在的区块算（Zones.lua：训练场在十万格外，边界、掉头的方向都按训练场中心）
+      local Zn = Map.Zones
+      local zn = Zn and Zn.of(p.X, p.Z) or "battle"
+      local cx, cz = 0, 0
+      if Zn then cx, cz = Zn.center(zn) end
+      local lim = Zn and Zn.play(zn, Map) or Map.PLAY
+      local rx, rz = p.X - cx, p.Z - cz
+      st.oob = math.abs(rx) > lim or math.abs(rz) > lim
       if st.oob and d.kind == "jet" then
-        local back = V(-p.X, 0, -p.Z).Unit
+        local back = V(-rx, 0, -rz).Unit
         st.aimYaw = math.atan2(-back.X, -back.Z)
         st.aimPitch = 0.05
       end
-      local hard = Map.PLAY + 1000
-      if math.abs(p.X) > hard or math.abs(p.Z) > hard then
-        st.cf = st.cf - p + V(math.clamp(p.X, -hard, hard), p.Y, math.clamp(p.Z, -hard, hard))
+      local hard = lim + 1000
+      if math.abs(rx) > hard or math.abs(rz) > hard then
+        st.cf = st.cf - p + V(cx + math.clamp(rx, -hard, hard), p.Y, cz + math.clamp(rz, -hard, hard))
         if d.kind == "heli" then st.hv = V() end
       end
-      if p.Y > 2600 then st.cf = st.cf - V(0, p.Y - 2600, 0) end
+      local ceil = Map.CEIL or 2600   -- 升限按地图（雪山的角峰四千多格，上面还要留两三千格飞：Map.CEIL 7200）
+      if p.Y > ceil then
+        st.cf = st.cf - V(0, p.Y - ceil, 0)
+        if st.fm and st.fm.live then st.fm.vy = math.min(st.fm.vy, 0) end
+      end
     else
       st.cf = st.em.Root.CFrame   -- 坐在后面：跟着服务器
     end
@@ -2523,18 +2618,22 @@ function Fly.init(G)
         st.camF = cf2
         fwd = cf2
       end
-      -- 鼠标转视角：镜头绕着飞机转到鼠标拨到的方向，停在那里；鼠标 2.5 秒不动才慢慢回到身后（无人机照旧马上回）
-      if wtCam and key(Enum.KeyCode.C) then st.lookT = os.clock() end
-      if st.uav or os.clock() - (st.lookT or 0) > ((wtCam and not key(Enum.KeyCode.C)) and 0 or 2.5) then
-        local kk = math.exp(-dt * (st.uav and 5 or 2.2))
-        st.lookYaw = (st.lookYaw or 0) * kk
-        st.lookPitch = (st.lookPitch or 0) * kk
+      -- 自由视角（右键拖动）：看世界里的方向（方位、俯仰），地平线放平，跟飞机的滚转、拉杆无关；松开 0.35 秒滑回追尾。
+      --   两头按方位角、俯仰角插值（往身后看也不会从机身里穿过去）
+      st.flK = approach(st.flK or 0, st.fl and 1 or 0, dt / (st.fl and 0.12 or 0.35))
+      if st.fl then st.flLast = { yaw = st.fl.yaw, pitch = st.fl.pitch } end
+      st.flDir = nil
+      if st.flK > 1e-3 and st.flLast then
+        local k = st.flK * st.flK * (3 - 2 * st.flK)
+        local y0, p0 = math.atan2(-fwd.X, -fwd.Z), math.asin(clamp(fwd.Y, -1, 1))
+        local yw = y0 + angDiff(y0, st.flLast.yaw) * k
+        local pt = p0 + (st.flLast.pitch - p0) * k
+        fwd = (CFrame.Angles(0, yw, 0) * CFrame.Angles(pt, 0, 0)).LookVector
+        upC = upC:Lerp(V(0, 1, 0), k)
+        upC = (upC.Magnitude > 1e-3) and upC.Unit or V(0, 1, 0)
+        if st.fl then st.flDir = fwd end   -- 座舱里转头也看这个方向（Interior.lua）
       end
-      if math.abs(st.lookYaw or 0) + math.abs(st.lookPitch or 0) > 1e-3 then
-        fwd = CFrame.fromAxisAngle(upC, st.lookYaw):VectorToWorldSpace(fwd)
-        local rt2 = fwd:Cross(upC)
-        if rt2.Magnitude > 1e-3 then fwd = CFrame.fromAxisAngle(rt2.Unit, st.lookPitch):VectorToWorldSpace(fwd) end
-      end
+      st.lookYaw, st.lookPitch = 0, 0
       -- 用户：视角要离飞机近一点（最早一倍半机身长再往后 26 格；11-18 改成 0.85 倍 + 12 格；11-18 晚又说再近一点）：
       --   现在 0.62 倍 + 6 格（歼-20 从 60 格到 41 格），按机身长和七成翼展里大的算——B-2 这种翼展比机身长得多的，镜头转到侧面不钻进机翼
       local size = math.max(d.L, d.W * 0.7)
@@ -2544,7 +2643,7 @@ function Fly.init(G)
       local want = -fwd * back + upC * (d.H * 0.45 + 2.5)
       st.camOff = st.camOff and st.camOff:Lerp(want, 1 - math.exp(-dt * 7)) or want
       local acc = st.accV or V()
-      local push = -acc * 0.014
+      local push = -acc * 0.014 * (1 - (st.flK or 0))   -- 自由视角：不被过载甩
       if push.Magnitude > 5 then push = push.Unit * 5 end
       st.camPush = (st.camPush or push):Lerp(push, 1 - math.exp(-dt * 4))
       local camPos = pos + st.camOff + st.camPush
@@ -2573,6 +2672,7 @@ function Fly.init(G)
       local ab = buf * 0.006 * (0.6 + 0.4 * math.abs(math.noise(t * 3, 9.9)))
       local shake = CFrame.Angles(math.noise(t * 18, 1.3) * amp + math.noise(t * 34, 2.6) * ab, math.noise(t * 18, 7.1) * amp + math.noise(t * 31, 5.3) * ab,
         math.noise(t * 29, 3.7) * ab * 0.6)
+      if (st.flK or 0) > 0.5 then shake = CFrame.new() end   -- 自由视角：画面不跟着机身抖
       cam.CFrame = CFrame.lookAt(camPos, pos + fwd * 300, upC) * shake
     elseif d.kind == "jet" then
       local camPos = (st.cf * CF(0, d.H * 0.5 + 3, math.max(d.L, d.W * 0.7) * 0.65 + 7)).Position   -- 手机 / 坐后面的：也近一点

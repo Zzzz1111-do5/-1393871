@@ -896,7 +896,11 @@ function Air.init(G)
     local def = e.def
     e.syncSlack = math.min(160, (e.syncSlack or 160) + dtA * 120)
     local allow = def.vMax * 1.6 * dtA
-    local bad = p1.Y ~= p1.Y or math.abs(p1.X) > Map.PLAY + 1200 or math.abs(p1.Z) > Map.PLAY + 1200 or p1.Y > 4000   -- 客户端在 R + 300 开始掉头、R + 1300 硬拦
+    -- 作战区按所在的区块（Zones.lua：训练场在十万格外，按训练场中心、训练场的作战区算）；客户端在作战区边上开始掉头、再往外 1000 硬拦
+    local rx, rz, zn = p1.X, p1.Z, "battle"
+    if Map.Zones then rx, rz, zn = Map.Zones.rel(p1.X, p1.Z) end
+    local lim = (Map.Zones and Map.Zones.play(zn, Map) or Map.PLAY) + 1200
+    local bad = p1.Y ~= p1.Y or math.abs(rx) > lim or math.abs(rz) > lim or p1.Y > (Map.CEIL or 2600) + 1400   -- 升限按地图（雪山 7200）
     if not bad and dist > allow then
       local over = dist - allow
       if over <= e.syncSlack then

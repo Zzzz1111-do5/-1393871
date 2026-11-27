@@ -36,7 +36,7 @@ function DayNight.init(G)
   --   同样 +2.7 档沙地直接过曝成一片白（车里的昼光观瞄镜里就是一片黄）；沙漠少加 1.2 档，沙地落在跟海岛草地差不多的亮度
   local Map = require(RS:WaitForChild("Map"))
   local function isDesert() return Map.DESERT end   -- 沙海（MapSands）
-  local function nvEv() return isDesert() and 1.5 or 2.7 end
+  local function nvEv() return (isDesert() and 1.5) or (Map.SNOW and 1.1) or 2.7 end   -- 雪地比沙地还亮（反照率约 0.8）：夜视加得更少
   local DUSK = { top = RGB(255, 162, 98), fog = RGB(212, 146, 110), acol = RGB(236, 154, 104), adec = RGB(166, 74, 46) }
   local DAWN = { top = RGB(255, 196, 160), fog = RGB(196, 164, 156), acol = RGB(218, 176, 160), adec = RGB(122, 86, 84) }   -- 清晨：偏粉、淡一点
   -- 沙漠图：夜里的天光、雾偏暖褐（沙尘），白天是发白的黄沙天、看得没那么远。地图是开服后第一个玩家选的：进服时还没定、
@@ -56,6 +56,23 @@ function DayNight.init(G)
   end
   desertPalette()
   if G.onMap then G.onMap(desertPalette) end
+  -- 雪山（用户 11-26 晚「光影给我拉满」）：
+  --   · 白天：远山一层层退进蓝白的空气里（大气浓一点、偏冷：空气透视，山才显得远、大）；雪地把天光反上来，影子里是冷蓝的、不发黑；
+  --     雪太亮：曝光压一档，泛光门槛低一点（太阳照着的雪坡、冰面微微发光）；太阳光束从山脊、云边透出来
+  --   · 夜里：月光照着雪地，比别的图亮（雪反光），冷蓝
+  local snowSet = false
+  local function snowPalette()
+    if snowSet or not Map.SNOW then return end
+    snowSet = true
+    DAY.fog, DAY.acol, DAY.adec, DAY.dens, DAY.haze, DAY.glare = RGB(206, 220, 236), RGB(212, 224, 240), RGB(118, 140, 172), 0.1, 1.0, 0.5
+    DAY.amb, DAY.oamb, DAY.bot, DAY.top = RGB(72, 80, 94), RGB(130, 142, 160), RGB(78, 86, 100), RGB(255, 250, 242)
+    DAY.exp, DAY.bloomT, DAY.bloomI, DAY.rays = -0.28, 1.15, 0.7, 0.08
+    DAY.ccTint, DAY.ccSat, DAY.ccCon = RGB(246, 250, 255), 0.02, 0.16
+    NIGHT.amb, NIGHT.oamb, NIGHT.fog, NIGHT.acol, NIGHT.adec = RGB(22, 26, 38), RGB(58, 68, 96), RGB(24, 30, 46), RGB(56, 68, 98), RGB(16, 20, 34)
+    NIGHT.exp, NIGHT.ccTint = 0.62, RGB(212, 226, 255)
+  end
+  snowPalette()
+  if G.onMap then G.onMap(snowPalette) end
 
   local dayK, clock = 0, 2.3
   G.dayK = function() return dayK end

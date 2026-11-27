@@ -1001,13 +1001,35 @@ do
   for _, r in pairs(RADAR) do r.range, r.lock = r.range * K.radar, r.lock * K.radar end
 end
 
+-- 飞行物理（FlightModel，用户 11-26 晚「每个飞机要有不同的参数」）：喷气机的平飞最大速度（军推 / 加力）、失速速度改按每型的真实物理量算
+--   （1000 米、一半内油 + 两枚中距弹）——AI、平显、服务器限速、起降速度都跟玩家开的那套物理一致；FlightModel 没登记的型号照旧用上面的数
+do
+  local okFM, FM = pcall(function() return require(script.Parent:WaitForChild("FlightModel", 5)) end)
+  if okFM and type(FM) == "table" and FM.get then
+    for id, d in pairs(D) do
+      if d.kind == "jet" then
+        local P = FM.get(id) or (d.like and FM.get(d.like))
+        if P then
+          local m = P.m0 + 0.5 * P.fi + 320
+          d.vMil = FM.vTop(P, m, 100) * AirDefs.M
+          if d.vAB then d.vAB = FM.vTop(P, m, 130) * AirDefs.M end
+          d.stall = math.sqrt(2 * m * FM.G / (1.112 * P.S * P.CLm)) * AirDefs.M
+          d.fmRot = true
+        end
+      end
+    end
+  end
+end
+
 for id, d in pairs(D) do
   d.id = id
   d.air = true
   d.radar = d.radar or RADAR[id]
   if d.kind == "jet" then
     d.vMax = d.vAB or d.vMil
-    d.vRot = d.stall * 1.5   -- 抬头离地的速度（原来 1.08 倍失速速度，四五十米就飞起来了；用户：跑道非常短）
+    -- 抬头的速度（原来 1.08 倍失速速度，四五十米就飞起来了；用户：跑道非常短）：飞行物理（FlightModel）的型号到 1.2 倍净形失速速度开始抬头，
+    --   什么时候离地照升力算（Fly.lua：机头抬到升力托得住）、滑跑照真推重比加速——战斗机开加力四五百米，轰炸机一千多米；没登记的照旧 1.5 倍
+    d.vRot = d.stall * (d.fmRot and 1.2 or 1.5)
     d.landMax = d.stall * 1.9   -- 着陆最快多少（再快就是撞地）；比离地速度快一点，正常进近不至于判成撞地
     d.seats = d.seats or 1
   else

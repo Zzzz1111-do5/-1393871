@@ -1,18 +1,21 @@
--- 战雷式开飞机的手感（用户 11-25 晚：「像纸片、薯片一样脆，很丝滑很脆，但又不会觉得这个飞机没有质量」）：
---   python3 tools/mock/run.py tools/mock/wtcrisp.lua
---   机头这一层要脆：① 按住 D，0.2 秒内滚转快到头；松手后 0.25 秒内停住、多滚不过 20°（原来要 0.45 秒、多滚三十来度）
---   ② 按住 S 拉杆：0.5 秒内过载起来、不冲过头
---   航迹这一层要沉：③ 拉杆时机头先转、航迹慢半拍跟着（迎角是正的）；一直拉着急转，速度往下掉
+-- 开飞机的手感（模拟器）：python3 tools/mock/run.py tools/mock/wtcrisp.lua
+--   用户 11-26 晚：「每个飞机要有不同的参数」「现在飞机驾驶感觉过于灵敏」——飞行物理换成 FlightModel 的六自由度（每型自己的重量、推力、
+--   翼面积、升力、阻力、过载、失速迎角、转动惯量、稳定性、阻尼），键盘杆量按住才慢慢推满：
+--   ① 点一下 D（0.1 秒）：只滚一点（不再一点就甩出去）
+--   ② 按住 D：一秒左右滚转快到头；松手半秒内停住
+--   ③ 按住 S：一秒多过载才到九成，不冲过头；机头先转、航迹慢半拍；一直拉着掉速
+--   ④ 各型不一样：歼-10C（轻、电传）滚得比 A-10（重、机械操纵）快、过载起得快；轰-6K 最慢
+--   ⑤ 自由视角（用户 11-26 晚：「不要因为飞机的机动动作而影响」「改成鼠标右键拖动」）：按住右键时飞机滚转、拉杆，镜头看的方向不变
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 local function clamp(x, a, b) if x < a then return a elseif x > b then return b end return x end
 
-T.wtMode = true
 local G = T.boot()
 G.fortsHold = true
 G.navyNoAI = true
 G.aiVehOff = true
+G.allowInfantry = true   -- 先当步兵出生，再空中坐进测试放的飞机
 G.Config.Bots.minPerTeam = 0
 T.runUntil(function() return G.worldReady end, 900)
 
@@ -24,100 +27,183 @@ me.Team = G.TEAM.atk
 me.Neutral = false
 me:SetAttribute("Side", "atk")
 G.pushOne(P)
-T.leaveMenu()
-T.runUntil(function() return G.round.phase == "battle" end, 200, 1 / 10)
 R.run(1)
 local C = T.C
-
-T.act("testDrive", "cn_j10c")
-T.runUntil(function() return C.fly ~= nil end, 20)
+local CFr = R.CFrame
+if C.menuShown and C.menuShown() then C.menuEnter() end
+T.actAs(me, "deploy", "rifle", "base")
+T.runUntil(function() return P.alive and P.char ~= nil end, 15)
 R.run(1)
-local st = C.fly
-check(st ~= nil, "坐进了试驾的歼-10C")
-if not st then T.summary() return end
-local d = st.d
--- 摆到天上平飞（同 wtflight.lua）：高 900 格、军推 85% 的速度
-local function levelOff()
-  local p = st.cf.Position
-  local h = math.max(G.Map.ground(p.X, p.Z), 0) + 900
-  local fw = st.cf.LookVector
-  local hz = V3(fw.X, 0, fw.Z)
-  if hz.Magnitude < 0.1 then hz = V3(0, 0, -1) end
-  st.cf = R.CFrame.lookAt(V3(p.X, h, p.Z), V3(p.X, h, p.Z) + hz.Unit)
-  st.ground, st.cat, st.trap = false, nil, nil
-  st.spd = d.vMil * 0.85
-  st.vdir = st.cf.LookVector
-  st.vel = st.vdir * st.spd
-  st.thr, st.thrE, st.gearWant, st.gear = 90, 90, 0, 0
+local gy = math.max(G.Map.ground(0, 0), 0)
+
+-- 空中坐进一架，摆成平飞（服务器那边也摆过去，不然当成瞬移拉回去）
+local cur = nil
+local function board(id)
+  if cur and cur.model and cur.model.Parent then
+    T.remoteAs(me, "Drive", { op = "exit" })
+    R.run(0.5)
+    G.removeEnt(cur)
+    R.run(0.3)
+  end
+  local acf = CF(0, gy + 1200, 0)
+  local jet = G.spawnAircraft("atk", id, acf, nil, P)
+  P.char:PivotTo(acf * CF(4, 0, 0))
+  T.act("enterVeh", jet.id)
+  R.run(0.3)
+  cur = jet
+  local st = C.fly
+  if st then
+    C.flyMouseAim(false)
+    st.ground = false
+    st.gearWant, st.gear = 0, 0
+  end
+  return st, jet
+end
+local function reset(st, jet, spd, thr)
+  local p = CF(0, gy + 1200, 0)
+  local look = V3(0, 0, -1)
+  st.cf = CFr.lookAt(p.Position, p.Position + look)
+  st.vdir, st.spd, st.vel = look, spd, look * spd
   st.pr, st.rr, st.yr = 0, 0, 0
+  st.thr, st.thrE = thr, thr
   st.kP, st.kR, st.kY = 0, 0, 0
+  st.ground, st.gearWant, st.gear = false, 0, 0
+  G.moveEnt(jet, st.cf)
+  jet.vel = st.vel
+  jet.syncT, jet.syncSlack = os.clock(), 160
 end
-levelOff()
-R.run(1)
-levelOff()
-R.run(0.3)
-local function bankDeg() return math.deg(math.asin(clamp(st.cf.RightVector.Y, -1, 1))) end
-local function rollRateDeg() return math.deg(st.rr) end
-local ROLLmax = math.deg(math.rad(d.roll) * 0.75)
+local function bankDeg(st) return math.deg(math.atan2(-st.cf.RightVector.Y, st.cf.UpVector.Y)) end
+local DT = 1 / 30
+local function run(sec, each)
+  local t = 0
+  while t < sec - 1e-6 do
+    R.run(DT)
+    t = t + DT
+    if each then each(t) end
+  end
+end
 
-print("① 按住 D 滚转、松手")
-T.key(Enum.KeyCode.D, true)
-local t, t90 = 0, nil
-while t < 0.6 do
-  R.run(1 / 60)
-  t = t + 1 / 60
-  if not t90 and math.abs(rollRateDeg()) > 0.85 * ROLLmax * 0.9 then t90 = t end
+local cerr = {}
+local se0 = C.showError
+C.showError = function(msg)   -- 客户端回调出错只写在红条上（init.client.lua 的 pcall 接住）：也收下来
+  if #cerr < 5 then print("  客户端报错：" .. tostring(msg)) end
+  table.insert(cerr, tostring(msg))
+  if se0 then se0(msg) end
 end
-local rateHeld = math.abs(rollRateDeg())
-local bank0 = bankDeg()
-T.key(Enum.KeyCode.D, false)
-local tStop, extra = nil, 0
-t = 0
-while t < 0.8 do
-  R.run(1 / 60)
-  t = t + 1 / 60
-  if not tStop and math.abs(rollRateDeg()) < 0.1 * rateHeld then tStop = t end
+local res = {}
+local function trial(id, full)
+  local st, jet = board(id)
+  check(st ~= nil and st.pilot and st.d.id == id and st.fmD ~= nil, "空中坐进 " .. id .. "（有自己的飞行物理数据 " .. tostring(st and st.fmD and st.fmD.key) .. "）")
+  if not st then return end
+  local D = st.fmD
+  local V0 = math.min(D.vne * 0.6, st.d.vMil * 0.85 / 2.8) * 2.8
+  local out = { id = id }
+  -- ① 点一下 D
+  reset(st, jet, V0, 90)
+  run(0.5)
+  local b0 = bankDeg(st)
+  T.key(Enum.KeyCode.D, true)
+  run(0.1)
+  T.key(Enum.KeyCode.D, false)
+  run(1.0)
+  out.tap = math.abs(bankDeg(st) - b0)
+  -- ② 按住 D 1.6 秒、松手
+  reset(st, jet, V0, 90)
+  run(0.5)
+  T.key(Enum.KeyCode.D, true)
+  local pMax, t85 = 0, nil
+  local samples = {}
+  run(1.6, function(t)
+    local p = math.deg(st.rr or 0)
+    pMax = math.max(pMax, p)
+    table.insert(samples, { t, p })
+  end)
+  for _, s in ipairs(samples) do if not t85 and s[2] >= 0.85 * pMax then t85 = s[1] end end
+  T.key(Enum.KeyCode.D, false)
+  local stopT, extra, last = nil, 0, bankDeg(st)
+  run(1.2, function(t)
+    local b = bankDeg(st)
+    local db = (b - last + 540) % 360 - 180
+    last = b
+    if not stopT then extra = extra + math.abs(db) end
+    if not stopT and math.abs(math.deg(st.rr or 0)) < 0.08 * pMax then stopT = t end
+  end)
+  out.roll, out.t85, out.stop, out.extra = pMax, t85 or 9, stopT or 9, extra
+  -- ③ 按住 S 3 秒
+  if full then
+    reset(st, jet, V0, 100)
+    run(0.5)
+    T.key(Enum.KeyCode.S, true)
+    local gh, aoaMax, lag = {}, 0, false
+    local v0 = st.spd
+    run(3.0, function(t)
+      table.insert(gh, { t, st.gLoad or 1 })
+      aoaMax = math.max(aoaMax, st.aoaDeg or 0)
+      if (st.aoaDeg or 0) > 2 and st.vdir and st.cf.LookVector:Dot(st.vdir) < 0.9995 then lag = true end
+    end)
+    T.key(Enum.KeyCode.S, false)
+    local gEnd = gh[#gh][2]
+    local gPeak, t90 = 0, nil
+    for _, s in ipairs(gh) do
+      gPeak = math.max(gPeak, s[2])
+      if not t90 and s[2] >= 1 + 0.9 * (gEnd - 1) then t90 = s[1] end
+    end
+    out.gEnd, out.gPeak, out.tG, out.aoa, out.lag, out.bleed = gEnd, gPeak, t90 or 9, aoaMax, lag, st.spd / v0
+  end
+  res[id] = out
+  print(string.format("  %s：点一下 D 滚 %.0f°；按住 %.2f 秒到 %.0f°/s 的八成五、松手 %.2f 秒停（多滚 %.0f°）%s", id, out.tap, out.t85, out.roll, out.stop, out.extra,
+    full and string.format("；拉杆 %.2f 秒到 %.1f g 的九成（最高 %.1f g、迎角 %.0f°、3 秒后速度剩 %.0f%%）", out.tG, out.gEnd, out.gPeak, out.aoa, out.bleed * 100) or ""))
+  return st, jet
 end
-extra = math.abs(bankDeg() - bank0)
-check(t90 ~= nil and t90 <= 0.25, string.format("按住 D：%.2f 秒滚转就快到头（%.0f°/秒，最快 %.0f°/秒）", t90 or -1, rateHeld, ROLLmax))
-check(tStop ~= nil and tStop <= 0.3, string.format("松手 %.2f 秒就停住", tStop or -1))
-check(extra < 22, string.format("松手后只多滚了 %.1f°（不过冲、不来回晃）", extra))
 
-print("② 按住 S 拉杆")
-levelOff()
-R.run(0.5)
-T.key(Enum.KeyCode.S, true)
-local gPeak, tG, aoaMax, lagSeen = 0, nil, 0, false
-local v0 = st.spd
-t = 0
-local gTarget = nil
-while t < 3.0 do
-  R.run(1 / 60)
-  t = t + 1 / 60
-  local g = st.gLoad or 1
-  gPeak = math.max(gPeak, g)
-  aoaMax = math.max(aoaMax, st.aoaDeg or 0)
-  if (st.aoaDeg or 0) > 2 and st.vdir and st.cf.LookVector:Dot(st.vdir) < 0.9995 then lagSeen = true end
-  if t > 1.2 and not gTarget then gTarget = g end
+print("①②③ 歼-10C（轻、电传）")
+local st, jet = trial("j10", true)
+local r = res.j10
+if r then
+  check(r.tap < 25, string.format("点一下 D 只滚 %.0f°（不一点就甩出去）", r.tap))
+  check(r.t85 > 0.35 and r.t85 < 1.3, string.format("按住 D %.2f 秒滚转到八成五（不是一按就满）", r.t85))
+  check(r.stop < 0.7, string.format("松手 %.2f 秒停住", r.stop))
+  check(r.tG > 0.5 and r.tG < 1.8, string.format("按住 S %.2f 秒过载到九成（稳住 %.1f g）", r.tG, r.gEnd))
+  check(r.gPeak <= r.gEnd * 1.2 + 0.3, string.format("过载不冲过头（最高 %.1f、稳住 %.1f）", r.gPeak, r.gEnd))
+  check(r.lag and r.aoa > 3, string.format("机头先转、航迹慢半拍（迎角最大 %.1f°）", r.aoa))
+  check(r.bleed < 0.97, string.format("一直拉着掉速（剩 %.0f%%）", r.bleed * 100))
 end
-T.key(Enum.KeyCode.S, false)
-local v1 = st.spd
--- 过载多快起来：重新拉一次，记到「稳定值的九成」的时间
-levelOff()
-R.run(0.5)
-T.key(Enum.KeyCode.S, true)
-local t90g, gMaxShort = nil, 0
-t = 0
-while t < 1.0 do
-  R.run(1 / 60)
-  t = t + 1 / 60
-  local g = st.gLoad or 1
-  gMaxShort = math.max(gMaxShort, g)
-  if not t90g and gTarget and g >= 1 + 0.9 * (gTarget - 1) then t90g = t end
+
+print("⑤ 自由视角：按住右键，飞机滚转时镜头看的方向不变")
+if st and jet then
+  reset(st, jet, st.d.vMil * 0.8, 90)
+  run(0.6)
+  C.flyFreeLook(true)
+  run(0.4)
+  local cam = R.services.Workspace.CurrentCamera
+  local look0 = cam.CFrame.LookVector
+  local up0 = cam.CFrame.UpVector
+  T.key(Enum.KeyCode.D, true)
+  local maxDev, maxRoll = 0, 0
+  run(1.2, function()
+    local lk = cam.CFrame.LookVector
+    maxDev = math.max(maxDev, math.deg(math.acos(clamp(lk:Dot(look0), -1, 1))))
+    maxRoll = math.max(maxRoll, math.abs(bankDeg(st)))
+  end)
+  T.key(Enum.KeyCode.D, false)
+  local upDev = math.deg(math.acos(clamp(cam.CFrame.UpVector:Dot(up0), -1, 1)))
+  check(maxRoll > 60, string.format("飞机滚过去了（坡度到 %.0f°）", maxRoll))
+  check(maxDev < 6 and upDev < 6, string.format("自由视角看的方向没跟着转（偏 %.1f°，画面歪 %.1f°）", maxDev, upDev))
+  C.flyFreeLook(false)
+  run(1.0)
+  local lk = cam.CFrame.LookVector
+  local nose = st.cf.LookVector
+  check(lk:Dot(nose) > 0.85, "松开右键：镜头回到机身后面")
 end
-T.key(Enum.KeyCode.S, false)
-check(t90g ~= nil and t90g <= 0.5, string.format("拉杆 %.2f 秒过载就到九成（稳住在 %.1f g）", t90g or -1, gTarget or 0))
-check(gPeak <= (gTarget or 0) * 1.18 + 0.3, string.format("过载不冲过头（最高 %.1f g，稳住 %.1f g）", gPeak, gTarget or 0))
-check(lagSeen and aoaMax > 3, string.format("机头先转、航迹慢半拍跟着（迎角最大 %.1f°）", aoaMax))
-check(v1 < v0 * 0.93, string.format("一直拉着急转掉速（%.0f → %.0f 格 / 秒）", v0, v1))
+
+print("④ 各型不一样")
+trial("a10c", true)
+trial("h6k", true)
+local a, b, h = res.j10, res.a10c, res.h6k
+if a and b and h then
+  check(a.roll > b.roll * 1.6 and b.roll > h.roll * 2, string.format("滚转：歼-10C %.0f > A-10C %.0f > 轰-6K %.0f °/s", a.roll, b.roll, h.roll))
+  check(a.tG < h.tG, string.format("过载起来：歼-10C %.2f 秒比轰-6K %.2f 秒快", a.tG, h.tG))
+  check(h.gEnd < 3.2, string.format("轰-6K 拉满也就 %.1f g（过载上限 2.5）", h.gEnd))
+end
+check(#cerr == 0, "客户端没有报错：" .. table.concat(cerr, " | ", 1, math.min(#cerr, 3)))
 T.summary()

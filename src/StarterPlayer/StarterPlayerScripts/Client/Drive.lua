@@ -978,13 +978,22 @@ function Drive.init(G)
     [Enum.Material.Concrete] = { speed = 1.1, accel = 1.08, grip = 1.04, rough = 0.3 },   -- 港口的码头平地、坡道
     [Enum.Material.Asphalt] = { speed = 1.1, accel = 1.08, grip = 1.06, rough = 0.25 },
   }
+  -- 雪、冰（用户 11-26 夜「坦克要能滑雪」）：雪地抓地差一截，冰面（河、湖的冰）更滑——起步、刹车使不上劲，转弯甩尾，
+  --   坡上往下滑（下面 slide）；mu 是溜坡的摩擦系数（车停着刹住时，坡的下滑力超过 mu × 压力就往下溜；履带横着更不容易滑）
+  SURF[Enum.Material.Snow] = { speed = 0.93, accel = 0.86, grip = 0.6, rough = 0.42, mu = 0.42 }
+  SURF[Enum.Material.Glacier] = { speed = 0.97, accel = 0.62, grip = 0.24, rough = 0.12, mu = 0.12 }
+  SURF[Enum.Material.Ice] = { speed = 0.97, accel = 0.6, grip = 0.22, rough = 0.12, mu = 0.11 }
+  -- 雪山图的路（地形底下是 Ground：压实的雪路）：比雪地抓得住，比干土路滑
+  local SURF_SNOWROAD = { speed = 1.04, accel = 1.0, grip = 0.8, rough = 0.4, mu = 0.55 }
   local SURF0 = { speed = 1, accel = 1, grip = 0.9, rough = 0.7 }
   G.driveSurf = SURF   -- 测试用
   local SURF_WATER = { speed = 1, accel = 1, grip = 0.55, rough = 0.25 }
   local function surfAt(p)
     local h = Map.height(p.X, p.Z)
     if h < -1.5 then return SURF_WATER end
-    return SURF[Map.material(p.X, p.Z, h, Map.slope(p.X, p.Z))] or SURF0
+    local m = Map.material(p.X, p.Z, h, Map.slope(p.X, p.Z))
+    if Map.SNOW and m == Enum.Material.Ground then return SURF_SNOWROAD end
+    return SURF[m] or SURF0
   end
   local GRAV = 9.81 * 2.8 * 1.15   -- 重力（格 / 秒²；1 米 = 2.8 格，稍微沉一点：几十吨的车落得干脆）
   local function angR(a, b) return (b - a + math.pi) % (2 * math.pi) - math.pi end   -- a 到 b 转多少（弧度，-π～π）
@@ -1125,7 +1134,7 @@ function Drive.init(G)
         --   牵引 = min(起步上限 0.41 g × 抓地, 功率 ÷ 车速) − 滚动阻力 0.05 g；功率按 accel（≈ 0.22 × 马力 / 吨）折，传动效率 0.85：
         --   0.85 × 0.7457 ÷ 0.22 × 2.8² ≈ 22.6 × accel（格² / 秒³）；档里转速中段劲足一点（± 一成）；快到极速（最后 3%）调速器收油
         local tq = 0.9 + 0.2 * math.sin(math.pi * math.clamp(GB.rpm, 0, 1)) ^ 0.8
-        local launch = 11.3 * math.clamp(sf.grip or 1, 0.4, 1.1)
+        local launch = 11.3 * math.clamp(sf.grip or 1, 0.15, 1.1)
         local pull = math.min(launch, 22.6 * accel * tq / math.max(av, 0.5))
         local gov = math.clamp((1 - av / math.max(vmax, 1)) / 0.03, 0, 1)
         local dir = (av > 0.05) and math.sign(v) or thr
@@ -1136,25 +1145,38 @@ function Drive.init(G)
     elseif thr ~= 0 then
       -- 刹车（反着推油门）：战雷约 0.5 g、0.1 秒多一点踩到底（原来按发动机 accel 的 3.2 倍——马力大的车刹得也猛，0.5～0.7 g 不等）
       st.brkK = math.min(1, (st.brkK or 0) + dt / 0.12)
-      a = thr * 15.1 * math.clamp(sf.grip or 1, 0.4, 1.1) * st.brkK
+      a = thr * 15.1 * math.clamp(sf.grip or 1, 0.15, 1.1) * st.brkK
     else
       st.brkK = 0
-      -- 用户 11-25 晚「没有战雷那种纸片的脆感」：松油门履带车很快收住（原来 1.1 倍加速度，滑得肉）
-      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), accel * (tracked and 1.7 or 0.7))
+      -- 用户 11-25 晚「没有战雷那种纸片的脆感」：松油门履带车很快收住（原来 1.1 倍加速度，滑得肉）；
+      --   雪、冰上收不了那么快（刹得住多少看地面摩擦：mu × 压力），陡坡上刹不住就往下溜
+      local cosT = math.sqrt(math.max(0, 1 - slope * slope))
+      local cap = math.min(accel * (tracked and 1.7 or 0.7), sf.mu and (18 * sf.mu * 1.1 * cosT) or math.huge)   -- 只有雪、冰、雪路给了 mu：别的图手感不变
+      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), cap)
     end
     if not st.airS then
       if math.abs(v) > 0.5 or thr ~= 0 then a -= 18 * slope end   -- 上坡往后拉、下坡往前推（停着不溜）
+      -- 停着、松油门也刹不住的坡（雪坡、冰坡：坡的下滑力 > mu × 压力）：带着刹死的履带往下溜（滑雪）
+      if thr == 0 and math.abs(v) <= 0.5 and not inWater and sf.mu then   -- 只有雪、冰、雪路（给了 mu 的地面）会溜：别的图照旧停住不溜
+        local mu = sf.mu
+        local cosT = math.sqrt(math.max(0, 1 - slope * slope))
+        if math.abs(slope) > mu * 1.15 * cosT then
+          a = -18 * slope + math.sign(slope) * 18 * mu * 0.85 * cosT
+          st.slideLon = true
+        end
+      end
       -- 履带车转弯吃速度：一侧离合 + 刹车（战雷现在的转向机构），高速打满一个 90° 掉 5～10 公里 / 时（原来 0.35，一个弯掉三十多公里 / 时）
       if tracked then a -= math.abs(st.yr or 0) * v * 0.14 end
     end
     -- 空格：刹车（战雷坦克的「急停」，比反着推油门停得还快；松开照常走）
     if not st.airS and key(Enum.KeyCode.Space) and G.hangarActive and G.hangarActive() then
       st.brkK = math.min(1, (st.brkK or 0) + dt / 0.1)
-      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), 16.5 * math.clamp(sf.grip or 1, 0.4, 1.1) * st.brkK)
+      a = -math.sign(v) * math.min(math.abs(v) / math.max(dt, 1e-3), 16.5 * math.clamp(sf.grip or 1, 0.15, 1.1) * st.brkK)
     end
     local old = v
     v += a * dt
-    if thr == 0 and math.abs(v) < 0.4 then v = 0 end
+    if thr == 0 and math.abs(v) < 0.4 and not st.slideLon then v = 0 end
+    st.slideLon = nil
     v = math.clamp(v, -maxR * 1.25, maxF * 1.3)
     st.speed = v
     st.accel = (v - old) / math.max(dt, 1e-3)
@@ -1166,7 +1188,9 @@ function Drive.init(G)
       local k = 1 - 0.38 * math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
       -- 车身转动有惯量（战雷：起转 0.4～0.6 秒）：起转 0.32 秒、收住 0.18 秒——比战雷利落一点（用户 11-25 要的脆感），
       --   原来 0.22 / 0.11 秒，几十吨的车身像没有重量
-      st.yr = approach(st.yr or 0, str * math.rad(d.turn * mTurn) * k, math.rad(d.turn * mTurn) * ((str ~= 0) and 3.1 or 5.5) * dt)
+      -- 雪、冰上履带打滑：起转慢、收不住（车身转着往前甩一点）
+      local gk = 0.35 + 0.65 * math.clamp(sf.grip or 1, 0, 1)
+      st.yr = approach(st.yr or 0, str * math.rad(d.turn * mTurn) * k, math.rad(d.turn * mTurn) * ((str ~= 0) and 3.1 or 5.5) * gk * dt)
     else
       local frac = math.clamp(math.abs(v) / math.max(maxF, 1), 0, 1)
       st.steerA = approach(st.steerA or 0, str * math.rad(38 - 26 * frac), math.rad(75) * dt)
@@ -1187,13 +1211,59 @@ function Drive.init(G)
     end
     st.slipA = angR(st.travel, st.yaw)
     if not st.airS and math.abs(v) > 3 then
-      v -= v * math.min(1, math.abs(math.sin(st.slipA)) * 2.2 * dt)
+      -- 侧滑掉速：冰上摩擦小，掉得少（一直往前滑）
+      v -= v * math.min(1, math.abs(math.sin(st.slipA)) * 2.2 * (0.3 + 0.7 * math.clamp(sf.grip or 1, 0, 1)) * dt)
       st.speed = v
+    end
+    -- 横着往坡下滑（用户 11-26 夜「坦克要能滑雪」）：横坡的下滑力超过履带 / 轮胎横向能抓住的（mu × 压力；开着走的时候履带在动，横向更抓不住），
+    --   车就一边走一边往坡下横着滑；平地上慢慢停住。下滑力按地面坡度（Map.height 前后左右各 6 格）
+    do
+      local slL = st.slL or 0
+      if st.airS or inWater or not st.surf or not st.surf.mu then   -- 横滑也只在雪、冰、雪路上
+        slL = 0
+      else
+        local e = 6
+        local gx = (Map.height(st.pos.X + e, st.pos.Z) - Map.height(st.pos.X - e, st.pos.Z)) / (2 * e)
+        local gz = (Map.height(st.pos.X, st.pos.Z + e) - Map.height(st.pos.X, st.pos.Z - e)) / (2 * e)
+        local fB = V(-math.sin(st.yaw), 0, -math.cos(st.yaw))
+        local rB = V(-fB.Z, 0, fB.X)
+        local t2 = gx * gx + gz * gz
+        local cosT = 1 / math.sqrt(1 + t2)
+        local GS = 18 / math.max(cosT, 0.3)   -- 同上面前后方向的 18 × 坡（sin）：这里按梯度折算
+        local aLat = -(gx * rB.X + gz * rB.Z) * GS * cosT * cosT   -- 横坡方向的下滑加速度（正的往右）
+        local mu = (sf.mu or 0.7) * (tracked and 1.0 or 0.85)
+        local hold = mu * 18 * cosT * ((math.abs(v) > 2) and 0.8 or 1.15)   -- 开着走：动摩擦；停着：静摩擦大一点
+        if math.abs(slL) < 0.3 and math.abs(aLat) <= hold then
+          slL = 0
+        else
+          local fr = mu * 18 * 0.9 * cosT
+          local nv = slL + aLat * dt - ((slL ~= 0) and math.sign(slL) or math.sign(aLat)) * fr * dt
+          nv -= nv * math.min(1, 0.6 * dt)   -- 履带横着犁雪：越滑越费劲（横滑速度有个头，不会一直加速）
+          if slL ~= 0 and math.sign(nv) ~= math.sign(slL) and math.abs(aLat) <= hold then nv = 0 end
+          slL = math.clamp(nv, -d.speed * 0.35, d.speed * 0.35)
+        end
+      end
+      st.slL = slL
     end
     st.steer = approach(st.steer, str, dt * 4)
     -- 往前挪（顺着 travel：车在侧滑时位置跟着真正的去向走）：坡太陡、不会游的下水、撞到房子都走不动；擦着墙的顺着墙滑过去
     local fwd = V(-math.sin(st.travel), 0, -math.cos(st.travel))
     local step = st.speed * dt
+    -- 横着滑的那一下（上面 slL）：撞房子、下深水就停
+    if math.abs(st.slL or 0) > 0.05 then
+      local rB = V(math.cos(st.yaw), 0, -math.sin(st.yaw))
+      local sv = rB * st.slL * dt
+      local np = st.pos + sv
+      local hb = Map.height(np.X, np.Z)
+      local o = st.pos + V(0, Map.ground(st.pos.X, st.pos.Z) - st.pos.Y + d.hullH * 0.55, 0)
+      local hit = workspace:Raycast(o, sv.Unit * (d.W * 0.5 + sv.Magnitude + 0.5), mapParams)
+      if hit or (hb < -2.5 and not d.amphib) then
+        if hit then bump(math.abs(st.slL)) end
+        st.slL = 0
+      else
+        st.pos = np
+      end
+    end
     if math.abs(step) > 1e-4 then
       local np = st.pos + fwd * step
       local h0 = Map.height(st.pos.X, st.pos.Z)

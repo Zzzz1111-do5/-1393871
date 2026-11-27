@@ -2648,13 +2648,11 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
           end
           local fy, fp = c.fl and c.fl.y or 0, c.fl and c.fl.p or 0
           aim = (ANG(0, (st.aimYaw or 0) + fy, 0) * ANG(clamp((st.aimPitch or 0) + fp, -1.5, 1.5), 0, 0)).LookVector
+          if st.flDir and not c.fl then aim = st.flDir end   -- 右键拖动的自由视角（Fly.lua）：头转向世界里那个方向，飞机怎么滚都盯着它
         else aim = (ANG(0, st.camYaw or 0, 0) * ANG(st.camPitch or 0, 0, 0)).LookVector end
         local l = base:VectorToObjectSpace(aim)
         local yw, pt = math.atan2(-l.X, -l.Z), math.asin(clamp(l.Y, -1, 1))
-        if st.d.kind == "jet" and st.pilot and not st.uav then   -- 鼠标转头（用户 11-21：飞机要能用鼠标转视角；用 Fly.lua 的 lookYaw / lookPitch，跟车外镜头同一套）
-          yw += st.lookYaw or 0
-          pt += st.lookPitch or 0
-        end
+        -- 鼠标转头：右键拖动的自由视角（Fly.lua 的 st.flDir，世界方向）已经在 aim 里
         yw = clamp(yw, -rad(sp.yaw or 150), rad(sp.yaw or 150))
         pt = clamp(pt, -rad(sp.down or 60), rad(sp.up or 80))
         look.yaw += (yw - look.yaw) * math.min(1, dt * 9)
