@@ -1589,7 +1589,7 @@ function Drive.init(G)
     local base = st.root * CF(0, -d.H / 2, 0)
     local gcf = VD.gunCF(d, base, st.ty, st.gp)
     local o = gcf.Position
-    local wid = weaponId()
+    local wid = d.weapons[st.wi]   -- （weaponId 在下面才定义，这里直接取）
     local w = wid and VD.W[wid]
     local am = w and w.kind == "shell" and BAL.GUN[wid] and BAL.ammo(wid, st.fcs.am)
     local function seOf(Rm)

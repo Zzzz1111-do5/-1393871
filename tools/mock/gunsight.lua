@@ -272,13 +272,13 @@ if gh and gh.inst then
 end
 check(gh ~= nil and onTgt, string.format("炮管标记打在靶车上（落点 %s 米、打到 %s）", gh and string.format("%.0f", gh.R) or "-", gh and gh.inst and gh.inst:GetFullName() or "nil"))
 check(gh ~= nil and gh.blocked == false, "没有被挡")
--- 正前方 15 格立一堵墙（比炮口高），还瞄着靶车：炮口被挡
-local wall = R.Instance.new("Part")
+-- 炮口前面放一大块挡着（比炮口高），还瞄着靶车：炮口被挡
+local wall = R.Instance.new("Part")   -- 一大块不用转向的方块：中心在炮口前 30 格，最近的面离炮口 10 格
 wall.Anchored = true
-wall.Size = V3(60, 40, 2)
+wall.Size = V3(40, 40, 40)
 local o0 = gh and gh.o or cam.CFrame.Position
 local fl = V3((tgt.root.CFrame.Position - o0).X, 0, (tgt.root.CFrame.Position - o0).Z).Unit
-wall.CFrame = CF(o0 + fl * 15, o0 + fl * 16)
+wall.CFrame = CF(o0 + fl * 30)
 wall.Parent = R.services.Workspace
 for _ = 1, 10 do aimAt(tgt.root.CFrame.Position + V3(0, 1, 0)) R.run(0.1) end
 gh = C.driveGunHit and C.driveGunHit()
