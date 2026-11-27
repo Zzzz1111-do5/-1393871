@@ -35,7 +35,7 @@ M1A2 SEPv2 的车长位（F4）照钢铁猛兽的车长位做：车长显示单�
    **名字填「全面大战场」（英文 Island Assault）**——Studio 会按文件名预填 `RobloxTotalBattlefield`，要改掉（文件名没改，免得别的会话的命令对不上）。
 2. 「主页 → 游戏设置」：
    - 「地点」：最多玩家数设成 **100**（上限 200）。Studio 里找不到的话，到 create.roblox.com → 你的体验 → 地点 → 配置。
-   - 「安全」：打开「允许 Studio 访问 API 服务」，Studio 里测试也能存档（军衔、经验、战绩）；打开 Mesh / Image API（第一人称的真 M4 是开局用 EditableMesh 生成的，不开就退回零件拼的）。
+   - 「安全」：打开「允许 Studio 访问 API 服务」，Studio 里测试也能存档（军衔、经验、战绩）；打开 Mesh / Image API（第一人称的真 M4 是开局用 EditableMesh 生成的，不开就退回零件拼的；科技树的车图、坦克弹药栏的写实弹种图是 EditableImage 解出来的，不开就退回白色剪影）。
    - 或者在 Studio 里「导入 3D」`models/fps_m4.glb`，放进 `ReplicatedStorage/Imported/FPS_M4`，第一人称就用导入的原模型。
    - 「权限」：改成公开。第一次公开前要在 create.roblox.com 上填「内容成熟度问卷」。
 3. 以后更新：再「发布到 Roblox」覆盖线上版本；开着的服务器要到 create.roblox.com → 地点 →「⋯」→ 重启服务器。

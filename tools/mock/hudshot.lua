@@ -1,4 +1,4 @@
--- 开坦克时屏幕上画了什么（模拟器）：python3 tools/mock/run.py tools/mock/hudshot.lua out=<文件.json> [kind=tank|ifv|ship|inf] [hp=0.5] [erax=1,2,5]
+-- 开坦克时屏幕上画了什么（模拟器）：python3 tools/mock/run.py tools/mock/hudshot.lua out=<文件.json> [kind=tank|ifv|ship|inf] [hp=0.5] [erax=1,2,5] [fire=1] [noedit=1]
 --   kind=ads：步兵开镜（第一人称，M4 + ACOG；[gun=sniper] 狙击枪、[build=改枪码] 换瞄具）——看 Scope.lua 的镜片那一层（用户 11-21：瞄准镜照使命召唤做）；
 --     tools/weapons/gunrender.mjs ads=… 拍同一个开镜画面的 3D 背景，hud_render.py 叠上去
 --   kind=jet / heli：开飞机（空中出发，前方一架敌机、地上一辆敌车）[id=j20] [alt=700]——看开飞机的界面（AirHud，用户 11-19 照 MWT 截图改）
@@ -10,6 +10,7 @@
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
+if TEST_ARGS:find("noedit=1", 1, true) then R.noEditable = true end   -- [noedit=1]：当成用不了 EditableImage（看界面退回方块拼的样子）
 local out = TEST_ARGS:match("out=(%S+)")
 local kind = TEST_ARGS:match("kind=(%a+)") or "tank"
 local mySide = TEST_ARGS:match("side=(%a+)") or "def"   -- atk：开 96 式那一边的车
@@ -271,6 +272,18 @@ elseif kind ~= "inf" and kind ~= "jet" and kind ~= "heli" and kind ~= "ads" then
   if ex and e and e.model then
     e.model:SetAttribute("EraX", ex)
     R.run(0.3)
+  end
+  -- fire=1：开一炮，截图时正在装填（看弹药栏底边的装填进度、名牌右边的「装填 x.x s」）；[after=2] 开炮后过几秒截
+  if TEST_ARGS:find("fire=1", 1, true) and C.drive and C.driveTryFire then
+    local stF = C.drive
+    local f0 = stF.fireT
+    for _ = 1, 300 do
+      R.as("client", function() C.driveTryFire() end)
+      if stF.fireT ~= f0 then break end
+      R.run(1 / 30)
+    end
+    check(stF.fireT ~= f0, "开了一炮（截图时在装填）")
+    R.run(tonumber(TEST_ARGS:match("after=([%d%.]+)") or "") or 2)
   end
 end
 

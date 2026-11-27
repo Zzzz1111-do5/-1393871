@@ -4,10 +4,13 @@
 --   ② 数字键：2 选第二种弹（M830）、1 回到 M829A3，5 选同轴机枪
 --   ③ 正前方放一辆敌方 T-90M：准星对着它不是白的（穿深指示）；M829A3 打车体正面、榴弹打正面颜色不一样
 --   ④ 开一炮：服务器走战雷伤害（G.wtHits 加一），客户端命中提示出来；损伤图里那辆车的状态跟着变
+--   弹药栏每格一张写实弹种图（AmmoPics，用户 11-27「完全按照战雷的风格……更拟真」）；[noedit=1]：当成用不了 EditableImage，每格退回单色剪影
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 local VEH = TEST_ARGS:match("veh=(%w+)") or "m1a2"
+local NOEDIT = TEST_ARGS:find("noedit=1", 1, true) ~= nil
+if NOEDIT then R.noEditable = true end
 
 local G = T.boot()
 G.fortsHold = true
@@ -79,6 +82,26 @@ print("  弹药栏：" .. table.concat(list, " "))
 local nGun = #(R.require(R.services.ReplicatedStorage:FindFirstChild("Ballistics")).GUN[def.weapons[1]] or { 1 })
 local extra = ((def.cat == "apc" or def.cat == "aa") and 1 or 0) + ((def.cat ~= "aa") and 1 or 0)   -- 侦察（轻型车）、火炮支援（不是防空车）
 check(#slots == nGun + (#def.weapons - 1) + 3 + extra, "弹药栏格数 = 主炮 " .. nGun .. " 种弹 + 别的武器 + 烟幕 + 维修 + 望远镜 + 侦察 / 火炮（" .. #slots .. "）")   -- 11-27 加了望远镜（C）
+-- 弹药栏的图：每格一张写实弹种图（AmmoPic）；用不了 EditableImage 时每格是单色剪影（Icon 里有零件），不报错
+local bar = find("WtAmmoBar")
+local nSlot, nPic, nIcon = 0, 0, 0
+for i = 1, #slots do
+  local sf = bar and bar:FindFirstChild("Slot" .. i)
+  if sf and T.visible(sf) then
+    nSlot = nSlot + 1
+    local pic, ic = sf:FindFirstChild("Pic"), sf:FindFirstChild("Icon")
+    if pic and T.visible(pic) and pic:GetAttribute("AmmoPic") then nPic = nPic + 1 end
+    if ic and T.visible(ic) and #ic:GetChildren() > 0 then nIcon = nIcon + 1 end
+  end
+end
+if NOEDIT then
+  check(nSlot == #slots and nPic == 0 and nIcon == nSlot, "用不了 EditableImage：每格退回单色剪影（" .. nIcon .. " / " .. nSlot .. "）")
+else
+  check(nSlot == #slots and nPic == nSlot, "每格一张写实弹种图（" .. nPic .. " / " .. nSlot .. "）")
+end
+local an = find("AmmoName")
+print("  名牌：" .. tostring(an and an.Text))
+check(an ~= nil and T.visible(an) and an.Text ~= "", "弹药栏上方名牌写着这一发的全称")
 local di = find("WtDamageInd")
 local sch = find("Schematic")
 local nSch = sch and #sch:GetDescendants() or 0

@@ -43,6 +43,11 @@
   · 第三人称（「坦克准心对标战雷」）：Drive gunImpact——标记画在**这一发的真落点**（炮管方向减按落点距离算的超高角、射线每秒 15 次、位置每帧跟炮管）；
     炮塔到位却打在近处的坡 / 墙上 = **炮口被挡**，WtTank 准星画叉（WtGunBlocked）；穿深指示扣爆反（同服务器 Era.lua 的系数）。
   · 测试：**tools/mock/gunsight.lua（新）**、optics.lua / wttank.lua 跟着改。没做：老镜子（TSh、M105D）跟炮绑死的铰接瞄准线、俯仰速度按车、锁炮塔的自由视角（梳理里列了）。
+  · **弹药栏写实弹种图**（11-27 晚，用户「完全按照战雷的风格去做设计 而不是这种卡通风格……更拟真」）：每种弹一张 Blender 按真弹结构建模、照实物涂装渲的图
+    （**tools/models/ammopics_blender.py → ammopics.py → ReplicatedStorage/AmmoPics.lua**，57 张：33 种主炮弹、机枪弹链 / 机炮弹 / 导弹 / 火箭、六个工具格），
+    横放弹头朝右、同一口径一个比例尺；HudArt 加 G.ammoPic / G.ammoPicOn（同车图的解码），用不了 EditableImage 退回原来的单色剪影。
+    WtTank 弹药栏按新规范重排（96 × 60 / 60 × 60 平涂格子、三组细分隔线、琥珀选中、膛内白竖条、底边装填进度、打空去色、名牌全称），
+    左下损伤图挡着时整排往右让。预览：hud_render.py 认 AmmoPic 属性；wttank.lua 查每格有图、[noedit=1] 查退回剪影。
 
 - F（11-27，审查 b7bfaae「X 透视画细」挑出来的，用户 11-27「x透视不够细节」）——Client/XrayOwn.lua、Drive.lua、Night.lua、UI.lua、init.client.lua：
   · 鼠标指部件原来用不了（开车每帧 LockCenter，GetMouseLocation 永远是屏幕中心，只指得到炮管；测试是手动挪镜头、直接写鼠标位置的假阳性）：

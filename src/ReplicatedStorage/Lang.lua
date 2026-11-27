@@ -475,6 +475,13 @@ add("drv.hintOptic", "[V] 切换光电模式：{1}", "[V] Optics: {1}")
 add("drv.hintSmoke", "[M] 释放烟雾弹（剩 {1} 发）", "[M] Smoke ({1} left)")
 add("drv.hintLine", "Shift 退出瞄准镜 · R 测距 · PgUp / PgDn 表尺 · Q / 1～5 换弹种 · Z / 滚轮 倍率 · C 望远镜 · 左键 开炮 · 空格 机枪", "Shift leave sight · R range · PgUp / PgDn sight range · Q / 1-5 shell · Z / Wheel zoom · C binoculars · LMB fire · Space MG")
 add("wtt.space", "空格", "SPC")   -- 弹药栏机枪那格的键位（11-27 起空格打机枪）
+-- 弹药栏（WtTank.lua，用户 11-27「完全按照战雷的风格……更拟真」）：名牌右边的装填、打空了按键、主炮坏了、游戏里的金属射流弹
+add("wtt.load", "装填 {1} s", "Loading {1} s")
+add("wtt.noAmmo", "无弹", "No ammo")
+add("wtt.dmg", "损坏", "DMG")
+add("wtt.jet", "{1} 金属射流弹", "{1} metal jet")
+add("wtt.jetType", "串联破甲", "Tandem HEAT")
+add("wtt.tagJet", "射流", "JET")
 -- 炮长瞄准镜、车长望远镜（GunSight.lua，用户 11-27 照战雷）
 add("gs.sightSet", "表尺 {1} 米", "Sight {1} m")
 add("gs.estR", "≈{1} 米", "≈{1} m")

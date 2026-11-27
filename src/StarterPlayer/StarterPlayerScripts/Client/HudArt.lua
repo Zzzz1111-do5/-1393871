@@ -109,7 +109,8 @@ function HudArt.init(G)
   --   G.vehPic(图名) → { content, w, h }；G.vehPicOn(ImageLabel, 树枝, 型号……)：按型号找图（地面车查 veh 表，飞机、直升机查 air 表），
   --   装上就把 ImageColor3 还成白（不染色）；没有图、EditableImage 用不了返回 false（调用的地方退回白色剪影）
   local picData, picCache = nil, {}
-  local function picDecode(t, W, H)
+  -- gray：去色（弹药栏打空了的那格用：调色板每一色换成它的亮度）
+  local function picDecode(t, W, H, gray)
     local pal = unb64(t.p)
     local raw = unb64(t.d)
     local buf = buffer.create(W * H * 4)
@@ -122,10 +123,15 @@ function HudArt.init(G)
       else
         local q = (b - 1) * 4 + 1
         local r, g, bl, a = string.byte(pal, q, q + 3)
+        r, g, bl = r or 0, g or 0, bl or 0
+        if gray then
+          local l = math.floor(r * 0.299 + g * 0.587 + bl * 0.114 + 0.5)
+          r, g, bl = l, l, l
+        end
         local p = o * 4
-        buffer.writeu8(buf, p, r or 0)
-        buffer.writeu8(buf, p + 1, g or 0)
-        buffer.writeu8(buf, p + 2, bl or 0)
+        buffer.writeu8(buf, p, r)
+        buffer.writeu8(buf, p + 1, g)
+        buffer.writeu8(buf, p + 2, bl)
         buffer.writeu8(buf, p + 3, a or 255)
         o += 1
         i += 1
@@ -177,6 +183,59 @@ function HudArt.init(G)
       end
     end
     return false
+  end
+
+  ---------------------------------------------------------------- 写实弹种图（用户 11-27「我需要你完全按照战雷的风格去做设计 而不是这种卡通风格……更拟真」）
+  --   ReplicatedStorage.AmmoPics（tools/models/ammopics.py）：每种弹、机枪 / 机炮 / 导弹、弹药栏的工具一张 Blender 按真弹建模渲的图
+  --   （横放、弹头朝右，显示尺寸的 2 倍），编码同车图，用同一个 picDecode 解；
+  --   G.ammoPicName("ammo" | "w" | "tool", 键) → 图名；G.ammoPic(图名, 去色) → { content, w, h }；
+  --   G.ammoPicFade(图名)：药筒伸出图外、左边要渐隐的（弹药栏用 UIGradient 做）；
+  --   G.ammoPicOn(ImageLabel, 图名, 去色)：装上返回 true；没有这张图、用不了 EditableImage（游戏设置没开 Mesh / Image API）返回 false
+  --   （弹药栏退回单色剪影）
+  local apData, apCache, apBroken = nil, {}, false
+  local function apLoad()
+    if not apData then
+      local ok, d = pcall(function() return require(RS:WaitForChild("AmmoPics", 5)) end)
+      apData = (ok and type(d) == "table") and d or { pics = {} }
+    end
+    return apData
+  end
+  function G.ammoPicName(kind, key)
+    local tb = key and apLoad()[kind]
+    return tb and tb[key] or nil
+  end
+  function G.ammoPicFade(name)
+    local tb = name and apLoad().fade
+    return (tb and tb[name]) == true
+  end
+  function G.ammoPic(name, gray)
+    if not name then return nil end
+    local ck = gray and (name .. "#g") or name
+    local c = apCache[ck]
+    if c ~= nil then return c or nil end
+    if broken or apBroken then return nil end
+    local t = (apLoad().pics or {})[name]
+    if not t then
+      apCache[ck] = false
+      return nil
+    end
+    local ok, res = pcall(picDecode, t, t.w, t.h, gray)
+    if not ok then
+      apBroken = true   -- EditableImage 用不了：后面的也不试了
+      apCache[ck] = false
+      return nil
+    end
+    apCache[ck] = res
+    return res
+  end
+  function G.ammoPicOn(label, name, gray)
+    local pc = G.ammoPic(name, gray)
+    if not pc then return false end
+    local ok = pcall(function() label.ImageContent = pc.content end)
+    if not ok then return false end
+    label.ImageColor3 = Color3.new(1, 1, 1)
+    label:SetAttribute("AmmoPic", gray and (name .. "#g") or name)   -- 界面截图预览（tools/mock/hud_render.py）按它画图
+    return true
   end
 end
 
