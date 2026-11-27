@@ -473,7 +473,8 @@ add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1～5 选弹
 -- 坦克瞄准镜里的提示（Drive.lua）：用户——开镜上面写一下，按 V 切换光电模式、按 M 释放烟雾弹
 add("drv.hintOptic", "[V] 切换光电模式：{1}", "[V] Optics: {1}")
 add("drv.hintSmoke", "[M] 释放烟雾弹（剩 {1} 发）", "[M] Smoke ({1} left)")
-add("drv.hintLine", "Shift 退出瞄准镜 · R 测距 · PgUp / PgDn 表尺 · Q / 1～5 换弹种 · Z / 滚轮 倍率 · C 望远镜 · 左键 开火", "Shift leave sight · R range · PgUp / PgDn sight range · Q / 1-5 shell · Z / Wheel zoom · C binoculars · LMB fire")
+add("drv.hintLine", "Shift 退出瞄准镜 · R 测距 · PgUp / PgDn 表尺 · Q / 1～5 换弹种 · Z / 滚轮 倍率 · C 望远镜 · 左键 开炮 · 空格 机枪", "Shift leave sight · R range · PgUp / PgDn sight range · Q / 1-5 shell · Z / Wheel zoom · C binoculars · LMB fire · Space MG")
+add("wtt.space", "空格", "SPC")   -- 弹药栏机枪那格的键位（11-27 起空格打机枪）
 -- 炮长瞄准镜、车长望远镜（GunSight.lua，用户 11-27 照战雷）
 add("gs.sightSet", "表尺 {1} 米", "Sight {1} m")
 add("gs.estR", "≈{1} 米", "≈{1} m")

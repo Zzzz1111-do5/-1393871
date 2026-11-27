@@ -1695,8 +1695,16 @@ function Drive.init(G)
   -- 科技树改装（WtMods）：原厂车只有第一种弹，研究了「第二种弹」「第三种弹」才能换（服务器出车时写 ModAmmo）
   local function ammoList(wid)
     local list = BAL.GUN[wid]
+    if not list then return nil end
     local n = st and st.em and st.em:GetAttribute("ModAmmo")
-    if list and type(n) == "number" and n < #list then return table.move(list, 1, math.max(1, n), 1, {}) end
+    if type(n) == "number" and n < #list then list = table.move(list, 1, math.max(1, n), 1, {}) end
+    -- 没带的弹种不轮（用户 11-27「如果我没有携带 就不要显示了吧」；同底部弹药栏，WtTank G.wtCarried）
+    local car = G.wtCarried and st and G.wtCarried(st.em)
+    if car then
+      local out = {}
+      for _, k in ipairs(list) do if car[k] then table.insert(out, k) end end
+      if #out > 0 then return out end
+    end
     return list
   end
   local function fcsAmmo()
@@ -1921,8 +1929,17 @@ function Drive.init(G)
   end
   G.driveApplySight = function() if st then syncZooms() applyMode() end end
 
-  local function tryFire()
-    local wid = weaponId()
+  -- 这辆车的机枪（并列机枪、车顶机枪：VehDefs.W 里 kind = gun 的第一件）——用户 11-27「坦克的机枪就用空格键触发吧」
+  local function mgWeapon()
+    for _, wid in ipairs(st.d.weapons or {}) do
+      local w = VD.W[wid]
+      if w and w.kind == "gun" then return wid end
+    end
+    return nil
+  end
+  -- widOverride：打指定的那件（空格打机枪，不用先换武器、主炮选着的弹种不动）
+  local function tryFire(widOverride)
+    local wid = widOverride or weaponId()
     local w = wid and VD.W[wid]
     if not w or st.locked then return end
     if st.safe then return end   -- 武器总开关拨在保险（布雷德利炮长面板上的 ARM / SAFE，Interior.lua）
@@ -2096,7 +2113,11 @@ function Drive.init(G)
       if st.aimPt then G.R.Act:FireServer("wtArty", st.aimPt) end
     elseif k == Enum.KeyCode.J and st.em and st.em:GetAttribute("Plow") ~= nil then   -- 扫雷犁（坦克改装）：放下 / 升起（升起要 11 秒）
       G.R.Drive:FireServer({ op = "plow", down = (st.em:GetAttribute("Plow") or 0) < 1 })
-    elseif (k == Enum.KeyCode.F or k == Enum.KeyCode.E or k == Enum.KeyCode.Space) and not (G.hangarActive and G.hangarActive()) then   -- 用户：空格键脱离载具（F / E 也还能用）
+    elseif k == Enum.KeyCode.Space and not (G.hangarActive and G.hangarActive()) then   -- 用户 11-27「坦克的机枪就用空格键触发吧」：按住空格机枪连发
+      st.mgFiring = true
+      local mw = mgWeapon()
+      if mw then tryFire(mw) end
+    elseif (k == Enum.KeyCode.F or k == Enum.KeyCode.E) and not (G.hangarActive and G.hangarActive()) then   -- 用户：F / E 脱离载具（11-27 起空格是机枪）
       -- 战雷式（不当步兵）：没有「下车」——原来按空格下车 = 这辆车判毁、人阵亡（用户 11-25「在车上按空格也不要自动阵亡了」）；
       --   空格改成刹车（physics），回机库是长按 H（Hud.lua）
       G.R.Drive:FireServer({ op = "exit" })
@@ -2104,6 +2125,7 @@ function Drive.init(G)
   end)
   UIS.InputEnded:Connect(function(io)
     if st and io.UserInputType == Enum.UserInputType.MouseButton1 then st.firing = false end
+    if st and io.KeyCode == Enum.KeyCode.Space then st.mgFiring = false end
     if io.KeyCode == Enum.KeyCode.X and G.ownXrayHold then   -- 松开 X：透视收起，原来在瞄准镜里的回镜里
       G.ownXrayHold(false)
       if st and st.xrSight and not st.sight then toggleSight() end
@@ -2385,6 +2407,10 @@ function Drive.init(G)
     -- 连发
     local w = VD.W[weaponId() or ""]
     if st.firing and w and w.rate < 0.5 and not (st.rof == "SS" and w.kind == "shell") then tryFire() end   -- 单发：按住不连发
+    if st.mgFiring then   -- 按住空格：机枪连发
+      local mw = mgWeapon()
+      if mw then tryFire(mw) end
+    end
     -- 报给服务器（每秒 15 次）
     st.sendT -= dt
     if st.sendT <= 0 and not st.locked then

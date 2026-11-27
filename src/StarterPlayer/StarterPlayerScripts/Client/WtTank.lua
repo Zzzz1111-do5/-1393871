@@ -333,8 +333,32 @@ function WtTank.init(G)
 
   -- 这辆车的弹药栏：主炮每种弹一格，别的武器一格，再加烟幕弹、维修 / 灭火
   local slotDef, slotKey = {}, nil
-  local function buildSlots(d)
-    local key = d.id .. ":" .. table.concat(d.weapons or {}, ",")
+  -- 带了哪几种弹：服务器 Wt.lua 的 AmL 把这门炮所有弹种都写上（没带的 0 发）——出车以后出现过大于 0 发的就算带了（补给多出来的也算）
+  local carriedBy = setmetatable({}, { __mode = "k" })   -- [车模型] = { [弹种] = true }
+  local function carriedOf(em)
+    if not em then return nil end
+    local L = em:GetAttribute("AmL")
+    if type(L) ~= "string" or L == "" then return nil end
+    local c = carriedBy[em]
+    if not c then
+      c = {}
+      carriedBy[em] = c
+    end
+    for k, n in string.gmatch(L, "([%w_]+):(%d+)") do if tonumber(n) > 0 then c[k] = true end end
+    return c
+  end
+  G.wtCarried = carriedOf   -- Drive 的 ammoList（Q 换弹）也只在带了的里面转
+  -- 11-27 用户：「训练场有时候显示按4是切换射流 但是实际上切换不了」「如果我没有携带 就不要显示了吧」——这门炮的弹种原来全列出来、按位置编号，
+  --   可车上只能打研究过的前 ModAmmo 种、带了的那几种（Drive ammoList / 服务器 Armor.lua 只认这些），按了换不过去。
+  --   现在：没研究的、没带的不显示；剩下的弹和武器从 1 往下连着编（打光了的那格还在，发数红）
+  local function buildSlots(d, st)
+    local nAm = st and st.em and st.em:GetAttribute("ModAmmo")
+    nAm = (type(nAm) == "number") and math.max(1, nAm) or nil
+    local car = carriedOf(st and st.em)
+    local carKeys = {}
+    for k in pairs(car or {}) do table.insert(carKeys, k) end
+    table.sort(carKeys)
+    local key = d.id .. ":" .. table.concat(d.weapons or {}, ",") .. ":" .. tostring(nAm) .. ":" .. table.concat(carKeys, "+")
     if slotKey == key then return slotDef end
     slotKey = key
     slotDef = {}
@@ -342,10 +366,13 @@ function WtTank.init(G)
       local w = VD.W[wid]
       local list = BAL.GUN[wid]
       if list then
-        for _, k in ipairs(list) do
+        for ai, k in ipairs(list) do
           local a = BAL.AMMO[k]
           local cls = a and a.cls or "ap"
-          table.insert(slotDef, { k = "am", wi = wi, wid = wid, am = k, icon = (cls == "atgm") and "sam" or cls, tag = ({ ap = "APFSDS", heat = "HEAT", mpat = "MPAT", can = "CAN", he = "HE", jet = "射流", atgm = "ATGM" })[cls] or "" })
+          local usable = (nAm == nil or ai <= nAm) and (car == nil or car[k] == true)
+          if usable then
+            table.insert(slotDef, { k = "am", wi = wi, wid = wid, am = k, icon = (cls == "atgm") and "sam" or cls, tag = ({ ap = "APFSDS", heat = "HEAT", mpat = "MPAT", can = "CAN", he = "HE", jet = "射流", atgm = "ATGM" })[cls] or "" })
+          end
         end
       elseif w then
         local ic = (w.kind == "gun") and "mg" or ((w.kind == "sam" or w.kind == "atgm") and "sam" or ((w.kind == "arty" or (w.dmg or 0) >= 300) and "he" or "ac"))
@@ -366,7 +393,9 @@ function WtTank.init(G)
       s.f.Visible = sd ~= nil
       if sd then
         s.kind = nil
-        s.key.Text = sd.num and tostring(sd.num) or (sd.keyTxt or "")
+        -- 机枪那格写「空格」（11-27 起按住空格打机枪；数字键照样能把它选成左键的武器）
+        s.key.Text = (sd.k == "w" and sd.icon == "mg") and T("wtt.space") or (sd.num and tostring(sd.num) or (sd.keyTxt or ""))
+        s.keyBox.Size = UD2(0, math.max(13, #s.key.Text > 1 and (utf8.len(s.key.Text) or #s.key.Text) * 9 + 6 or 13), 0, 13)
         s.tag.Text = sd.tag or ""
         -- 武器和工具（烟幕 / 维修 / 望远镜……）中间空一截、一道细分隔线
         local x = (i - 1) * (SW + GAP) + ((i > n) and SEP or 0)
@@ -384,8 +413,9 @@ function WtTank.init(G)
   local usedSt = nil   -- 这一趟开的车画过战雷界面（电脑布局）：开着瞄准镜时数字键也照这个排
   G.wtKeySlot = function(st, i)
     if not (st and st.d and st == usedSt) then return false end
-    local sd = buildSlots(st.d)[i]
-    if not sd or sd.num ~= i then return false end
+    local sd = nil
+    for _, x in ipairs(buildSlots(st.d, st)) do if x.num == i then sd = x break end end
+    if not sd then return false end
     st.wi = sd.wi
     if sd.k == "am" and G.driveAmmo then G.driveAmmo(sd.am) end   -- 换弹种：Drive 的 cycleAmmo（换了要重新装一发）
     return true
@@ -393,7 +423,7 @@ function WtTank.init(G)
 
   local function stepBar(st, I)
     local d = st.d
-    local def = buildSlots(d)
+    local def = buildSlots(d, st)
     local vs = G.S and G.S.veh
     local f = st.fcs
     local em = st.em

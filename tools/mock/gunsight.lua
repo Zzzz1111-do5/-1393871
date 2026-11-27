@@ -202,7 +202,8 @@ R.as("client", function() C.driveSetSight(false) end)
 settle(0.5)
 -- 靶车：500 米外、中间没东西挡着的方向（主基地里房子多：先打射线挑一个看得见的方向）
 local tdef = VD.get("t72b3")
-local o0 = cam.CFrame.Position
+local gh0 = C.driveGunHit and C.driveGunHit()
+local o0 = (gh0 and gh0.o) or cam.CFrame.Position   -- 从炮口看得见（炮比车长的眼睛低，按炮挑方向）
 local tp = nil
 for k = 0, 35 do
   local a = k / 36 * math.pi * 2
@@ -289,13 +290,15 @@ if gh and gh.inst then
 end
 check(gh ~= nil and onTgt, string.format("炮管标记打在靶车上（落点 %s 米、打到 %s）", gh and string.format("%.0f", gh.R) or "-", gh and gh.inst and gh.inst:GetFullName() or "nil"))
 check(gh ~= nil and gh.blocked == false, "没有被挡")
--- 炮口前面放一大块挡着（比炮口高），还瞄着靶车：炮口被挡
-local wall = R.Instance.new("Part")   -- 一大块不用转向的方块：中心在炮口前 30 格，最近的面离炮口 10 格
+-- 炮口前面一道矮墙，还瞄着靶车：炮口被挡
+-- 一道矮墙（真「炮口被挡」的样子：车后上方的镜头越过墙看得见靶车，低处的炮管打在墙上）：中心在炮口前 40 格、高 8 格
+local wall = R.Instance.new("Part")
 wall.Anchored = true
-wall.Size = V3(40, 40, 40)
-local o0 = gh and gh.o or cam.CFrame.Position
+wall.Size = V3(40, 8, 40)
+o0 = gh and gh.o or cam.CFrame.Position
 local fl = V3((tgt.root.CFrame.Position - o0).X, 0, (tgt.root.CFrame.Position - o0).Z).Unit
-wall.CFrame = CF(o0 + fl * 30)
+local wp = o0 + fl * 40
+wall.CFrame = CF(V3(wp.X, Map.height(wp.X, wp.Z) + 4, wp.Z))
 wall.Parent = R.services.Workspace
 for _ = 1, 10 do aimAt(tgt.root.CFrame.Position + V3(0, 1, 0)) R.run(0.1) end
 gh = C.driveGunHit and C.driveGunHit()
