@@ -829,6 +829,46 @@ function Drive.init(G)
     setSight(want)
   end
   G.driveToggleSight = function() toggleSight() end   -- 测试用：同按 Shift（曲射武器进炮兵视角）
+  -- 透视自己的车（XrayOwn.lua）：按住显示、松开恢复（用户 11-26「x应该是摁住显示3d 松手就恢复原样」）——
+  --   开着瞄准镜 / 车长望远镜：先退到车外看自己的车，松手再回镜里（镜里按 X 零件就在镜头底下，高亮糊满屏）；
+  --   车内视角（Interior）不响应（几百个零件围着镜头；全真模式本来就只能在车里）；退不出瞄准镜的（全真模式没有车内）也不开
+  -- 退出 / 回到炮长瞄准镜（同 toggleSight，但不管当前武器是不是曲射的：toggleSight 碰到曲射武器是进出炮兵视角）
+  local function sightTo(want)
+    if not want and workspace:GetAttribute("WtMode") == "sb" and not (G.interiorOn and G.interiorOn()) and not (G.inTestDrive and G.inTestDrive()) then
+      if not (G.interiorEnterSeat and G.interiorEnterSeat()) then return end   -- 全真模式：不能退回第三人称
+    end
+    if G.interiorScope and G.interiorScope(want, function() setSight(want) end) then return end
+    setSight(want)
+  end
+  local function xrayDown()
+    if not st or not G.ownXrayHold or st.xrHeld then return end
+    if workspace:GetAttribute("WtMode") == "sb" and not (G.inTestDrive and G.inTestDrive()) then   -- 全真模式（战雷）：没有第三人称，也就没有透视（不去动镜子、车内）
+      if G.toast then G.toast(T("drv.xraySb"), "info") end
+      return
+    end
+    if G.interiorOn and G.interiorOn() then
+      if G.toast then G.toast(T("drv.xrayInside"), "info") end
+      return
+    end
+    st.xrSight, st.xrBinoc = st.sight, st.binoc
+    if st.binoc then setBinoc(false) end
+    if st.sight then sightTo(false) end
+    if st.sight or st.binoc or (G.interiorOn and G.interiorOn()) then   -- 没退出来：不开，松手也不用恢复
+      st.xrSight, st.xrBinoc = nil, nil
+      return
+    end
+    st.xrHeld = true
+    G.ownXrayHold(true)
+  end
+  local function xrayUp()
+    if G.ownXrayHold then G.ownXrayHold(false) end
+    if not st or not st.xrHeld then return end
+    st.xrHeld = nil
+    if st.xrSight and not st.sight then sightTo(true)
+    elseif st.xrBinoc and not st.binoc and not st.sight then setBinoc(true) end
+    st.xrSight, st.xrBinoc = nil, nil
+  end
+  G.driveXray = function(on) if on then xrayDown() else xrayUp() end end   -- 手机的透视键、测试
   -- 瞄准镜默认档（用户 11-21：坦克开镜强制锁在夜视；11-22：「坦克第一人称视角开镜有时候会是绿色的」）：天黑热成像（白热，现代坦克夜里就用这个）、
   --   白天昼光；自己换过就记住（白天、夜里各记一个）
   G.sightPref = G.sightPref or {}
@@ -2058,6 +2098,13 @@ function Drive.init(G)
     tap(T("drv.optic"), UDim2.fromOffset(60, 66), nextMode)
     tap(T("drv.smoke"), UDim2.fromOffset(140, 40), smoke)
     tap(T("gs.bino"), UDim2.fromOffset(-12, 76), function() G.driveBinoc() end)   -- 车长望远镜（用户 11-27；电脑上是 C）
+    do   -- 透视自己的车（电脑上按住 X）：按住显示、松开收起；按着的时候另一只手指点一下部件，旁边写名字、状态（XrayOwn）
+      local b = ui.button(rb, T("drv.xray"), UDim2.fromOffset(64, 64), UDim2.fromOffset(-12, 150), RGB(30, 36, 42))
+      b.BackgroundTransparency = 0.35
+      b.TextSize = 14
+      b.InputBegan:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch then xrayDown() end end)
+      b.InputEnded:Connect(function(io) if io.UserInputType == Enum.UserInputType.Touch then xrayUp() end end)
+    end
     tap("F", UDim2.fromOffset(0, 0), function() G.R.Drive:FireServer({ op = "exit" }) end)
     tap("1/2", UDim2.fromOffset(170, -30), function() if st then st.wi = (st.wi % #st.d.weapons) + 1 end end)
     G.touchDrive = touch
@@ -2097,12 +2144,8 @@ function Drive.init(G)
       if not (G.wtKeySlot and G.wtKeySlot(st, i)) and st.d.weapons[i] then st.wi = i end
     elseif k == Enum.KeyCode.M then   -- 烟幕弹（用户 11-25「烟幕改成m」）
       smoke()
-    elseif k == Enum.KeyCode.X then   -- 透视自己的车：按住显示、松开恢复（XrayOwn.lua；用户 11-26「x应该是摁住显示3d 松手就恢复原样」）
-      if G.ownXrayHold then
-        st.xrSight = st.sight   -- 开着瞄准镜：先退到车外看自己的车，松手再回镜里（原来镜里按 X 什么都看不到）
-        if st.sight then toggleSight() end
-        G.ownXrayHold(true)
-      end
+    elseif k == Enum.KeyCode.X then   -- 透视自己的车：按住显示、松开恢复（XrayOwn.lua；镜里、望远镜里先退到车外，车内视角不响应：xrayDown）
+      xrayDown()
     elseif k == Enum.KeyCode.Y and st.em and st.em:GetAttribute("WtC") ~= nil then   -- 战雷式：着火先灭火，没着火就修车（再按一次取消修）
       G.R.Act:FireServer(st.em:GetAttribute("WtF") and "wtExt" or "wtFix")
     elseif k == Enum.KeyCode.G and not (G.interiorOn and G.interiorOn()) then   -- 战雷式侦察（WtMatch.lua）：轻型车对着准星下的敌车按，全队看得见它 30 秒
@@ -2126,11 +2169,7 @@ function Drive.init(G)
   UIS.InputEnded:Connect(function(io)
     if st and io.UserInputType == Enum.UserInputType.MouseButton1 then st.firing = false end
     if st and io.KeyCode == Enum.KeyCode.Space then st.mgFiring = false end
-    if io.KeyCode == Enum.KeyCode.X and G.ownXrayHold then   -- 松开 X：透视收起，原来在瞄准镜里的回镜里
-      G.ownXrayHold(false)
-      if st and st.xrSight and not st.sight then toggleSight() end
-      if st then st.xrSight = nil end
-    end
+    if io.KeyCode == Enum.KeyCode.X and G.ownXrayHold then xrayUp() end   -- 松开 X：透视收起，原来在瞄准镜 / 望远镜里的回去
   end)
   -- 滚轮（用户 11-25「画面缩放升高的时候 先往后 再往上……参考坦克世界的画面缩放逻辑」）：
   --   第三人称往后滚，镜头先往后拉（臂长 0.6 → 1.6 倍），拉到头再往上升（绕着转的点抬高十几米，站得高看得远）；
@@ -2199,10 +2238,13 @@ function Drive.init(G)
     if om and om.Parent ~= ownBox then om.Parent = ownBox end
     st.locked = vs.locked
     -- 镜头转动（坐在车里看的时候鼠标归内饰的镜头：Interior.lua，炮塔不跟着转）
-    UIS.MouseBehavior = Enum.MouseBehavior.LockCenter
+    -- 按住 X 透视（XrayOwn.lua）：鼠标放开（指针画出来，UI.lua）去指部件看名字、状态——这段时间镜头、炮塔不跟着鼠标转，松手再锁回屏幕中间
+    local xrPtr = G.ownXrayOn ~= nil and G.ownXrayOn() and UIS.MouseEnabled
+    UIS.MouseBehavior = xrPtr and Enum.MouseBehavior.Default or Enum.MouseBehavior.LockCenter
     -- 车里的观瞄设备（车长热像仪 / 周视镜、CROWS……）开着时也算在车里：鼠标归那个设备，炮塔守着炮长原来的准星
     local inside = G.interiorOn and (G.interiorOn() or G.interiorOptic ~= nil) and not st.sight
     local md = G.mouseDelta and G.mouseDelta(st.sight) or UIS:GetMouseDelta()   -- 设置里的灵敏度、开镜灵敏度、反转 Y（Settings.lua）
+    if xrPtr then md = Vector2.new(0, 0) end   -- 真机上鼠标没锁时 GetMouseDelta 本来就是 0：照样清零（别的输入不转镜头）
     local sens = SENS * (st.sight and (ZOOMS[st.zoom] / 70) or (st.binoc and (GS.binoFov / 70)) or 1)
     if st.arty and G.artyMouse then G.artyMouse(md, dt)   -- 炮兵视角：鼠标挪地上的瞄准点
     elseif not inside then

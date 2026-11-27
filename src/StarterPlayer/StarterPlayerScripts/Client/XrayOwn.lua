@@ -19,6 +19,10 @@
 --   · 屏幕：下面一排图例（这辆车有的类别 + 状态）；鼠标指着哪个部件，旁边写它的名字、状态（弹药架写还剩几发、指着的是哪种弹）
 --   · 性能：零件对象池（松手收回、下次按住直接拿来用）；只在按住 X 时建、松手全清（零件收回、Highlight / 图例删掉、车身透明度还原）；
 --     每帧只算 CFrame、一次 BulkMoveTo；Highlight 按类别分组（二十来个，Roblox 上限 31）；一辆车最多 600 个零件（弹多的车一发弹一个零件）
+--   11-27 审查后补的：按住 X 时 Drive 放开鼠标、画出指针（镜头、炮塔这段时间不跟鼠标转），指哪个部件写哪个（原来鼠标锁在屏幕中间、只指得到炮管）；
+--     手机上按住「透视」键，另一只手指点一下部件；车长坐到指挥塔正下方，头够不着指挥塔就不抬（不从炮塔顶冒出去）；转盘车的乘员踩在转盘的弹上面、
+--     篮子式的竖药筒围在人脚外圈；乘员状态按座位（换了座的跟着人走）；AmL 变了按现在的弹重排弹名、弹头；加特林画转膛机匣；BMP / 布雷德利的反坦克导弹发射架；
+--     车辆热成像（Night.lua 的 1 + 24 个 Highlight）按住 X 时让开；每帧在 init.client.lua 的 steps 里 View 之后摆（G.stepOwnXray，不晚一帧）
 --   共用（XrayOwn.crewSpecs）：WtHud 的战后 X 光回放也用这套人形画乘员
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
@@ -35,6 +39,11 @@ local MAXG = 28     -- 透视最多建几组 Highlight（Roblox 一个画面最�
 XrayOwn.LIMIT, XrayOwn.MAXG = LIMIT, MAXG
 -- 篮子式自动装弹机（T-64 / T-80）：弹丸平躺、药筒竖着围在外圈；别的转盘车（T-72 / 90 / 96 / 99A）弹丸、药筒上下两层平躺
 local MZ = { t64a = true, t64b = true, t80b = true, t80u = true, t80bvm = true }
+-- 转盘里的弹（格）：弹径（125 毫米）、离转盘底板多高开始放、竖药筒多高（篮子式）；乘员的地板、竖药筒围多大一圈也按这几个数算
+local CAR_DIA, CAR_Y0, CAR_CH = 0.35, 0.1, 1.3
+local CUP_R = 0.625   -- 车长指挥塔那一圈观察镜的半径（同下面画的那一圈：直径 1.25）
+local CORNERS = {}   -- 方盒的八个角（± 半边长）
+for _, sx in ipairs({ -1, 1 }) do for _, sy in ipairs({ -1, 1 }) do for _, sz in ipairs({ -1, 1 }) do CORNERS[#CORNERS + 1] = Vector3.new(sx, sy, sz) end end end
 -- 自己一组 Highlight 的子件（颜色跟大类不一样、要一眼分得出的）：弹头、发动机的深色件（排气、风扇、缸盖）、炮闩 / 炮管的鼓包和箍、观瞄的玻璃
 local SUBOK = { engine_dk = true, breech_dk = true, barrel_dk = true, ammo_tip = true, optics_gl = true }
 XrayOwn.SUBOK = SUBOK
@@ -107,12 +116,14 @@ local POSE = {
 }
 XrayOwn.POSE = POSE
 -- 一个人：返回零件表（相对胯中心）、最低点、最高点（头顶或举起来的手，都相对胯）、头的中心、最靠前的一点（z）
-local function person(pose, sc, simple)
+--   lean：上身往哪边歪（水平的一个小向量，加到躯干、头的方向上；腿不动）——车长胯往里挪、头还凑在指挥塔底下
+local function person(pose, sc, simple, lean)
   local L = {}
   local k = MS * sc
-  local sp = pose.spine
+  local sp, hd = pose.spine, pose.head
+  if lean then sp, hd = (sp + lean).Unit, (hd + lean).Unit end
   local N = sp * (BONE.torso * k)   -- 脖子根
-  local headC = N + pose.head * ((BONE.neck + BONE.head / 2) * k)
+  local headC = N + hd * ((BONE.neck + BONE.head / 2) * k)
   local lowY, minZ, hiY = -0.05 * k, 0, headC.Y + BONE.head / 2 * k
   local function see(p)
     if p.Y < lowY then lowY = p.Y end
@@ -166,6 +177,8 @@ local function mkCtx(d, lay)
     else zSp = clampS(zSp, -d.L / 2 + rw.r * 0.7, z0 - rw.r * 0.9) end
   end
   ctx.zSp = zSp
+  -- 篮子式转盘的竖药筒最外能放到离转轴多远：两边履带里面（比 WtDamage 的弹药盒子宽一点，真车药筒贴着炮塔座圈）
+  ctx.carRmax = ctx.xIn - math.abs(ctx.tp.X) - CAR_DIA / 2 - 0.05
   return ctx
 end
 
@@ -180,45 +193,111 @@ local function crewItem(x, ctx)
   if not it.tur and role == "cmd" then pose = POSE.troop end   -- 车体里坐着的车长（轻型车副驾驶）：坐直
   local size = it.hi - it.lo
   local c = (it.lo + it.hi) / 2
-  local sc = math.clamp(math.min(size.X / 1.7, size.Y / 2.7, size.Z / 1.7), 0.55, 1.3)
-  local floor, roof
-  if it.tur then
-    floor, roof = ctx.fl - ctx.tp.Y + 0.05, ctx.turTop - ctx.tp.Y - 0.08
-    if role == "cmd" and d.cupola then roof = math.max(roof + 0.08, d.cupola.Y) + 0.45 end   -- 头伸进指挥塔
-  else
-    floor, roof = ctx.fl + 0.02, ctx.hH - 0.03
+  local sc0 = math.clamp(math.min(size.X / 1.7, size.Y / 2.7, size.Z / 1.7), 0.55, 1.3)
+  -- 车长坐到指挥塔正下方（左右夹在「炮塔半宽 − 肩宽」以内，不探出炮塔侧壁）；头离指挥塔中心不超过它的半径才伸进指挥塔，
+  --   不然顶到炮塔顶为止（原来只往指挥塔挪半格、头却抬到指挥塔的高度：T-64、T-80 的车长脑袋从指挥塔旁边的炮塔顶冒出去）
+  --   指挥塔在另一边的（勒克莱尔、10 式：车长盒子在右、指挥塔在左）不挪，免得坐到炮长身上
+  local cup = (role == "cmd" and it.tur and d.cupola) or nil
+  local headXZ = nil
+  if cup and (cup.X * c.X >= 0 or math.abs(cup.X - c.X) < 1.2) then
+    local xm = math.max(0, ctx.ts.X / 2 - BONE.sh * MS * sc0)
+    local zm = math.max(0, ctx.ts.Z / 2 - 0.6)
+    headXZ = V3(math.clamp(cup.X, -xm, xm), 0, math.clamp(cup.Z, -zm, zm))
   end
-  if it.hi.Y + 0.2 > roof then roof = it.hi.Y + 0.2 end   -- 站在车顶枪塔里的机枪手（悍马）
-  roof = math.min(roof, d.H - (it.tur and ctx.tp.Y or 0) - 0.05)   -- 怎么都不高过整车
-  if roof < floor + 1 then roof = floor + 1 end
-  local L, low, top, headC, minZ = person(pose, sc)
-  if top - low > roof - floor then   -- 塞不下：整个人缩小
-    sc = sc * (roof - floor) / (top - low)
-    L, low, top, headC, minZ = person(pose, sc)
+  local function offCup(p) return cup and V3(p.X - cup.X, 0, p.Z - cup.Z).Magnitude or math.huge end
+  local useCup = headXZ ~= nil and offCup(headXZ) <= CUP_R
+  -- 转盘自动装弹机：炮塔里的人踩在转盘的弹上面（真车乘员踩着转盘的盖板）——T-72 / 90 / 96 / 99A 两层平躺的弹：弹药架的顶；
+  --   T-64 / T-80 篮子式：平躺的弹丸那一层的顶，竖着的药筒那一层高度以下人离转轴不超过 limR（药筒围在人脚外圈，见 carouselRack）
+  local am = ctx.byK.ammo
+  local car = it.tur and req("WtDamage").CAROUSEL[d.id] and am and not am.tur
+  local carFloor, limR, yLim = nil, nil, nil
+  if car then
+    carFloor = (MZ[d.id] and (am.lo.Y + CAR_Y0 + CAR_DIA + 0.06) or (am.hi.Y + 0.02)) - ctx.tp.Y + 0.03   -- 车体系的高度换到炮塔系
+    if MZ[d.id] then
+      limR = ctx.carRmax - CAR_DIA / 2 - 0.06
+      yLim = am.lo.Y + CAR_Y0 + CAR_DIA * 1.55 + CAR_CH - ctx.tp.Y
+    end
   end
-  local hipY
-  if pose.stand then hipY = floor - low
-  elseif pose.high then hipY = roof - 0.08 - top
-  else hipY = it.lo.Y + (pose.seat or 0.5) * sc end
-  hipY = clampS(hipY, floor - low, roof - top)
-  local N = pose.spine * (BONE.torso * MS * sc)
-  local hip = V3(c.X, hipY, c.Z - N.Z / 2)   -- 躯干在盒子中间、腿往前伸
-  if role == "cmd" and d.cupola and it.tur then   -- 车长往指挥塔底下靠一点
-    hip = hip + V3(math.clamp(d.cupola.X - c.X, -0.5, 0.5), 0, math.clamp(d.cupola.Z - c.Z, -0.5, 0.5))
+  -- 摆一次：shift 胯往哪挪（炮塔系水平）、lean 上身歪多少、cupOn 头伸不伸进指挥塔
+  local function fit(shift, lean, cupOn)
+    local sc = sc0
+    local floor, roof
+    if it.tur then
+      floor, roof = ctx.fl - ctx.tp.Y + 0.05, ctx.turTop - ctx.tp.Y - 0.08
+      if carFloor then floor = math.max(floor, carFloor) end
+      if cupOn then roof = math.max(roof + 0.08, cup.Y) + 0.45 end   -- 头伸进指挥塔
+    else
+      floor, roof = ctx.fl + 0.02, ctx.hH - 0.03
+    end
+    if it.hi.Y + 0.2 > roof then roof = it.hi.Y + 0.2 end   -- 站在车顶枪塔里的机枪手（悍马）
+    roof = math.min(roof, d.H - (it.tur and ctx.tp.Y or 0) - 0.05)   -- 怎么都不高过整车
+    if roof < floor + 1 then roof = floor + 1 end
+    local L, low, top, headC, minZ = person(pose, sc, false, lean)
+    if top - low > roof - floor then   -- 塞不下：整个人缩小
+      sc = sc * (roof - floor) / (top - low)
+      L, low, top, headC, minZ = person(pose, sc, false, lean)
+    end
+    local hipY
+    if pose.stand then hipY = floor - low
+    elseif pose.high then hipY = roof - 0.08 - top
+    else hipY = it.lo.Y + (pose.seat or 0.5) * sc end
+    hipY = clampS(hipY, floor - low, roof - top)
+    local N = pose.spine * (BONE.torso * MS * sc)
+    local hip = V3(c.X, hipY, c.Z - N.Z / 2) + shift   -- 躯干在盒子中间、腿往前伸
+    if headXZ then   -- 车长：头在指挥塔正下方（胯往里挪了 shift、上身往回歪 lean：头还在那儿；歪不了那么多的头跟着往里）
+      local h0 = N + pose.head * ((BONE.neck + BONE.head / 2) * MS * sc)
+      hip = V3(headXZ.X - h0.X, hipY, headXZ.Z - h0.Z) + shift
+    end
+    if not it.tur then   -- 车体里的（驾驶员）：脚别伸出车头
+      local front = -d.L / 2 + 0.45
+      if hip.Z + minZ < front then hip = hip + V3(0, 0, front - (hip.Z + minZ)) end
+    end
+    local place = CF(hip)
+    if role == "ldr" and d.gun and it.tur then   -- 装填手朝着炮尾
+      local tgt = d.gun.pivot + V3(0, 0, 1.4)
+      local dv = V3(tgt.X - hip.X, 0, tgt.Z - hip.Z)
+      if dv.Magnitude > 0.3 then place = CFrame.lookAt(hip, hip + dv) end
+    end
+    for _, s in ipairs(L) do s.cf = place * s.cf end
+    return { L = L, head = place * headC, sc = sc }
   end
-  if not it.tur then   -- 车体里的（驾驶员）：脚别伸出车头
-    local front = -d.L / 2 + 0.45
-    if hip.Z + minZ < front then hip = hip + V3(0, 0, front - (hip.Z + minZ)) end
+  -- 竖药筒那一层高度以下离转轴最远的一点：超出 limR 多少、往哪边
+  local function excess(L)
+    local best, dir = -math.huge, V3(1, 0, 0)
+    for _, s in ipairs(L) do
+      local h = s.s / 2
+      for _, k in ipairs(CORNERS) do
+        local p = s.cf * (h * k)
+        if p.Y < yLim then
+          local r = math.sqrt(p.X * p.X + p.Z * p.Z)
+          if r > best then best, dir = r, (r > 1e-3) and V3(p.X / r, 0, p.Z / r) or dir end
+        end
+      end
+    end
+    return best - limR, dir
   end
-  local place = CF(hip)
-  if role == "ldr" and d.gun and it.tur then   -- 装填手朝着炮尾
-    local tgt = d.gun.pivot + V3(0, 0, 1.4)
-    local dv = V3(tgt.X - hip.X, 0, tgt.Z - hip.Z)
-    if dv.Magnitude > 0.3 then place = CFrame.lookAt(hip, hip + dv) end
+  local shift, lean = V3(), nil
+  local r
+  for _ = 1, 6 do
+    r = fit(shift, lean, useCup)
+    local again = false
+    if limR then
+      local exc, dir = excess(r.L)
+      if exc > 0.005 then   -- 人脚伸进竖药筒那一圈：整个人往转轴挪；车长胯挪进来、上身往指挥塔那边歪（最多二十来度）
+        shift = shift - dir * (exc + 0.03)
+        if headXZ then
+          local Lh = (BONE.torso + BONE.neck + BONE.head / 2) * MS * r.sc
+          lean = -shift / Lh
+          if lean.Magnitude > 0.36 then lean = lean.Unit * 0.36 end
+        end
+        again = true
+      end
+    end
+    if not again and useCup and offCup(r.head) > CUP_R + 1e-3 then useCup, again = false, true end   -- 歪到头了头还够不着指挥塔：不抬
+    if not again then break end
   end
-  for _, s in ipairs(L) do s.cf = place * s.cf end
-  x.specs = L
-  if role == "gnr" and it.tur then ctx.gnrHead = place * headC end
+  x.specs = r.L
+  if role == "gnr" and it.tur then ctx.gnrHead = r.head end
 end
 
 -- 柴油机（本地坐标：盒子中心为原点，曲轴沿 z，+z 朝变速箱）
@@ -410,7 +489,14 @@ local function breechItem(x, ctx)
   local twin = d.turret and d.turret.twin
   local xs = twin and { -twin / 2, twin / 2 } or { 0 }
   for _, x0 in ipairs(xs) do
-    if cal < 0.3 or (g.len or 0) < 1 then   -- 机关炮 / 发射架：机匣 + 供弹槽
+    if g.gatling then   -- 加特林（M163、LD-2000、C-RAM 的 M61 / 730 型）：炮管后面一个圆柱形的转膛机匣 + 侧面的驱动电机 + 往下通到弹鼓的无链供弹槽
+      rod(L, V3(x0, 0, -0.3), V3(x0, 0, 1.3), cal * 2.3)                                -- 转膛机匣（六根管的后头都在里面）
+      rod(L, V3(x0, 0, -0.42), V3(x0, 0, -0.3), cal * 2.5, "dk")                        -- 前面的夹箍
+      blk(L, V3(cal * 1.1, cal * 1.1, 0.7), V3(x0 + cal * 1.6, cal * 0.2, 0.6), "dk")   -- 驱动电机（液压 / 电动）
+      blk(L, V3(cal * 2.2, cal * 0.5, 1.4), V3(x0, -cal * 1.35, 0.55))                  -- 炮架
+      bar(L, V3(x0 - cal * 0.9, -cal * 0.9, 1.0), V3(x0 - 0.7, -1.3, 1.5), 0.32, 0.14, "dk")   -- 供弹槽（往下通到弹鼓）
+      bar(L, V3(x0 - cal * 0.5, -cal * 1.0, 1.2), V3(x0 - 0.35, -1.3, 1.9), 0.32, 0.14, "dk")  -- 退弹槽（空弹壳回弹鼓）
+    elseif cal < 0.3 or (g.len or 0) < 1 then   -- 机关炮 / 发射架：机匣 + 供弹槽
       local k = math.clamp(cal / 0.2, 0.6, 1.4)
       blk(L, V3(0.5 * k, 0.42 * k, 1.5), V3(x0, 0, 0.55))
       rod(L, V3(x0, 0, -0.35), V3(x0, 0, 0.1), 0.34 * k, "dk")                        -- 驻退套
@@ -577,17 +663,21 @@ local function gridRack(L, lo, hi, n, dia0, len0, tipDir, kinds, one, sep)
     mark(L, n0, i)
   end
 end
--- 转盘自动装弹机（车体底板上、炮塔下面一圈）：n 个位置，弹头朝里
-local function carouselRack(L, lo, hi, n, mz, one)
+-- 转盘自动装弹机（车体底板上、炮塔下面一圈）：n 个位置，弹头朝里；crewR 炮塔里的人脚伸到离转轴多远（篮子式的竖药筒围在它外面）、
+--   rMax 竖药筒最外放到多远
+local function carouselRack(L, lo, hi, n, mz, one, crewR, rMax)
   local c = (lo + hi) / 2
   local S = hi - lo
   local rOut = math.max(1.2, math.min(S.X, S.Z) / 2 - 0.12)
-  local dia = 0.35   -- 125 毫米
+  local dia = CAR_DIA   -- 125 毫米
   local rIn = math.min(math.max(n * dia * 1.12 / (PI * 2), rOut * 0.3), rOut - 0.9)
   local len = rOut - rIn
   disc(L, V3(c.X, lo.Y + 0.04, c.Z), rOut * 2 + 0.1, 0.08)                          -- 转盘底板
-  local y1 = lo.Y + 0.1 + dia / 2
+  local y1 = lo.Y + CAR_Y0 + dia / 2
   local y2 = y1 + dia + 0.06
+  -- 竖药筒那一圈：原来在弹丸外头那一截上面；炮塔里的人脚伸得远就往外挪（最多挪到履带里面）
+  local rC = math.max(rOut - dia * 0.6, (crewR or 0) + dia / 2 + 0.06)
+  if rMax then rC = math.min(rC, rMax) end
   for i = 1, n do
     local a = (i - 0.5) / n * PI * 2
     local u = V3(math.sin(a), 0, math.cos(a))
@@ -596,8 +686,8 @@ local function carouselRack(L, lo, hi, n, mz, one)
     rod(L, pc + u * rOut, pc + u * (rIn + len * 0.12), dia * 0.92, "tip")            -- 弹丸（下层平躺）
     if not one then
       if mz then
-        local p = V3(c.X, 0, c.Z) + u * (rOut - dia * 0.6)
-        rod(L, V3(p.X, y1 + dia * 0.55, p.Z), V3(p.X, y1 + dia * 0.55 + 1.3, p.Z), dia)   -- 药筒（竖着围在外圈）
+        local p = V3(c.X, 0, c.Z) + u * rC
+        rod(L, V3(p.X, y1 + dia * 0.55, p.Z), V3(p.X, y1 + dia * 0.55 + CAR_CH, p.Z), dia)   -- 药筒（竖着围在外圈）
       else
         local qc = V3(c.X, y2, c.Z)
         rod(L, qc + u * rOut, qc + u * (rIn + len * 0.3), dia)                       -- 药筒（上层平躺）
@@ -708,8 +798,8 @@ local function ammoItem(x, ctx, one, scale)
   local carousel = (it.k == "ammo") and W.CAROUSEL[d.id] and not it.tur and A.style == "round"
   local cap = math.max(0, math.floor(rk.cap * scale))
   if not carousel then blk(L, V3(S.X, 0.06, S.Z), V3(c.X, lo.Y + 0.03, c.Z)) end   -- 弹架底板（空了也看得出弹架在哪）
-  -- 这一架每格是哪种弹（待发弹架在前、车体弹架接着）
-  local off = (it.k == "ammoH" and ctx.R.ammo) and ctx.R.ammo.cap or 0
+  -- 这一架每格是哪种弹：按车上现在的 AmL 排（待发弹架现在有的那几发在前、车体弹架接着；打掉的弹种就不再画、不再写）
+  local off = (it.k == "ammoH" and ctx.R.ammo) and math.min(ctx.R.ammo.n or 0, ctx.R.ammo.cap or 0) or 0
   local seq = A.seq or {}
   local kinds, names = {}, {}
   for i = 1, cap do
@@ -722,7 +812,7 @@ local function ammoItem(x, ctx, one, scale)
   if A.style == "none" then
     blk(L, S, c)
   elseif carousel then
-    carouselRack(L, lo, hi, cap, MZ[d.id], one)
+    carouselRack(L, lo, hi, cap, MZ[d.id], one, ctx.crewR, ctx.carRmax)
     x.detail = "xr.d.carousel"
   elseif A.style == "cans" then
     canRack(L, lo, hi, cap, one)
@@ -736,7 +826,67 @@ local function ammoItem(x, ctx, one, scale)
     x.detail = it.tur and "xr.d.bustle" or "xr.d.hullRack"
   end
   x.specs = L
-  x.rack = { per = per, cap = cap, names = names }
+  x.rack = { per = per, cap = cap, names = names, kinds = kinds }
+  x.one, x.scale = one, scale   -- AmL 变了按同样的格数重排（客户端 reshape）
+end
+
+-- 反坦克导弹发射架（格）：发射筒长、筒径、弹径、几具、装在哪（炮塔顶 / 炮塔两侧 / 炮塔左侧 / 炮上面的导轨）
+local ATGM = {
+  konkurs = { len = 3.5, tube = 0.46, msl = 0.38, n = 1, at = "roof" },    -- 9M113「竞技」：炮塔顶上一具 9P135M 发射架（BMP-2，原模型量的位置）
+  kornet = { len = 3.4, tube = 0.5, msl = 0.43, n = 4, at = "sides" },     -- 9M133「短号」：「海岸」战斗模块炮塔两侧各两具（BMP-2M）
+  tow2 = { len = 3.4, tube = 0.56, msl = 0.43, n = 2, at = "left" },       -- BGM-71「陶-2」：炮塔左侧的双联装发射箱（M2A3）
+  malyutka = { len = 2.4, tube = 0, msl = 0.35, n = 1, at = "rail" },      -- 9M14「婴儿」：炮上面的发射导轨（BMP-1）
+}
+XrayOwn.ATGM = ATGM
+-- 发射架的零件（弹一发一格：slot；筒、导轨、支架不带 slot）；返回零件表、框架（tur / gun）、几具
+local function launcherSpecs(d, ctx, wid)
+  local A = ATGM[wid]
+  if not A or not d.turret then return nil end
+  local L = {}
+  local ts = ctx.ts
+  local topT = ctx.turTop - ctx.tp.Y   -- 炮塔顶（炮塔系）
+  local base = topT - ts.Y
+  local function tube(i, p, withTube)
+    if withTube then rod(L, p + V3(0, 0, A.len / 2), p - V3(0, 0, A.len / 2), A.tube, "dk") end   -- 发射筒
+    local n0 = #L
+    rod(L, p + V3(0, 0, A.len / 2 - 0.2), p - V3(0, 0, A.len / 2 - 0.3), A.msl)                 -- 弹体
+    rod(L, p - V3(0, 0, A.len / 2 - 0.3), p - V3(0, 0, A.len / 2 - 0.05), A.msl * 0.8, "tip")   -- 弹头
+    mark(L, n0, i)
+  end
+  if A.at == "rail" then   -- 炮上面：一根导轨、导弹带四片尾翼（炮的框架，跟着俯仰）
+    local g = d.gun
+    local cal = (g and g.cal) or 0.25
+    local p = V3(0, cal * 1.3 + 0.35, -0.7)
+    bar(L, p + V3(0, -A.msl * 0.7, A.len * 0.45), p + V3(0, -A.msl * 0.7, -A.len * 0.45), 0.16, 0.1, "dk")   -- 导轨
+    local n0 = #L
+    rod(L, p + V3(0, 0, A.len / 2), p - V3(0, 0, A.len / 2 - 0.3), A.msl)
+    rod(L, p - V3(0, 0, A.len / 2 - 0.3), p - V3(0, 0, A.len / 2), A.msl * 0.7, "tip")
+    bar(L, p + V3(-0.55, 0, A.len * 0.32), p + V3(0.55, 0, A.len * 0.32), 0.3, 0.04)          -- 尾翼（展开）
+    bar(L, p + V3(0, -0.55, A.len * 0.32), p + V3(0, 0.55, A.len * 0.32), 0.04, 0.3)
+    mark(L, n0, 1)
+    return L, "gun", 1
+  end
+  if A.at == "roof" then   -- 炮塔顶上一具（偏后：车长、炮长舱口中间）
+    local p = V3(-ts.X * 0.04, topT + A.tube * 0.75, ts.Z * 0.1)
+    blk(L, V3(0.3, A.tube * 0.6, 0.5), p - V3(0, A.tube * 0.6, -0.2), "dk")                    -- 支架
+    tube(1, p, true)
+  elseif A.at == "sides" then   -- 炮塔两侧各两具（上下叠着）
+    local i = 0
+    for s = -1, 1, 2 do
+      local x = s * (ts.X / 2 + A.tube * 0.7)
+      bar(L, V3(s * ts.X / 2, base + ts.Y * 0.5, 0.2), V3(x, base + ts.Y * 0.5, 0.2), 0.2, 0.2, "dk")   -- 支臂
+      for j = 0, 1 do
+        i += 1
+        tube(i, V3(x, base + ts.Y * 0.4 + j * A.tube * 1.1, 0.2), true)
+      end
+    end
+  else   -- 炮塔左侧的双联装发射箱（两个筒并排）
+    local xc = -(ts.X / 2 + A.tube * 1.05)
+    local y = base + ts.Y * 0.6
+    bar(L, V3(-ts.X / 2, y, 0.3), V3(xc, y, 0.3), 0.25, 0.25, "dk")                            -- 支臂（发射箱升起来打）
+    for i = 1, 2 do tube(i, V3(xc + (i - 1.5) * A.tube * 1.05, y, 0.3), true) end
+  end
+  return L, "tur", A.n
 end
 
 ---------------------------------------------------------------- 整辆车的透视零件（纯数据，测试也能直接算）
@@ -783,6 +933,24 @@ function XrayOwn.plan(d, opts)
       used += #x.specs
     end
   end
+  -- 篮子式转盘（T-64 / T-80）：炮塔里的人在竖药筒那一层的高度上，四肢伸到离转轴多远（竖药筒围在这一圈外面）
+  local am = ctx.byK.ammo
+  if MZ[d.id] and W.CAROUSEL[d.id] and am and not am.tur then
+    local yTop = am.lo.Y + CAR_Y0 + CAR_DIA * 1.55 + CAR_CH - ctx.tp.Y   -- 竖药筒的顶（炮塔系）
+    local r = 0
+    for _, x in ipairs(items) do
+      if x.kind == "crew" and x.it.tur and x.specs then
+        for _, s in ipairs(x.specs) do
+          local h = s.s / 2
+          for _, k in ipairs(CORNERS) do
+            local p = s.cf * (h * k)
+            if p.Y < yTop then r = math.max(r, math.sqrt(p.X * p.X + p.Z * p.Z)) end
+          end
+        end
+      end
+    end
+    ctx.crewR = r
+  end
   -- 不算伤害的件：并列机枪（跟炮俯仰）、车长周视镜、车长热像仪
   local function extra(k, cat, frame, nm, L)
     if #L == 0 then return end
@@ -812,6 +980,17 @@ function XrayOwn.plan(d, opts)
     blk(L, V3(0.5, 0.35, 0.06), p + V3(0, 0.05, -0.42), "gl")
     rod(L, p - V3(0, 0.42, 0), p - V3(0, 0.95, 0), 0.3)
     extra("citv", "optics", "tur", "xr.n.citv", L)
+  end
+  -- 反坦克导弹发射架（BMP-1 / 2 / 2M、M2A3：第二件武器，原来只画主武器的弹架）：发射筒 + 筒里装着的导弹（打出去的那一发不画）
+  for _, wid in ipairs(d.weapons or {}) do
+    if ATGM[wid] and wid ~= ctx.A.wid then
+      local L, frame, n = launcherSpecs(d, ctx, wid)
+      if L and #L > 0 then
+        items[#items + 1] = { k = "atgm", kind = "extra", cat = "ammo", frame = frame, nm = "xr.n.atgm", specs = L, launch = { wid = wid, cap = n } }
+        used += #L
+      end
+      break
+    end
   end
   -- 爆反块：模型上真的那些块（每块一件，按它在车体 / 炮塔上的位置、大小）
   local M = opts.M
@@ -853,6 +1032,24 @@ function XrayOwn.plan(d, opts)
     end
   end
   return { items = items, total = used, A = ctx.A, R = ctx.R, lay = lay, ctx = ctx, keys = keys, nKeys = nk }
+end
+
+-- 弹的现况变了（AmL：哪种弹打掉了几发；Rdy：待发弹架还剩几发）：同样的格数按现在的弹重排这一架——每格是哪种弹（提示框写的弹名）、
+--   弹头的样子（脱壳穿甲弹细长、破甲弹粗）；返回新的一份（零件数、次序跟原来一样；格数变了返回 nil：整个重建）
+function XrayOwn.relayRack(P, x, live)
+  local ctx = P.ctx
+  if not ctx or not x.rack then return nil end
+  ctx.A.seq = XrayOwn.ammoPlan(ctx.d, live).seq
+  local R = XrayOwn.racksOf(ctx.A, ctx.d, ctx.lay, live)
+  for k, r in pairs(R) do
+    local old = ctx.R[k]
+    if old and old.cap ~= r.cap then return nil end
+  end
+  ctx.R = R
+  local y = { it = x.it, k = x.k }
+  ammoItem(y, ctx, x.one, x.scale)
+  if #y.specs ~= #x.specs then return nil end
+  return y
 end
 
 -- 一个乘员的人形零件（WtHud 的 X 光回放也用）：返回零件表（相对车的底座系；炮塔上的相对炮塔转轴）
@@ -1059,8 +1256,18 @@ function XrayOwn.init(G)
       for n in string.gmatch(live.aml, ":(%d+)") do s += tonumber(n) any = true end
       if any then live.total = s end
     end
+    -- 反坦克导弹：发射筒里还装着几发（客户端的弹数 { 装着的, 备弹 }）
+    for _, w2 in ipairs(st.d.weapons or {}) do
+      if XrayOwn.ATGM[w2] and vs and (vs.id == nil or vs.id == st.id) and type(vs.ammo) == "table" then
+        local am = vs.ammo[w2]
+        if type(am) == "table" and type(am[1]) == "number" then live.msl = am[1] end
+        break
+      end
+    end
     return live
   end
+  -- 发射架上画几发：装着几发就几发（拿不到弹数按装满）
+  local function launchN(x, live) return math.clamp(math.floor(tonumber(live.msl) or x.launch.cap), 0, x.launch.cap) end
 
   local function clear()
     local c = cur
@@ -1080,6 +1287,8 @@ function XrayOwn.init(G)
   local function build(st)
     local d = st.d
     local v = G.views and G.views[st.em]
+    -- Highlight 全客户端同时最多画 31 个：第三人称车辆热成像（Night.lua，1 + 最多 24 个）先让开，透视（最多 MAXG 组 + 车身轮廓）一个人用
+    if G.vehIrHide then pcall(G.vehIrHide) end
     local live = liveOf(st)
     local ok, P = pcall(XrayOwn.plan, d, { M = v and v.M, live = live })
     if not ok or not P then
@@ -1087,7 +1296,8 @@ function XrayOwn.init(G)
       return nil
     end
     stats.builds += 1
-    local c = { st = st, v = v, d = d, P = P, items = P.items, A = P.A, lay = P.lay, groups = {}, hls = {}, nG = 0, cs = {}, ms = {}, cats = {}, dirty = true }
+    local c = { st = st, v = v, d = d, P = P, items = P.items, A = P.A, lay = P.lay, groups = {}, hls = {}, nG = 0, cs = {}, seatS = {}, ms = {}, cats = {}, dirty = true }
+    c.liveSig = tostring(live.total) .. "/" .. tostring(live.rdy) .. "/" .. tostring(live.rdyCap) .. "/" .. tostring(live.aml) .. "/" .. tostring(live.msl)   -- 同 sigOf：建的时候就是按这一份画的
     c.folder = Instance.new("Folder")
     c.folder.Name = "OwnXray"
     for _, x in ipairs(c.items) do
@@ -1110,6 +1320,10 @@ function XrayOwn.init(G)
         local vis = n * x.rack.per
         x.rack.vis, x.rack.n = vis, n
         for _, q in ipairs(x.parts) do q.vis = (q.slot == nil) or (q.slot <= vis) end
+      elseif x.launch then
+        local n = launchN(x, live)
+        x.launch.n = n
+        for _, q in ipairs(x.parts) do q.vis = (q.slot == nil) or (q.slot <= n) end
       elseif x.eraE then
         for _, q in ipairs(x.parts) do
           local e = x.eraE[q.slot]
@@ -1143,20 +1357,34 @@ function XrayOwn.init(G)
 
   ---------------------------------------------------------------- 每帧
 
+  -- 乘员按座位（服务器 WtC 每个人是「状态 .. 现在的座位」，Wt.lua：装填手顶上阵亡的炮长以后「2gnr,0ldr」——炮长位上是活人、
+  --   装填手位空了；同 WtTank 损伤图的读法：一个座位取状态最好的那个，WtC 里没这个座位的算没人）；老格式（只有状态没有座位）按顺序
   local function parseStates(c, em)
     local wc, wm = em:GetAttribute("WtC"), em:GetAttribute("WtM")
     if wc == c.wc and wm == c.wm then return end
     c.wc, c.wm = wc, wm
-    local cs, ms = {}, {}
+    local cs, seat, named, ms = {}, {}, false, {}
     local i = 0
-    for tok in string.gmatch(type(wc) == "string" and wc or "", "[^,]+") do i += 1 cs[i] = tonumber(string.sub(tok, 1, 1)) or 2 end
+    for tok in string.gmatch(type(wc) == "string" and wc or "", "[^,]+") do
+      i += 1
+      local s, sn = tonumber(string.sub(tok, 1, 1)) or 2, string.sub(tok, 2)
+      cs[i] = s
+      if sn ~= "" then
+        named = true
+        if seat[sn] == nil or s > seat[sn] then seat[sn] = s end
+      end
+    end
     if type(wm) == "string" then for j = 1, #wm do ms[j] = tonumber(string.sub(wm, j, j)) or 2 end end
-    c.cs, c.ms = cs, ms
+    c.cs, c.seatS, c.named, c.ms = cs, seat, named, ms
+  end
+  local function crewS(c, x)
+    if c.named then return c.seatS[(x.it and x.it.role) or x.k] or 0 end
+    return c.cs[x.ci] or 2
   end
   -- 这一件现在该在哪个状态组（nil = 按类别）
   local function stateKey(c, x)
     if x.ci then
-      local s = c.cs[x.ci] or 2
+      local s = crewS(c, x)
       if s == 0 then return "kia" end
       if s == 1 then return "hurt" end
       return nil
@@ -1248,7 +1476,7 @@ function XrayOwn.init(G)
   local function stateText(c, x)
     local st, col = nil, TH.C.GOOD
     if x.ci then
-      local s = c.cs[x.ci] or 2
+      local s = crewS(c, x)
       if s == 0 then st, col = T("xr.s.kia", "阵亡"), TH.C.BAD
       elseif s == 1 then st, col = T("xr.s.wounded", "受伤"), TH.C.WARN
       else st = T("xr.s.ok", "完好") end
@@ -1273,6 +1501,9 @@ function XrayOwn.init(G)
       local i = slot and math.ceil(slot / x.rack.per) or nil
       local nm = i and x.rack.names and x.rack.names[i]
       if nm then bits[#bits + 1] = nm end
+    elseif x.launch then   -- 发射架：装着几发、哪种导弹
+      bits[#bits + 1] = T("xr.d.rounds", tostring(x.launch.n or 0) .. " / " .. tostring(x.launch.cap), x.launch.n or 0, x.launch.cap)
+      bits[#bits + 1] = T("vw." .. x.launch.wid, x.launch.wid)
     end
     if (x.k == "barrel" or x.k == "breech") and c.A and c.A.cal then bits[#bits + 1] = T("xr.d.mm", c.A.cal .. " mm", c.A.cal) end
     local out = {}
@@ -1309,10 +1540,69 @@ function XrayOwn.init(G)
 
   local holding = false
   local hoverT = 0
+  -- 指针在哪（视口像素）：电脑上鼠标没锁在屏幕中间的时候（按住 X 时 Drive 放开鼠标、显示指针）；手机上刚点过的那一下（4 秒内）；
+  --   都没有返回 nil：不显示提示框（原来鼠标一直锁在中间，提示框钉在屏幕中间、只指得到炮管）
+  local tapAt = nil
+  local function pointer()
+    if UIS.MouseEnabled and UIS.MouseBehavior ~= Enum.MouseBehavior.LockCenter then
+      local m = UIS:GetMouseLocation()
+      return m.X, m.Y
+    end
+    if tapAt and os.clock() - tapAt.t < 4 then return tapAt.x, tapAt.y end
+    return nil
+  end
+  pcall(function()
+    UIS.TouchTap:Connect(function(pos, processed)   -- 手机：按住透视键的时候另一只手指点一下部件
+      if processed or not holding or not cur or type(pos) ~= "table" or not pos[1] then return end
+      local inset = 0
+      pcall(function() inset = game:GetService("GuiService"):GetGuiInset().Y end)   -- 触点不算顶栏；ViewportPointToRay 算
+      tapAt = { x = pos[1].X, y = pos[1].Y + inset, t = os.clock() }
+      hoverT = 0
+    end)
+  end)
+  local function sigOf(live) return tostring(live.total) .. "/" .. tostring(live.rdy) .. "/" .. tostring(live.rdyCap) .. "/" .. tostring(live.aml) .. "/" .. tostring(live.msl) end
+  -- 弹的现况变了：按现在的 AmL 重排每一架（每格哪种弹、弹头的样子），再只画现在有的那几发；格数变了返回 false（整个重建）
+  local function liveChanged(c, live)
+    for _, x in ipairs(c.items) do
+      if x.rack then
+        local y = XrayOwn.relayRack(c.P, x, live)
+        if not y then return false end
+        x.rack.names, x.rack.kinds, x.specs = y.rack.names, y.rack.kinds, y.specs
+        for i, sp in ipairs(y.specs) do
+          local q = x.parts[i]
+          q.cf = sp.cf
+          if q.p.Size ~= sp.s then q.p.Size = sp.s end
+        end
+        c.dirty = true
+      end
+    end
+    local R = c.P.ctx.R
+    for _, x in ipairs(c.items) do
+      if x.rack then
+        local n = math.min(R[x.k] and R[x.k].n or 0, x.rack.cap)
+        local vis = n * x.rack.per
+        x.rack.n = n
+        if vis ~= x.rack.vis then
+          x.rack.vis = vis
+          for _, q in ipairs(x.parts) do setVis(c, x, q, (q.slot == nil) or (q.slot <= vis)) end
+        end
+      elseif x.launch then   -- 导弹打出去一发：那一筒空了
+        local n = launchN(x, live)
+        x.launch.n = n
+        for _, q in ipairs(x.parts) do setVis(c, x, q, (q.slot == nil) or (q.slot <= n)) end
+      end
+    end
+    return true
+  end
   local function step()
     if not holding then return end
     local st = G.drive
     if not st or not st.em or not st.em.Parent or not st.root or not st.d then holding = false clear() return end
+    -- 瞄准镜、车长望远镜、车内视角里不画（零件就在镜头边上，高亮糊满屏）：先收起，退出来（还按着）接着画
+    if st.sight or st.binoc or (G.interiorOn and G.interiorOn()) then
+      if cur then clear() end
+      return
+    end
     if not cur or cur.st ~= st then
       clear()
       cur = build(st)
@@ -1327,22 +1617,14 @@ function XrayOwn.init(G)
     c.fr = { hull = hullF, tur = tF, gun = gF }
     parseStates(c, em)
     c.fire, c.afire = em:GetAttribute("WtF") == true, em:GetAttribute("WtAF") == true
-    -- 弹：打一发少一发（车上属性、客户端的弹数变了才重算）
+    -- 弹：打一发少一发、哪种弹打掉了（车上属性、客户端的弹数变了才重算）
     local live = liveOf(st)
-    local sig = tostring(live.total) .. "/" .. tostring(live.rdy) .. "/" .. tostring(live.rdyCap)
+    local sig = sigOf(live)
     if sig ~= c.liveSig then
       c.liveSig = sig
-      local R = XrayOwn.racksOf(c.A, d, c.lay, live)
-      for _, x in ipairs(c.items) do
-        if x.rack then
-          local n = math.min(R[x.k] and R[x.k].n or 0, x.rack.cap)
-          local vis = n * x.rack.per
-          x.rack.n = n
-          if vis ~= x.rack.vis then
-            x.rack.vis = vis
-            for _, q in ipairs(x.parts) do setVis(c, x, q, (q.slot == nil) or (q.slot <= vis)) end
-          end
-        end
+      if not liveChanged(c, live) then   -- 弹架格数变了（换了弹药配置）：下一帧整个重建
+        clear()
+        return
       end
     end
     -- 爆反块炸掉了：那一块不画
@@ -1369,13 +1651,17 @@ function XrayOwn.init(G)
       fh.FillColor = RGB(255, 92, 30):Lerp(RGB(255, 196, 70), k)
       fh.FillTransparency = 0.12 + 0.25 * (1 - k)
     end
-    -- 鼠标指着的部件（一秒二十次）
+    -- 指着的部件（一秒二十次）：没有指针不显示提示框
     local now = os.clock()
     if now - hoverT >= 0.05 then
       hoverT = now
-      local m = UIS:GetMouseLocation()
-      local x, slot = pick(c, m.X, m.Y)
-      setHover(c, x, slot, m.X, m.Y)
+      local px, py = pointer()
+      if px then
+        local x, slot = pick(c, px, py)
+        setHover(c, x, slot, px, py)
+      else
+        setHover(c, nil)
+      end
     end
   end
 
@@ -1399,7 +1685,8 @@ function XrayOwn.init(G)
       local key = (x.k == "era") and ("era_" .. x.frame) or x.k
       info.items[key] = { n = n, shown = sh, cat = x.cat, frame = x.frame, ov = x.ov, parts = x.parts }
       if x.kind == "crew" then info.crew[(x.it and x.it.role) or x.k] = sh end
-      if x.rack then info.racks[x.k] = { n = x.rack.n, cap = x.rack.cap, per = x.rack.per, shown = sh } end
+      if x.rack then info.racks[x.k] = { n = x.rack.n, cap = x.rack.cap, per = x.rack.per, shown = sh, names = x.rack.names } end
+      if x.launch then info.launch = { n = x.launch.n, cap = x.launch.cap, wid = x.launch.wid, shown = sh } end
     end
     local hl = 0
     for _, o in ipairs(c.folder:GetDescendants()) do if o:IsA("Highlight") then hl += 1 end end
@@ -1414,7 +1701,9 @@ function XrayOwn.init(G)
     if not x then return nil end
     return x.k, nameOf(x), slot
   end
-  local conn = function()
+  -- 每帧：init.client.lua 的 steps 里排在 view（还有 interior / ride / hatch）后面调——View 这一帧摆好车模、算好车体 / 炮塔 / 炮的框架以后
+  --   再摆透视零件（原来单独连 RenderStepped，跟 View 谁先跑没保证：先跑就比车壳晚一帧，开起来里面的零件发飘）
+  G.stepOwnXray = function()
     local ok, err = pcall(step)
     if not ok then
       holding = false
@@ -1422,7 +1711,7 @@ function XrayOwn.init(G)
       if G.showError then G.showError("local XrayOwn: " .. tostring(err)) end
     end
   end
-  if G.frameConn then G.frameConn("XrayOwn", conn) else RunService.RenderStepped:Connect(conn) end
+  if not G.frameConn then RunService.RenderStepped:Connect(G.stepOwnXray) end   -- 单独跑（没有主循环）的时候自己连
 end
 
 return XrayOwn

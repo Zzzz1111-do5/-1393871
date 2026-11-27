@@ -349,6 +349,7 @@ function Night.init(G)
     return vir
   end
   G.vehThermalShown = function() return virShown end   -- 测试用
+  G.vehIrHide = function() virApply(false) end   -- XrayOwn 建透视那一帧马上让开（不等下一帧这里的判断：同一帧两边加起来超 31 个 Highlight）
   G.frameConn("VehIr", function(dt)
     if vir then
       local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
@@ -359,7 +360,8 @@ function Night.init(G)
         return
       end
     end
-    virApply(vir and not held() and not heldOptic())
+    -- 按住 X 透视自己的车（XrayOwn）时也让开：Highlight 全客户端同时最多画 31 个，这里 1 + 24 个、透视二十来个，加起来超了就有几组不画
+    virApply(vir and not held() and not heldOptic() and not (G.ownXrayOn and G.ownXrayOn()))
     if not virShown then return end
     virT += dt
     if virT > 0.5 then virT = 0 virHlRefresh() end   -- 别的玩家走近走远：半秒重挑一次

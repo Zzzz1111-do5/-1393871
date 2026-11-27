@@ -1972,7 +1972,15 @@ R.services.UserInputService = service("UserInputService", { MouseBehavior = { E(
       if typeof(kc) ~= "EnumItem" or kc.EnumType ~= "KeyCode" then error("IsKeyDown 要 Enum.KeyCode", 2) end
       return R.keys[kc.Name] == true
     end,
-    GetMouseLocation = function() return R.mouseAt or newV2(640, 400) end,
+    -- 鼠标在哪：锁在屏幕中间（MouseBehavior = LockCenter，开车、开飞机时每帧都锁）时跟真机一样永远是屏幕中心；没锁时是测试给的 R.mouseAt
+    GetMouseLocation = function(o)
+      if o.MouseBehavior == Enum.MouseBehavior.LockCenter then
+        local cam = R.workspace and R.workspace.CurrentCamera
+        local vp = cam and cam.ViewportSize or newV2(1280, 720)
+        return newV2(vp.X / 2, vp.Y / 2)
+      end
+      return R.mouseAt or newV2(640, 400)
+    end,
     -- 鼠标锁定时这一帧挪了多少（测试用 R.mouseDelta 给；跟真机一样按帧算：R.step 开头取走，这一帧里谁读都是同一个数）
     GetMouseDelta = function()
       return R.frameDelta or newV2(0, 0)

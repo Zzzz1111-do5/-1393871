@@ -136,6 +136,7 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "interior", function(dt) if G.stepInterior then G.stepInterior(dt) end end },   -- 载具内饰：要用 View 这一帧算好的车体、炮塔姿态，镜头最后定
   { "ride", function(dt) if G.stepRide then G.stepRide(dt) end end },   -- 坐在别人开的车后面（Ride.lua）：镜头要用 View 这一帧摆好的车
   { "hatch", function(dt) if G.stepHatches then G.stepHatches(dt) end end },   -- 舱盖、车门开合，车长探身，上车的小人（Hatch.lua）：跟着 View 这一帧摆好的车
+  { "xray", function(dt) if G.stepOwnXray then G.stepOwnXray(dt) end end },   -- 按住 X 透视自己的车（XrayOwn.lua）：零件跟 View 这一帧摆好的车（不晚一帧）
   { "play", function(dt) G.stepPlay(dt) end },
   { "fx", function(dt) G.stepFx(dt) end }, { "forts", function(dt) if G.stepForts then G.stepForts(dt) end end },
   { "gunner", function(dt) if G.stepGunner then G.stepGunner(dt) end end },

@@ -484,6 +484,9 @@ add("gs.bino", "望远镜", "BINO")
 add("gs.binoHint", "车长望远镜 · R 估距 · G 侦察 · C 收起 · Shift / 右键 进炮长瞄准镜", "Binoculars · R range · G spot · C close · Shift / RMB gunner sight")
 add("drv.optic", "光电", "OPT")
 add("drv.smoke", "烟幕", "SMK")
+add("drv.xray", "透视", "X-RAY")   -- 手机上按住透视自己的车（电脑上按住 X）
+add("drv.xrayInside", "车内视角看不了透视：先回到车外", "X-ray isn't available from inside the vehicle: go outside first")
+add("drv.xraySb", "全真模式没有透视", "No X-ray in simulator mode")
 add("ui.enterVeh", "按 F 上车", "Press F to enter")
 
 -- 舰艇
@@ -1661,6 +1664,7 @@ add("xr.d.mm", "{1} 毫米", "{1} mm")
 add("xr.n.coax", "并列机枪", "Coaxial MG")
 add("xr.n.csight", "车长周视镜", "Commander's sight")
 add("xr.n.citv", "车长热像仪", "Commander's thermal viewer")
+add("xr.n.atgm", "反坦克导弹发射架", "ATGM launcher")
 add("wt.groundFirst", "第一辆必须是地面车：先开地面车打出分、攒够 SP 才能出飞机", "Your first vehicle must be a ground vehicle — earn SP before spawning aircraft")
 add("wtm.sp", "SP {1}", "SP {1}")
 add("wtm.lineup", "出击阵容 {1} / {2}", "Lineup {1} / {2}")

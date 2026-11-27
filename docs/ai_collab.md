@@ -44,6 +44,21 @@
     炮塔到位却打在近处的坡 / 墙上 = **炮口被挡**，WtTank 准星画叉（WtGunBlocked）；穿深指示扣爆反（同服务器 Era.lua 的系数）。
   · 测试：**tools/mock/gunsight.lua（新）**、optics.lua / wttank.lua 跟着改。没做：老镜子（TSh、M105D）跟炮绑死的铰接瞄准线、俯仰速度按车、锁炮塔的自由视角（梳理里列了）。
 
+- F（11-27，审查 b7bfaae「X 透视画细」挑出来的，用户 11-27「x透视不够细节」）——Client/XrayOwn.lua、Drive.lua、Night.lua、UI.lua、init.client.lua：
+  · 鼠标指部件原来用不了（开车每帧 LockCenter，GetMouseLocation 永远是屏幕中心，只指得到炮管；测试是手动挪镜头、直接写鼠标位置的假阳性）：
+    按住 X 时 Drive 放开鼠标（Default、UI.lua 画指针，这段时间鼠标增量清零：镜头、炮塔不转），松手锁回；手机加「透视」键（按住），另一只手指点部件（TouchTap）；没有指针不显示提示框。
+    模拟器 GetMouseLocation 锁中间时返回屏幕中心（tools/mock/rbx.lua），测试改成真按住 X、挪 R.mouseAt。
+  · 车长坐到指挥塔正下方（左右夹在「炮塔半宽 − 肩宽」以内），头离指挥塔中心超过半径（0.625）就不抬（T-64、T-80 原来头从炮塔顶冒出去；10 式也是）；
+    指挥塔在另一边的（勒克莱尔、10 式）不挪。转盘车（WtDamage.CAROUSEL）炮塔乘员的地板 = 转盘弹层的顶（T-72 类弹药盒顶、T-64 / T-80 弹丸层顶，车体系换炮塔系）；
+    篮子式的竖药筒围在人脚外圈（最外到履带里面：比 WtDamage 的弹药盒子宽一点），脚伸得出去的人往转轴挪、车长上身往指挥塔歪（≤ 0.36）。
+  · Highlight 全客户端 31 个：Night.lua 的车辆热成像（1 + 24）按住 X 时让开（XrayOwn 建的那一帧先 G.vehIrHide）。透视改在 steps 里 view / interior / ride / hatch 之后（G.stepOwnXray），不晚一帧。
+  · X 键（Drive xrayDown / xrayUp）：瞄准镜、车长望远镜都先收起、松手回去（退镜不走 toggleSight：选着榴弹炮时那是进炮兵视角）；车内视角、全真模式不响应（提示一句）。
+    XrayOwn 每帧也查：镜里 / 望远镜里 / 车内先收起。arty.lua 的「瞄准镜里按住 X」原来用 Shift 开镜（M109 选着榴弹炮 Shift 是炮兵视角，那一项一直不对），改成直接开镜。
+  · 乘员状态按座位（同 WtTank：token 第 2 个字起是座位）；AmL / Rdy 变了按现在的弹重排弹名和弹头（XrayOwn.relayRack，零件数不变）；加特林画转膛机匣；
+    BMP-1 / 2 / 2M、M2A3 画反坦克导弹发射架（XrayOwn.ATGM，装着几发画几发）。测试 tools/mock/xrayown.lua 全改（真按 X、挪鼠标、转 75° 炮塔、OBB 相交）、arty.lua 的 LocalPlayer。
+  · 没做：WtDamage 布局里原来的重叠（悍马 / JLTV / 爱国者驾驶员在发动机盒子里、4 人自行火炮装填手在弹药盒里、西方坦克炮长的腿伸进车体弹架、勒克莱尔 / 10 式的弹在车底转盘位置）——
+    要改伤害判定的盒子，留着；T-64 / T-80 转盘 28 发（服务器按 22 算，改了是玩法）没动。
+
 - E（11-27 早，用户「德国目前没飞机 包括很多缺的载具全部做一下」）：补了三辆地面车（Sketchfab 真模型，tools/models/blveh.json）——
   · **BRDM-2**（俄「轻型 / 歼击车」1 级，KPVT 14.5 毫米 + 并列机枪，能浮渡）、**9K31 箭-1**（俄「自行防空」2 级，四联装 9M31 红外弹：发射前 Q 锁住、热诱弹骗得了——Air.lua flare 认 seeker = ir 的地空弹）、
     **87 式侦察警戒车**（日「轻型 / 歼击车」4 级，KBA 25 毫米 + 并列机枪、两侧各三具烟幕弹）。装甲 WtDamage.PROF、武器 VehDefs.W / WtDamage.WPN、夜视 WtOptics、名字 Lang。
