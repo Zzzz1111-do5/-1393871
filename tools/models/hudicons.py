@@ -574,14 +574,20 @@ if os.path.exists(OUT):
     for ln in open(OUT, encoding='utf-8'):
         m = re.match(r'  (\w+) = \{ w = (\d+), h = (\d+), f = "(\w+)", d = "([^"]*)" \},$', ln.rstrip('\n'))
         if m:
-            icons[m.group(1)] = (int(m.group(2)), int(m.group(3)), m.group(4), base64.b64decode(m.group(5)))
+            k = m.group(1)
+            if k.startswith('veh_veh_'):   # 以前多加了一遍前缀的（11-26 的 59 式拍成了 veh_type59.png → veh_veh_type59）：读回来改正
+                k = k[4:]
+            icons[k] = (int(m.group(2)), int(m.group(3)), m.group(4), base64.b64decode(m.group(5)))
 for f in sorted(os.listdir(SRC)):
     if f.endswith('.png'):
         air = f.startswith('air_')   # 飞机、直升机的侧影：扁一点，细的旋翼、垂尾留着
         ship = f.startswith('ship_')   # 舰艇（用户 11-23：召唤界面名字下面带图标）：明暗同地面载具，船身细长、高度框小一点
         w, h, d = vehicle(os.path.join(SRC, f), box_h=70 if air else (60 if ship else 74), thin=(5, 7) if air else (9, 13), flat=air)
-        icons[f[:-4] if (air or ship) else 'veh_' + f[:-4]] = (w, h, 'la', d)
-        print(f"{f[:-4]}：{w}×{h}，{len(d)} 字节")
+        name = f[:-4]
+        # 地面车的图名：vehicons.mjs 存成 <型号>.png，这里加上 veh_；已经带了 veh_ 的（11-26 的 veh_type59.png）不再加一遍——
+        #   原来生成了 veh_veh_type59，驾驶界面查 veh_type59 查不到，59 / 69 式没有剪影（11-27 审查）
+        icons[name if (air or ship or name.startswith('veh_')) else 'veh_' + name] = (w, h, 'la', d)
+        print(f"{name}：{w}×{h}，{len(d)} 字节")
 for key, (w, h, fn, glow) in {
     'hexFill': (72, 80, hex_fill, 0), 'hexEdge': (72, 80, hex_edge, 0), 'hexGlow': (72, 80, hex_glow, 4),
     'shell': (36, 36, shell, 0), 'mg': (36, 36, mg, 0), 'chevron': (24, 16, chevron, 1.2), 'bullet': (8, 18, bullet, 0),

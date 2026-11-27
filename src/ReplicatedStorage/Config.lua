@@ -377,6 +377,8 @@ function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用
 Config.WtVoice = { off = false, voiceId = "1", volume = 1.4 }
 -- 第一人称（坐进车里、飞机座舱：Interior.lua 的 C / T / F2～F5 / V、全真模式自动坐进去）只有这几型有
 --   （用户 11-25：「除了m1a1和a2 其他载具不要做第一人称模式」）；only = nil 就全开（测试内饰的老测试用）
+--   11-27：同族变型（VehDefs 的 like：M1、IPM1、科技树的 M1A1、M1A1 HC 退到 m1a1，M1A2、SEP、SEPv3 退到 m1a2——同一个模型、同一套车内）
+--   查不到自己的就看 like 那一型（Interior.lua 的 fpAllowed）；原来拆开以后这 7 项的车内整个没了
 Config.FirstPerson = { only = { m1a1 = true, m1a2 = true } }
 Config.Wt = { on = true, noInfantry = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, lineupAir = 2, backup = 1, rise = 0.25,   -- lineupAir：阵容里飞行单位最多几个（用户 11-25）
   br0 = 4.0, brUp = 1.0, teamSize = 8, aiMax = 8,   -- aiMax 原来 5：用户 11-26「人不够就补人机」——每队补满 teamSize（AIVeh.lua）

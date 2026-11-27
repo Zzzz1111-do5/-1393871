@@ -628,11 +628,13 @@ P.gcdp = function(s, env, zh)
   s.onKey = function(k, act)
     k = canon(k)
     if k == "MAIN" or k == "ADJUST" or k == "BSGT" then st.page = (st.page == k) and nil or k
-    elseif k == "AMMO" then
+    elseif k == "AMMO" then   -- 下一种：这门炮现在没有的那一类跳过（act.ammo 返回 false；11-27 二审：M1 一族的炮没有 MPAT / CAN）
       local idx = 1
       for i, a in ipairs(LIST) do if a[1] == st.ammo then idx = i end end
-      st.ammo = LIST[idx % #LIST + 1][1]
-      act.ammo(st.ammo)
+      for j = 1, #LIST do
+        local nx = LIST[(idx + j - 1) % #LIST + 1][1]
+        if act.ammo(nx) ~= false then st.ammo = nx break end
+      end
     elseif k == "RANGE" then st.manRange = ((st.manRange or 0) + 100) % 4100
       if st.manRange == 0 then st.manRange = nil end
     elseif k == "LRF" then st.last = not st.last
@@ -733,9 +735,11 @@ P.ccp = function(s, env, zh)
     elseif k == "CCP CLR" then
       if st.entry ~= "" then st.entry = ""
       else act.range(nil) st.msg, st.msgT = L("MAN RANGE CLEARED", "手动距离已清"), os.clock() end
-    elseif k == "AMMO" then   -- 弹种选择开关：SABOT → HEAT → MPAT → CAN
+    elseif k == "AMMO" then   -- 弹种选择开关：SABOT → HEAT → MPAT → CAN（这门炮现在没有的那一类跳过：act.ammo 返回 false）
       local i = table.find(AM, st.sym) or 1
-      act.ammo(AM[i % #AM + 1])
+      for j = 1, #AM do
+        if act.ammo(AM[(i + j - 1) % #AM + 1]) ~= false then break end
+      end
     elseif k == "SABOT" or k == "HEAT" or k == "MPAT" or k == "CAN" then act.ammo(k)
     elseif k == "LRF" then act.lase()
     elseif k == "FCS" then st.fcs = st.fcs % 3 + 1 act.fcsMode(st.fcs)
@@ -884,13 +888,14 @@ P.gcdp2 = function(s, env, zh)
       if dg == 4 then act.bore(-0.05, 0) elseif dg == 6 then act.bore(0.05, 0)
       elseif dg == 8 then act.bore(0, 0.05) elseif dg == 2 then act.bore(0, -0.05)
       elseif dg == 0 then act.bore(nil, nil) say(L("BORESIGHT ZEROED", "校炮偏差归零"))
-      elseif dg == 1 or dg == 3 then   -- 这种弹的战斗瞄准距离减 / 加 50 米
-        local key = BAL and BAL.PANEL[st.am]
-        local bs0 = key and BAL.AMMO[key] and BAL.AMMO[key].bs or 1000
+      elseif (dg == 1 or dg == 3) and st.amKey then   -- 这种弹的战斗瞄准距离减 / 加 50 米
+        -- 按火控现在装定的那发（11-27 二审：原来按面板写死的 SEPv2 那发 BAL.PANEL[符号]——M1 一族别的型号、M829A1 系的炮改的是 M829A3 那一项，
+        --   对正在打的弹不起作用；射流弹的符号查不到，键是 nil 还会报错）
+        local key = st.amKey
+        local bs0 = BAL and BAL.AMMO[key] and BAL.AMMO[key].bs or 1000
         act.bsRange(key, (st.bsR or bs0) + ((dg == 3) and 50 or -50))
-      elseif dg == 5 then
-        local key = BAL and BAL.PANEL[st.am]
-        act.bsRange(key, nil)
+      elseif dg == 5 and st.amKey then
+        act.bsRange(st.amKey, nil)
         say(L("BATTLESIGHT RANGE DEFAULT", "战斗瞄准距离恢复默认"))
       elseif isClr then st.page = nil end
       return
@@ -899,8 +904,8 @@ P.gcdp2 = function(s, env, zh)
       local MENU = { "AMMO", "RANGE", "ADJUST", "LRF", "FCS", "BSGT", "MRS", "BIT" }
       if MENU[dg] then st.page = nil k = MENU[dg] dg = nil end
     elseif st.page == "AMMO" and dg and AM[dg] then
-      act.ammo(AM[dg])
-      say(L("INDEXED ", "已选 ") .. AM[dg])
+      if act.ammo(AM[dg]) ~= false then say(L("INDEXED ", "已选 ") .. AM[dg])
+      else say(L("NO ", "没有 ") .. AM[dg] .. L(" ROUND", " 弹")) end   -- 这门炮现在没有这一类（没研究、没带、打不了）
       st.page = nil
       return
     end
@@ -925,9 +930,11 @@ P.gcdp2 = function(s, env, zh)
     end
     if k == "MAIN" then st.page = (st.page == "MAIN") and nil or "MAIN"
     elseif k == "AMMO" then
-      if st.page == "AMMO" then   -- 弹种页里再按：下一种
+      if st.page == "AMMO" then   -- 弹种页里再按：下一种（这门炮现在没有的那一类跳过）
         local i = table.find(AM, st.am) or 1
-        act.ammo(AM[i % #AM + 1])
+        for j = 1, #AM do
+          if act.ammo(AM[(i + j - 1) % #AM + 1]) ~= false then break end
+        end
       else st.page = "AMMO" end
     elseif k == "RANGE" then st.page, st.entry = "RANGE", ""
     elseif k == "ADJUST" then st.page = (st.page == "ADJUST") and nil or "ADJUST"
@@ -948,6 +955,7 @@ P.gcdp2 = function(s, env, zh)
     for name, pg in pairs(pages) do pg.f.Visible = st.page == name end
     local am = BAL and d.fcsAm and BAL.AMMO[d.fcsAm]
     st.am = (am and am.sym) or st.am
+    st.amKey = am and d.fcsAm or nil   -- 火控现在装定的那发（调整页改它的战斗瞄准距离）
     st.bsR = d.bsR
     if d.gunEye and not st.page then
       local thermal = d.sightMode == 3 or d.sightMode == 4
@@ -1006,8 +1014,7 @@ P.gcdp2 = function(s, env, zh)
       pages.RANGE.set({ L("ENTER 4 DIGITS (METERS)", "打四位数（米）"), "", "      " .. st.entry .. string.rep(blink and "_" or " ", 4 - #st.entry), "",
         L("ENT  APPLY     CLR  DELETE", "ENT 装定     CLR 删除"), L("RANGE 100 - 5000", "范围 100～5000") })
     elseif st.page == "ADJUST" then
-      local key = BAL and BAL.PANEL[st.am]
-      local bs0 = key and BAL.AMMO[key] and BAL.AMMO[key].bs or 0
+      local bs0 = am and am.bs or 0   -- 火控现在装定的那发（同上面调整页的键）
       pages.ADJUST.set({
         string.format(L("BORESIGHT AZ  %+.2f MIL", "校炮 方向  %+.2f 密位"), d.bore and d.bore[1] or 0),
         string.format(L("BORESIGHT EL  %+.2f MIL", "校炮 高低  %+.2f 密位"), d.bore and d.bore[2] or 0),

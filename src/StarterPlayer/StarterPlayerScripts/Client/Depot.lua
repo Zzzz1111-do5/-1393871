@@ -37,7 +37,10 @@ function Depot.init(G)
     im.ImageColor3 = col or RGB(226, 232, 238)
     im.Parent = parent
     local n = id and iconName(id)
-    if n and G.hudIconOn then G.hudIconOn(im, n) end
+    if n and G.hudIconOn and not G.hudIconOn(im, n) then
+      local d = VD.get(id)   -- 同族变型（VehDefs 的 like，11-27 拆出来的 M1、SEP……）没拍过侧影：用同族那一型的
+      if d and d.like then G.hudIconOn(im, "veh_" .. d.like) end
+    end
     return im
   end
 

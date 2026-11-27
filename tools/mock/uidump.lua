@@ -81,6 +81,7 @@ local function walk(o, ax, ay, uw, uh, s, guiName, depth, clip, ga, rootU)
       rec.img = c.Image rec.ic = c3(c.ImageColor3) rec.iT = c.ImageTransparency
       rec.icon = c:GetAttribute("Icon")   -- HudArt 装上的图标（HudIcons 里的名字）
       rec.pic = c:GetAttribute("PicName")   -- 写实车图（VehPics 里的名字；模拟器解不出 EditableImage，渲染时照游戏的解法还原）
+      rec.apic = c:GetAttribute("AmmoPic")   -- 写实弹种图（AmmoPics 里的名字，「#g」结尾的是去色的）
       rec.fit = (c.ScaleType == Enum.ScaleType.Fit) or nil
     end
     rec.clip, rec.ga = clip, ga
@@ -94,7 +95,7 @@ local function walk(o, ax, ay, uw, uh, s, guiName, depth, clip, ga, rootU)
         if grad.Enabled ~= false then
           for _, k in ipairs(grad.Color.Keypoints) do ck[#ck + 1] = { k.Time, c3(k.Value) } end
         end
-        rec.grad = { rot = grad.Rotation or 0, kp = kp, ck = (#ck > 0) and ck or nil }
+        rec.grad = { rot = grad.Rotation or 0, kp = kp, ck = (#ck > 0) and ck or nil, en = grad.Enabled ~= false }
       end)
     end
     items[#items + 1] = rec

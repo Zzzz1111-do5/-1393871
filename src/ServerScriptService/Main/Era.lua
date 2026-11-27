@@ -4,6 +4,8 @@
 --   挨打（Ents.lua 问这里）：
 --     破甲类（火箭弹、导弹：boomKind 是 rkt / msl）——从炸点顺着来向往车里找第一块还在的块（命中盒是个大方块，真的块在里面一两格），
 --       找到就炸掉它，这一下对这辆车的伤害（直接命中 + 爆炸）只剩 TankMods.ERA[型号].k 成（火箭弹，单装药）/ kt 成（导弹，串联装药：前级先把爆反引爆）；
+--       11-27：导弹按自己的装药分（WtDamage.singleCharge：W.WPN / W.AMMO 的 tandem）——陶式 1、红箭-73、「婴儿」、「竞技」是单装药，照火箭弹按 k；
+--       车上的反坦克导弹（VehDefs.W 的 kind = "atgm"）、炮射导弹（弹种 cls = "atgm"：「反射」）boomKind 认不出来，原来整个绕过了爆反——这里也按导弹；
 --     坦克炮弹（动能弹）——只有重型爆反（FY-4）会起爆、削掉一些（ke 成）；小口径、榴弹不管
 --   炸掉的块号写进模型属性 EraX（"3,7,12"），客户端（VehModels / View）把那块藏起来、换成焦黑的空位；特效 { k = "era" }（ArmorFx.lua）
 --   块自己爆开也会伤到贴着车的步兵（不多）
@@ -14,6 +16,7 @@ local Era = {}
 function Era.init(G)
   local TM = require(RS:WaitForChild("TankMods"))
   local BAL = require(RS:WaitForChild("Ballistics"))   -- 坦克炮的弹种（破甲弹按聚能装药挡）
+  local WD = require(RS:WaitForChild("WtDamage"))      -- 导弹是不是单装药（W.WPN / W.AMMO 的 tandem）
   local V, CF = Vector3.new, CFrame.new
   local function baseOf(e) return e.root.CFrame * CF(0, -e.def.H / 2, 0) end   -- 同 Armor.lua 的 baseOf：车底中心
 
@@ -102,14 +105,25 @@ function Era.init(G)
     return mult
   end
 
+  -- 这一发按哪一类挡：rkt 火箭弹 / msl 导弹 / nil 不管（炮弹、枪弹、炸弹……）；车上的反坦克导弹、炮射导弹 boomKind 不认，这里补上
+  local function eraClass(w)
+    if not w then return nil end
+    local am = w.ammo and BAL.AMMO[w.ammo]
+    if w.kind == "atgm" or (am and am.cls == "atgm") then return "msl" end
+    return G.boomKind and G.boomKind(w)
+  end
+  G.eraClass = eraClass   -- 测试用
+
   -- 破甲类的爆炸（火箭弹、导弹）：炸点附近带爆反的车，顺着来向（没有就朝车中心）找块；返回 { [车] = 伤害倍数 }，没有 nil
   function G.eraBlast(pos, w, dir)
-    local bk = G.boomKind and G.boomKind(w)
+    local bk = eraClass(w)
     if bk ~= "rkt" and bk ~= "msl" then return nil end
+    local single = (bk == "msl") and WD.singleCharge(w)   -- 单装药的导弹（陶式 1、红箭-73……）：照火箭弹按 k
     local out = nil
     for _, e in ipairs(G.vehicles or {}) do
       local E = e.era
-      if E and e.alive and E.left > 0 then
+      -- G.wtSkip：战雷伤害（Wt.lua G.wtShellHit）已经按这一发直接命中算过、也已经在这里炸过一块的那辆车——同一发的溅射（G.explode）不再炸它第二块
+      if E and e.alive and E.left > 0 and e ~= G.wtSkip then
         local c = e.root.CFrame.Position
         local reach = math.max(e.def.L, e.def.W) * 0.5 + 6
         if (c - pos).Magnitude < reach then
@@ -118,7 +132,7 @@ function Era.init(G)
           if i then
             detonate(e, i, cf)
             out = out or {}
-            out[e] = (bk == "msl") and (E.kind.kt or E.kind.k) or E.kind.k   -- 导弹多是串联装药：前级先引爆爆反，主装药照样往里钻
+            out[e] = (bk == "msl" and not single) and (E.kind.kt or E.kind.k) or E.kind.k   -- 串联装药：前级先引爆爆反，主装药照样往里钻
           end
         end
       end

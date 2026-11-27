@@ -1079,7 +1079,12 @@ function TechUI.init(G)
     img:SetAttribute("Photo", nil)
     if not G.hudIconOn then return end
     local pre = (it.branch == "ground") and "veh_" or "air_"   -- 战机、直升机的剪影都在 air_ 下
-    for _, k in ipairs({ it.play, it.model, it.base }) do   -- 同族变体（T-72A 借 T-72B3 的模型）没有自己的图标：用模型那一型的
+    -- 同族变体（T-72A 借 T-72B3 的模型）没有自己的图标：用模型那一型的；再退到 VehDefs 的 like（科技树 M1A1 开 m1a1base、不写 model：同驾驶界面 VehHud）
+    --   （按下标走：model / base 常常是 nil，ipairs 碰到 nil 就停了）
+    local dl = it.branch == "ground" and VD.get(it.play or "")
+    local keys = { it.play, it.model, it.base, dl and dl.like or nil }
+    for i = 1, 4 do
+      local k = keys[i]
       if k and G.hudIconOn(img, pre .. tostring(k)) then return end
     end
     if it.branch ~= "ground" then

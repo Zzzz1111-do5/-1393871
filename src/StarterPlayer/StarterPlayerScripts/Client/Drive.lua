@@ -907,7 +907,7 @@ function Drive.init(G)
       -- 科技树的火控（WtMods.FCS，服务器出车时写 FcsGen / ModFcs）：测距多久、误差、解算多久、提前量、残余散布、自动跟踪；
       --   没写（沙盒、老模式的车）按原来那样：有激光就马上测、测距那一下算提前量
       fcsP = em:GetAttribute("FcsGen") and WM.fcsParams(em:GetAttribute("FcsGen"), em:GetAttribute("ModFcs") or 0) or nil,
-      stab = true, retLvl = 0, symLvl = 0, retNight = false, thGain = 2, thLevel = 2 }   -- 稳定器、分划亮度、符号亮度、分划夜间照明、热像增益、电平
+      stab = not d.noStab, retLvl = 0, symLvl = 0, retNight = false, thGain = 2, thLevel = 2 }   -- 稳定器（VehDefs 的 noStab：M60 没有稳定器，开局就是关的）、分划亮度、符号亮度、分划夜间照明、热像增益、电平
     -- 观瞄按年代（WtOptics，用户 11-26）：这辆车有哪几种光电通道、夜视是哪一种、分划是哪一套；
     --   默认档：记着的（这辆车有才用）→ 天黑用这辆车最好的夜视（热像 > 微光 > 主动红外）→ 昼光
     do
@@ -1887,6 +1887,11 @@ function Drive.init(G)
     if G.sfx then pcall(G.sfx, "uiClick") end
   end
   G.driveAmmo = function(key) if st then cycleAmmo(key) end end   -- 车里炮长控制面板的弹种键（Interior.lua）也走这里
+  -- 现在这门炮能打的弹（研究过的前 ModAmmo 种、带了的）：车里面板的弹种键在这里面挑同一类的（Ballistics.panelAmmo），没有就不换
+  G.driveAmmoList = function()
+    local wid = st and weaponId()
+    return wid and ammoList(wid) or nil
+  end
   -- 战斗瞄准距离：这个弹种调过的（调整页）或者弹种自己的（穿甲 1200、破甲 / 多用途 900……）
   local function bsRange(am)
     local f = st and st.fcs

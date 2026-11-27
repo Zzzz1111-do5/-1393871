@@ -53,6 +53,11 @@
   · 第三人称（「坦克准心对标战雷」）：Drive gunImpact——标记画在**这一发的真落点**（炮管方向减按落点距离算的超高角、射线每秒 15 次、位置每帧跟炮管）；
     炮塔到位却打在近处的坡 / 墙上 = **炮口被挡**，WtTank 准星画叉（WtGunBlocked）；穿深指示扣爆反（同服务器 Era.lua 的系数）。
   · 测试：**tools/mock/gunsight.lua（新）**、optics.lua / wttank.lua 跟着改。没做：老镜子（TSh、M105D）跟炮绑死的铰接瞄准线、俯仰速度按车、锁炮塔的自由视角（梳理里列了）。
+  · **弹药栏写实弹种图**（11-27 晚，用户「完全按照战雷的风格去做设计 而不是这种卡通风格……更拟真」）：每种弹一张 Blender 按真弹结构建模、照实物涂装渲的图
+    （**tools/models/ammopics_blender.py → ammopics.py → ReplicatedStorage/AmmoPics.lua**，57 张：33 种主炮弹、机枪弹链 / 机炮弹 / 导弹 / 火箭、六个工具格），
+    横放弹头朝右、同一口径一个比例尺；HudArt 加 G.ammoPic / G.ammoPicOn（同车图的解码），用不了 EditableImage 退回原来的单色剪影。
+    WtTank 弹药栏按新规范重排（96 × 60 / 60 × 60 平涂格子、三组细分隔线、琥珀选中、膛内白竖条、底边装填进度、打空去色、名牌全称），
+    左下损伤图挡着时整排往右让。预览：hud_render.py 认 AmmoPic 属性；wttank.lua 查每格有图、[noedit=1] 查退回剪影。
 
 - F（11-27，审查 b7bfaae「X 透视画细」挑出来的，用户 11-27「x透视不够细节」）——Client/XrayOwn.lua、Drive.lua、Night.lua、UI.lua、init.client.lua：
   · 鼠标指部件原来用不了（开车每帧 LockCenter，GetMouseLocation 永远是屏幕中心，只指得到炮管；测试是手动挪镜头、直接写鼠标位置的假阳性）：
@@ -594,6 +599,27 @@
     · **X 光慢放动画**（2f9cca6）：破甲 / 射流打穿时（xr.jet；专门的射流弹 xr.big）WtHud 的 xaBuild / xaStep 按时间轴放：弹飞入 → 白闪冲击波 →
       射流一点点钻进去（熔化金属珠、杵体）→ 破片一根根长出 → 打到的乘员 / 模块红白闪 → 殉爆火球 / 起火；别的弹种还是原来那张静态图
     · 直接出击（c1c89df）：部署界面下面一条出击栏（WtBattle），点车 = G.ACT.wtDeployVeh（出生、出车、坐进去）
+
+## 同族变型（11-27 拆重叠版本 e94bb69…60a97e9 + 审查返修；加新型号前先看这里）
+
+- **VehDefs 的 variant 三个字段**（写在 over 里）：
+  · `like = <同族那一型>`（借谁的模型）：按型号登记的表查不到这一型时退到它——驾驶界面剪影（VehHud）、召唤卡片（Depot）、TankMods 的 FOR / ERADEF / PRESETS / SPEC（noEra 的不退）、
+    **第一人称白名单 Config.FirstPerson.only 和车内 Interior.lua 的 ALIAS**（`only[id] or only[d.like]`、`ALIAS[id] or ALIAS[d.like]`：M1 一族 7 项靠它进 M1A1 / M1A2 那套车内）。
+  · `noEra = true`：借来的模型上后来才有的爆反 / ARAT / TUSK 不起作用（TankMods.eraOf 一处挡：服务器、驾驶界面、改装页一起没有）；没导入原模型时也别画，再写 `era = false`。
+  · `noStab = true`：没有炮控稳定器（M60、59 式、豹 1 头一批）。**variant 是深拷**：从 noStab 的那一型拷出来、真车有稳定器的（69-II、豹 1A1A1、豹 1A5）要写 `noStab = false`。
+- **加 / 改 alias 要改两处**：源头（blveh.py 管的模型改 tools/models/blveh.json 那一项的 alias 数组，网页版 / Sketchfab 的改 tools/models/mdl2glb.py 的 ALIAS）
+  + 生成好的 src/ReplicatedStorage/ImportedMeta.lua 的 alias / old 两行（照 mdl2glb 的 lua() 写法：键排序、`old` 跟 blveh.json 的 old）。
+  另外按型号查的：Lang veh.* / vw.*、VehPics（vehicons.mjs 的 GLB 加一行，`vehpics.py <空目录> --merge`）、WtOptics.VEH_NV、WtDamage.PROF / CAROUSEL；科技树改 veh + model。
+- 老型号被科技树换掉的（科技树 M1A1 11-27 起开 m1a1base，老的 m1a1 留给老模式、老 AI 名单）：TechTree 末尾把 TT.byVeh 指回原来那一项，沙盒的观瞄、火控不变。
+- 炮的弹种表照全工程的顺序：{ 原厂穿甲, 破甲 / 多用途, 榴弹 / MPAT / 霰弹, 旧穿甲…, 射流 }——WtMods 只研究得到第二、第三种（第四、五种研究不到，老问题）。
+  **射流弹研究不研究得到，看这门炮有几种弹**：三种弹的炮（M60 / M60A1 / M60A1 RISE / M60A3、豹 1、豹 2、74 式、10 式）第三种就是射流，研究满拿得到；
+  四种以上的（M1 一族、125 毫米各炮）拿不到。同一族要么都拿得到、要么都拿不到——variants.lua ④ 查「研究满（前三种里最强的）穿深」同一族、科技树同一列按年代不往回掉
+  （11-27 二审：RISE 原来第三种放 M392、射流排第四，研究满是 M60 一族唯一拿不到射流的）。**射流在科技树里该不该研究得到还没定（要问用户）**：
+  现在研究满的 M60A3（战斗等级 8.0）760 毫米，压过 M1～M1A2 SEP（9.3～11.3：430～700）。
+- 科技树写 `model` 只给借同族模型的；模型就是这一型自己的（科技树 M1A1 开 m1a1base，用的就是 M1A1 的原模型）不写——写了 TechUI 会标「同族模型」「模型暂用同族的…」。
+- 车里炮长面板的弹种键（SABOT / HEAT / MPAT / CAN；99A 的穿甲 / 破甲 / 榴弹 / 炮射导弹）写死的是 SEPv2 / 99A 那几发：按键走 Ballistics.panelAmmo，
+  在这门炮现在能打的弹（Drive 的 G.driveAmmoList：研究过的前 ModAmmo 种、带了的）里挑同一类（cls）的，一种都没有就不换（AMMO 键、弹种旋钮跳过）；
+  已经是这一类再按换这一类的下一发（科技树 M1A1 的 M829 / M829A1）。调整页的战斗瞄准距离改火控现在装定的那发，不按面板写死的。
 
 ## 工具链的先后（别互相覆盖）
 

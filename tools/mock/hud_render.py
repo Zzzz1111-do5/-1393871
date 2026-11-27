@@ -1,7 +1,7 @@
 # 把 tools/mock/hudshot.lua 写出的界面元素（JSON）画成 1280×720 的图，看开车时屏幕上到底有什么、叠没叠
 #   python3 -I tools/mock/hud_render.py <hud.json> <输出.png> [背景图]
 #   近似：方框（转角度）、圆角、描边、透明度渐变（UIGradient）、裁剪（ClipsDescendants、CanvasGroup 的圆角）、
-#   CanvasGroup 的整体透明、字（文泉驿正黑，不转角度）；图片只画个框
+#   CanvasGroup 的整体透明、字（文泉驿正黑，不转角度）；图片只画个框（写实车图 PicName、弹种图 AmmoPic、HudIcons 的图标照游戏的解法还原）
 import json, math, sys
 from PIL import Image, ImageDraw, ImageFont, ImageChops
 
@@ -120,6 +120,42 @@ def pic_img(name):
     return Image.frombytes('RGBA', (w, h), bytes(px))
 
 
+_apics = None
+
+
+def apic_img(name):
+    """照 HudArt.lua picDecode 还原 src/ReplicatedStorage/AmmoPics.lua 的写实弹种图（每张自己的宽高；「#g」= 去色）"""
+    global _apics
+    import base64, re, os
+    if _apics is None:
+        _apics = {}
+        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'ReplicatedStorage', 'AmmoPics.lua')
+        if os.path.exists(p):
+            for k, w, h, pal, d in re.findall(r'(\w+) = \{ w = (\d+), h = (\d+), p = "([^"]*)", d = "([^"]*)" \}', open(p, encoding='utf-8').read()):
+                _apics[k] = (int(w), int(h), pal, d)
+    gray = name.endswith('#g')
+    key = name[:-2] if gray else name
+    if key not in _apics:
+        return None
+    w, h, pal, d = _apics[key]
+    pal, raw = bytearray(base64.b64decode(pal)), base64.b64decode(d)
+    if gray:
+        for q in range(0, len(pal), 4):
+            l = int(pal[q] * 0.299 + pal[q + 1] * 0.587 + pal[q + 2] * 0.114 + 0.5)
+            pal[q], pal[q + 1], pal[q + 2] = l, l, l
+    px = bytearray(w * h * 4)
+    o, i = 0, 0
+    while i < len(raw) and o < w * h:
+        b = raw[i]
+        if b == 0:
+            o += raw[i + 1]; i += 2
+        else:
+            q = (b - 1) * 4
+            px[o * 4:o * 4 + 4] = pal[q:q + 4]
+            o += 1; i += 1
+    return Image.frombytes('RGBA', (w, h), bytes(px))
+
+
 VPIMG = {}   # 视口名 → 图片（命令行 vp:名字=图片.png）
 def quad_layer(it):
     """机头的全息标记：3D 的一块面（hudshot 导出了四个角在屏幕上的位置）——图按透视贴到这四个角上"""
@@ -221,8 +257,8 @@ def main():
                 src.putalpha(ImageChops.multiply(src.getchannel('A'), mk))
             ov.alpha_composite(src, (int(round(x)), int(round(y))))
         pic_done = False
-        if it.get('pic') and (it.get('iT') or 0) < 0.99 and int(w) > 0 and int(h) > 0:   # 写实车图：按比例塞进框里（ScaleType Fit）
-            src = pic_img(it['pic'])
+        if (it.get('pic') or it.get('apic')) and (it.get('iT') or 0) < 0.99 and int(w) > 0 and int(h) > 0:   # 写实车图（ScaleType Fit 按比例塞进框里）/ 弹种图（铺满）
+            src = apic_img(it['apic']) if it.get('apic') else pic_img(it['pic'])
             if src is not None:
                 sw, sh = src.size
                 k = min(w / sw, h / sh) if it.get('fit') else None
@@ -235,6 +271,9 @@ def main():
                         im2 = Image.merge('RGBA', [r_.point(lambda v, c=tint[0]: v * c // 255), g_.point(lambda v, c=tint[1]: v * c // 255),
                                                    b_.point(lambda v, c=tint[2]: v * c // 255), a_])
                     a_ = im2.split()[3].point(lambda v: int(v * (1 - (it.get('iT') or 0)) * ga))
+                    g = it.get('grad')
+                    if g and g.get('en', True):   # 图上的 UIGradient（同 Roblox：渐变的透明度也乘在图上；弹种图左边渐隐）
+                        a_ = ImageChops.multiply(a_, grad_mask(tw, th, g))
                     im2.putalpha(a_)
                     ov.alpha_composite(im2, (int(round(x + (w - tw) / 2)), int(round(y + (h - th) / 2))))
                     pic_done = True
