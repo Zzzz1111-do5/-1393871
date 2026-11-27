@@ -482,6 +482,7 @@ local ENUMS = {
   ActuatorRelativeTo = "Attachment0 Attachment1 World",
   ContextActionPriority = "Low Medium Default High",
   ContextActionResult = "Sink Pass",
+  LightingStyle = "Realistic Soft",   -- 新版光照（Technology 弃用后）：World.lighting 设 Realistic
 }
 local Enum = {}
 -- 有的枚举 Value 不是 0、1、2…：渲染优先级同 Roblox（First 0、Input 100、Camera 200、Character 300、Last 2000），
@@ -1494,7 +1495,9 @@ def("WorldModel", "Model", {}, { methods = {
     end
   end,
 } })
-local ws = service("Workspace", { StreamingEnabled = { T.bool, false }, Gravity = { T.number, 196.2 }, CurrentCamera = { T.Instance, nil } }, { parent = "Model", methods = {
+local ws = service("Workspace", { StreamingEnabled = { T.bool, false }, Gravity = { T.number, 196.2 }, CurrentCamera = { T.Instance, nil },
+  GlobalWind = { T.Vector3, v3() },   -- 全局风（World.lighting 按图设、暴风雨在客户端加大）
+}, { parent = "Model", methods = {
   GetServerTimeNow = function() return (R.osTime or os.time()) + clock % 1 end,
   BulkMoveTo = function(_, parts, cfs, mode)
     if type(parts) ~= "table" or type(cfs) ~= "table" or #parts ~= #cfs then error("BulkMoveTo(零件表, CFrame 表) 两个表要一样长", 2) end
@@ -1684,6 +1687,7 @@ R.services.Lighting = service("Lighting", {
   Ambient = { T.Color3, newC3(0, 0, 0) }, EnvironmentDiffuseScale = { T.number, 0 }, EnvironmentSpecularScale = { T.number, 0 }, ExposureCompensation = { T.number, 0 },
   GeographicLatitude = { T.number, 41.7 }, ColorShift_Top = { T.Color3, newC3(0, 0, 0) }, ColorShift_Bottom = { T.Color3, newC3(0, 0, 0) }, ShadowSoftness = { T.number, 0.2 },
   FogColor = { T.Color3, newC3(0.75, 0.75, 0.75) }, FogEnd = { T.number, 100000 }, FogStart = { T.number, 0 },
+  LightingStyle = { E("LightingStyle"), Enum.LightingStyle.Realistic }, PrioritizeLightingQuality = { T.bool, true },   -- 地点文件里 Future 对成的这两项
 })
 R.overrides = {}   -- MaterialService:SetBaseMaterialOverride 记下来（测试看雪山把地形的雪换成了哪个变体）
 R.services.MaterialService = service("MaterialService", {}, { methods = {

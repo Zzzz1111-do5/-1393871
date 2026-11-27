@@ -215,7 +215,8 @@ if side == "def" then
   check(not C.drive.sight and not cc.Enabled, "再按 Shift 退出瞄准镜，调色关了")
   check(shown("HintOptic") == nil, "退出瞄准镜提示也收起来")
   check(C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "退出瞄准镜，夜视仪的画面又回来了")
-  check(fb ~= nil and fb.Enabled and not C.sightNv, "退出瞄准镜：远处景深模糊又开了，镜里夜视档的增亮撤掉")
+  -- 远处景深（11-27）只在开飞机时开：地面上 0.06 几乎看不出来却每帧跑一遍整屏后期，远近的层次交给大气（LightLooks）
+  check(fb ~= nil and not fb.Enabled and not C.sightNv, "退出瞄准镜：地面上远处景深照旧关着（只开飞机时开），镜里夜视档的增亮撤掉")
 
   print("④ 开战后开炮、放烟幕弹")
   T.runUntil(function() return G.round.phase == "battle" end, 40)
