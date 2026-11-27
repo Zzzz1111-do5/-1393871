@@ -342,11 +342,11 @@ function Fly.init(G)
   dcs.Visible = false
   local panel = ui.frame(gui, UDim2.fromOffset(460, 86), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.35, Vector2.new(0.5, 1))   -- 操作说明在屏幕最下面一行（UI.lua，st.help）
   panel.Visible = false
-  local aName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local aName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 8), UDim2.fromOffset(10, 30), RGB(0, 0, 0), 0.4)
   local hpBar = ui.frame(hpBg, UDim2.fromScale(1, 1), nil, RGB(90, 210, 110), 0)
-  local aInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 44), 14, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
-  local aWpn = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 62), 14, RGB(255, 220, 120), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local aInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 44), 14, Color3.new(1, 1, 1), Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
+  local aWpn = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 62), 14, RGB(255, 220, 120), Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
   ui.flatPanel(panel, { hp = hpBg, name = aName })   -- 跟新界面一个样子（UI.lua）
   local bore = hud("+", UDim2.fromOffset(40, 40), UDim2.fromScale(0.5, 0.5), 34, Vector2.new(0.5, 0.5))   -- 机头指向
   local aimRing = hud("◯", UDim2.fromOffset(36, 36), UDim2.fromScale(0.5, 0.5), 30, Vector2.new(0.5, 0.5))   -- 鼠标想去的方向
@@ -601,7 +601,7 @@ function Fly.init(G)
   TG.track = mfd("AREA", UDim2.new(0.5, 0, 0.5, MOB and 70 or 112), nil, TS + 2)
   TG.track.Name = "TrackMode"
   -- 指北箭头
-  TG.north = ui.label(disp, "➤", UDim2.fromOffset(30, 30), UDim2.new(0.9, 0, 0.11, 0), MOB and 18 or 26, MFD, Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
+  TG.north = ui.label(disp, "➤", UDim2.fromOffset(30, 30), UDim2.new(0.9, 0, 0.11, 0), MOB and 18 or 26, MFD, Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0.5))
   TG.north.ZIndex = 12
   TG.northN = mfd("N", UDim2.new(0.9, -22, 0.11, -18), nil, TS - 2)
   -- 右边一栏（显示器外面的黑边上）
@@ -626,7 +626,7 @@ function Fly.init(G)
   TG.away = sl("", y0, MOB and 10 or 11, MFD)
   TG.arm = sl("", y0 + (MOB and 15 or 20), MOB and 10 or 11, RGB(236, 200, 120))
   TG.lst = sl("", y0 + (MOB and 30 or 40), MOB and 10 or 11, MFD)
-  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 16, MFD, Enum.Font.BuilderSansMedium)
+  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 16, MFD, Enum.Font.BuilderSans)
   TG.say.Size = UDim2.new(1, 0, 0, MOB and 40 or 56)
   local eoHint = sl("", y0 + (MOB and 96 or 140), MOB and 9 or 10, MFD_DIM)
   eoHint.Size = UDim2.new(1, 0, 0, 90)
@@ -752,7 +752,7 @@ function Fly.init(G)
       local ic = ui.frame(f, UDim2.fromOffset(60, 20), UDim2.new(0, 38, 0.5, 0), RGB(0, 0, 0), 1, Vector2.new(0, 0.5))
       ic.Name = "Icon"
       drawIcon(ic, it)
-      local nm = ui.label(f, it.flare and T("air.flareName") or T("aw." .. it.wid), UDim2.new(1, -164, 1, 0), UDim2.fromOffset(104, 0), 14, HUD, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+      local nm = ui.label(f, it.flare and T("air.flareName") or T("aw." .. it.wid), UDim2.new(1, -164, 1, 0), UDim2.fromOffset(104, 0), 14, HUD, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
       nm.TextWrapped = false
       nm.Name = "Name"
       local cnt = ui.label(f, "", UDim2.fromOffset(58, H), UDim2.new(1, -6, 0, 0), 17, HUD, Enum.Font.RobotoMono, Vector2.new(1, 0), Enum.TextXAlignment.Right)

@@ -59,7 +59,7 @@ function DeathFx.init(G)
   title.Position = UDim2.new(0.5, 0, 0, 9)
   title.Size = UDim2.new(1, -24, 0, 24)
   title.BackgroundTransparency = 1
-  title.Font = Enum.Font.BuilderSansBold
+  title.Font = Enum.Font.BuilderSansMedium
   title.TextSize = 20
   title.TextColor3 = TH.C.TEXT or RGB(236, 238, 236)
   title.TextTransparency = 1
@@ -71,7 +71,7 @@ function DeathFx.init(G)
   sub.Position = UDim2.new(0.5, 0, 0, 37)
   sub.Size = UDim2.new(1, -24, 0, 20)
   sub.BackgroundTransparency = 1
-  sub.Font = Enum.Font.BuilderSansMedium
+  sub.Font = Enum.Font.BuilderSans
   sub.TextSize = 15
   sub.TextColor3 = TH.C.MUTE or RGB(160, 166, 164)
   sub.TextTransparency = 1

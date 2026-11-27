@@ -36,20 +36,20 @@ function Gunner.init(G)
 
   local panel = ui.frame(gui, UDim2.fromOffset(420, 70), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.3, Vector2.new(0.5, 1))   -- 操作说明在屏幕最下面一行（UI.lua，gs.help）
   panel.Visible = false
-  local fName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local fName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 6), UDim2.fromOffset(10, 29), RGB(0, 0, 0), 0.4)
   local hpBar = ui.frame(hpBg, UDim2.fromScale(1, 1), nil, RGB(90, 210, 110), 0)
-  local fInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 38), 14, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local fInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 38), 14, Color3.new(1, 1, 1), Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
   local relBg = ui.frame(panel, UDim2.new(1, -20, 0, 4), UDim2.fromOffset(10, 58), RGB(0, 0, 0), 0.5)
   local relBar = ui.frame(relBg, UDim2.fromScale(1, 1), nil, RGB(240, 200, 80), 0)
   ui.flatPanel(panel, { hp = hpBg, rel = relBg, name = fName })   -- 跟新界面一个样子（UI.lua）
-  local cross = ui.label(gui, "+", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 26, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
+  local cross = ui.label(gui, "+", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 26, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0.5))
   cross.TextStrokeTransparency = 0.4
   cross.Visible = false
-  local gunMark = ui.label(gui, "◯", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 20, RGB(255, 210, 80), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
+  local gunMark = ui.label(gui, "◯", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 20, RGB(255, 210, 80), Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0.5))
   gunMark.TextStrokeTransparency = 0.3
   gunMark.Visible = false
-  local leadMark = ui.label(gui, "◇", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 24, RGB(255, 90, 70), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
+  local leadMark = ui.label(gui, "◇", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 24, RGB(255, 90, 70), Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0.5))
   leadMark.TextStrokeTransparency = 0.3
   leadMark.Visible = false
   local rangeText = ui.label(gui, "", UDim2.fromOffset(320, 24), UDim2.new(0.5, 0, 0.5, 34), 16, RGB(255, 236, 170), Enum.Font.RobotoMono, Vector2.new(0.5, 0))

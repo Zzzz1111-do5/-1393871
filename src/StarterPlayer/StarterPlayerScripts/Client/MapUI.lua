@@ -181,7 +181,7 @@ function MapUI.init(G)
     f.Text = text or ""
     f.TextColor3 = Color3.new(1, 1, 1)
     f.TextScaled = true
-    f.Font = Enum.Font.BuilderSansExtraBold
+    f.Font = Enum.Font.BuilderSansBold
     f.ZIndex = z or 4
     f.Parent = parent
     local c = Instance.new("UICorner")

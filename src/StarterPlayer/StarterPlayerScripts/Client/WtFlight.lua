@@ -33,7 +33,7 @@ function WtFlight.init(G)
   local TXT, LAB = TH.C.TEXT, TH.C.MUTE   -- 左上：数白、标签灰白
   local RED, ORG, WHITE = TH.C.BAD, TH.C.WARN, Color3.new(1, 1, 1)
   local INK = RGB(0, 0, 0)
-  local MONO, SANS = Enum.Font.RobotoMono, Enum.Font.BuilderSansMedium
+  local MONO, SANS = Enum.Font.RobotoMono, Enum.Font.BuilderSans
   G.wtFlightOn = true
 
   local gui = Instance.new("ScreenGui")

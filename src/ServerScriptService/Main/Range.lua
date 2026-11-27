@@ -43,7 +43,7 @@ local function board(W, f, cf, w, h, text, color, face)
   t.Size = UDim2.fromScale(1, 1)
   t.BackgroundTransparency = 1
   t.TextScaled = true
-  t.Font = Enum.Font.BuilderSansExtraBold
+  t.Font = Enum.Font.BuilderSansBold
   t.TextColor3 = color or COL.white
   t.Text = text
   t.Parent = sg

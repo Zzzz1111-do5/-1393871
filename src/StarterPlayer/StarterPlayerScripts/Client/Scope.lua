@@ -353,7 +353,7 @@ function Scope.init(G)
       b.Text = text
       b.TextColor3 = RGB(220, 224, 220)
       b.TextSize = 24
-      b.Font = Enum.Font.BuilderSansMedium
+      b.Font = Enum.Font.BuilderSans
       b.ZIndex = 9
       b.Parent = root
       round(b)

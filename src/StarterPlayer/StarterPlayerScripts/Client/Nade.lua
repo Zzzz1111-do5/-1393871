@@ -45,7 +45,7 @@ function Nade.init(G)
   local fuseL = Instance.new("TextLabel")
   fuseL.Size = UDim2.fromScale(1, 1)
   fuseL.BackgroundTransparency = 1
-  fuseL.Font = Enum.Font.BuilderSansBold
+  fuseL.Font = Enum.Font.BuilderSansMedium
   fuseL.TextSize = 15
   fuseL.TextColor3 = RGB(255, 120, 90)
   fuseL.TextStrokeTransparency = 0.4

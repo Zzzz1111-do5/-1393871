@@ -1098,7 +1098,7 @@ function TechUI.init(G)
   cSt.Color, cSt.Transparency = RGB(90, 96, 100), 0.5
   cSt.Parent = cCard
   local cTitle = text(cCard, "", UDim2.new(1, -140, 0, 28), UDim2.new(0, 18, 0, 14), 19)
-  cTitle.Font = Enum.Font.BuilderSansBold
+  cTitle.Font = Enum.Font.BuilderSansMedium
   local cClose = button(cCard, L("关闭", "Close"), UDim2.new(0, 100, 0, 32), UDim2.new(1, -118, 0, 12))
   cClose.MouseButton1Click:Connect(function() crewP.Visible = false end)
   local cLv = text(cCard, "", UDim2.new(1, -36, 0, 18), UDim2.new(0, 18, 0, 50), 13, DIM)
@@ -1696,7 +1696,7 @@ function TechUI.init(G)
   mStroke.Color, mStroke.Transparency = RGB(90, 96, 100), 0.5
   mStroke.Parent = mCard
   local mTitle = text(mCard, "", UDim2.new(1, -140, 0, 30), UDim2.new(0, 18, 0, 14), 20)
-  mTitle.Font = Enum.Font.BuilderSansBold
+  mTitle.Font = Enum.Font.BuilderSansMedium
   local mSub = text(mCard, "", UDim2.new(1, -36, 0, 18), UDim2.new(0, 18, 0, 46), 12, DIM)
   local mClose = button(mCard, L("关闭", "Close"), UDim2.new(0, 100, 0, 32), UDim2.new(1, -118, 0, 14))
   mClose.Name = "Close"
@@ -1731,13 +1731,13 @@ function TechUI.init(G)
       local sx, ox = px((ci - 1) / nC)
       local h = text(mGrid, L(WM.CLS_NAME[c][1], WM.CLS_NAME[c][2]), UDim2.new(1 / nC, -colGap - tierW / nC, 0, headH),
         UDim2.new(sx, ox, 0, 0), 13, DIM, Enum.TextXAlignment.Center)
-      h.Font = Enum.Font.BuilderSansBold
+      h.Font = Enum.Font.BuilderSansMedium
     end
     for tier = 1, 4 do
       local open = WM.tierOpen(it, done, tier)
       local sy, oy = py((tier - 1) / 4)
       local rl = text(mGrid, ({ "I", "II", "III", "IV" })[tier], UDim2.new(0, tierW, 0.25, -rowGap - headH / 4), UDim2.new(0, 0, sy, oy), 15, open and WHITE or FAINT, Enum.TextXAlignment.Center)
-      rl.Font = Enum.Font.BuilderSansBold
+      rl.Font = Enum.Font.BuilderSansMedium
       for ci, c in ipairs(cols) do
         local list = {}
         for _, m in ipairs(WM.list(it)) do if m.tier == tier and m.cls == c then table.insert(list, m) end end
@@ -1801,7 +1801,7 @@ function TechUI.init(G)
   iSt.Color, iSt.Transparency = RGB(90, 96, 100), 0.5
   iSt.Parent = iCard
   local iTitle = text(iCard, "", UDim2.new(1, -140, 0, 30), UDim2.new(0, 18, 0, 14), 20)
-  iTitle.Font = Enum.Font.BuilderSansBold
+  iTitle.Font = Enum.Font.BuilderSansMedium
   local iSub = text(iCard, "", UDim2.new(1, -150, 0, 18), UDim2.new(0, 18, 0, 46), 12, DIM)
   local iClose = button(iCard, L("关闭", "Close"), UDim2.new(0, 100, 0, 32), UDim2.new(1, -118, 0, 14))
   iClose.MouseButton1Click:Connect(function() infoP.Visible = false end)

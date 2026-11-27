@@ -265,7 +265,7 @@ function View.init(G)
         local l = Instance.new("TextLabel")
         l.BackgroundTransparency = 1
         l.Size = UDim2.fromScale(1, 1)
-        l.Text, l.TextScaled, l.Font = txt, true, Enum.Font.BuilderSansExtraBold
+        l.Text, l.TextScaled, l.Font = txt, true, Enum.Font.BuilderSansBold
         l.TextColor3, l.TextTransparency = col, 0.08
         l.Parent = sg
         table.insert(M.parts, { p, grp, off })

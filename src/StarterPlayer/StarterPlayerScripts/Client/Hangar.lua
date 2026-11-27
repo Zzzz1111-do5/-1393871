@@ -60,7 +60,7 @@ function Hangar.init(G)
   vp.CurrentCamera = vcam
 
   local spots = ui.frame(bg, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
-  local title = ui.label(bg, "", UDim2.fromOffset(520, 30), UDim2.new(0.5, 0, 0, 22), 24, TEXT, Enum.Font.BuilderSansExtraBold, Vector2.new(0.5, 0))
+  local title = ui.label(bg, "", UDim2.fromOffset(520, 30), UDim2.new(0.5, 0, 0, 22), 24, TEXT, Enum.Font.BuilderSansBold, Vector2.new(0.5, 0))
   -- 直角（跟新界面一样：深色、直角、细线）：ui.button 自带的圆角去掉
   local function square(x) for _, c in ipairs(x:GetChildren()) do if c:IsA("UICorner") then c:Destroy() end end return x end
   local symBtn = square(ui.button(bg, "", UDim2.fromOffset(150, 34), UDim2.new(1, -24, 0, 80), RGB(30, 34, 38), Vector2.new(1, 0)))
@@ -76,30 +76,30 @@ function Hangar.init(G)
   -- 右下：弹的资料
   local info = ui.frame(bg, UDim2.fromOffset(380, 196), UDim2.new(1, -40, 1, -96), RGB(10, 12, 14), 0.1, Vector2.new(1, 1))
   ui.stroke(info, RGB(255, 255, 255), 1, 0.85)
-  local iName = ui.label(info, "", UDim2.new(1, -40, 0, 26), UDim2.fromOffset(20, 18), 19, TEXT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
-  local iCat = ui.label(info, "", UDim2.new(1, -40, 0, 18), UDim2.fromOffset(20, 50), 13, MUTE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local iName = ui.label(info, "", UDim2.new(1, -40, 0, 26), UDim2.fromOffset(20, 18), 19, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local iCat = ui.label(info, "", UDim2.new(1, -40, 0, 18), UDim2.fromOffset(20, 50), 13, MUTE, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
   local rows = {}
   for k = 1, 4 do
-    local a = ui.label(info, "", UDim2.new(0.5, -20, 0, 20), UDim2.fromOffset(20, 76 + k * 24), 14, MUTE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
-    local b = ui.label(info, "", UDim2.new(0.5, -20, 0, 20), UDim2.new(0.5, 0, 0, 76 + k * 24), 14, TEXT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Right)
+    local a = ui.label(info, "", UDim2.new(0.5, -20, 0, 20), UDim2.fromOffset(20, 76 + k * 24), 14, MUTE, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
+    local b = ui.label(info, "", UDim2.new(0.5, -20, 0, 20), UDim2.new(0.5, 0, 0, 76 + k * 24), 14, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Right)
     rows[k] = { a, b }
   end
-  local summary = ui.label(bg, "", UDim2.new(0.5, 0, 0, 18), UDim2.new(0.5, 0, 1, -112), 13, MUTE, Enum.Font.BuilderSansMedium, Vector2.new(0.5, 1))
+  local summary = ui.label(bg, "", UDim2.new(0.5, 0, 0, 18), UDim2.new(0.5, 0, 1, -112), 13, MUTE, Enum.Font.BuilderSans, Vector2.new(0.5, 1))
   -- 左上：内油（用户：增加油量这个东西）——四档，少带油轻、加速快，多带飞得久；下面写巡航能飞多久（副油箱另算）、重量
   local fuelBox = ui.frame(bg, UDim2.fromOffset(300, 104), UDim2.fromOffset(40, 96), RGB(10, 12, 14), 0.1)   -- y 96：让开上面那排预设（窄屏上会碰到）
   fuelBox.Name = "Fuel"
   ui.stroke(fuelBox, RGB(255, 255, 255), 1, 0.85)
-  local fTitle = ui.label(fuelBox, "", UDim2.new(1, -28, 0, 18), UDim2.fromOffset(14, 10), 13, MUTE, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local fTitle = ui.label(fuelBox, "", UDim2.new(1, -28, 0, 18), UDim2.fromOffset(14, 10), 13, MUTE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   local fuelBtns = {}
   for k, f in ipairs(AD.FUEL_OPTS) do
     local b = square(ui.button(fuelBox, string.format("%d%%", math.floor(f * 100 + 0.5)), UDim2.new(0.25, -9, 0, 30), UDim2.new((k - 1) * 0.25, 14 - (k - 1) * 4, 0, 32), RGB(8, 10, 12)))
     b.Name = "Fuel" .. math.floor(f * 100 + 0.5)
     b.TextSize = 15
-    b.Font = Enum.Font.BuilderSansMedium
+    b.Font = Enum.Font.BuilderSans
     ui.stroke(b, RGB(255, 255, 255), 1, 0.8)
     fuelBtns[k] = { b = b, f = f }
   end
-  local fInfo = ui.label(fuelBox, "", UDim2.new(1, -28, 0, 30), UDim2.fromOffset(14, 68), 12, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local fInfo = ui.label(fuelBox, "", UDim2.new(1, -28, 0, 30), UDim2.fromOffset(14, 68), 12, TEXT, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
   fInfo.TextWrapped = true
   fInfo.TextYAlignment = Enum.TextYAlignment.Top
   local backBtn = square(ui.button(bg, "", UDim2.fromOffset(130, 52), UDim2.new(0.5, -8, 1, -28), RGB(0, 0, 0), Vector2.new(1, 1)))

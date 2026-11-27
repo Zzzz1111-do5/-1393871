@@ -35,7 +35,7 @@ function Coins.init(G)
   txt.BackgroundTransparency = 1
   txt.Position = UDim2.fromOffset(10, 0)
   txt.Size = UDim2.new(1, -16, 1, 0)
-  txt.Font = Enum.Font.BuilderSansBold
+  txt.Font = Enum.Font.BuilderSansMedium
   txt.TextSize = 14
   txt.TextColor3 = GOLD
   txt.TextXAlignment = Enum.TextXAlignment.Left
@@ -45,7 +45,7 @@ function Coins.init(G)
   pop.BackgroundTransparency = 1
   pop.Position = UDim2.fromOffset(170, 4)
   pop.Size = UDim2.fromOffset(120, 20)
-  pop.Font = Enum.Font.BuilderSansExtraBold
+  pop.Font = Enum.Font.BuilderSansBold
   pop.TextSize = 16
   pop.TextXAlignment = Enum.TextXAlignment.Left
   pop.TextTransparency = 1
@@ -58,7 +58,7 @@ function Coins.init(G)
   pveTag.BackgroundTransparency = 1
   pveTag.Position = UDim2.fromOffset(18, 42)
   pveTag.Size = UDim2.fromOffset(420, 18)
-  pveTag.Font = Enum.Font.BuilderSansBold
+  pveTag.Font = Enum.Font.BuilderSansMedium
   pveTag.TextSize = 13
   pveTag.TextColor3 = RGB(236, 240, 236)
   pveTag.TextStrokeTransparency = 0.5

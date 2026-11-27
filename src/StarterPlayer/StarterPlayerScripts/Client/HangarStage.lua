@@ -225,7 +225,7 @@ local function shell(m)
       local t = Instance.new("TextLabel")
       t.BackgroundTransparency = 1
       t.Size, t.Position = UDim2.fromScale(0.5, 0.36), UDim2.fromScale(0.25, 0.3)
-      t.Font = Enum.Font.BuilderSansExtraBold
+      t.Font = Enum.Font.BuilderSansBold
       t.TextScaled = true
       t.TextColor3 = RGB(214, 214, 204)
       t.TextTransparency = 0.45

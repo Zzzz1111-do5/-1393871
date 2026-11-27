@@ -42,18 +42,18 @@ function Drive.init(G)
 
   local panel = ui.frame(gui, UDim2.fromOffset(420, 76), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.3, Vector2.new(0.5, 1))   -- 下面让出操作说明那一行（UI.lua）
   panel.Visible = false
-  local vName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local vName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 8), UDim2.fromOffset(10, 30), RGB(0, 0, 0), 0.4)
   local hpBar = ui.frame(hpBg, UDim2.fromScale(1, 1), nil, RGB(90, 210, 110), 0)
-  local vInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 42), 14, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local vInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 42), 14, Color3.new(1, 1, 1), Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
   local relBg = ui.frame(panel, UDim2.new(1, -20, 0, 4), UDim2.fromOffset(10, 63), RGB(0, 0, 0), 0.5)
   local relBar = ui.frame(relBg, UDim2.fromScale(0, 1), nil, RGB(240, 200, 80), 0)
   ui.flatPanel(panel, { hp = hpBg, rel = relBg, name = vName })   -- 跟新界面一个样子（UI.lua）
 
-  local cross = ui.label(gui, "◯", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 22, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
+  local cross = ui.label(gui, "◯", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 22, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0.5))
   cross.TextStrokeTransparency = 0.4
   cross.Visible = false
-  local gunMark = ui.label(gui, "+", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 26, RGB(255, 210, 80), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
+  local gunMark = ui.label(gui, "+", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 26, RGB(255, 210, 80), Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0.5))
   gunMark.TextStrokeTransparency = 0.3
   gunMark.Visible = false
 
@@ -328,8 +328,8 @@ function Drive.init(G)
   -- 镜里的操作提示（左上角两行大字 + 底下一行）：V 切换光电模式（写着现在是哪种）、M 释放烟雾弹（还剩几发）、Shift 退出、Z 倍率
   local hintBox = ui.frame(sight, UDim2.fromOffset(440, 100), UDim2.new(0, 28, 0, 96), RGB(0, 0, 0), 0.55)   -- 11-27：底下那行键位说明也挪进来（底下是弹药栏、损伤图）
   hintBox.Name = "SightHints"
-  local hintV = ui.label(hintBox, "", UDim2.new(1, -16, 0, 28), UDim2.fromOffset(10, 4), 18, RGB(235, 240, 235), Enum.Font.BuilderSansBold)
-  local hintM = ui.label(hintBox, "", UDim2.new(1, -16, 0, 28), UDim2.fromOffset(10, 34), 18, RGB(235, 240, 235), Enum.Font.BuilderSansBold)
+  local hintV = ui.label(hintBox, "", UDim2.new(1, -16, 0, 28), UDim2.fromOffset(10, 4), 18, RGB(235, 240, 235), Enum.Font.BuilderSansMedium)
+  local hintM = ui.label(hintBox, "", UDim2.new(1, -16, 0, 28), UDim2.fromOffset(10, 34), 18, RGB(235, 240, 235), Enum.Font.BuilderSansMedium)
   hintV.Name, hintM.Name = "HintOptic", "HintSmoke"
   hintV.TextXAlignment, hintM.TextXAlignment = Enum.TextXAlignment.Left, Enum.TextXAlignment.Left
   local hintLine = ui.label(hintBox, "", UDim2.new(1, -20, 0, 34), UDim2.fromOffset(10, 62), 13, RGB(205, 212, 205), Enum.Font.BuilderSans)

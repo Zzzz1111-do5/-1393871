@@ -14,7 +14,7 @@ function WtComms.init(G)
   local me = Players.LocalPlayer
   local RGB, UD2, V2, V3 = Color3.fromRGB, UDim2.new, Vector2.new, Vector3.new
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local BOLD, MED = Enum.Font.BuilderSansBold, Enum.Font.BuilderSansMedium
+  local BOLD, MED = Enum.Font.BuilderSansMedium, Enum.Font.BuilderSans
   local TH = G.Theme   -- 统一外观（docs/style.md）
   local YEL, WHITE, DIM = TH.C.WARN, TH.C.TEXT, TH.C.MUTE
   local COLS = { "A", "B", "C", "D", "E", "F", "G", "H", "I", "J" }

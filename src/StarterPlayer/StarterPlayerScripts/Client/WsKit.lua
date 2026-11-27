@@ -60,7 +60,7 @@ function K.rich(parts, base)
     local s = p[1] or ""
     if s ~= "" then
       local sz = p[3] or base or S.small
-      local body = (sz <= 13 and hasCJK(s)) and boldCJK(s) or esc(s)
+      local body = esc(s)   -- 中文小字不再自动加粗（用户 11-27「我觉得字体可以细一点」）
       local at = {}
       if p[2] then at[#at + 1] = 'color="' .. hex(p[2]) .. '"' end
       if p[3] then at[#at + 1] = 'size="' .. tostring(p[3]) .. '"' end
@@ -74,17 +74,8 @@ local function fitFont(t)
   local s = t.Text
   if s:find("<font", 1, true) then return end   -- 自己拼好的 RichText（K.rich / 已经包过的）
   local kind = t:GetAttribute("FK") or "body"
-  if t.TextSize <= 13 and s ~= "" and (kind == "cond" or kind == "body" or kind == "mono") and hasCJK(s) then
-    if kind == "mono" and s:find("%d") then
-      t.Font = F.mono
-      t.RichText = true
-      t.Text = boldCJK(s)   -- 改 Text 又会进来一次：有 <font 了，直接返回
-      return
-    end
-    t.Font = F.bold
-  else
-    t.Font = F[kind] or F.body
-  end
+  -- 中文小字不再自动换粗体（用户 11-27「我觉得字体可以细一点」：整体降一档，层级靠字号、颜色，不靠加粗）
+  t.Font = F[kind] or F.body
 end
 K.fitFont = fitFont
 

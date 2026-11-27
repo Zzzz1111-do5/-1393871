@@ -39,7 +39,7 @@ function VehHud.init(G)
   local TH = G.Theme   -- 统一外观（docs/style.md）
   local INK, TXT, MUTE = TH.C.BG, TH.C.TEXT, TH.C.MUTE
   local AMBER, OK, BAD, CYAN = TH.C.WARN, TH.C.GOOD, TH.C.BAD, TH.C.HUD
-  local MONO, BOLD, MED = Enum.Font.RobotoMono, Enum.Font.BuilderSansBold, Enum.Font.BuilderSansMedium
+  local MONO, BOLD, MED = Enum.Font.RobotoMono, Enum.Font.BuilderSansMedium, Enum.Font.BuilderSans
   local WHITE = Color3.new(1, 1, 1)
 
   local function frame(parent, size, pos, color, alpha, anchor)

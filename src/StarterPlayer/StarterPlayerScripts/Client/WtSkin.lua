@@ -12,7 +12,7 @@ function WtSkin.init(G)
   local me = Players.LocalPlayer
   local RGB, UD2, V2 = Color3.fromRGB, UDim2.new, Vector2.new
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local BOLD, MED = Enum.Font.GothamBold, Enum.Font.GothamMedium
+  local BOLD, MED = Enum.Font.BuilderSansMedium, Enum.Font.BuilderSans
   local WHITE, DIM, GOLD = RGB(236, 240, 242), RGB(150, 158, 164), RGB(255, 210, 120)
   local zh = true
   pcall(function() zh = not (G.lang and G.lang() == "en") end)

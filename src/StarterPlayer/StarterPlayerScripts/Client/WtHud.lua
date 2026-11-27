@@ -29,7 +29,7 @@ function WtHud.init(G)
   local RGB = Color3.fromRGB
   local me = Players.LocalPlayer
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local BOLD, MONO = Enum.Font.BuilderSansBold, Enum.Font.RobotoMono
+  local BOLD, MONO = Enum.Font.BuilderSansMedium, Enum.Font.RobotoMono
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
   local TH = G.Theme   -- 统一外观（docs/style.md）
   local OK, HURT, DEAD, GREY = TH.C.GOOD, TH.C.WARN, TH.C.BAD, TH.C.MUTE

@@ -21,7 +21,7 @@ function TankHud.init(G)
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local TH = G.Theme   -- 统一外观（docs/style.md）
   local CYAN, RED = TH.C.HUD, TH.C.BAD   -- CYAN 现在是全息绿（用户 11-21：蓝色全部改成绿色，名字没改）
-  local MONO, BOLD = Enum.Font.RobotoMono, Enum.Font.BuilderSansBold
+  local MONO, BOLD = Enum.Font.RobotoMono, Enum.Font.BuilderSansMedium
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
 
   local gui = Instance.new("ScreenGui")

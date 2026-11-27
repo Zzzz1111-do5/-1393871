@@ -23,7 +23,7 @@ function AaFcs.init(G)
   pcall(function() AD = require(RS:WaitForChild("AirDefs", 5)) end)
 
   local HOST, AMBER, LOCKC, GOOD, INK = RGB(255, 84, 70), RGB(255, 196, 60), RGB(255, 60, 60), RGB(110, 255, 140), RGB(230, 236, 232)
-  local FONT, FONTB = Enum.Font.RobotoMono, Enum.Font.BuilderSansBold
+  local FONT, FONTB = Enum.Font.RobotoMono, Enum.Font.BuilderSansMedium
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "AaFcs"

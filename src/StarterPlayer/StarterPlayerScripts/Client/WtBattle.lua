@@ -18,7 +18,7 @@ function WtBattle.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local BOLD, MED, BLACK = Enum.Font.BuilderSansBold, Enum.Font.BuilderSansMedium, Enum.Font.BuilderSansExtraBold
+  local BOLD, MED, BLACK = Enum.Font.BuilderSansMedium, Enum.Font.BuilderSans, Enum.Font.BuilderSansBold
   local LEFT, RIGHT = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right
   local TH = G.Theme   -- 统一外观（docs/style.md）
   local WHITE, MUTE, INK = TH.C.TEXT, TH.C.MUTE, TH.C.INK

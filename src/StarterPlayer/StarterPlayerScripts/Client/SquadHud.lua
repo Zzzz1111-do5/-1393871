@@ -29,7 +29,7 @@ function SquadHud.init(G)
   local title = Instance.new("TextLabel")
   title.BackgroundTransparency = 1
   title.Size = UDim2.new(1, 0, 0, 18)
-  title.Font = Enum.Font.BuilderSansBold
+  title.Font = Enum.Font.BuilderSansMedium
   title.TextSize = 13
   title.TextColor3 = GREEN
   title.TextXAlignment = Enum.TextXAlignment.Left
@@ -54,7 +54,7 @@ function SquadHud.init(G)
     name.BackgroundTransparency = 1
     name.Position = UDim2.fromOffset(8, 2)
     name.Size = UDim2.new(1, -70, 0, 16)
-    name.Font = Enum.Font.BuilderSansMedium
+    name.Font = Enum.Font.BuilderSans
     name.TextSize = 13
     name.TextColor3 = RGB(236, 240, 236)
     name.TextXAlignment = Enum.TextXAlignment.Left
@@ -65,7 +65,7 @@ function SquadHud.init(G)
     info.AnchorPoint = Vector2.new(1, 0)
     info.Position = UDim2.new(1, -6, 0, 2)
     info.Size = UDim2.fromOffset(64, 16)
-    info.Font = Enum.Font.BuilderSansBold
+    info.Font = Enum.Font.BuilderSansMedium
     info.TextSize = 11
     info.TextColor3 = RGB(190, 196, 190)
     info.TextXAlignment = Enum.TextXAlignment.Right
@@ -108,7 +108,7 @@ function SquadHud.init(G)
     local nm = Instance.new("TextLabel")
     nm.BackgroundTransparency = 1
     nm.Size = UDim2.new(1, 0, 0, 14)
-    nm.Font = Enum.Font.BuilderSansBold
+    nm.Font = Enum.Font.BuilderSansMedium
     nm.TextSize = 12
     nm.TextColor3 = GREEN
     nm.TextStrokeTransparency = 0.45
@@ -118,7 +118,7 @@ function SquadHud.init(G)
     tri.BackgroundTransparency = 1
     tri.Position = UDim2.fromOffset(0, 13)
     tri.Size = UDim2.new(1, 0, 0, 16)
-    tri.Font = Enum.Font.BuilderSansBold
+    tri.Font = Enum.Font.BuilderSansMedium
     tri.TextSize = 14
     tri.TextColor3 = GREEN
     tri.TextStrokeTransparency = 0.45

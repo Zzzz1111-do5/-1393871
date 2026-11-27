@@ -924,7 +924,7 @@ function Warfx.init(G)
     local lab = Instance.new("TextLabel")
     lab.Size = UDim2.new(1, 0, 0, 36)
     lab.BackgroundTransparency = 1
-    lab.Font = Enum.Font.BuilderSansBold
+    lab.Font = Enum.Font.BuilderSansMedium
     lab.TextSize = 18
     lab.TextColor3 = RGB(255, 236, 232)
     lab.TextStrokeTransparency = 0.4

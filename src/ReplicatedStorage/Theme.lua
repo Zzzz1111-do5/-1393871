@@ -35,12 +35,13 @@ Theme.A = {
   stroke = 0.45,  -- 战场上的字的描边
 }
 
--- 字体（用户 11-25「字体不清晰」）：正文、强调、标题换成 Roblox 自己的 Builder Sans（小字号下比 Gotham 清楚，中文跟着用粗一档的字重），
+-- 字体（用户 11-25「字体不清晰」）：正文、强调、标题换成 Roblox 自己的 Builder Sans（小字号下比 Gotham 清楚）；11-27「我觉得字体可以细一点」整体细一档，
+--   中文不再自动加粗；
 --   数字和仪表 RobotoMono；卡片上的短标签、型号用窄体 RobotoCondensed（同类游戏的军事界面感）
 Theme.F = {
-  body = Enum.Font.BuilderSansMedium,
-  bold = Enum.Font.BuilderSansBold,
-  title = Enum.Font.BuilderSansExtraBold,
+  body = Enum.Font.BuilderSans,
+  bold = Enum.Font.BuilderSansMedium,
+  title = Enum.Font.BuilderSansBold,
   mono = Enum.Font.RobotoMono,
   cond = Enum.Font.RobotoCondensed,
 }

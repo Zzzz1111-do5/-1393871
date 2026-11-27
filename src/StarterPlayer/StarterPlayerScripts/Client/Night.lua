@@ -101,7 +101,7 @@ function Night.init(G)
   hint.BackgroundTransparency = 1
   hint.TextColor3 = RGB(186, 255, 196)
   hint.TextTransparency = 1
-  hint.Font = Enum.Font.BuilderSansMedium
+  hint.Font = Enum.Font.BuilderSans
   hint.TextSize = 15
   hint.Visible = false
   hint.Parent = hintGui

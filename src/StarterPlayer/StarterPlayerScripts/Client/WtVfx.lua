@@ -328,7 +328,7 @@ function WtVfx.init(G)
   note.Position = UDim2.new(0.5, 0, 0, 66)
   note.Size = UDim2.fromOffset(420, 22)
   note.BackgroundTransparency = 1
-  note.Font = Enum.Font.BuilderSansBold
+  note.Font = Enum.Font.BuilderSansMedium
   note.TextSize = 16
   note.TextColor3 = RGB(255, 170, 90)
   note.TextStrokeTransparency = 0.4

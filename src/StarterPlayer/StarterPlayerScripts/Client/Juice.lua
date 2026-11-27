@@ -34,7 +34,7 @@ function Juice.init(G)
     l.Text = text
     l.TextSize = ts
     l.TextColor3 = color
-    l.Font = font or Enum.Font.BuilderSansBold
+    l.Font = font or Enum.Font.BuilderSansMedium
     l.TextXAlignment = align or Enum.TextXAlignment.Left
     l.TextStrokeTransparency = 0.45
     l.Parent = parent

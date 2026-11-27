@@ -23,7 +23,7 @@ function WtAir.init(G)
   local RGB = Color3.fromRGB
   local me = Players.LocalPlayer
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local BOLD = Enum.Font.BuilderSansBold
+  local BOLD = Enum.Font.BuilderSansMedium
   local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
   local FIRE = "rbxasset://textures/particles/fire_main.dds"
   local NEAR = 2500
