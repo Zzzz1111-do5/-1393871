@@ -149,6 +149,8 @@ for _, s in ipairs(SPLIT) do
     need(hudKeys["veh_" .. vid] or hudKeys["veh_" .. like], "剪影（HudIcons，退到同族）")
     need((d.noEra == true) == (s.noEra == true), "noEra")
     need(d.turbine == dl.turbine, "发动机（燃气轮机）跟同族一样")
+    -- 电脑车（AIVeh 的 usable、Tech.lua 的 G.treePickAi）按科技树的 it.play 挑：型号的车种、武器要对得上
+    need(d.cat == dl.cat and (d.cat == "tank" or d.cat == "apc") and #d.weapons > 0 and not d.needsAir, "车种 / 武器（电脑车挑得到）")
   end
   check(#bad == 0, string.format("%s（%s ← %s）：%s", vid, key, like, #bad == 0 and "齐全" or table.concat(bad, "；")))
 end

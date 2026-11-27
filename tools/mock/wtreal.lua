@@ -186,6 +186,10 @@ for _, key in ipairs(KEYS) do
   if e and key == "ru_t80u" then
     check(e.era ~= nil and (e.era.n or 0) >= 10, "T-80U 车上的爆反块起作用（" .. tostring(e.era and e.era.n) .. " 块）")
   end
+  -- 11-27：借来的模型上后来才有的块不起作用（VehDefs 的 noEra；原来 T-80B 带 22 格接触-5、M1 带 ARAT）
+  if e and (key == "ru_t80b" or key == "us_m1") then
+    check(e.era == nil and (e.model:GetAttribute("Era") or 0) == 0, it.name .. "：车上没有起作用的爆反块（" .. tostring(e.era and e.era.n) .. "）")
+  end
   if e and FIRE[key] then
     local hit, last = fireAt(e)
     check(hit, it.name .. "：对靶车开一炮，服务器走了战雷伤害" .. (last and ("（" .. tostring(last.r) .. "，穿深 " .. tostring(last.pen and math.floor(last.pen)) .. " 毫米）") or ""))
