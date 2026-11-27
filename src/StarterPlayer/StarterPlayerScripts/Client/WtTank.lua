@@ -26,6 +26,7 @@ function WtTank.init(G)
   local cam = workspace.CurrentCamera
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local BOLD, MED = Enum.Font.BuilderSansBold, Enum.Font.BuilderSansMedium
+  local MONO_F = Enum.Font.RobotoMono
   local LEFT, RIGHT = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right
   local TH = G.Theme   -- 统一外观（docs/style.md）
   local WHITE, INK = TH.C.TEXT, TH.C.INK
@@ -197,108 +198,135 @@ function WtTank.init(G)
   end
 
   ---------------------------------------------------------------- 底部正中：弹药栏
-  local SW, SH, GAP = 52, 58, 5
-  local BAR = frame(gui, UD2(0, 0, 0, SH + 8), UD2(0.5, 0, 1, -12), WHITE, 1, V2(0.5, 1))
+  -- 用户 11-27「目前这镜子底下的弹药切换没有设计感 很卡通」：原来是竖着的、几种颜色色块拼的弹 + 粗白框 + 琥珀大字从下往上涂——
+  --   改成：单色、横放的弹种剪影（尾翼稳定脱壳穿甲弹细长杆 + 弹托 + 尾翼、破甲弹炸高探针、杀爆弹卵形头……），工具是细线图标；
+  --   深色半透明的格子带竖向淡渐变、一像素细边；选中那格抬起一点、琥珀描边（docs/style.md：选中用琥珀描边）、底下一道琥珀线；
+  --   装填是格子底部一道细线从左往右走 + 剩几秒（等宽小字），不再整格涂色；键位小方块、发数、弹种缩写全用等宽 / 窄体小字；
+  --   弹种和工具中间一道细分隔线；上方写这一发的全名（3BM42 Mango · APFSDS）。颜色只表意（docs/style.md）：白灰打底，琥珀 = 选中 / 装填中，红 = 打空 / 起火
+  local SW, SH, GAP, SEP = 62, 58, 4, 14
+  local ICON, ICON_DIM = TH.C.TEXT, 0.5
+  local BAR = frame(gui, UD2(0, 0, 0, SH + 30), UD2(0.5, 0, 1, -12), WHITE, 1, V2(0.5, 1))
   BAR.Name = "WtAmmoBar"
   local barScale = Instance.new("UIScale")
   barScale.Parent = BAR
+  -- 整排后面一块很淡的底板（两头渐隐），把一格格连成一组
+  local plate = frame(BAR, UD2(1, 40, 0, SH + 12), UD2(0.5, 0, 1, 4), TH.C.PANEL, 0.62, V2(0.5, 1))
+  plate.Name = "Plate"
+  do
+    local g = Instance.new("UIGradient")
+    g.Transparency = NumberSequence.new({ nk(0, 1), nk(0.12, 0), nk(0.88, 0), nk(1, 1) })
+    g.Parent = plate
+  end
+  local divider = frame(BAR, UD2(0, 1, 0, SH - 22), UD2(0, 0, 1, -11), WHITE, 0.78, V2(0.5, 1))
+  divider.Name = "Divider"
+  -- 这一发的全名（弹药栏上方）
+  local ammoName = label(BAR, "", UD2(1, 0, 0, 16), UD2(0.5, 0, 0, 0), 13, TH.C.TEXT, (TH.F and TH.F.cond) or MED, V2(0.5, 0))
+  ammoName.Name = "AmmoName"
   local slots = {}
-  -- 图标（竖着的弹、弹头朝上），画在 40 × 32 的格子里：b(x, y, w, h, 色, 透明, 圆角) 以格子下边中点为原点
+  -- 图标：单色剪影，横着放、弹头朝右，画在格子正中 46 × 18 的一块里；b(x, y, w, h, 透明, 圆角, 转角) 以这块的中心为原点
   local function icon(box, kind)
     box:ClearAllChildren()
-    local function b(x, y, w, h, col, tr, r)
-      local f = frame(box, UD2(0, w, 0, h), UD2(0.5, x, 1, -y), col, tr or 0, V2(0.5, 1))
+    local function b(x, y, w, h, tr, r, rot)
+      local f = frame(box, UD2(0, w, 0, h), UD2(0.5, x, 0.5, y), ICON, tr or 0, V2(0.5, 0.5))
       if r then round(f, (r == true) and UDim.new(0.5, 0) or UDim.new(0, r)) end
+      if rot then f.Rotation = rot end
       return f
     end
-    if kind == "ap" then   -- 尾翼稳定脱壳穿甲弹：细长杆、尾翼、弹托
-      b(0, 0, 13, 4, RGB(150, 150, 140), 0, 1)
-      b(0, 2, 4, 27, RGB(178, 176, 164), 0, 2)
-      b(0, 10, 9, 8, RGB(70, 78, 70), 0, 2)
-      b(0, 27, 3, 4, RGB(220, 214, 190), 0, true)
-    elseif kind == "heat" or kind == "mpat" then   -- 破甲弹 / 多用途：弹体、尖锥、前面的炸高探针，一道色带
-      b(0, 0, 12, 4, RGB(120, 120, 112), 0, 1)
-      b(0, 3, 10, 15, RGB(58, 62, 64), 0, 2)
-      b(0, 12, 10, 2, (kind == "mpat") and RGB(96, 176, 255) or RGB(242, 202, 60), 0)
-      b(0, 17, 8, 7, RGB(70, 74, 76), 0, 3)
-      b(0, 23, 2, 8, RGB(170, 170, 164), 0, 1)
-    elseif kind == "jet" then   -- 金属射流弹：串联破甲弹（前面一截前级装药），弹头前一道青白的射流
-      b(0, 0, 12, 4, RGB(120, 120, 112), 0, 1)
-      b(0, 3, 10, 14, RGB(46, 52, 62), 0, 2)
-      b(0, 10, 10, 2, RGB(110, 210, 255), 0)
-      b(0, 16, 8, 6, RGB(60, 66, 74), 0, 3)
-      b(0, 21, 4, 4, RGB(150, 150, 146), 0, 1)
-      b(0, 24, 2, 9, RGB(170, 232, 255), 0, 1)
+    local function ring(x, y, dd, th)   -- 空心圆（细线）
+      local f = round(frame(box, UD2(0, dd, 0, dd), UD2(0.5, x, 0.5, y), ICON, 1, V2(0.5, 0.5)))
+      stroke(f, ICON, th or 1.5, 0)
+      return f
+    end
+    local function dark(x, y, w, h)   -- 剪影上挖一道（弹带、钨珠）：底板色
+      local f = frame(box, UD2(0, w, 0, h), UD2(0.5, x, 0.5, y), TH.C.PANEL, 0.1, V2(0.5, 0.5))
+      f.ZIndex = 2
+      return f
+    end
+    if kind == "ap" then   -- 尾翼稳定脱壳穿甲弹：细长杆、三瓣弹托、尾翼
+      b(1, 0, 32, 2)
+      b(17.5, 0, 3, 3, nil, nil, 45)
+      b(-3, 0, 10, 7, 0.35, 1)
+      b(-14, -2.6, 6, 1.6, nil, nil, -32)
+      b(-14, 2.6, 6, 1.6, nil, nil, 32)
+      b(-16.5, 0, 1.6, 7)
+    elseif kind == "heat" or kind == "mpat" or kind == "jet" then   -- 破甲 / 多用途 / 射流：弹体、圆头、炸高探针、尾翼
+      b(-3, 0, 16, 7, nil, 1)
+      b(6.5, 0, 7, 6, nil, 3)
+      b(13.5, 0, 8, 1.6)
+      b(18, 0, 3, 3, nil, true)
+      b(-13.5, 0, 3, 10, 0.25, 1)
+      if kind == "mpat" then b(13, 0, 2, 4) end      -- 多用途：探针上的近炸环
+      if kind == "jet" then dark(-1, 0, 1.5, 7) end  -- 串联：前后两级装药中间一道
+    elseif kind == "he" then   -- 杀爆弹：弹体、卵形头、引信、弹带
+      b(-3, 0, 20, 8, nil, 2)
+      b(8.5, 0, 9, 6.5, nil, 3.2)
+      b(14, 0, 3.5, 3, nil, 1)
+      dark(-8, 0, 2, 8)
     elseif kind == "can" then   -- 霰弹：平头圆筒、一排钨珠
-      b(0, 0, 13, 22, RGB(176, 176, 166), 0, 2)
-      for i = -1, 1 do b(i * 4, 9, 2, 2, RGB(60, 60, 60), 0, true) end
-      b(0, 20, 13, 2, RGB(90, 90, 86), 0)
-    elseif kind == "he" then   -- 杀爆弹：橄榄色弹体、尖弧头、黄色带、引信
-      b(0, 0, 12, 4, RGB(150, 120, 60), 0, 1)
-      b(0, 3, 11, 15, RGB(108, 118, 62), 0, 2)
-      b(0, 14, 11, 2, RGB(236, 206, 64), 0)
-      b(0, 17, 9, 8, RGB(108, 118, 62), 0, 4)
-      b(0, 24, 3, 4, RGB(176, 170, 150), 0, 1)
-    elseif kind == "ac" then   -- 机炮弹：铜弹壳 + 弹头
-      for i = -1, 1, 2 do
-        b(i * 6, 0, 8, 15, RGB(206, 164, 72), 0, 1)
-        b(i * 6, 14, 6, 10, RGB(78, 80, 76), 0, 3)
+      b(0, 0, 24, 9, nil, 1)
+      for k2 = -1, 1 do dark(k2 * 6 + 3, 0, 2.5, 2.5) end
+    elseif kind == "sam" then   -- 导弹：弹体、头、前后两组翼
+      b(0, 0, 28, 3, nil, 1.5)
+      b(15, 0, 4, 4, nil, true)
+      b(7, 0, 2, 8, 0.2)
+      b(-11, 0, 3, 10, 0.2)
+    elseif kind == "ac" then   -- 机炮弹：两发
+      for _, y in ipairs({ -3.5, 3.5 }) do
+        b(-4, y, 13, 4.5, nil, 1)
+        b(5.5, y, 7, 3.8, nil, 1.9)
       end
-    elseif kind == "mg" then   -- 机枪弹：一排三颗
-      for i = -1, 1 do
-        b(i * 7, 2, 5, 13, RGB(206, 164, 72), 0, 1)
-        b(i * 7, 14, 5, 6, RGB(150, 110, 60), 0, true)
+    elseif kind == "mg" then   -- 机枪弹：一排三发
+      for _, y in ipairs({ -5, 0, 5 }) do
+        b(-3, y, 11, 2.8, nil, 1)
+        b(4.5, y, 5, 2.6, nil, 1.3)
       end
-      b(0, 0, 22, 3, RGB(90, 92, 88), 0)
-    elseif kind == "sam" then   -- 导弹
-      b(0, 0, 12, 4, RGB(120, 124, 120), 0, 1)
-      b(0, 2, 5, 26, RGB(226, 228, 224), 0, 2)
-      b(0, 25, 5, 5, RGB(120, 124, 120), 0, true)
-    elseif kind == "smoke" then   -- 烟幕弹：罐子 + 两团烟
-      b(-5, 0, 11, 18, RGB(118, 128, 98), 0, 2)
-      b(-5, 17, 7, 3, RGB(60, 62, 58), 0)
-      b(5, 18, 12, 12, RGB(200, 204, 204), 0.25, true)
-      b(10, 24, 9, 9, RGB(220, 224, 224), 0.35, true)
-    elseif kind == "scout" or kind == "bino" then   -- 侦察、车长望远镜：望远镜
-      for i = -1, 1, 2 do
-        local f = b(i * 6, 6, 11, 11, WHITE, 1, true)
-        stroke(f, RGB(214, 220, 222), 2.4, 0)
-        b(i * 6, 15, 7, 6, RGB(170, 176, 178), 0, 2)
-      end
-      b(0, 12, 4, 4, RGB(170, 176, 178), 0)
-    elseif kind == "arty" then   -- 火炮支援：瞄准圈 + 往下落的炮弹
-      local f = b(0, 2, 22, 22, WHITE, 1, true)
-      stroke(f, RGB(255, 120, 90), 2, 0)
-      b(0, 12, 2, 26, RGB(255, 120, 90), 0.2)
-      b(0, 12, 26, 2, RGB(255, 120, 90), 0.2)
-      b(7, 18, 5, 11, RGB(150, 150, 140), 0, 2)
+    elseif kind == "smoke" then   -- 烟幕弹：发射筒 + 三团烟（淡）
+      b(-7, 0, 11, 9, nil, 1)
+      b(-1, 0, 2, 7)
+      b(5, -2, 8, 8, 0.45, true)
+      b(10, 1.5, 7, 7, 0.58, true)
+      b(4.5, 3.5, 6, 6, 0.66, true)
+    elseif kind == "scout" or kind == "bino" then   -- 侦察、车长望远镜：望远镜（两个细线圆 + 中间连接）
+      ring(-6, 1, 11)
+      ring(6, 1, 11)
+      b(0, -1, 4, 3)
+      b(-6, -6, 5, 3, 0.3, 1)
+      b(6, -6, 5, 3, 0.3, 1)
+    elseif kind == "arty" then   -- 火炮支援：瞄准圈 + 十字 + 往下落的炮弹
+      ring(-3, 1, 14)
+      b(-3, 1, 1.2, 18, 0.3)
+      b(-3, 1, 18, 1.2, 0.3)
+      b(9, -5, 3.5, 8, nil, 1.5, 25)
     elseif kind == "ext" then   -- 灭火器
-      b(0, 0, 11, 20, RGB(220, 42, 32), 0, 3)
-      b(0, 19, 6, 4, RGB(60, 60, 60), 0)
-      b(6, 14, 2, 9, RGB(40, 40, 40), 0)
-    else   -- 维修：扳手（竖着的柄 + 开口朝上的 U 形头）
-      local c = RGB(196, 200, 204)
-      b(0, 0, 5, 19, c, 0, 2)
-      b(0, 16, 14, 5, c, 0, 2)
-      b(-5, 19, 4, 9, c, 0, 1)
-      b(5, 19, 4, 9, c, 0, 1)
+      b(-2, 1, 16, 7, nil, 2)
+      b(7.5, -2.5, 6, 2)
+      b(4, -5, 4, 2)
+    else   -- 维修：扳手（斜着的柄 + 开口的头）
+      b(-2, 2, 22, 3, nil, 1.5, -35)
+      local hd = ring(8, -6, 8, 2.2)
+      hd.Rotation = -35
+      dark(10.5, -8.5, 3.5, 3.5)
     end
   end
   local function newSlot(i)
     local s = {}
-    s.f = round(frame(BAR, UD2(0, SW, 0, SH), UD2(0, (i - 1) * (SW + GAP), 1, 0), RGB(10, 12, 14), 0.45, V2(0, 1)), UDim.new(0, 3))
+    s.f = round(frame(BAR, UD2(0, SW, 0, SH), UD2(0, 0, 1, 0), TH.C.PANEL, 0.45, V2(0, 1)), UDim.new(0, TH.R or 2))
     s.f.Name = "Slot" .. i
     s.f.ClipsDescendants = true
-    s.st = stroke(s.f, WHITE, 1, 0.72)
-    s.fill = frame(s.f, UD2(1, 0, 0, 0), UD2(0, 0, 1, 0), WHITE, 0.84, V2(0, 1))   -- 装填中：从下往上亮
-    s.ic = frame(s.f, UD2(0, 40, 0, 32), UD2(0.5, 0, 0, 11), WHITE, 1, V2(0.5, 0))
-    s.key = label(s.f, "", UD2(0, 16, 0, 12), UD2(0, 4, 0, 2), 11, WHITE, BOLD, nil, LEFT)
-    s.tag = label(s.f, "", UD2(1, -20, 0, 11), UD2(1, -3, 0, 2), 9, RGB(200, 206, 208), MED, V2(1, 0), RIGHT)
-    s.n = label(s.f, "", UD2(1, -6, 0, 14), UD2(0, 3, 1, -15), 13, WHITE, BOLD, nil, RIGHT)
-    s.t = label(s.f, "", UD2(1, 0, 0, 16), UD2(0, 0, 0, 18), 14, AMBER, BOLD)   -- 装填剩几秒（盖在图标上）
-    s.t.ZIndex = 3
-    s.mark = frame(BAR, UD2(0, 18, 0, 3), UD2(0, (i - 1) * (SW + GAP) + SW / 2, 1, -SH - 5), WHITE, 0, V2(0.5, 1))   -- 选中的那格上面一道白
+    TH.grad(s.f, Color3.fromRGB(70, 76, 80), Color3.fromRGB(12, 14, 16))   -- 竖向淡渐变：上面亮一点
+    s.st = stroke(s.f, WHITE, 1, 0.84)
+    s.ic = frame(s.f, UD2(0, 46, 0, 18), UD2(0.5, 0, 0.5, 1), WHITE, 1, V2(0.5, 0.5))
+    s.ic.Name = "Icon"
+    s.keyBox = round(frame(s.f, UD2(0, 13, 0, 13), UD2(0, 4, 0, 4), WHITE, 1), UDim.new(0, 2))
+    s.keyS = stroke(s.keyBox, TH.C.MUTE, 1, 0.45)
+    s.key = label(s.keyBox, "", UD2(1, 0, 1, 0), nil, 10, TH.C.MUTE, MONO_F)
+    s.n = label(s.f, "", UD2(0, 36, 0, 14), UD2(1, -5, 0, 3), 13, WHITE, MONO_F, V2(1, 0), RIGHT)
+    s.tag = label(s.f, "", UD2(1, -6, 0, 12), UD2(0.5, 0, 1, -8), 10, TH.C.MUTE, (TH.F and TH.F.cond) or MED, V2(0.5, 1))
+    s.tag.Name = "Tag"
+    s.track = frame(s.f, UD2(1, -10, 0, 2), UD2(0, 5, 1, -4), WHITE, 0.88, V2(0, 1))   -- 底部的细轨道
+    s.prog = frame(s.track, UD2(0, 0, 1, 0), nil, TH.C.WARN, 0)                        -- 装填 / 冷却走到哪
     s.kind = nil
+    s.x = 0
     slots[i] = s
     return s
   end
@@ -335,18 +363,20 @@ function WtTank.init(G)
     for i = #slots + 1, #slotDef do newSlot(i) end
     for i, s in ipairs(slots) do
       local sd = slotDef[i]
-      s.f.Visible, s.mark.Visible = sd ~= nil, false
+      s.f.Visible = sd ~= nil
       if sd then
         s.kind = nil
         s.key.Text = sd.num and tostring(sd.num) or (sd.keyTxt or "")
         s.tag.Text = sd.tag or ""
-        -- 武器和烟幕 / 维修中间空一点
-        local x = (i - 1) * (SW + GAP) + ((i > n) and 10 or 0)
+        -- 武器和工具（烟幕 / 维修 / 望远镜……）中间空一截、一道细分隔线
+        local x = (i - 1) * (SW + GAP) + ((i > n) and SEP or 0)
+        s.x = x
         s.f.Position = UD2(0, x, 1, 0)
-        s.mark.Position = UD2(0, x + SW / 2, 1, -SH - 5)
       end
     end
-    BAR.Size = UD2(0, #slotDef * (SW + GAP) - GAP + 10, 0, SH + 8)
+    BAR.Size = UD2(0, #slotDef * (SW + GAP) - GAP + SEP, 0, SH + 30)
+    divider.Position = UD2(0, n * (SW + GAP) - GAP / 2 + SEP / 2, 1, -11)
+    divider.Visible = n > 0 and #slotDef > n
     return slotDef
   end
 
@@ -370,11 +400,12 @@ function WtTank.init(G)
     local fire = em and em:GetAttribute("WtF") == true
     local fix = em and em:GetAttribute("WtFix")
     local t = os.clock()
+    local curName = ""
     for i, sd in ipairs(def) do
       local s = slots[i]
       local sel, empty, cnt = false, false, ""
       local ic = sd.icon
-      local fillK, timeTxt = 0, ""
+      local fillK, timeTxt = nil, ""
       if sd.k == "am" or sd.k == "w" then
         local am = vs and vs.ammo and vs.ammo[sd.wid]
         local tot = am and (am[1] + am[2]) or nil
@@ -387,20 +418,27 @@ function WtTank.init(G)
         cnt = tot and tostring(tot) or "∞"
         empty = tot == 0
         if sd.k == "am" then
-          local cur = (f and f.am) or (BAL.GUN[sd.wid] and BAL.GUN[sd.wid][1])
-          sel = st.wi == sd.wi and cur == sd.am
+          local c0 = (f and f.am) or (BAL.GUN[sd.wid] and BAL.GUN[sd.wid][1])
+          sel = st.wi == sd.wi and c0 == sd.am
+          if sel then
+            local a = BAL.AMMO[sd.am]
+            curName = (a and a.name or sd.am) .. ((sd.tag and sd.tag ~= "") and ("  ·  " .. sd.tag) or "")
+          end
         else
           sel = st.wi == sd.wi
+          if sel then curName = T("vw." .. sd.wid) end
         end
-        if sel and I and not I.ready then fillK, timeTxt = I.relK, string.format("%.1f", I.left) end
+        if sel and I then
+          if I.ready == false then fillK, timeTxt = I.relK, string.format("%.1fs", I.left or 0) else fillK = 1 end
+        end
       elseif sd.k == "smoke" then
         local n = vs and vs.smoke or 0
         cnt, empty = tostring(n), n <= 0
-      elseif sd.k == "arty" then   -- 火炮支援：冷却（服务器时间）；侦察助攻多给的次数写在右下
+      elseif sd.k == "arty" then   -- 火炮支援：冷却（服务器时间）；侦察助攻多给的次数写在右上
         local cd = me:GetAttribute("WtArtyCd")
         local left = cd and (cd - workspace:GetServerTimeNow()) or 0
         local bonus = me:GetAttribute("WtArtyBonus")
-        if left > 0 and not bonus then fillK, timeTxt = 1 - left / 120, string.format("%d", math.ceil(left)) end
+        if left > 0 and not bonus then fillK, timeTxt = 1 - left / 120, string.format("%ds", math.ceil(left)) end
         cnt = bonus and ("+" .. bonus) or ""
       elseif sd.k == "scout" then
         cnt = ""
@@ -416,23 +454,43 @@ function WtTank.init(G)
         s.kind = ic
         icon(s.ic, ic)
       end
-      s.st.Thickness, s.st.Transparency = sel and 2 or 1, sel and 0 or 0.72
-      s.f.BackgroundTransparency = sel and 0.25 or (empty and 0.7 or 0.5)
-      s.mark.Visible = sel
-      s.fill.Size = UD2(1, 0, math.clamp(fillK, 0, 1), 0)
-      s.fill.BackgroundColor3 = (sd.k == "fix") and AMBER or WHITE
-      s.t.Text = timeTxt
+      -- 选中：抬起 4 像素、底子亮一点、琥珀描边；没选中：压暗；打空：更暗、发数红
+      s.f.Position = UD2(0, s.x, 1, sel and -4 or 0)
+      s.f.BackgroundTransparency = sel and 0.22 or (empty and 0.62 or 0.45)
+      s.st.Color = sel and TH.C.WARN or WHITE
+      s.st.Thickness, s.st.Transparency = sel and 1.5 or 1, sel and 0.1 or 0.84
+      local icTr = empty and 0.78 or (sel and 0 or ICON_DIM)
+      for _, q in ipairs(s.ic:GetDescendants()) do
+        if q:IsA("Frame") and q.BackgroundColor3 == ICON then
+          q:SetAttribute("Base", q:GetAttribute("Base") or q.BackgroundTransparency)
+          q.BackgroundTransparency = 1 - (1 - q:GetAttribute("Base")) * (1 - icTr)
+        elseif q:IsA("UIStroke") then
+          q.Transparency = icTr
+        end
+      end
       s.n.Text = cnt
-      s.n.TextColor3 = empty and PEN_NO or WHITE
-      s.key.TextTransparency = (empty or timeTxt ~= "") and 0.45 or 0
-      -- 起火：灭火那格一闪一闪
-      if sd.k == "fix" then
-        s.st.Color = (fire and (t * 4) % 1 < 0.5) and PEN_NO or WHITE
-        if fire then s.st.Transparency = 0 end
+      s.n.TextColor3 = empty and PEN_NO or (sel and TH.C.TEXT or TH.C.MUTE)
+      s.key.TextColor3 = sel and TH.C.TEXT or TH.C.MUTE
+      s.keyS.Color = sel and TH.C.TEXT or TH.C.MUTE
+      -- 装填 / 冷却：底部细线走到哪；剩几秒写在弹种缩写那一行（琥珀）
+      if timeTxt ~= "" then
+        s.tag.Text, s.tag.TextColor3 = timeTxt, TH.C.WARN
       else
-        s.st.Color = WHITE
+        s.tag.Text, s.tag.TextColor3 = sd.tag or "", sel and TH.C.TEXT or TH.C.MUTE
+      end
+      s.track.Visible = fillK ~= nil
+      if fillK then
+        s.prog.Size = UD2(math.clamp(fillK, 0, 1), 0, 1, 0)
+        s.prog.BackgroundColor3 = TH.C.WARN
+        s.prog.BackgroundTransparency = (fillK >= 1) and 0.15 or 0
+      end
+      -- 起火：灭火那格一闪一闪（红）
+      if sd.k == "fix" and fire then
+        s.st.Color = ((t * 4) % 1 < 0.5) and PEN_NO or WHITE
+        s.st.Transparency = 0
       end
     end
+    ammoName.Text = curName
   end
 
   ---------------------------------------------------------------- 左下：损伤示意图
