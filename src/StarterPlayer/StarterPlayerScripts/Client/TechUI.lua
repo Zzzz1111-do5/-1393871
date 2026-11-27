@@ -48,7 +48,7 @@ function TechUI.init(G)
     if type(s) ~= "string" then return end
     local ok, t = pcall(function() return Http:JSONDecode(s) end)
     if ok and type(t) == "table" then
-      for _, f in ipairs({ "res", "own", "rp", "cur", "lineup", "free", "load", "ammo", "skin" }) do t[f] = (type(t[f]) == "table") and t[f] or {} end
+      for _, f in ipairs({ "res", "own", "rp", "cur", "lineup", "free", "load", "ammo", "skin", "sets" }) do t[f] = (type(t[f]) == "table") and t[f] or {} end
       if not TT.NAT[t.nat] then t.nat = "cn" end
       tree = t
     end
@@ -90,7 +90,21 @@ function TechUI.init(G)
     for i, w in ipairs(load or {}) do s[i] = w or "" end
     return table.concat(s, ",")
   end
-  G.treeAirLoad = airLoad   -- 整备（下一步的挂载页）、测试用
+  G.treeAirLoad = airLoad   -- 整备的挂载页（WsArms.lua）、测试用
+  -- 整备改了挂载（即时存，不设「保存」键）：先改自己这份（机库里摆的、资料卡马上按新的），再发服务器（Tech.lua treeLoad；quiet：不弹「挂载已保存」）
+  --   没有预设传 false：中间夹着 nil 的参数表有空洞（同 Depot.lua）
+  G.treeSaveLoad = function(key, l, p, f, quiet)
+    tree.load = tree.load or {}
+    tree.load[key] = { p = p or nil, l = table.clone(l), f = f }
+    act("treeLoad", key, l, p or false, f, quiet == true)
+  end
+  -- 「我的方案」（整备左栏，每一架三个）：存 / 清（l = false）；存档 tree.sets[键]["1"～"3"] = { l, f }（Tech.lua treeLoadSet）
+  G.treeSaveSet = function(key, slot, l, f)
+    tree.sets = tree.sets or {}
+    tree.sets[key] = tree.sets[key] or {}
+    tree.sets[key][tostring(slot)] = l and { l = table.clone(l), f = f } or nil
+    act("treeLoadSet", key, slot, l or false, f or 1)
+  end
 
   ---------------------------------------------------------------- 小零件
   local gui = Instance.new("ScreenGui")
@@ -428,7 +442,7 @@ function TechUI.init(G)
   -- 选中的那一辆：键、科技树里的项
   local function selIt()
     local key = lineupOf(tree.nat)[selSlot]
-    return key and TT.get(key), key
+    return key and TT.get(key), key, selSlot
   end
   G.hangarSel = selIt
   -- 「帮助」：怎么玩
@@ -555,9 +569,11 @@ function TechUI.init(G)
           local md = tree.mods and tree.mods[key]
           local fx = WM.fx and WM.fx(it, md and md.done)
           G.openAmmo(key, fx and fx.ammo)
+        elseif it and G.openWorkshop and G.openWorkshop(it, "arms") then
+          -- 飞机 / 直升机（用户 11-27「整个给载具配置武器的系统 做的很粗糙 我需要非常艺术经验的效果 参考战雷」）：打开整备的挂载页（Workshop.lua / WsArms.lua）——
+          --   舞台就是这间停机坪，改动即时存（Tech.lua treeLoad），出击、试驾都按它
         elseif it and G.openHangar then
-          -- 飞机 / 直升机（用户 11-27「整个给载具配置武器的系统 做的很粗糙」：原来这个键对飞机淡掉、点了没反应，科技树里配不了挂载）：
-          --   先用老的 3D 挂载编辑器（Hangar.lua；整备的挂载页做好以后换掉）——按存的那套打开，「保存」发服务器存档（Tech.lua treeLoad），出击、试驾都按它
+          -- 整备没搭起来（模块出错）：退回老的 3D 挂载编辑器（Hangar.lua）——按存的那套打开，「保存」发服务器存档
           local a = AD.get(it.play)
           if not (a and a.st and #a.st > 0) then return end
           local load, pk, fuel = airLoad(it)
@@ -892,15 +908,20 @@ function TechUI.init(G)
   --   shownKey 是「键 | 挂载」：存了新挂载重新摆（同一辆只换模型、镜头不动：整备里正看着某个挂点时不跳回全景）
   local shownKey, shownVeh = nil, nil
   G.hangarShown = function() return shownKey end   -- 测试用
+  -- 整备（Workshop.lua / WsArms.lua）给停机坪上这架飞机的：airOver 换上预览 / 刚改的挂载（只认同一架）、airPose 摆的姿势（弹舱开着）；
+  --   airShown 现在摆着的 { M = AirModels 的模型表, d, cf 飞机的 CFrame, it, key, load }；每次（重新）搭好以后回调 G.onHangarAir(airShown)
+  --   （整备把挂点上的零件分组、补高亮、做装上的动效）
+  local airOver, airPose, airShown = nil, nil, nil
   local function showVehicle(it)
     if not (Stage and Stage.active()) then return end
     local key = it and it.key or ""
-    local aload = it and it.branch ~= "ground" and (airLoad(it)) or nil
+    local aload = it and it.branch ~= "ground" and ((airOver and airOver.key == key and airOver.load) or (airLoad(it))) or nil
     local sig = key .. "|" .. loadSig(aload)
     if shownKey == sig then return end
     shownKey = sig
     local keepCam = shownVeh == key and key ~= ""
     shownVeh = key
+    airShown = nil
     if not it then
       Stage.put(nil)
       return
@@ -932,13 +953,34 @@ function TechUI.init(G)
       if a and okA and AM then
         local ok, M = pcall(AM.build, a, side, aload or AD.presetLoad(a))
         if ok and M and M.model then
-          pcall(AM.pose, M, base * CFrame.new(0, a.gearH or 6, 0), { gear = 1, thr = 0 }, os.clock())
+          local cf = base * CFrame.new(0, a.gearH or 6, 0)
+          pcall(AM.pose, M, cf, airPose or { gear = 1, thr = 0 }, os.clock())
           Stage.put(M.model, { L = a.L or 50, W = a.W or 36, H = (a.H or 13) + (a.gearH or 0) * 0.5 }, keepCam)
+          airShown = { M = M, d = a, cf = cf, it = it, key = key, load = aload or AD.presetLoad(a), AM = AM }
+          if G.onHangarAir then
+            local okH, err = pcall(G.onHangarAir, airShown)
+            if not okH and G.showError then G.showError("local workshop: " .. tostring(err)) end
+          end
           return
         end
       end
     end
     Stage.put(nil)
+  end
+  G.hangarAir = function() return airShown end
+  -- 换上一套挂载（整备：悬停预览、刚改的）；nil 还原成存的那套。返回 true = 重新搭了模型（同一架只换模型、镜头不动）
+  G.hangarAirLoad = function(load)
+    local it = selIt()
+    airOver = (load and it) and { key = it.key, load = table.clone(load) } or nil
+    local before = shownKey
+    if hangar.Visible then showVehicle(it) end
+    return shownKey ~= before
+  end
+  -- 摆姿势（整备：放下起落架、打开弹舱 { gear = 1, bay = 1, bayS = 1, thr = 0 }）；nil 回到机库平时的样子
+  G.hangarAirPose = function(c)
+    airPose = c
+    local a = airShown
+    if a and a.M and a.AM then pcall(a.AM.pose, a.M, a.cf, c or { gear = 1, thr = 0 }, os.clock()) end
   end
 
   -- 正在试驾（服务器 Tech.lua testDrive 给车 / 飞机的模型打 TestDrive 属性）：Drive.lua、Interior.lua 也看这个
@@ -1262,10 +1304,10 @@ function TechUI.init(G)
       H.selCrew.Text, H.selMods.Text, H.selNote.Text = "", "", ""
       H.crewBoxT.Text = L("乘员", "CREW")
     end
-    -- 弹药键：地面车配弹、飞机 / 直升机配挂载（老的挂载编辑器）；没有挂点的直升机（运输型）、没车时才淡掉
+    -- 弹药键：地面车配弹、飞机 / 直升机打开整备的挂载页（Workshop.lua）；没有挂点的直升机（运输型）、没车时才淡掉
     if H.ammoBtn then
       local ad = it and it.branch ~= "ground" and AD.get(it.play)
-      local can = it ~= nil and ((it.branch == "ground" and G.openAmmo ~= nil) or (ad and ad.st and #ad.st > 0 and G.openHangar ~= nil))
+      local can = it ~= nil and ((it.branch == "ground" and G.openAmmo ~= nil) or (ad and ad.st and #ad.st > 0 and (G.openWorkshop ~= nil or G.openHangar ~= nil)))
       H.ammoBtn.BackgroundTransparency = can and 0.06 or 0.5
       H.ammoBtn:SetAttribute("Off", not can)
       if H.ammoTip then H.ammoTip.Text = (it and it.branch ~= "ground") and L("挂载", "Loadout") or L("弹药", "Ammo loadout") end
@@ -1293,6 +1335,75 @@ function TechUI.init(G)
   G.hangarSelect = function(i) selSlot = i refreshHangar() end   -- 测试用
   me:GetAttributeChangedSignal("Coins"):Connect(function() if hangar.Visible then refreshTop() end end)
   me:GetAttributeChangedSignal("CoinsInf"):Connect(function() if hangar.Visible then refreshTop() end end)
+
+  -- 顶栏的主按钮放哪：br = true 放到右下角（局内选车），false 放回顶栏正中
+  function H.placeGo(br)
+    if H.goBR == br or not (H.goBtn and H.go0) then return end
+    H.goBR = br
+    local b, o = H.goBtn, H.go0
+    if br then
+      local vs = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
+      local rowW = 5 * H.SW + 4 * H.SG
+      local free = vs.X - 2 * M0 - rowW - 12
+      local w = math.clamp(free, 200, mobile and 220 or 320)
+      b.Parent = ui
+      b.Size = UDim2.new(0, w, 0, H.SH)
+      if free >= 200 then   -- 阵容卡右边放得下：和卡并排
+        b.Position = UDim2.new(1, -(M0 + w), 1, -((mobile and 12 or 18) + H.SH))
+      else                  -- 屏幕窄（手机）：放在「科技树」那一条上面、靠右
+        b.Position = UDim2.new(1, -(M0 + w), 1, -(H.dockTop + 8 + H.SH))
+      end
+      H.goT.Size, H.goT.Position, H.goT.TextSize = UDim2.new(1, 0, 0, math.floor(H.SH * 0.5)), UDim2.new(0, 0, 0, math.floor(H.SH * 0.16)), mobile and 26 or 34
+      H.goSub.Position, H.goSub.TextSize = UDim2.new(0, 6, 1, -(mobile and 22 or 28)), TH.S.small
+    else
+      b.Parent = o.parent
+      b.Size, b.Position = o.size, o.pos
+      H.goT.Size, H.goT.Position, H.goT.TextSize = o.tSize, o.tPos, o.tTs
+      H.goSub.Position, H.goSub.TextSize = o.sPos, o.sTs
+    end
+  end
+  -- 整备开着（Workshop.lua）：机库中间那一层（国旗、乘员框、选中车的资料）、顶栏下面「这一局」那块、「退出战斗」收起；
+  --   阵容卡、科技树把手往下滑出 24 像素再藏（0.18 秒）；关了照原样滑回来（0.28 秒）。开着的时候 hangarSet、treeShown 也不把它们翻出来（H.wsOn）
+  G.hangarWsMode = function(on, instant)
+    on = on == true
+    if (H.wsOn == true) == on then return end
+    H.wsOn = on or nil
+    H.wsBase = H.wsBase or { row = H.row.Position, dock = H.dock.Position }
+    local S = G.S or {}
+    local tok = {}
+    H.wsTok = tok
+    if on then
+      if G.treeGui and G.treeGui.Visible and H.closeTree then H.closeTree() end   -- 科技树盖在机库上面：先收起
+      H.mid.Visible = false
+      if H.match then H.match.Visible = false end
+      if H.mapList then H.mapList.Visible = false end
+      if H.leaveBtn then H.leaveBtn.Visible = false end
+      for _, k in ipairs({ "row", "dock" }) do
+        local f = H[k]
+        if instant then
+          f.Visible = false
+        else
+          TH.tween(f, { Position = H.wsBase[k] + UDim2.new(0, 0, 0, 24) }, "out", "out")
+          task.delay(TH.T.out, function() if H.wsTok == tok and H.wsOn then f.Visible = false end end)
+        end
+      end
+    else
+      H.mid.Visible = not H.treeOpen
+      if H.match then H.match.Visible = true end
+      if H.leaveBtn then H.leaveBtn.Visible = S.pick == true end
+      for _, k in ipairs({ "row", "dock" }) do
+        local f = H[k]
+        f.Visible = (k ~= "dock") or not S.pick
+        if instant then
+          f.Position = H.wsBase[k]
+        else
+          f.Position = H.wsBase[k] + UDim2.new(0, 0, 0, 24)
+          TH.tween(f, { Position = H.wsBase[k] }, "panel", "out")
+        end
+      end
+    end
+    H.placeGo(S.pick == true and not H.wsOn)
+  end
 
   -- 原来的部署界面（UI.lua）每次刷新都问一下：该显示部署页的时候机库盖上去
   local lastSig = nil
@@ -1357,36 +1468,13 @@ function TechUI.init(G)
           --   机库就是选车页（同一套外观：用户「你这个做的风格跟我目前的主界面风格完全不一样」），主按钮是「出击」，顶上多一个「退出战斗」
           H.goT.Text = S.pick and L("出击", "SPAWN") or L("加入战斗", "TO BATTLE")
         end
-        if H.leaveBtn then H.leaveBtn.Visible = S.pick == true end
+        if H.leaveBtn then H.leaveBtn.Visible = S.pick == true and not H.wsOn end
         -- 局内选车：「出击」放到右下角（用户 11-26「出击的按钮放到右下角吧」，同战雷的出击页），和阵容卡一样高；不在局里放回顶栏正中
-        local br = S.pick == true
-        if H.goBR ~= br and H.goBtn and H.go0 then
-          H.goBR = br
-          local b, o = H.goBtn, H.go0
-          if br then
-            local vs = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
-            local rowW = 5 * H.SW + 4 * H.SG
-            local free = vs.X - 2 * M0 - rowW - 12
-            local w = math.clamp(free, 200, mobile and 220 or 320)
-            b.Parent = ui
-            b.Size = UDim2.new(0, w, 0, H.SH)
-            if free >= 200 then   -- 阵容卡右边放得下：和卡并排
-              b.Position = UDim2.new(1, -(M0 + w), 1, -((mobile and 12 or 18) + H.SH))
-            else                  -- 屏幕窄（手机）：放在「科技树」那一条上面、靠右
-              b.Position = UDim2.new(1, -(M0 + w), 1, -(H.dockTop + 8 + H.SH))
-            end
-            H.goT.Size, H.goT.Position, H.goT.TextSize = UDim2.new(1, 0, 0, math.floor(H.SH * 0.5)), UDim2.new(0, 0, 0, math.floor(H.SH * 0.16)), mobile and 26 or 34
-            H.goSub.Position, H.goSub.TextSize = UDim2.new(0, 6, 1, -(mobile and 22 or 28)), TH.S.small
-          else
-            b.Parent = o.parent
-            b.Size, b.Position = o.size, o.pos
-            H.goT.Size, H.goT.Position, H.goT.TextSize = o.tSize, o.tPos, o.tTs
-            H.goSub.Position, H.goSub.TextSize = o.sPos, o.sTs
-          end
-        end
+        --   整备开着时（H.wsOn）照旧放在顶栏正中：右下是整备的底部条
+        H.placeGo(S.pick == true and not H.wsOn)
         if H.nats then H.nats.Visible = not S.pick end   -- 这一局里不能换系（阵容跟着这一局）
-        -- 用户 11-26「那个局内选车的界面别弄科技树了」：底下「科技树」那一条整条收起、开着的科技树关上
-        if H.dock then H.dock.Visible = not S.pick end
+        -- 用户 11-26「那个局内选车的界面别弄科技树了」：底下「科技树」那一条整条收起、开着的科技树关上（整备开着时也收着）
+        if H.dock then H.dock.Visible = not S.pick and not H.wsOn end
         if S.pick and G.treeGui and G.treeGui.Visible and closeTree then closeTree() end
         -- 刚进这一局：阵容里先选中匹配时点的那一辆（服务器记的 pickPref）
         if S.pick and S.pickPref and H.lastPref ~= tostring(S.round) .. S.pickPref then
@@ -1461,8 +1549,8 @@ function TechUI.init(G)
   local detail = frame(panel, UDim2.new(0, DETAIL_W, 1, -(HEAD_H + 12)), UDim2.new(1, -DETAIL_W - 6, 0, HEAD_H + 6), TH.C.BG, 0.25)
   detail.Name = "Detail"
   TH.corner(detail)
-  local function treeShown(on)   -- 开着科技树：底下的「科技树」把手亮着、箭头朝下，机库中间那一层（乘员、选中的车）让开
-    H.mid.Visible = not on
+  local function treeShown(on)   -- 开着科技树：底下的「科技树」把手亮着、箭头朝下，机库中间那一层（乘员、选中的车）让开（整备开着时也让开）
+    H.mid.Visible = not on and not H.wsOn
     H.treeOpen = on
     for _, b in ipairs(H.bays or {}) do if b.Parent then b.Visible = on or (G.S ~= nil and G.S.pick == true) end end   -- 阵容卡片的等级底色：科技树开着、局内选车时画
     if H.navTree then

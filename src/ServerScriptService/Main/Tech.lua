@@ -36,7 +36,8 @@ function Tech.init(G)
   -- mods[车] = { done = { 改装 = true }, cur = 正在研究的改装, rp = 攒在它上面的研究点 }
   --   crew[系]["位置"] = { xp = 乘员经验, sk = { 技能 = 级 } }（位置写成字符串：JSON 不认有空洞的数组）
   --   load[车] = { p = 预设, l = { 每个挂点的武器或 false }, f = 内油 }、ammo[车] = { 弹种 = 几发 }、skin[车] = { c, n, e }（见文件头「整备」）
-  local function blank() return { res = {}, own = {}, rp = {}, cur = {}, lineup = {}, nat = "cn", free = {}, mods = {}, crew = {}, load = {}, ammo = {}, skin = {} } end
+  --   sets[车] = { ["1"～"3"] = { l, f } }：整备挂载页的三个「我的方案」（键写成字符串：JSON 不认有空洞的数组）
+  local function blank() return { res = {}, own = {}, rp = {}, cur = {}, lineup = {}, nat = "cn", free = {}, mods = {}, crew = {}, load = {}, ammo = {}, skin = {}, sets = {} } end
   local function T(P)
     local d = P.data
     if not d then return nil end
@@ -107,6 +108,20 @@ function Tech.init(G)
     if n then n = math.clamp(math.floor(n), 0, 999) end
     return { c = c, n = n, e = v.e == true }
   end
+  -- 我的方案（整备挂载页左栏的三个）：每个照挂载那样清（AD.cleanLoad / cleanFuel），只认 "1"～"3"；一个都没有返回 nil
+  local function cleanTreeSets(it, v)
+    if type(v) ~= "table" then return nil end
+    local out, n = {}, 0
+    for i = 1, 3 do
+      local x = v[tostring(i)] or v[i]
+      local o = (type(x) == "table") and cleanTreeLoad(it, { l = x.l, f = x.f }) or nil
+      if o and type(x.l) == "table" then
+        out[tostring(i)] = { l = o.l, f = o.f }
+        n += 1
+      end
+    end
+    return (n > 0) and out or nil
+  end
   -- 这一辆存的挂载（出击、试驾用）：挂载表、内油；没存过（或者不是飞机）返回 nil（Air.lua 按第一套预设、满内油）
   local function treeLoadOf(P, key)
     local t = T(P)
@@ -117,9 +132,9 @@ function Tech.init(G)
     return o.l, o.f
   end
   G.treeLoadOf = treeLoadOf
-  -- 存挂载（整备的挂载页 / 挂载编辑器 Hangar.lua 的「保存」）：key 科技树的键，load 每个挂点的武器（false 是空），preset 照哪套预设改的，fuel 内油几成。
-  --   没买的也能存（科技树里随便哪一架都能试驾）；不是飞机、没有挂点的不理
-  G.ACT.treeLoad = function(P, key, load, preset, fuel)
+  -- 存挂载（整备的挂载页 / 挂载编辑器 Hangar.lua 的「保存」）：key 科技树的键，load 每个挂点的武器（false 是空），preset 照哪套预设改的，fuel 内油几成；
+  --   quiet：整备的挂载页改一下存一下（即时存），不弹「挂载已保存」。没买的也能存（科技树里随便哪一架都能试驾）；不是飞机、没有挂点的不理
+  G.ACT.treeLoad = function(P, key, load, preset, fuel, quiet)
     local t = T(P)
     local it = type(key) == "string" and TT.byKey[key] or nil
     if not t or not it then return end
@@ -127,7 +142,27 @@ function Tech.init(G)
     if not o then return end
     t.load = t.load or {}
     t.load[key] = o
-    if P.pl then G.msg(P.pl, "info", "tree.loadSaved", { k = "tree." .. key }) end
+    if P.pl and quiet ~= true then G.msg(P.pl, "info", "tree.loadSaved", { k = "tree." .. key }) end
+    publish(P)
+    save(P)
+  end
+  -- 我的方案：slot 1～3；load 是 false 清掉这一格
+  G.ACT.treeLoadSet = function(P, key, slot, load, fuel)
+    local t = T(P)
+    local it = type(key) == "string" and TT.byKey[key] or nil
+    slot = tonumber(slot)
+    if not t or not it or not slot or slot ~= math.floor(slot) or slot < 1 or slot > 3 then return end
+    t.sets = t.sets or {}
+    local cur = t.sets[key] or {}
+    if load == false then
+      cur[tostring(slot)] = nil
+    else
+      if type(load) ~= "table" then return end
+      local o = cleanTreeLoad(it, { l = load, f = fuel })
+      if not o then return end
+      cur[tostring(slot)] = { l = o.l, f = o.f }
+    end
+    t.sets[key] = next(cur) and cur or nil
     publish(P)
     save(P)
   end
@@ -277,7 +312,7 @@ function Tech.init(G)
       end
     end
     -- 整备：挂载、配弹、涂装——只留认得的车，内容按上面 cleanTree* 再过一遍（改过挂点、弹种、涂装表以后，旧档里不对的清掉）
-    for f, clean in pairs({ load = cleanTreeLoad, ammo = cleanTreeAmmo, skin = cleanTreeSkin }) do
+    for f, clean in pairs({ load = cleanTreeLoad, ammo = cleanTreeAmmo, skin = cleanTreeSkin, sets = cleanTreeSets }) do
       for k, v in pairs(type(src[f]) == "table" and src[f] or {}) do
         local it = type(k) == "string" and TT.byKey[k] or nil
         local o = it and clean(it, v)

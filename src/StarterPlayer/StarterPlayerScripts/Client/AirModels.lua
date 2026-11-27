@@ -358,7 +358,7 @@ function AM.build(d, team, load)
   local m = Instance.new("Model")
   m.Name = d.id
   local items = {}
-  local M = { model = m, items = items, def = d, stores = {}, pylons = {}, bayItems = {}, blades = {}, discs = {}, flames = {}, strobes = {}, lamps = {}, tvc = {}, team = team }
+  local M = { model = m, items = items, def = d, stores = {}, stPos = {}, pylons = {}, bayItems = {}, blades = {}, discs = {}, flames = {}, strobes = {}, lamps = {}, tvc = {}, team = team }
   local imp = AM.importedFor(d)
   M.imp = imp
   -- 正在拼哪一类零件（有原模型时只留下这几类，其余的是蒙皮、换成原模型）：gear 起落架、rotor 旋翼 / 螺旋桨、lamp 灯、store 挂架和弹、pilot 飞行员
@@ -501,6 +501,11 @@ function AM.build(d, team, load)
     for i, s in ipairs(d.st or {}) do
       local wid = load and load[i]
       M.stores[i] = {}
+      -- 挂点在模型里的位置（机库整备的 3D 挂点标签、镜头按它；空着的也记）：原模型挪到它的机翼下面（挂架顶，同下面 adj 的挪法）
+      do
+        local adj0 = adjs and adjs[i]
+        M.stPos[i] = adj0 and V(adj0[3], adj0[1] + imp.O.Y, adj0[2]) or s.pos
+      end
       if wid then
         local w = AD.W[wid]
         local n = AD.count(s, wid)

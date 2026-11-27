@@ -1,5 +1,6 @@
 # 把 tools/mock/hudshot.lua 写出的界面元素（JSON）画成 1280×720 的图，看开车时屏幕上到底有什么、叠没叠
 #   python3 -I tools/mock/hud_render.py <hud.json> <输出.png> [背景图]
+#   WH=1280x640（环境变量）：画面不是 1280 × 720 时（手机横屏的截图，uidump 按镜头的 ViewportSize 排的）
 #   近似：方框（转角度）、圆角、描边、透明度渐变（UIGradient）、裁剪（ClipsDescendants、CanvasGroup 的圆角）、
 #   CanvasGroup 的整体透明、字（文泉驿正黑，不转角度）；图片只画个框（写实车图 PicName、弹种图 AmmoPic、HudIcons 的图标照游戏的解法还原）
 import json, math, sys
@@ -186,6 +187,9 @@ def main():
     items = json.load(open(sys.argv[1], encoding='utf-8'))
     # SS=2（环境变量）：按 2 倍大画再缩回来，圆、描边有抗锯齿（Roblox 画的界面本来就是抗锯齿的；不然一圈挨一圈的描边之间露出漏缝）
     global W, H
+    wh = __import__('os').environ.get('WH')
+    if wh and 'x' in wh:
+        W, H = (int(v) for v in wh.split('x', 1))
     ss = int(__import__('os').environ.get('SS', '1'))
     W0, H0 = W, H
     if ss > 1:

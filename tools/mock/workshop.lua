@@ -1,6 +1,6 @@
 -- 整备（用户 11-27「整个给载具配置武器的系统 做的很粗糙 我需要非常艺术经验的效果 参考战雷」）：python3 tools/mock/run.py tools/mock/workshop.lua
 --   第一段（止血 + 地基）。真游戏开着匹配：没进局的人在「匹配中」的机库里（T.matchMode，同 tools/mock/wttestair.lua），像玩家一样：
---   ① 科技树机库里飞机能配挂载：阵容里选中歼-10C → 顶栏弹药键（不再淡掉、提示写「挂载」）→ 挂载编辑器按存的那套开（没存过是第一套预设）→
+--   ① 科技树机库里飞机能配挂载：阵容里选中歼-10C → 顶栏弹药键（不再淡掉、提示写「挂载」）→ 整备的挂载页按存的那套开（没存过是第一套预设）→
 --      换一套预设（对地）、点一个挂点换一种弹（左右一对一起换）、内油 75% → 保存：服务器存档 tree.load 记着（照哪套改的、每个挂点、内油），
 --      客户端的 Tree 跟着；机库里摆的飞机换成存的那套（同一架只换模型、镜头不动）；资料卡写「当前挂载」、存的武器、外挂重量
 --   ② 地基：HangarStage.focus（缓动飞过去、拖动打断）、停机坪俯仰能压到负的、highlight（最多 4 个，还了能再借）、toScreen；Theme.T / tween
@@ -9,6 +9,9 @@
 --   ④ 出击（点开战 → 局内选车 → 先出地面车 → 回机库 → 出飞机）：停在机场的飞机挂的、内油和存的一样
 --   ⑤ 服务器校验：非法武器清成空、内油夹到 0.25～1、不认得的预设不记、地面车 / 不认得的键不收；读档也照这样清
 --   ⑥ FlightModel.loadout / perf：挂满比空挂重、阻力大、极速低、推重比小、转弯和爬升差；弹舱里的不算阻力；vTop / card 吃阻力增量
+--   第二段（整备外壳 + 挂载页，Workshop.lua / WsArms.lua）：① 改成走整备的挂载页（顶栏弹药键 → 预设 → 底部挂点卡 → 武器卡 → 内油，改动即时存，Esc 两下回机库）；
+--   ⑦ 挂点卡数（对称 / 不对称、从左翼尖排到右翼尖）、选项 = 可挂的 + 「不挂」、左右一对一起换、性能数 = 飞行物理、外挂越多极速越低、悬停预览（右栏马上、3D 停一下、
+--      不进存档）、我的方案、干扰弹没研究跳改装页、飞机的涂装页不开、截图（uidump）、Esc 回机库原样还原
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, Enum = T.R, T.Enum
 local check = T.check
@@ -52,7 +55,7 @@ local function sig(load)
   return table.concat(s, ",")
 end
 
-print("① 机库里给歼-10C 配挂载：弹药键 → 换预设、改一个挂点、内油 → 保存进存档")
+print("① 机库里给歼-10C 配挂载：顶栏弹药键 → 整备的挂载页 → 换预设、改一个挂点（左右一对）、内油 → 即时存进存档")
 T.act("redeem", "Zhengyongshuo")   -- 全部解锁（设置里的兑换码）
 R.run(1)
 local starter = TT.starter("cn", "ground")
@@ -72,61 +75,77 @@ local S = C.hangarStage
 check(S ~= nil and S.active() and S.modeNow() == "air", "背后是停机坪，停着这架飞机")
 local shown0 = C.hangarShown and C.hangarShown()
 check(shown0 == KEY .. "|" .. sig(AD.presetLoad(d)), "没存过：机库里摆的是第一套预设（" .. tostring(shown0) .. "）")
-if ab then T.press(ab) R.run(0.6) end
-local HS = C.hangarState and C.hangarState()
-check(HS ~= nil and HS.d.id == d.id, "打开了挂载编辑器（" .. tostring(HS and HS.d.id) .. "）")
-check(HS ~= nil and same(HS.load, AD.presetLoad(d)) and HS.presetKey == d.presets[1].key and math.abs(HS.fuel - 1) < 1e-9,
-  "按存的打开：没存过是第一套预设（" .. tostring(HS and HS.presetKey) .. "）、满内油")
-check(C.stageFree ~= nil and not C.stageFree(T.V3(640, 360, 0)), "编辑器开着：在上面按住拖动不转后面机库里的飞机")
-local pb = T.findNamed("Preset_ag")
-check(pb ~= nil and T.findNamed("Preset_" .. d.presets[1].key) ~= nil, "上面一排是这架飞机的预设方案")
-if pb then T.press(pb) R.run(0.3) end
-local want = AD.presetLoad(d, "ag")
-check(HS and same(HS.load, want) and HS.presetKey == "ag", "点「对地」：换成那一套")
--- 点一个看得见的「mid」挂点（左右对称：一对只画离镜头近的那个圈），换成霹雳-12
-local idx, mate = nil, nil
-for i, s in ipairs(d.st) do
-  if s.name == "mid" then
-    local b = T.findNamed("Spot" .. i)
-    if b and not idx then idx = i elseif not mate then mate = i end
+if ab then T.press(ab) R.run(1.2) end
+local W, st = C.workshopState()
+check(W.on and st ~= nil and st.key == KEY and st.d.id == d.id, "打开了整备的挂载页（" .. tostring(st and st.key) .. "）")
+check(not (C.hangarOpen and C.hangarOpen()), "不再是老的挂载编辑器（Hangar.lua 留给步兵召唤台）")
+check(st ~= nil and same(st.load, AD.presetLoad(d)) and st.pk == d.presets[1].key and math.abs(st.fuel - 1) < 1e-9,
+  "按存的打开：没存过是第一套预设（" .. tostring(st and st.pk) .. "）、满内油")
+local H0 = C.hangarParts
+check(H0.wsOn == true and not H0.mid.Visible and not H0.row.Visible and not H0.match.Visible, "机库的国旗 / 乘员 / 阵容卡 / 这一局那块收起了")
+local lg = T.findNamed("WsBack")
+check(lg ~= nil and T.findNamed("HangarGo") ~= nil, "抬头有「‹ 机库」，顶栏「加入战斗」还在（唯一的主按钮）")
+local nPrimary = 0
+for _, x in ipairs(me.PlayerGui:GetDescendants()) do
+  if x.ClassName == "TextButton" and T.visible(x) and x:IsDescendantOf(C.hangarGui) and x.Name ~= "HangarGo"
+    and x.BackgroundTransparency < 0.05 and x.BackgroundColor3 == C.Theme.C.TEXT and not x.Name:match("^Tab_") and not x.Name:match("^Fuel") and not x.Name:match("^Sym")
+    and not x.Name:match("^Preset_") and not x.Name:match("^Mine_") then
+    nPrimary = nPrimary + 1
   end
 end
-if idx and not mate then for i, s in ipairs(d.st) do if s.name == "mid" and i ~= idx then mate = i end end end
-check(idx ~= nil and mate ~= nil, "找到机翼中间那一对挂点（看得见的是 " .. tostring(idx) .. "）")
+check(nPrimary == 0, "整备里没有别的白底主按钮（选中的页签、分段键不算）：" .. nPrimary)
+local pb = T.findNamed("Preset_ag")
+check(pb ~= nil and T.findNamed("Preset_" .. d.presets[1].key) ~= nil, "左栏上面是这架飞机的预设方案")
+if pb then T.press(pb) R.run(0.6) end
+local want = AD.presetLoad(d, "ag")
+check(st and same(st.load, want) and st.pk == "ag", "点「对地」：换成那一套")
+-- 机翼中段那一对：底部的挂点卡（左右对称：一对一张）
+local ci = nil
+for k, g in ipairs(st.cards) do if g.name == "mid" then ci = k end end
+check(ci ~= nil and #st.cards[ci].st == 2, "机翼中段那一对合成一张卡（第 " .. tostring(ci) .. " 张）")
+local idx, mate = st.cards[ci].st[1], st.cards[ci].st[2]
 local NEW = "pl12"
-check(idx ~= nil and want[idx] ~= NEW and tfind(d.st[idx].opts, NEW) ~= nil, "这个挂点能挂霹雳-12、现在挂的不是（" .. tostring(idx and want[idx]) .. "）")
-if idx then T.press(T.findNamed("Spot" .. idx)) R.run(0.6) end
-check(HS and HS.sel == idx, "选中了挂点 " .. tostring(HS and HS.sel))
+check(want[idx] ~= NEW and tfind(d.st[idx].opts, NEW) ~= nil, "这个挂点能挂霹雳-12、现在挂的不是（" .. tostring(want[idx]) .. "）")
+local scard = T.findNamed("Station_" .. ci)
+if scard then T.press(scard) R.run(1.0) end
+check(st.sel == ci, "选中了这一对（" .. tostring(st.sel) .. "）")
+local vsel = S.viewState()
+check(vsel.at ~= nil and vsel.sd < vsel.base, string.format("镜头飞到挂点那一侧（离得 %.1f，全景 %.1f）", vsel.sd, vsel.base))
 local opt = T.findNamed("Opt_" .. NEW)
-check(opt ~= nil and T.findNamed("Opt_none") ~= nil, "列表里有霹雳-12、最后一项是「不挂」")
-if opt then T.press(opt) R.run(0.3) end
-if idx then want[idx] = NEW end
-if mate then want[mate] = NEW end
-check(HS and same(HS.load, want), "左右一对一起换成霹雳-12：" .. sig(HS and HS.load))
-local pb2 = T.findNamed("Preset_ag")
-check(pb2 ~= nil and pb2.Text:find("已改") ~= nil, "预设那一块写「（已改）」（" .. tostring(pb2 and pb2.Text) .. "）")
-local back = T.findNamed("HangarBack")
-if back then T.press(back) R.run(0.3) end   -- 先退回全景：内油那一栏才出来
+check(opt ~= nil and T.findNamed("Opt_none") ~= nil, "列表里有霹雳-12、最后一张是「不挂」")
+if opt then T.press(opt) R.run(0.8) end
+want[idx], want[mate] = NEW, NEW
+check(same(st.load, want), "左右一对一起换成霹雳-12：" .. sig(st.load))
+check(math.abs(S.viewState().sd - vsel.sd) < 1e-3 and S.viewState().at ~= nil, "换上以后同一架只换模型：镜头还在这个挂点")
+local chip = T.findNamed("Preset_ag")
+local modTag = chip and chip:FindFirstChild("Mod")
+check(modTag ~= nil and modTag.Visible and modTag.Text:find("已改") ~= nil, "预设那一块写「已改」（" .. tostring(modTag and modTag.Text) .. "）")
+local stLine = nil
+for _, x in ipairs(me.PlayerGui:GetDescendants()) do if x.Name == "LoadStatus" then stLine = x end end
+check(stLine ~= nil and stLine.Text:find("改过 2 个挂点") ~= nil, "左栏写「照『对地』改过 2 个挂点」（" .. tostring(stLine and stLine.Text) .. "）")
 local f75 = T.findNamed("Fuel75")
 check(f75 ~= nil, "内油能选 75%")
-if f75 then T.press(f75) R.run(0.2) end
--- 保存之前把机库镜头挪到一个特写：存了新挂载以后（同一架换模型）镜头不该跳回全景
-R.as("client", function() S.focus({ dist = 70, t = 0 }) end)
-R.run(0.5)
-local save = T.findNamed("HangarSave")
-check(save ~= nil and save.Text == "保存", "右下是「保存」（" .. tostring(save and save.Text) .. "）")
-if save then T.press(save) end
+if f75 then T.press(f75) end
 R.run(1.5)
 local sv = P.data.tree.load and P.data.tree.load[KEY]
 check(sv ~= nil and sv.p == "ag" and same(sv.l, want) and sv.f == 0.75,
-  string.format("服务器存档记着：照「%s」改的、%s、内油 %s", tostring(sv and sv.p), sig(sv and sv.l), tostring(sv and sv.f)))
+  string.format("改动即时存：服务器存档记着照「%s」改的、%s、内油 %s", tostring(sv and sv.p), sig(sv and sv.l), tostring(sv and sv.f)))
 local ct = C.treeState().load and C.treeState().load[KEY]
 check(ct ~= nil and same(ct.l, want) and ct.f == 0.75 and ct.p == "ag", "客户端的 Tree 跟着")
-check(not (C.hangarOpen and C.hangarOpen()), "编辑器关了")
-check(C.stageFree(T.V3(640, 360, 0)), "关了以后：点空白处照常转车")
-check(#T.texts("挂载已保存") > 0, "提示「挂载已保存」")
-check(C.hangarShown() == KEY .. "|" .. sig(want), "机库里摆的飞机换成存的那套（" .. tostring(C.hangarShown()) .. "）")
-check(S.model() ~= nil and math.abs(S.viewState().dist - 70) < 1e-6, string.format("同一架只换模型：镜头不跳回全景（%.1f）", S.viewState().dist))
+check(#T.texts("挂载已保存") == 0, "即时存不弹「挂载已保存」")
+check(C.hangarShown() == KEY .. "|" .. sig(want), "机库里摆的飞机就是改过的这套（" .. tostring(C.hangarShown()) .. "）")
+-- Esc：先退回全景，再按一次回机库（机库那几层滑回来）
+T.key(Enum.KeyCode.Escape, true)
+T.key(Enum.KeyCode.Escape, false)
+R.run(0.8)
+check(C.workshopOpen() and st.sel == nil and S.viewState().at ~= nil, "Esc 一下：退回全景（还在整备里）")
+T.key(Enum.KeyCode.Escape, true)
+T.key(Enum.KeyCode.Escape, false)
+R.run(1.2)
+check(not C.workshopOpen() and H0.wsOn == nil and H0.mid.Visible and H0.row.Visible and H0.match.Visible, "Esc 再一下：回机库，收起的几层都回来了")
+check(T.findNamed("HangarTest") ~= nil and T.findNamed("Line_" .. KEY) ~= nil, "阵容卡、试驾键能点了")
+check(C.stageFree(T.V3(640, 360, 0)), "回机库以后：点空白处照常转车")
+check(C.hangarShown() == KEY .. "|" .. sig(want), "回机库：摆的还是存的那套")
 -- 资料卡：写当前挂载
 R.as("client", function() C.openInfo(it) end)
 R.run(0.5)
@@ -342,6 +361,227 @@ local L20 = FM.loadout(d20, AD.presetLoad(d20, "aa"), 1, { AD = AD })
 check(L20.ext > 0 and L20.dS == 0, string.format("歼-20 弹舱里挂的不算阻力（外挂重 %.0f kg、阻力面积 %.3f）", L20.ext, L20.dS))
 local Lz = FM.loadout(d, full, 1, { key = KEY })
 check(Lz.m == Lf.m and Lz.dCD0 == Lf.dCD0, "不传 AirDefs：FlightModel 自己找，结果一样")
+
+print("⑦ 整备的挂载页：挂点卡（对称 / 不对称）、选项 = 可挂的 + 不挂、一对一起换、性能数 = 飞行物理、外挂越多极速越低、悬停预览、我的方案、Esc 还原、截图")
+T.remoteAs(me, "Drive", { op = "exit", hangar = true })
+T.runUntil(function() return not P.alive end, 15)
+T.runUntil(function() return T.findNamed("Line_" .. KEY) ~= nil end, 15)
+R.run(1)
+local lc = T.findNamed("Line_" .. KEY)
+if lc then T.press(lc) R.run(0.5) end
+local inPick = C.S ~= nil and C.S.pick == true
+local goB = T.findNamed("HangarGo")
+local goParent0 = goB and goB.Parent and goB.Parent.Name
+local ab7 = T.findNamed("AmmoBtn")
+if ab7 then T.press(ab7) R.run(1.2) end
+local W7, st7 = C.workshopState()
+check(W7.on and st7 ~= nil and st7.key == KEY, "局内选车的机库里也打开整备（" .. tostring(st7 and st7.key) .. (inPick and "，局内" or "") .. "）")
+goB = T.findNamed("HangarGo")
+check(goB ~= nil and goB.Parent ~= nil and goB.Parent.Name == "TopRow", "整备开着：主按钮在顶栏正中（原来在 " .. tostring(goParent0) .. "；右下是整备的底部条）")
+-- 挂点卡：对称时同名的一对一张、不对称时一个挂点一张，从左翼尖排到右翼尖
+local uniq, nU = {}, 0
+for _, s0 in ipairs(d.st) do if not uniq[s0.name] then uniq[s0.name] = true nU = nU + 1 end end
+local function visCards()
+  local n = 0
+  for k = 1, 40 do if T.findNamed("Station_" .. k) then n = n + 1 end end
+  return n
+end
+check(#st7.cards == nU and visCards() == nU, string.format("左右对称：%d 个挂点合成 %d 张卡（界面上 %d 张）", #d.st, nU, visCards()))
+local offB = T.findNamed("SymOff")
+if offB then T.press(offB) R.run(0.4) end
+check(not st7.sym and #st7.cards == #d.st and visCards() == #d.st, string.format("不对称：一个挂点一张（%d 张）", visCards()))
+local ordered = true
+for k = 2, #st7.cards do if d.st[st7.cards[k].st[1]].pos.X < d.st[st7.cards[k - 1].st[1]].pos.X - 1e-6 then ordered = false end end
+check(ordered and d.st[st7.cards[1].st[1]].pos.X < 0 and d.st[st7.cards[#st7.cards].st[1]].pos.X > 0, "从左翼尖排到右翼尖")
+local num1 = T.findNamed("Station_1") and T.findNamed("Station_1"):FindFirstChild("Num")
+check(num1 ~= nil and num1.Text == "1", "左翼尖那个是 1 号（" .. tostring(num1 and num1.Text) .. "）")
+local onB = T.findNamed("SymOn")
+if onB then T.press(onB) R.run(0.4) end
+check(st7.sym and #st7.cards == nU, "再开对称：合回去")
+-- 每一张卡的选项 = 这个挂点能挂的 + 「不挂」
+local allOk, badT = true, ""
+for k, g in ipairs(st7.cards) do
+  local sc7 = T.findNamed("Station_" .. k)
+  if sc7 then T.press(sc7) R.run(0.3) end
+  local s0 = d.st[g.st[1]]
+  local n, total = 0, 0
+  for _, w in ipairs(s0.opts) do if T.findNamed("Opt_" .. w) then n = n + 1 end end
+  for _, x in ipairs(me.PlayerGui:GetDescendants()) do
+    if x.ClassName == "TextButton" and x.Name:match("^Opt_") and T.visible(x) then total = total + 1 end
+  end
+  if not (st7.sel == k and n == #s0.opts and T.findNamed("Opt_none") ~= nil and total == #s0.opts + 1) then allOk = false badT = badT .. g.name .. " " end
+end
+check(allOk, "每张卡的选项 = 能挂的 + 「不挂」" .. ((badT ~= "") and ("（不对：" .. badT .. "）") or ""))
+-- 左右一对一起换（外侧那一对）
+local oc = nil
+for k, g in ipairs(st7.cards) do if g.name == "outer" then oc = k end end
+local occ = oc and T.findNamed("Station_" .. oc)
+if occ then T.press(occ) R.run(0.6) end
+local g7 = st7.cards[oc]
+local cur7 = st7.load[g7.st[1]]
+local pick7 = nil
+for _, w in ipairs(d.st[g7.st[1]].opts) do if w ~= cur7 then pick7 = w end end
+local po = pick7 and T.findNamed("Opt_" .. pick7)
+if po then T.press(po) R.run(1.0) end
+check(pick7 ~= nil and st7.load[g7.st[1]] == pick7 and st7.load[g7.st[2]] == pick7, "外侧一对一起换成 " .. tostring(pick7))
+local sv7 = P.data.tree.load[KEY]
+check(sv7 ~= nil and sv7.l[g7.st[1]] == pick7 and sv7.l[g7.st[2]] == pick7, "存档跟着（即时存）")
+-- 性能数 = 飞行物理（FlightModel.loadout / perf）
+local function int(n)
+  n = math.floor((n or 0) + 0.5)
+  local s1 = tostring(math.abs(n))
+  local o = s1:reverse():gsub("(%d%d%d)", "%1,"):reverse()
+  if o:sub(1, 1) == "," then o = o:sub(2) end
+  return ((n < 0) and "−" or "") .. o
+end
+local function uiVal(name, child)
+  for _, x in ipairs(me.PlayerGui:GetDescendants()) do
+    if x.Name == name and T.visible(x) then
+      local v = x:FindFirstChild(child or "Val")
+      return v and v.Text
+    end
+  end
+end
+local Dfm = FM.get(d.id, KEY)
+R.run(0.5)
+local Lc = FM.loadout(d, st7.load, st7.fuel, { key = KEY, AD = AD })
+local Pc = FM.perf(Dfm, Lc.m, Lc.dCD0)
+local empty7 = {}
+for i = 1, #d.st do empty7[i] = false end
+local Le7 = FM.loadout(d, empty7, st7.fuel, { key = KEY, AD = AD })
+local Pe7 = FM.perf(Dfm, Le7.m, Le7.dCD0)
+check(uiVal("Cmp_vAB") == int(Pc.vAB * 3.6) and uiVal("Cmp_vAB", "Base") == int(Pe7.vAB * 3.6),
+  string.format("极速（加力）%s → %s km/h = 飞行物理的 %s → %s", tostring(uiVal("Cmp_vAB", "Base")), tostring(uiVal("Cmp_vAB")), int(Pe7.vAB * 3.6), int(Pc.vAB * 3.6)))
+check(uiVal("Cmp_tw") == string.format("%.2f", Pc.tw) and uiVal("Cmp_str") == string.format("%.1f", Pc.str * 180 / math.pi) and uiVal("Cmp_roc") == int(Pc.roc)
+  and uiVal("Cmp_wl") == int(Pc.wl), string.format("推重比 %s、持续转弯 %s °/s、爬升 %s m/s、翼载 %s 和飞行物理一样", tostring(uiVal("Cmp_tw")), tostring(uiVal("Cmp_str")),
+  tostring(uiVal("Cmp_roc")), tostring(uiVal("Cmp_wl"))))
+check(uiVal("Stat_ext") == int(Lc.ext) .. " kg" and uiVal("Stat_mass") == int(Lc.m) .. " kg" and uiVal("Stat_drag") == "+" .. string.format("%.4f", Lc.dCD0),
+  string.format("外挂 %s、起飞重量 %s、阻力 %s（FlightModel.loadout）", tostring(uiVal("Stat_ext")), tostring(uiVal("Stat_mass")), tostring(uiVal("Stat_drag"))))
+-- 外挂越多极速越低：一张张卡先全清空，再一张张挂上最重的那种，每挂一张界面上的极速都往下掉
+local function choose(k, wid)
+  local sc7 = T.findNamed("Station_" .. k)
+  if sc7 and st7.sel ~= k then T.press(sc7) R.run(0.3) end
+  local b = T.findNamed("Opt_" .. (wid or "none"))
+  if b then T.press(b) R.run(0.4) end
+end
+local function vab()
+  local t = uiVal("Cmp_vAB")
+  return t and tonumber((t:gsub(",", "")))
+end
+for k = 1, #st7.cards do choose(k, nil) end
+R.run(0.4)
+local seq = { vab() }
+local okSeq = seq[1] ~= nil and uiVal("Cmp_vAB") == uiVal("Cmp_vAB", "Base")
+for k, g in ipairs(st7.cards) do
+  local best, bm = nil, -1
+  for _, w in ipairs(d.st[g.st[1]].opts) do
+    local Wd = AD.W[w]
+    if Wd and Wd.kind ~= "tank" then
+      local mm = FM.storeMass(Wd, AD.M) * AD.count(d.st[g.st[1]], w)
+      if mm > bm then best, bm = w, mm end
+    end
+  end
+  choose(k, best)
+  R.run(0.3)
+  local v = vab()
+  if not (v and seq[#seq] and v < seq[#seq]) then okSeq = false end
+  table.insert(seq, v or -1)
+end
+local seqT = {}
+for i, v in ipairs(seq) do seqT[i] = tostring(v) end
+check(okSeq, "外挂越多极速越低（加力，km/h）：" .. table.concat(seqT, " → "))
+-- 悬停预览：右栏马上换成琥珀色的预览值、3D 停一下才换上；离开还原
+local mc = nil
+for k, g in ipairs(st7.cards) do if g.name == "mid" then mc = k end end
+local mcc = mc and T.findNamed("Station_" .. mc)
+if mcc and st7.sel ~= mc then T.press(mcc) R.run(0.6) end
+local curM = st7.load[st7.cards[mc].st[1]]
+local hw = nil
+for _, w in ipairs(d.st[st7.cards[mc].st[1]].opts) do if w ~= curM then hw = w end end
+local hb = hw and T.findNamed("Opt_" .. hw)
+local sig7 = KEY .. "|" .. sig(st7.load)
+if hb then R.as("client", function() hb.MouseEnter:Fire(200, 300) end) end
+R.run(0.05)
+local valColor = nil
+for _, x in ipairs(me.PlayerGui:GetDescendants()) do if x.Name == "Cmp_vAB" and T.visible(x) then valColor = x.Val.TextColor3 end end
+check(st7.hoverOpt == hw and valColor == C.Theme.C.WARN and C.hangarShown() == sig7, "悬停 " .. tostring(hw) .. "：右栏马上显示预览（琥珀），3D 还没换（停一下）")
+R.run(0.3)
+local pv7 = {}
+for i = 1, #d.st do pv7[i] = st7.load[i] end
+for _, j in ipairs(st7.cards[mc].st) do pv7[j] = hw end
+check(C.hangarShown() == KEY .. "|" .. sig(pv7) and same(st7.load, P.data.tree.load[KEY].l), "停 0.12 秒以后 3D 换上预览；预览不进存档")
+local detail = nil
+for _, x in ipairs(me.PlayerGui:GetDescendants()) do if x.Name == "WsDetail" then detail = x end end
+check(detail ~= nil and detail.Visible, "旁边浮出这枚弹的资料卡")
+if hb then R.as("client", function() hb.MouseLeave:Fire(200, 300) end) end
+R.run(0.3)
+check(st7.hoverOpt == nil and C.hangarShown() == sig7 and detail ~= nil and not detail.Visible, "离开：3D 还原、资料卡收起")
+-- 我的方案：空着的点一下存现在这一套；换成别的再点回来
+local mine1 = T.findNamed("Mine_1")
+if mine1 then T.press(mine1) R.run(0.8) end
+local set1 = P.data.tree.sets and P.data.tree.sets[KEY] and P.data.tree.sets[KEY]["1"]
+check(set1 ~= nil and same(set1.l, st7.load) and set1.f == st7.fuel and st7.mine == 1, "「我的 1」存了现在这一套（存档 tree.sets）")
+local saved1 = {}
+for i = 1, #d.st do saved1[i] = st7.load[i] end
+local paa = T.findNamed("Preset_aa")
+if paa then T.press(paa) R.run(0.6) end
+check(st7.pk == "aa" and same(st7.load, AD.presetLoad(d, "aa")), "换成「空战」")
+mine1 = T.findNamed("Mine_1")
+if mine1 then T.press(mine1) R.run(0.8) end
+check(same(st7.load, saved1) and st7.mine == 1 and st7.pk == nil and same(P.data.tree.load[KEY].l, saved1), "点「我的 1」：换回存的那套（也存进挂载）")
+-- 干扰弹没研究：点了去改装页；涂装页飞机先不开
+local md7 = P.data.tree.mods and P.data.tree.mods[KEY]
+if not (md7 and md7.done and md7.done.flares) then
+  local fc = T.findNamed("FlareCard")
+  if fc then T.press(fc) R.run(0.4) end
+  check(C.modsGui.Visible and W7.tab == "mods", "干扰弹没研究：点干扰弹卡打开改装页")
+  T.key(Enum.KeyCode.Escape, true)
+  T.key(Enum.KeyCode.Escape, false)
+  R.run(0.4)
+  check(not C.modsGui.Visible and W7.tab == "arms" and C.workshopOpen(), "Esc：先关改装页，回到挂载页")
+end
+local tsk = T.findNamed("Tab_skin")
+if tsk then T.press(tsk) R.run(0.3) end
+check(W7.tab == "arms" and tsk ~= nil and tsk:GetAttribute("Off") == true, "飞机的涂装页先不开（页签淡着）")
+-- WsKit 的拖动条（下一轮的弹药页用）：加减、每 5 一道刻度、别的弹占掉的那一截拖不进去
+local Kit = C.wsKit
+local holder = R.Instance.new("Frame")
+local got, sl = nil, nil
+R.as("client", function()
+  sl = Kit.slider(holder, nil, { w = 172, min = 0, max = 40, step = 1, tick = 5, value = 10, onChange = function(v) got = v end })
+end)
+local plus = sl and sl.f:FindFirstChild("Plus")
+if plus then T.press(plus) end
+local nTick = sl and #sl.f:FindFirstChild("Ticks"):GetChildren() or 0
+R.as("client", function() sl.setLock(35) end)
+local afterLock = sl and sl.get()
+local minus = sl and sl.f:FindFirstChild("Minus")
+if minus then T.press(minus) end
+check(got == 4 and afterLock == 5 and nTick == 9 and sl.f:FindFirstChild("Count").Text == "4",
+  string.format("拖动条：10 → 加一 11 → 别的弹占掉 35 发只剩 5 → 减一 4（刻度 %d 道）", nTick))
+-- 截图：uidump 写得出整备这一屏（tools/mock/loadshots.lua 用的同一个）
+local dumpUI = dofile(MOCK_DIR .. "/uidump.lua")
+local tmp = os.tmpname()
+local items7 = dumpUI(T, me, tmp, true)
+local has = {}
+for _, it7 in ipairs(items7) do has[it7.name] = true end
+local fh = io.open(tmp, "r")
+local size7 = fh and #fh:read("a") or 0
+if fh then fh:close() end
+os.remove(tmp)
+check(has.WsLeft and has.WsRight and has.WsBottom and has.Station_1 and has.Opt_none and has.Cmp_vAB and size7 > 1000, "截图：整备这一屏写得出来（" .. size7 .. " 字节）")
+-- Esc 两下：回机库，原样还原
+T.key(Enum.KeyCode.Escape, true)
+T.key(Enum.KeyCode.Escape, false)
+R.run(0.4)
+T.key(Enum.KeyCode.Escape, true)
+T.key(Enum.KeyCode.Escape, false)
+R.run(1.2)
+local H7 = C.hangarParts
+goB = T.findNamed("HangarGo")
+check(not C.workshopOpen() and H7.wsOn == nil and H7.row.Visible and H7.mid.Visible and goB ~= nil and goB.Parent.Name == goParent0,
+  "Esc 回机库：阵容卡、乘员、主按钮都回到原来的地方（" .. tostring(goB and goB.Parent.Name) .. "）")
+check(C.hangarShown() == KEY .. "|" .. sig(P.data.tree.load[KEY].l) and C.hangarStage.highlightsUsed() == 0, "机库里摆的是存的那套，借的高亮都还了")
 
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | ", 1, math.min(#R.errors, 3)))
 T.summary()

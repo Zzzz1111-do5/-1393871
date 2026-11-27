@@ -4,6 +4,11 @@ return function(T, me, out, quiet)
 local R, V3, Enum = T.R, T.V3, T.Enum
 local print = quiet and function() end or print
 local VW, VH, INSET = 1280, 720, 36
+do   -- 画面多大照镜头的 ViewportSize（测试可以改：R.viewSize，手机横屏的截图）；hud_render.py 用 WH=宽x高 画同样大
+  local cam0 = R.services.Workspace and R.services.Workspace.CurrentCamera
+  local vs0 = cam0 and cam0.ViewportSize
+  if vs0 then VW, VH = vs0.X, vs0.Y end
+end
 local items, perGui = {}, {}
 local function c3(c) return c and { math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5) } or nil end
 local function isGui(o) return R.base.IsA(o, "GuiObject") end

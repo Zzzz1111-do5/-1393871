@@ -1834,6 +1834,108 @@ add("veh.m1a1base", "M1A1 艾布拉姆斯", "M1A1 Abrams")
 add("vw.gun120a1", "120 毫米炮（M256）", "120 mm M256")
 add("vw.m242m919", "25 毫米链式炮（M242，M919 贫铀弹）", "25 mm M242 Bushmaster (M919 DU)")
 
+-- 整备（Workshop.lua 外壳、WsArms.lua 挂载页；用户 11-27「整个给载具配置武器的系统 做的很粗糙 我需要非常艺术经验的效果 参考战雷」）
+add("ws.back", "机库", "Hangar")
+add("ws.tab.arms", "挂载", "Loadout")
+add("ws.tab.ammo", "弹药", "Ammo")
+add("ws.tab.mods", "改装", "Mods")
+add("ws.tab.crew", "乘员", "Crew")
+add("ws.tab.skin", "涂装", "Camo")
+add("ws.tab.info", "资料", "Stats")
+add("ws.sub", "{1} · {2} 级 · BR {3}", "{1} · Rank {2} · BR {3}")
+add("ws.autosave", "改动自动保存", "Changes save automatically")
+add("ws.hint", "拖动转 · 滚轮缩放 · Esc 返回", "Drag to orbit · Wheel to zoom · Esc to go back")
+add("ws.skinAir", "飞机暂时不能换涂装", "Aircraft camouflage isn't available yet")
+add("ws.schemes", "方案", "PRESETS")
+add("ws.mine", "我的方案", "MY LOADOUTS")
+add("ws.mineN", "我的 {1}", "Custom {1}")
+add("ws.mineEmpty", "＋ 存当前", "+ Save")
+add("ws.mineSave", "存", "Save")
+add("ws.mineSaved", "已存为「我的 {1}」", "Saved as Custom {1}")
+add("ws.mineModded", "我的 {1} · 改过", "Custom {1} · modified")
+add("ws.presetModded", "照「{1}」改过 {2} 个挂点", "{1} · {2} stations changed")
+add("ws.presetExact", "{1} · 预设", "{1} · preset")
+add("ws.custom", "自己配的", "Custom loadout")
+add("ws.modTag", "已改", "MOD")
+add("ws.station", "挂点 {1}", "Station {1}")
+add("ws.pairNote", "左右一对", "pair")
+add("ws.pick", "点挂点卡或机身编号换武器 · 停在武器上预览", "Click a station card or number · hover a weapon to preview")
+add("ws.pickTouch", "点下面的挂点卡换武器", "Tap a station card to change it")
+add("ws.manifest", "这一套挂的", "FITTED")
+add("ws.manifestEmpty", "什么都没挂", "Nothing fitted")
+add("ws.none", "不挂", "Empty")
+add("ws.noneSub", "空着：轻、阻力小", "Leave it empty: lighter, less drag")
+add("ws.equipped", "已装", "FITTED")
+add("ws.empty", "空", "Empty")
+add("ws.mixed", "两边不一样", "Asymmetric")
+add("ws.bay", "弹舱", "BAY")
+add("ws.tankAdd", "+{1}% 油", "+{1}% fuel")
+add("ws.tubes", "{1} 发", "{1} rkts")
+add("ws.lockS", "锁定 {1} s", "lock {1} s")
+add("ws.rounds", "{1} 发", "{1} rds")
+add("ws.gun", "航炮", "CANNON")
+add("ws.flares", "干扰弹", "FLARES")
+add("ws.flaresLocked", "改装 · 干扰弹", "Mod · Flares")
+add("ws.flaresHow", "点这里去研究", "Click to research")
+add("ws.flaresOn", "热焰弹 · 自动配", "Fitted automatically")
+add("ws.sym", "左右对称", "SYMMETRIC")
+add("ws.on", "开", "ON")
+add("ws.off", "关", "OFF")
+add("ws.symNote", "一对一起换", "Pairs change together")
+add("ws.noStations", "这一型没有挂点", "No hardpoints")
+for k, v in pairs({ tip = { "翼尖", "Wingtip" }, outer = { "外侧", "Outboard" }, mid = { "中段", "Mid-wing" }, inner = { "内侧", "Inboard" },
+  wing = { "翼下", "Underwing" }, glove = { "翼套", "Glove" }, ctr = { "机腹中线", "Centerline" }, body = { "机身", "Fuselage" },
+  duct = { "进气道下", "Intake" }, stub = { "短翼", "Stub wing" }, tun = { "机腹通道", "Tunnel" }, fus = { "机身", "Fuselage" },
+  bay = { "主弹舱", "Main bay" }, bayS = { "侧弹舱", "Side bay" }, gen = { "挂点", "Station" } }) do add("ws.pos." .. k, v[1], v[2]) end
+add("ws.thisSet", "这一套", "THIS LOADOUT")
+add("ws.ext", "外挂重量", "Stores weight")
+add("ws.drag", "阻力 ΔCD0", "Drag ΔCD0")
+add("ws.mass", "起飞重量", "Takeoff weight")
+add("ws.heavy", "相对重量", "Relative weight")
+add("ws.heavyVal", "{1}%", "{1}%")
+add("ws.perf", "性能 · 对比空挂", "PERFORMANCE · VS. CLEAN")
+add("ws.perfHeli", "性能 · 对比空挂", "PERFORMANCE · VS. CLEAN")
+add("ws.vAB", "极速 · 加力 km/h", "Top speed · AB km/h")
+add("ws.vMil", "极速 · 军推 km/h", "Top speed · mil km/h")
+add("ws.tw", "推重比", "Thrust / weight")
+add("ws.str", "持续转弯 °/s", "Sustained turn °/s")
+add("ws.roc", "最大爬升 m/s", "Max climb m/s")
+add("ws.wl", "翼载 kg/m²", "Wing loading kg/m²")
+add("ws.vMax", "极速 km/h", "Top speed km/h")
+add("ws.endurRow", "巡航续航", "Cruise endurance")
+add("ws.minutes", "{1} 分钟", "{1} min")
+add("ws.perfNote", "1000 米 · 同一套飞行物理 · 不含改装", "1,000 m · same flight model · no mods")
+add("ws.heliNote", "直升机：只列重量、续航、极速", "Helicopters: weight, endurance, top speed")
+add("ws.fuel", "内油", "INTERNAL FUEL")
+add("ws.endur", "巡航 {1} 分钟", "Cruise {1} min")
+add("ws.endurTank", "副油箱 +{1} 分钟", "tanks +{1} min")
+add("ws.fuelKg", "内油 {1} kg · 副油箱 {2} kg", "Internal {1} kg · tanks {2} kg")
+add("ws.heavyNote", "重量 {1}%（比一半内油、不挂副油箱）", "Weight {1}% (vs. half fuel, no tanks)")
+for k, v in pairs({ range = { "射程", "Range" }, speed = { "速度", "Speed" }, dmg = { "威力", "Damage" }, lock = { "锁定", "Lock" },
+  radius = { "杀伤半径", "Blast radius" }, mass = { "重量", "Weight" }, count = { "每个挂点", "Per station" }, tubes = { "发数", "Rockets" },
+  fuel = { "加油", "Fuel" }, drag = { "极速", "Top speed" }, extra = { "多飞", "Extra time" }, shell = { "空壳", "Empty shell" } }) do add("ws.d." .. k, v[1], v[2]) end
+for k, v in pairs({ inf = { "步兵", "Inf" }, light = { "轻甲", "Light" }, armor = { "重甲", "Armor" }, air = { "飞机", "Air" }, ship = { "舰艇", "Ship" },
+  fort = { "工事", "Fort" } }) do add("ws.vs." .. k, v[1], v[2]) end
+-- 武器卡上的短类别、短导引（长的是 wcat.* / guide.*）
+for k, v in pairs({ aam = { "空空", "AAM" }, agm = { "空地", "AGM" }, bomb = { "炸弹", "Bomb" }, gbomb = { "制导炸弹", "Guided bomb" },
+  rkt = { "火箭巢", "Rocket pod" }, tank = { "副油箱", "Drop tank" }, arm = { "反辐射", "Anti-radiation" }, gun = { "航炮", "Cannon" }, sam = { "地空", "SAM" } }) do add("wcs." .. k, v[1], v[2]) end
+for k, v in pairs({ ir = { "红外", "IR" }, radar = { "雷达", "Radar" }, laser = { "激光", "Laser" }, gps = { "卫星", "GPS" }, tv = { "电视", "TV" },
+  arm = { "被动雷达", "Passive radar" }, cmd = { "指令", "Command" }, none = { "无制导", "Unguided" }, gun = { "—", "—" } }) do add("gds." .. k, v[1], v[2]) end
+-- 武器的短名（整备的卡片、3D 标签上；全名是 aw.*）
+for k, v in pairs({ gsh30 = { "GSh-30-1", "GSh-30-1" }, m61 = { "M61A2", "M61A2" }, gau22 = { "GAU-22/A", "GAU-22/A" }, gsh23 = { "23-3 型", "Type 23-3" },
+  gsh302 = { "GSh-30-2", "GSh-30-2" }, nr30 = { "30-1 型", "Type 30-1" }, gau8 = { "GAU-8/A", "GAU-8/A" }, m230 = { "M230", "M230" }, m134 = { "M134", "M134" },
+  pl2 = { "霹雳-2", "PL-2" }, pl10 = { "霹雳-10", "PL-10" }, pl15 = { "霹雳-15", "PL-15" }, pl12 = { "霹雳-12", "PL-12" }, aim9x = { "AIM-9X", "AIM-9X" },
+  aim120 = { "AIM-120", "AIM-120" }, ty90 = { "天燕-90", "TY-90" }, aim92 = { "毒刺", "Stinger" }, aim54 = { "AIM-54", "AIM-54" }, r73 = { "R-73", "R-73" },
+  r74 = { "R-74M2", "R-74M2" }, r27r = { "R-27R", "R-27R" }, k77m = { "K-77M", "K-77M" }, r27er = { "R-27ER", "R-27ER" }, r77 = { "R-77-1", "R-77-1" },
+  r60 = { "R-60M", "R-60M" }, kh29 = { "Kh-29L", "Kh-29L" }, akd10 = { "AKD-10", "AKD-10" }, agm114 = { "地狱火", "Hellfire" }, kd88 = { "KD-88", "KD-88" },
+  agm65 = { "小牛", "Maverick" }, hn1 = { "惊雷-1", "HN-1" }, ls6 = { "雷石-6", "LS-6" }, gbu12 = { "GBU-12", "GBU-12" }, gbu31 = { "GBU-31", "GBU-31" },
+  gbu32 = { "GBU-32", "GBU-32" }, gbu38 = { "GBU-38", "GBU-38" }, gbu39 = { "GBU-39", "GBU-39" }, lt2 = { "雷霆-2", "LT-2" }, mk82 = { "Mk 82", "Mk 82" },
+  b250 = { "250 公斤", "250 kg" }, hydra = { "九头蛇", "Hydra 70" }, fl90 = { "90 毫米", "90 mm" }, s8 = { "S-8", "S-8" }, yj91 = { "鹰击-91", "YJ-91" },
+  yj83k = { "鹰击-83K", "YJ-83K" }, agm88 = { "AGM-88", "AGM-88" }, tk800 = { "800 升", "800 L tank" }, tk370 = { "370 加仑", "370 gal tank" },
+  tkh = { "外挂油箱", "Aux tank" }, tk230 = { "230 加仑", "230 gal tank" }, a42 = { "2A42", "2A42" }, yakb = { "YakB-12.7", "YakB-12.7" }, m197 = { "M197", "M197" },
+  ataka = { "攻击", "Ataka" }, shturm = { "突击", "Shturm" }, vikhr = { "旋风", "Vikhr" }, hot3 = { "HOT 3", "HOT 3" }, tow = { "陶式", "TOW" },
+  igla = { "针-V", "Igla-V" }, type91 = { "91 式", "Type 91" } }) do add("aws." .. k, v[1], v[2]) end
+
 -- 科技树每一辆的名字（TechTree.lua）：tree.<键>——名牌、击毁提示、驾驶界面写科技树里的名字（借来的型号也写自己的名字）
 do
   local ok, TT = pcall(function() return require(script.Parent:WaitForChild("TechTree", 3)) end)

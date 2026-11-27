@@ -4,7 +4,7 @@
 --   选中的弹发白光；右下角是这枚弹的资料（类别、导引方式、射程、数量、锁定时间）；上面一排是预设方案（Preset_<键>，
 --   选中的白底；照这套改过挂点的后面写「（已改）」）；底部「返回」「保存」
 --   G.openHangar(id, load, onSave, presetKey, opts)：load 是每个挂点的武器（同 AirDefs.presetLoad 的格式），保存时 onSave(新的 load, 照哪套预设改的, 内油)
---   用的地方：老的步兵召唤台（Depot.lua）、科技树机库顶栏的弹药键（TechUI.lua：选中的是飞机 / 直升机时；整备的挂载页做好以前先用它）
+--   用的地方：老的步兵召唤台（Depot.lua）；科技树机库顶栏的弹药键现在打开整备的挂载页（Workshop.lua / WsArms.lua），整备没搭起来时才退回这里
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local UIS = game:GetService("UserInputService")

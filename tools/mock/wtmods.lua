@@ -50,6 +50,12 @@ me.Team = G.TEAM.atk
 me.Neutral = false
 me:SetAttribute("Side", "atk")
 G.pushOne(P)
+-- 11-27 拆开重叠的版本以后 96 式不再是白送的起步车（中国的起步坦克是 59 式）：开战之前先用兑换码全解锁、把 96 式放进阵容——
+--   原来直接出 96 式，服务器不收（没买）；开战以后再换阵容也不行（这一局的战斗等级开战时按阵容定住，96 式超出）
+T.act("redeem", "Zhengyongshuo")
+R.run(1)   -- 兑换完（买下）了再排阵容：没买下的服务器不收
+T.act("treeLineup", "cn", { "cn_96" })
+R.run(1)
 T.leaveMenu()
 T.runUntil(function() return G.round.phase == "battle" end, 200, 1 / 10)
 R.run(1)
@@ -59,7 +65,8 @@ local function deploy(key)
   return P.vehicle
 end
 local e = deploy("cn_96")
-check(e ~= nil and e.wtFx ~= nil, "出击了，车上记着改装效果")
+check(e ~= nil and e.wtFx ~= nil, "出击了，车上记着改装效果" .. (e and "" or ("（没出来：" .. table.concat(msgs, " ") .. "；阶段 " .. tostring(G.round.phase)
+  .. "、阵容 " .. table.concat(G.treeLineup(P), ",") .. "）")))
 if e then
   local m = e.model
   check(m:GetAttribute("ModSpd") == 1 and m:GetAttribute("ModAmmo") == 1, "原厂：ModSpd 1、ModAmmo 1")
