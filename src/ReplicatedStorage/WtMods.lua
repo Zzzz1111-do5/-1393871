@@ -61,6 +61,9 @@ M.FCS = {
 }
 -- 原厂火控是哪一代：按年份（1965 年以前没有火控计算机，1978 年以后激光 + 计算机，1992 年以后数字火控，2006 年以后猎歼式）；
 --   没有激光测距机的（豹 1、M60A1、BMP-1、T-64A）最多第一代；步战车没有猎歼式；没有坦克炮的（防空车、导弹车）nil
+-- 按年份推错的：T-64B（1976）已经是 1G21 激光测距 + 1V517 弹道计算机（1A33 火控），74 式（1975）有红宝石激光测距 + 模拟弹道计算机——都是激光一代（2），
+--   按年份会落到光学（1）（11-27 梳理瞄准镜时查出来的）
+M.GEN_FIX = { ru_t64b = 2, jp_type74 = 2 }
 function M.fcsGen(it)
   if not it or it.branch ~= "ground" then return nil end
   local d = VD.get(it.play or "")
@@ -70,6 +73,7 @@ function M.fcsGen(it)
   if not gun then return nil end
   local y = it.year or 2000
   local g = (y < 1965 and 0) or (y < 1978 and 1) or (y < 1992 and 2) or (y < 2006 and 3) or 4
+  if M.GEN_FIX[it.key or ""] then g = M.GEN_FIX[it.key] end   -- 按年份推不对的几型（真车资料）
   if d.lrf == false then g = math.min(g, 1) end
   if d.cat ~= "tank" then g = math.min(g, 3) end
   return g

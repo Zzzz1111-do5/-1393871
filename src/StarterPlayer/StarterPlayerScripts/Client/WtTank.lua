@@ -18,6 +18,7 @@ function WtTank.init(G)
   local W = require(RS:WaitForChild("WtDamage"))
   local VD = require(RS:WaitForChild("VehDefs"))
   local BAL = require(RS:WaitForChild("Ballistics"))
+  local TM = require(RS:WaitForChild("TankMods"))   -- 爆反种类（穿深指示扣爆反，同服务器 Era.lua）
   local V2, UD2 = Vector2.new, UDim2.new
   local CF = CFrame.new
   local RGB = Color3.fromRGB
@@ -116,6 +117,14 @@ function WtTank.init(G)
   end
   stroke(round(frame(AIM.root, UD2(0, 3, 0, 3), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), INK, 1, 0.5)
   AIM.dot = round(frame(AIM.root, UD2(0, 3, 0, 3), UD2(0.5, 0, 0.5, 0), WHITE, 0, V2(0.5, 0.5)))
+  -- 炮口被挡（用户 11-27「坦克准心对标战雷」）：炮塔转到位了，这一发却会打在前面的坡 / 墙上——圈里画一个叉（Drive gunImpact 判的）
+  AIM.block = frame(AIM.root, UD2(0, 20, 0, 20), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))
+  AIM.block.Name = "WtGunBlocked"
+  AIM.block.Visible = false
+  for _, r in ipairs({ 45, -45 }) do
+    local b = frame(AIM.block, UD2(0, 18, 0, 2), UD2(0.5, 0, 0.5, 0), PEN_NO, 0, V2(0.5, 0.5))
+    b.Rotation = r
+  end
   -- 装填弧：圈外一道大环（用户 11-25「坦克开炮后外面那个大环装弹是顺时针从红色变成绿色」）——从正上方顺时针走满，
   --   颜色跟着进度从红经琥珀变绿，装好那一下整圈绿亮一下再收；底下一道很淡的轨道
   AIM.track = stroke(round(frame(AIM.root, UD2(0, 48, 0, 48), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), INK, 3, 0.7)
@@ -159,6 +168,25 @@ function WtTank.init(G)
     local yaw = em:GetAttribute("Ty") or 0
     wq.ammo, wq.id, wq.kind = I.am or (BAL.GUN[I.wid or ""] or {})[1], I.wid, I.w and I.w.kind   -- 还没换过弹种：这门炮的默认弹
     local pen, a = W.pen(wq, (res.Position - I.o).Magnitude / W.M)
+    -- 打在还没炸的爆反块上（用户 11-27 挑刺：客户端穿深没算爆反，T-72B3、T-90M 会把破甲弹显示成能打穿）：按这辆车的爆反种类打折，同服务器 Era.lua G.eraShell
+    local v = G.views and G.views[em]
+    local era = v and v.M and v.M.era
+    if era then
+      local onBlock = false
+      for _, blk in ipairs(era) do
+        if not blk.blown then
+          for _, q in ipairs(blk.parts or {}) do if q == res.Instance then onBlock = true break end end
+        end
+        if onBlock then break end
+      end
+      if onBlock then
+        local L = TM.eraOf(d.id)
+        local kind = (L and TM.ERA[L.kind]) or TM.ERA.fy2
+        local amA = BAL.AMMO[wq.ammo or ""]
+        local mult = (amA and amA.ce) and kind.k or kind.ke
+        if mult and mult < 1 then pen = pen * ((a.t == "ce" and a.tandem) and math.max(mult, 0.85) or mult) end
+      end
+    end
     local zone, face, weak, n, _, dq = W.where(d, p, dv, yaw)
     local ang = math.deg(math.acos(math.clamp(-dq:Dot(n), -1, 1)))
     local eff = W.effective(W.armor(d, zone, face, a.t) * weak, ang, a.t)
@@ -231,7 +259,7 @@ function WtTank.init(G)
       b(-5, 17, 7, 3, RGB(60, 62, 58), 0)
       b(5, 18, 12, 12, RGB(200, 204, 204), 0.25, true)
       b(10, 24, 9, 9, RGB(220, 224, 224), 0.35, true)
-    elseif kind == "scout" then   -- 侦察：望远镜
+    elseif kind == "scout" or kind == "bino" then   -- 侦察、车长望远镜：望远镜
       for i = -1, 1, 2 do
         local f = b(i * 6, 6, 11, 11, WHITE, 1, true)
         stroke(f, RGB(214, 220, 222), 2.4, 0)
@@ -299,8 +327,9 @@ function WtTank.init(G)
     end
     local n = #slotDef
     for i, sd in ipairs(slotDef) do sd.num = (i <= 6) and i or nil end
-    table.insert(slotDef, { k = "smoke", icon = "smoke", keyTxt = "X" })
+    table.insert(slotDef, { k = "smoke", icon = "smoke", keyTxt = "M" })   -- 11-25 起烟幕是 M（X 是按住透视自己的车）
     table.insert(slotDef, { k = "fix", icon = "fix", keyTxt = "Y" })
+    table.insert(slotDef, { k = "bino", icon = "bino", keyTxt = "C" })   -- 车长望远镜（用户 11-27，Drive / GunSight）
     if d.cat == "apc" or d.cat == "aa" then table.insert(slotDef, { k = "scout", icon = "scout", keyTxt = "G" }) end   -- 轻型车才能侦察（战雷）
     if d.cat ~= "aa" then table.insert(slotDef, { k = "arty", icon = "arty", keyTxt = "K" }) end   -- 防空车不能叫火炮
     for i = #slots + 1, #slotDef do newSlot(i) end
@@ -375,6 +404,9 @@ function WtTank.init(G)
         cnt = bonus and ("+" .. bonus) or ""
       elseif sd.k == "scout" then
         cnt = ""
+      elseif sd.k == "bino" then   -- 望远镜开着：这格亮
+        cnt = ""
+        sel = st.binoc == true
       else
         if fire then ic = "ext" end
         if fix then fillK = fix end
@@ -605,7 +637,10 @@ function WtTank.init(G)
       AIM.root.Visible = on
       AIM.root.Position = UD2(0, sp.X, 0, sp.Y)
       local col = WHITE
-      if on and I.w then
+      AIM.block.Visible = on and I.blocked == true
+      if I.blocked then
+        col = PEN_NO   -- 炮口被挡：不算穿深，圈红
+      elseif on and I.w then
         local ok, c = pcall(penColor, st, I)
         if ok and c then col = c end
       end

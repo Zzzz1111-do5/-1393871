@@ -63,7 +63,12 @@ function Drive.init(G)
   sight.BackgroundTransparency = 1
   sight.Visible = false
   sight.Parent = gui
+  -- 用户 11-27（照战雷、发了截图）：全屏开镜、细黑线分划按密位随倍率缩放、表尺、方位刻度、炮管指向；车长望远镜——都在 GunSight.lua 画
+  --   （下面原来的圆形目镜、热像框、红色分划和镜下读数留着不显示：车里的辅助瞄准镜 Interior 还在用一部分）
+  local GS = require(script.Parent:WaitForChild("GunSight")).new(G, sight, gui)
+  G.gunSight = GS
   local eyepiece = Instance.new("Frame")   -- 圆：里面透明，外面一圈很粗的黑描边把四角盖住
+  eyepiece.Name = "Eyepiece"
   eyepiece.AnchorPoint = Vector2.new(0.5, 0.5)
   eyepiece.Position = UDim2.fromScale(0.5, 0.5)
   eyepiece.Size = UDim2.fromScale(0.9, 0.9)
@@ -321,13 +326,16 @@ function Drive.init(G)
   readyStroke.Thickness = 1.5
   readyStroke.Parent = readyBox
   -- 镜里的操作提示（左上角两行大字 + 底下一行）：V 切换光电模式（写着现在是哪种）、M 释放烟雾弹（还剩几发）、Shift 退出、Z 倍率
-  local hintBox = ui.frame(sight, UDim2.fromOffset(330, 66), UDim2.new(0, 28, 0, 96), RGB(0, 0, 0), 0.55)
+  local hintBox = ui.frame(sight, UDim2.fromOffset(440, 100), UDim2.new(0, 28, 0, 96), RGB(0, 0, 0), 0.55)   -- 11-27：底下那行键位说明也挪进来（底下是弹药栏、损伤图）
   hintBox.Name = "SightHints"
   local hintV = ui.label(hintBox, "", UDim2.new(1, -16, 0, 28), UDim2.fromOffset(10, 4), 18, RGB(235, 240, 235), Enum.Font.BuilderSansBold)
   local hintM = ui.label(hintBox, "", UDim2.new(1, -16, 0, 28), UDim2.fromOffset(10, 34), 18, RGB(235, 240, 235), Enum.Font.BuilderSansBold)
   hintV.Name, hintM.Name = "HintOptic", "HintSmoke"
   hintV.TextXAlignment, hintM.TextXAlignment = Enum.TextXAlignment.Left, Enum.TextXAlignment.Left
-  local hintLine = ui.label(sight, "", UDim2.fromOffset(640, 22), UDim2.new(0.5, 0, 1, -86), 15, RGB(220, 226, 220), Enum.Font.BuilderSans, Vector2.new(0.5, 0.5))
+  local hintLine = ui.label(hintBox, "", UDim2.new(1, -20, 0, 34), UDim2.fromOffset(10, 62), 13, RGB(205, 212, 205), Enum.Font.BuilderSans)
+  hintLine.TextWrapped = true
+  hintLine.TextXAlignment = Enum.TextXAlignment.Left
+  hintLine.TextYAlignment = Enum.TextYAlignment.Top
   hintLine.Name = "HintLine"
   local grain = Instance.new("Frame")
   grain.Size = UDim2.fromScale(1, 1)
@@ -415,23 +423,25 @@ function Drive.init(G)
     if G.opticsDead and G.opticsDead() and (m == "whot" or m == "bhot") then m = "day" end
     G.sightNv = m == "nv" or m == "ir"   -- 镜里的夜视档：昼夜（DayNight.lua）照夜视仪那样增亮（夜视仪开着镜时让出画面，增亮原来也跟着撤了）
     local thermal = m == "whot" or m == "bhot"
-    eyepiece.Visible = not thermal
-    screenBox.Visible = thermal
+    -- 用户 11-27（截图「这个样子」）：全屏，不套圆形目镜 / 热像屏幕框；分划换成 GunSight 画的细线（照真镜子、按密位）
+    eyepiece.Visible = false
+    screenBox.Visible = false
     -- 年代（WtOptics）：分划、热像的代、主动红外的探照灯圈
     local kit = st.kit or { ret = "dig", nv = "th2" }
     local ret = kit.ret or "dig"
-    reticle.Visible = (ret == "dig" or ret == "hk")
-    for k, f in pairs(RETS) do if f ~= reticle then f.Visible = (k == ret) end end
+    reticle.Visible = false
+    for _, f in pairs(RETS) do f.Visible = false end
+    GS.mode(m, kit, st)
     local NVd = OPT.NV[kit.nv or ""] or {}
     irBeam.Visible = m == "ir"
     scan.Visible = thermal and NVd.lines == true
     blur.Enabled = thermal and (NVd.blur or 0) > 0
     blur.Size = thermal and (NVd.blur or 0) or 0
-    -- 光学年代的分划没有数字读数（测距、弹种、待发、状态那一行是数字火控的）
+    -- 光学年代的分划没有数字读数（测距、弹种、待发、状态那一行是数字火控的）——11-27 起读数在 GunSight 画，这里原来那几行收起来
     local digital = (ret == "dig" or ret == "hk" or ret == "lrf")
     st.kitDigital = digital
-    ammoText.Visible, readyBox.Visible, fcsText.Visible = digital, digital, digital
-    if not digital then multiBar.Visible = false end
+    ammoText.Visible, readyBox.Visible, fcsText.Visible, rangeText.Visible, multiBar.Visible = false, false, false, false, false
+    modeText.Visible, zoomText.Visible = false, false   -- 光电模式写在左上的提示框里（[V] 切换光电模式：…）
     grain.Visible = m ~= "day"
     cc.Enabled = true
     local retCol = st.retNight and RET_DIM or RET   -- 红分划（钢铁猛兽那样）：分划照明旋钮白天亮红、夜间暗红
@@ -775,17 +785,36 @@ function Drive.init(G)
   aimParams.FilterType = Enum.RaycastFilterType.Exclude
 
   -- 进出瞄准镜、换光电模式、放烟幕：键盘、手机按钮共用
+  -- 车长望远镜（用户 11-27「再做一个望远镜」）：C 开关；开着时 Shift / 右键直接进炮长瞄准镜
+  local function setBinoc(on)
+    on = on and true or false
+    if not st or (st.binoc == true) == on then return end
+    if on and st.arty and G.artyOff then G.artyOff() st.arty = false end
+    st.binoc = on
+    GS.binoShow(on, st.kit)
+    if G.sfx then pcall(G.sfx, "uiClick") end
+  end
   local function setSight(on)
     if not st or st.sight == on then return end
+    if on and st.binoc then setBinoc(false) end
     st.sight = on
+    GS.reset()
     ownVisible(not on)
     applyMode()
+  end
+  G.driveBinoc = function(on)   -- 手机按钮、测试：不给参数就切换；返回现在开没开
+    if not st then return false end
+    if on == nil then on = not st.binoc end
+    if on and st.sight then setSight(false) end
+    setBinoc(on)
+    return st.binoc == true
   end
   -- 开镜 / 退镜：坐在车里炮长位上时先把头凑到目镜上 / 从目镜上抬起来（Interior.lua 演完再真的切），
   --   不管在哪都有目镜的光学效果（先黑，亮圆从边上滑进来、变大）——用户 11-21：看倍镜会有的效果
   G.driveSetSight = function(on) setSight(on) applyMode() end   -- Interior.lua：辅助瞄准镜也要炮跟着鼠标瞄
   local function toggleSight()
     if not st then return end
+    if st.binoc then setBinoc(false) end   -- 望远镜里按 Shift / 右键：收起望远镜、进炮长瞄准镜
     -- 曲射（自行火炮、火箭炮的 arty）：Shift 进 / 出炮兵视角（ArtyView.lua，坦克世界那样从天上看、挪瞄准点）
     if G.artyToggle and (G.artyOn and G.artyOn() or (G.artyWeapon and G.artyWeapon(st))) then
       st.arty = G.artyToggle(st) == true
@@ -888,6 +917,8 @@ function Drive.init(G)
       if G.artyOff then G.artyOff() end
       st.arty = false
       ownVisible(true)
+      st.binoc = false
+      GS.binoShow(false)
       st.sight = false
       applyMode()
       local m = ownModel()
@@ -1548,6 +1579,64 @@ function Drive.init(G)
     end
   end
 
+  -- 这一刻开炮，炮弹落在哪（用户 11-27「坦克准心对标战雷」）：第三人称的炮管标记、穿深指示都按它——
+  --   原来标记顺着「已经加了超高角」的炮管直线放到瞄准点那么远：1000 米外 3BK18M 比瞄准点高 6.4 米，穿深射线从车顶上过去、圈一直是白的。
+  --   现在：炮管方向减去按落点距离算的超高角（迭代两次），打射线找到真打到的东西；炮塔基本转到位、却打在比瞄准点近得多的地面 / 墙上 = 炮口被挡
+  -- full：打射线（每秒 15 次）；不 full：用上次量到的落点距离，按炮管现在的指向重算标记位置（每帧，便宜，标记跟得上）
+  local function gunImpact(full)
+    local d = st.d
+    if not (d.turret and d.gun) then st.gunHit = nil return end
+    local base = st.root * CF(0, -d.H / 2, 0)
+    local gcf = VD.gunCF(d, base, st.ty, st.gp)
+    local o = gcf.Position
+    local wid = weaponId()
+    local w = wid and VD.W[wid]
+    local am = w and w.kind == "shell" and BAL.GUN[wid] and BAL.ammo(wid, st.fcs.am)
+    local function seOf(Rm)
+      if am then return BAL.superElev(am, math.max(Rm, 1), 0) end
+      if w and w.kind == "shell" and (w.speed or 0) > 0 then
+        local dist = Rm * BAL.S
+        local tFly = dist / w.speed
+        return math.atan2(0.5 * workspace.Gravity * (w.drop or 0.55) * tFly * tFly, math.max(dist, 1))
+      end
+      return 0
+    end
+    local old = st.gunHit
+    if not full and old then
+      local dir = (gcf * CFrame.Angles(-seOf(old.R), 0, 0)).LookVector
+      old.o, old.dir, old.p = o, dir, o + dir * (old.R * BAL.S)
+      return
+    end
+    local Rw = st.aimPt and (st.aimPt - o).Magnitude / BAL.S or 1000
+    local Rm = Rw
+    local len = math.min(4000, Rw * BAL.S * 1.3 + 120)   -- 只打到瞄准点再远一点
+    local dir, hit = gcf.LookVector, nil
+    aimParams.FilterDescendantsInstances = rayEx()
+    for i = 1, 2 do
+      dir = (gcf * CFrame.Angles(-seOf(Rm), 0, 0)).LookVector
+      local h = (i == 1) and G.rayFar(o, dir * len, aimParams) or workspace:Raycast(o, dir * len, aimParams)
+      if h then hit = h elseif i == 1 then break end
+      if not h then break end
+      local R2 = (h.Position - o).Magnitude / BAL.S
+      if math.abs(R2 - Rm) < Rm * 0.03 then Rm = R2 break end   -- 距离差不多：不用再打第二次
+      Rm = R2
+    end
+    local p = o + dir * (Rm * BAL.S)
+    local blocked = false
+    if hit and st.aimPt then
+      local want = st.aimPt - o
+      local inst, veh = hit.Instance, false
+      while inst and inst ~= workspace do
+        if inst:GetAttribute("EntId") then veh = true break end
+        inst = inst.Parent
+      end
+      local aligned = want.Magnitude > 1 and gcf.LookVector:Dot(want.Unit) > math.cos(math.rad(2.5))
+      blocked = (not veh) and aligned and Rm < math.min(0.9 * Rw, Rw - 7)
+    end
+    st.gunHit = { p = p, o = o, dir = dir, R = Rm, inst = hit and hit.Instance, blocked = blocked }
+  end
+  G.driveGunHit = function() return st and st.gunHit end   -- VehHud / WtTank、测试
+
   -- 坐在车里（第一人称）：方向键转炮塔、抬压炮（用户 11-22：「坦克第一人称的话，炮管转动用上下左右键，然后 WASD 继续管车体移动」）
   --   瞄准线记在世界坐标里（炮塔有稳定：车身怎么转、怎么颠，炮还指着原来的方向）；← → 最快按炮塔的转速、↑ ↓ 最快每秒 10°，
   --   刚按下去慢（点一下动零点几度，好细瞄），按住 0.6 秒到全速；火控照常按距离抬炮（aimTurret 的弹道修正，瞄准线打到哪炮弹落到哪）。
@@ -1754,6 +1843,35 @@ function Drive.init(G)
     local f = st and st.fcs
     return (f and f.am and f.bsR[f.am]) or (am and am.bs) or 1000
   end
+  -- 表尺（用户 11-27「坦克的开镜按照战雷的做」）：PageUp / PageDown 每次 100 米装定距离（0 ~ 4000 米）——炮按这个距离抬超高角，
+  --   镜里的表尺跟着挪（装定 0 时刻度全在中心下面，截图那样；装定 1200 时「12」在中心）；之后再测距会盖掉它
+  local function sightRangeStep(dir)
+    if not st then return end
+    local am = fcsAmmo()
+    if not am then return end
+    local f = st.fcs
+    local r0 = f.R or bsRange(am)
+    local nv = math.clamp(math.floor(r0 / 100 + 0.5) * 100 + dir * 100, 0, 4000)
+    f.R, f.noRet, f.laseT, f.man, f.est, f.multi, f.trk = nv, false, nil, true, nil, false, nil
+    if G.sfx then pcall(G.sfx, "uiClick") end
+  end
+  G.driveSightRange = sightRangeStep   -- 测试用
+  -- 车长用望远镜估距（望远镜里按 R）：两秒报个数，差上下 6% 左右；报出来的距离装定到炮上（同战雷车长测距）
+  local function binoRange()
+    if not st or not fcsAmmo() then return end
+    local f = st.fcs
+    if f.estT and os.clock() < f.estT then return end
+    f.estT = os.clock() + 2.0
+    f.estimating = true
+    if G.sfx then pcall(G.sfx, "uiClick") end
+    local myF = f
+    task.delay(2.0, function()
+      if not st or st.fcs ~= myF then return end
+      myF.estimating = nil
+      laseNow(myF, true, 0.06)
+    end)
+  end
+  G.driveBinoRange = function() binoRange() end   -- 测试用
   -- 车里的炮长面板（Interior.lua 的动作）：都改 st 上的火控状态，开着镜的马上重画
   G.driveFcs = function() return st and st.fcs, st end   -- 读状态（面板页面、测试）
   G.driveBattlesight = function()   -- 战斗瞄准：清掉测的 / 手动的距离，回到这个弹种的战斗瞄准距离
@@ -1945,8 +2063,12 @@ function Drive.init(G)
     elseif k == Enum.KeyCode.Z then
       syncZooms()
       st.zoom = st.zoom % #ZOOMS + 1
-    elseif k == Enum.KeyCode.R then   -- 激光测距（坦克炮的火控）
-      lase()
+    elseif k == Enum.KeyCode.R then   -- 激光测距（坦克炮的火控）；望远镜里是车长估距
+      if st.binoc then binoRange() else lase() end
+    elseif (k == Enum.KeyCode.PageUp or k == Enum.KeyCode.PageDown) and not (G.interiorOn and G.interiorOn()) then
+      sightRangeStep((k == Enum.KeyCode.PageUp) and 1 or -1)   -- 表尺（用户 11-27 照战雷）：装定距离每次 100 米
+    elseif k == Enum.KeyCode.C and not (G.interiorOn and G.interiorOn()) then   -- 车长望远镜（用户 11-27）
+      G.driveBinoc()
     elseif k == Enum.KeyCode.Q then   -- 换弹种（穿甲 / 破甲 / 多用途……）
       cycleAmmo()
     elseif NUMK[k] and G.radioOpen and G.radioOpen() then   -- 无线电菜单开着（WtComms.lua，O）：数字键选无线电，不换弹
@@ -2057,7 +2179,7 @@ function Drive.init(G)
     -- 车里的观瞄设备（车长热像仪 / 周视镜、CROWS……）开着时也算在车里：鼠标归那个设备，炮塔守着炮长原来的准星
     local inside = G.interiorOn and (G.interiorOn() or G.interiorOptic ~= nil) and not st.sight
     local md = G.mouseDelta and G.mouseDelta(st.sight) or UIS:GetMouseDelta()   -- 设置里的灵敏度、开镜灵敏度、反转 Y（Settings.lua）
-    local sens = SENS * (st.sight and (ZOOMS[st.zoom] / 70) or 1)
+    local sens = SENS * (st.sight and (ZOOMS[st.zoom] / 70) or (st.binoc and (GS.binoFov / 70)) or 1)
     if st.arty and G.artyMouse then G.artyMouse(md, dt)   -- 炮兵视角：鼠标挪地上的瞄准点
     elseif not inside then
       st.camYaw -= md.X * sens
@@ -2106,6 +2228,16 @@ function Drive.init(G)
       cam.CFrame = artyCF
       st.aimPt = artyAim
       st.camShake = CFrame.new()
+    elseif st.binoc then
+      -- 车长望远镜（用户 11-27）：车长从指挥塔（VehDefs 的 cupola）探出头、8 倍；炮塔照样跟着看的方向转，R 车长估距
+      local base = st.root * CF(0, -d.H / 2, 0)
+      local tcf = d.turret and VD.turretCF(d, base, st.ty) or base
+      local cup = d.cupola or (d.turret and d.turret.size and V(0, d.turret.size.Y * 0.5, 0)) or V(0, d.H * 0.5, 0)
+      local eye = (tcf * CF(cup)).Position + V(0, 1.6, 0)
+      cam.FieldOfView = cam.FieldOfView + (GS.binoFov - cam.FieldOfView) * math.min(1, dt * 10)
+      cam.CFrame = CFrame.lookAt(eye, eye + dirCam.LookVector)
+      st.aimPt = aimPoint()
+      st.camShake = CFrame.new()
     elseif st.sight then
       local base = st.root * CF(0, -d.H / 2, 0)
       local gcf = VD.gunCF(d, base, st.ty, st.gp)
@@ -2137,7 +2269,7 @@ function Drive.init(G)
         end
         f.ly, f.lp = st.camYaw, st.camPitch
         -- 炮对准瞄准线上测出的那个距离的点（视差：炮在瞄准镜旁边，往里收到那一点），提前量按飞行时间
-        local R = f.R or bsRange(am)
+        local R = math.max(f.R or bsRange(am), 50)   -- 表尺能拨到 0（PageDown）：瞄准点、飞行时间按至少 50 米算
         local tof = BAL.flight(am, R)
         -- 提前量：只有正常方式（应急、手动方式没有角速度传感器给的提前量）
         local lead = f.mode == 1 and f.R ~= nil and f.laseT ~= nil and (os.clock() - f.laseT < 10)
@@ -2214,6 +2346,13 @@ function Drive.init(G)
       end
     end
     aimTurret(dt)
+    do   -- 这一发的落点：射线每秒 15 次，标记位置每帧跟炮管
+      st.ghT = (st.ghT or 0) - dt
+      local full = st.ghT <= 0 or st.gunHit == nil
+      if full then st.ghT = 1 / 15 end
+      local ok, err = pcall(gunImpact, full)
+      if not ok then st.gunHit = nil G.driveGunErr = err end   -- 测试看
+    end
     -- 路面颠簸的细抖（瞄准、炮塔都按没晃的镜头算过了）
     if st.camShake and not st.sight and not G.noShake then cam.CFrame = cam.CFrame * st.camShake end   -- 设置里能关镜头晃动
     -- 开炮的镜头后坐（瞄准、炮塔都按没晃的镜头算过了，这里只是看起来晃）
@@ -2254,9 +2393,9 @@ function Drive.init(G)
     local gcf = VD.gunCF(d, base, st.ty, st.gp)
     local gp = gcf.Position + gcf.LookVector * math.max(30, (st.aimPt - gcf.Position).Magnitude)
     local sp, on = cam:WorldToViewportPoint(gp)
-    gunMark.Visible = on and not st.sight and not G.vehHudOn and not inside
+    gunMark.Visible = on and not st.sight and not st.binoc and not G.vehHudOn and not inside
     gunMark.Position = UDim2.fromOffset(sp.X, sp.Y)
-    cross.Visible = not st.sight and not G.vehHudOn and not inside
+    cross.Visible = not st.sight and not st.binoc and not G.vehHudOn and not inside
     -- 仪表
     local em = st.em
     local hp, mx = em:GetAttribute("Hp") or 1, em:GetAttribute("MaxHp") or 1
@@ -2278,17 +2417,21 @@ function Drive.init(G)
     relBar.Size = UDim2.fromScale(rel, 1)
     vInfo.Text = T("ui.speed", kmh) .. "    " .. (wid and T("vw." .. wid) or "") .. (ammo and ("  " .. ammo[1] .. " / " .. ammo[2]) or "")
       .. "    " .. T("ui.smokeLeft", vs.smoke or 0) .. "    " .. T("sight." .. MODES[st.mode])
-    -- 瞄准镜：测距、倍率、颗粒；热成像的高亮隔一会儿重挑一次
+    -- 瞄准镜：分划、表尺、方位、读数（GunSight.lua，用户 11-27 照战雷）；颗粒；热成像的高亮隔一会儿重挑一次
     if st.sight then
-      local am = fcsAmmo()
-      if am then   -- 火控：弹种、测的距离（没测是 BS 战斗瞄准距离，没回波 ----）、待发
-        local f = st.fcs
-        rangeText.Text = f.R and ((f.lrf == "FIRST" and "F " or "") .. string.format("%04d", f.R)) or (f.noRet and "----" or string.format("BS %04d", bsRange(am)))
-        -- 光学年代（WtOptics：苏式 / 北约早期分划）：没有数字读数，装定距离看分划上的指针
-        rangeText.Visible = st.kitDigital ~= false
-        local rp = retPtr[st.kit and st.kit.ret or ""]
-        if rp then rp.f.Position = UDim2.new(0.5, 0, 0.5, rp.y(f.R or bsRange(am))) end
-        multiBar.Visible = f.R ~= nil and f.multi == true and st.kitDigital ~= false
+      local am, gwid = fcsAmmo()
+      local f = st.fcs
+      local lv = cam.CFrame.LookVector
+      local info = { am = am, wid = gwid, amKey = f.am, fcs = f, yaw = math.atan2(-lv.X, -lv.Z), lrf = st.d.lrf ~= false,
+        ready = rel >= 0.999, trk = f.trk, est = f.est }
+      if am then
+        info.R0 = f.R or bsRange(am)
+        info.bs = bsRange(am)
+        -- 炮管实际指着哪（去掉超高角）：炮塔追着瞄准线转，还没转过来时小十字偏在一边
+        local base = st.root * CF(0, -d.H / 2, 0)
+        local gcf = VD.gunCF(d, base, st.ty, st.gp)
+        local glos = (gcf * CFrame.Angles(-(st.fcsSE or 0), 0, 0)).LookVector
+        info.markPt = cam.CFrame.Position + glos * 2000
         local parts = {}
         if f.mode == 2 then table.insert(parts, "EMER") elseif f.mode == 3 then table.insert(parts, "MAN") end
         if st.stab == false then table.insert(parts, "STAB OFF") end
@@ -2297,21 +2440,19 @@ function Drive.init(G)
         if f.man then table.insert(parts, "MAN RNG") end
         if f.estimating then table.insert(parts, (st.d.lrf == false) and "RANGING" or "CALC") end   -- 测距 / 弹道计算机解算中
         if f.trk then table.insert(parts, "TRACK") end   -- 自动目标跟踪锁着
-        fcsText.Text = table.concat(parts, "   ")
-        ammoText.Text = am.sym
-        readyBox.Visible = st.kitDigital ~= false   -- 光学年代的分划没有待发方块（WtOptics）
-        readyBox.BackgroundTransparency = (rel >= 0.999) and 0 or 1
+        if f.R ~= nil and f.multi == true then table.insert(parts, "MULTI") end   -- 多回波
+        info.status = table.concat(parts, "   ")
       else
-        local dist = (st.aimPt - cam.CFrame.Position).Magnitude
-        rangeText.Text = string.format("%04d", math.floor(dist / 2.8 / 5 + 0.5) * 5)
-        rangeText.Visible = true
-        multiBar.Visible = false
-        fcsText.Text = ""
-        ammoText.Text = ""
-        readyBox.Visible = false
+        -- 不是坦克炮（机炮、机枪）：镜头顺着炮管看，中心就是炮的指向；小十字画鼠标想去的地方（炮塔正往那转）
+        info.markPt = st.aimPt
       end
-      zoomText.Text = string.format("×%.1f", 70 / ZOOMS[st.zoom])
-      hintV.Text = T("drv.hintOptic", T("sight." .. MODES[st.mode]))
+      GS.step(st, info)
+      do   -- 光电模式；热像写上是第几代（WtOptics，原来在镜上方那行字里，11-27 那行收了）
+        local mm = MODES[st.mode]
+        local NVd = OPT.NV[(st.kit and st.kit.nv) or ""] or {}
+        local gen = ((mm == "whot" or mm == "bhot") and NVd.short) and ("  ·  " .. ((G.lang == "en") and NVd.short[2] or NVd.short[1])) or ""
+        hintV.Text = T("drv.hintOptic", T("sight." .. mm) .. gen)
+      end
       hintM.Text = T("drv.hintSmoke", vs.smoke or 0)
       hintLine.Text = T("drv.hintLine")
       if grain.Visible then
@@ -2327,6 +2468,12 @@ function Drive.init(G)
         st.hlT = 0.5
         refreshHl((m == "whot") and Color3.new(1, 1, 1) or Color3.new(0, 0, 0))
       end
+    end
+    -- 车长望远镜：密位刻度、估的距离、方位
+    if st.binoc then
+      local lv = cam.CFrame.LookVector
+      local f = st.fcs
+      GS.binoStep({ R = f and f.R, est = f and f.estimating, yaw = math.atan2(-lv.X, -lv.Z) })
     end
   end
 end

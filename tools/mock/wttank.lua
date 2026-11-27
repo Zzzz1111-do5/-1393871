@@ -1,6 +1,6 @@
 -- 战雷式坦克（模拟器）：python3 tools/mock/run.py tools/mock/wttank.lua [veh=m1a2]
 --   用户 11-24 夜「把整个游戏做成战雷」：①② 车辆伤害模型 + 坦克界面
---   ① 坐上车：战雷界面开着（准星、底部弹药栏、左下损伤图），MWT 那套收起；弹药栏格数 = 主炮弹种 + 别的武器 + 烟幕 + 维修
+--   ① 坐上车：战雷界面开着（准星、底部弹药栏、左下损伤图），MWT 那套收起；弹药栏格数 = 主炮弹种 + 别的武器 + 烟幕 + 维修 + 望远镜
 --   ② 数字键：2 选第二种弹（M830）、1 回到 M829A3，5 选同轴机枪
 --   ③ 正前方放一辆敌方 T-90M：准星对着它不是白的（穿深指示）；M829A3 打车体正面、榴弹打正面颜色不一样
 --   ④ 开一炮：服务器走战雷伤害（G.wtHits 加一），客户端命中提示出来；损伤图里那辆车的状态跟着变
@@ -78,7 +78,7 @@ for _, sd in ipairs(slots) do table.insert(list, (sd.am or sd.wid or sd.k) .. (s
 print("  弹药栏：" .. table.concat(list, " "))
 local nGun = #(R.require(R.services.ReplicatedStorage:FindFirstChild("Ballistics")).GUN[def.weapons[1]] or { 1 })
 local extra = ((def.cat == "apc" or def.cat == "aa") and 1 or 0) + ((def.cat ~= "aa") and 1 or 0)   -- 侦察（轻型车）、火炮支援（不是防空车）
-check(#slots == nGun + (#def.weapons - 1) + 2 + extra, "弹药栏格数 = 主炮 " .. nGun .. " 种弹 + 别的武器 + 烟幕 + 维修 + 侦察 / 火炮（" .. #slots .. "）")
+check(#slots == nGun + (#def.weapons - 1) + 3 + extra, "弹药栏格数 = 主炮 " .. nGun .. " 种弹 + 别的武器 + 烟幕 + 维修 + 望远镜 + 侦察 / 火炮（" .. #slots .. "）")   -- 11-27 加了望远镜（C）
 local di = find("WtDamageInd")
 local sch = find("Schematic")
 local nSch = sch and #sch:GetDescendants() or 0

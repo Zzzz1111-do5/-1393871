@@ -1110,7 +1110,10 @@ function VehHud.init(G)
     if wtMode then
       -- 战雷那套：准星（穿深指示按毫米算）、底部弹药栏、左下损伤图都在 WtTank.lua
       hideReticles()
-      G.wtTankStep(st, { p = pt, o = gcf.Position, relK = relK, ready = ready, left = left, wid = wid, w = w, am = st.fcs and st.fcs.am })
+      -- 炮管标记画在这一刻开炮的真落点（Drive gunImpact，用户 11-27「坦克准心对标战雷」）；炮口被挡时 WtTank 画叉
+      local gh = st.gunHit
+      G.wtTankStep(st, { p = gh and gh.p or pt, o = gh and gh.o or gcf.Position, blocked = gh and gh.blocked or false,
+        relK = relK, ready = ready, left = left, wid = wid, w = w, am = st.fcs and st.fcs.am })
     else
       if w then penC, penT = penState(w, gcf.Position, pt, st.em) end
       placeTank(pt, gcf.Position, relK, ready, left, true, penC, penT, selAmmo)
@@ -1419,7 +1422,11 @@ function VehHud.init(G)
     MS.track.Position, MS.track.Size = UD2(0, split + 10, 1, -10), UD2(1, -split - 18, 0, 2)
 
     local simpleSight = compact or vp.X < 900 or vp.Y < 520
-    SG.scale.Visible, SG.comp.Visible, SG.marker.Visible = not simpleSight, not simpleSight, not simpleSight
+    -- 用户 11-27（照战雷的开镜截图）：镜里的距离标尺、小罗盘、装填圈、弹药读数框不要了——方位刻度、表尺在 GunSight（Drive），
+    --   弹药栏、装填、左下损伤图在 WtTank（下面 wtBarOnly）；手机的紧凑布局没有 WtTank，读数框照旧留着
+    SG.scale.Visible, SG.comp.Visible, SG.marker.Visible = false, false, false
+    SG.ring.Visible = false
+    SG.info.Visible = compact
     sightRingScale.Scale = simpleSight and 0.78 or 1
     if simpleSight then
       local sx, sy, sw = compactDock(vp, mob, 184, 43)
@@ -1476,6 +1483,23 @@ function VehHud.init(G)
     end
   end
 
+  -- 开镜、望远镜里也画战雷式的弹药栏和左下损伤图（用户 11-27 截图：镜里底下一排弹药、左下自己车的损伤图和档位速度）；车外那个准星圈不画（I.p = nil）
+  local function wtBarOnly(st)
+    if not G.wtTankStep then return end
+    local d = st.d
+    local wid = d.weapons[st.wi]
+    local w = wid and VD.W[wid]
+    local vs = G.S and G.S.veh
+    local ammo = vs and vs.ammo and wid and vs.ammo[wid]
+    local relK, ready, left = 1, true, 0
+    if w then
+      local l = (st.next[wid] or 0) - os.clock()
+      local full = (ammo and ammo[1] == w.mag and l > w.rate) and (w.reload or w.rate) or w.rate
+      relK, ready, left = 1 - math.clamp(l / math.max(full, 0.01), 0, 1), l <= 0, math.max(0, l)
+    end
+    G.wtTankStep(st, { relK = relK, ready = ready, left = left, wid = wid, w = w, am = st.fcs and st.fcs.am })
+  end
+
   G.frameConn("VehHud", function()
     local covered = (G.boardShown and G.boardShown()) or (G.menuOpen and G.menuOpen())
       or (G.menuShown and G.menuShown()) or (G.coachPanel and G.coachPanel())
@@ -1483,7 +1507,8 @@ function VehHud.init(G)
     local driving = not covered and tank ~= nil and tank == G.drive and tank.d ~= nil
     local sailing = not covered and ship ~= nil and ship == G.drive and ship.d ~= nil and ship.bino ~= true
     local inSight = driving and tank.sight == true
-    local showTank = driving and not inSight and not (G.interiorOn and G.interiorOn())   -- 坐在车里看（Interior.lua）：车里的屏幕就是仪表
+    local inBino = driving and tank.binoc == true   -- 车长望远镜（Drive / GunSight，用户 11-27）
+    local showTank = driving and not inSight and not inBino and not (G.interiorOn and G.interiorOn())   -- 坐在车里看（Interior.lua）：车里的屏幕就是仪表
     gui.Enabled, sg.Enabled = showTank or sailing, inSight and not G.interiorOptic
     if not gui.Enabled then
       if fireCC.Brightness ~= 0 then fireCC.Brightness = 0 end
@@ -1491,11 +1516,17 @@ function VehHud.init(G)
       mwtOn, wtMode = false, false
       G.tankHudActive = false
     end
-    if not gui.Enabled and not inSight then return end
+    if not gui.Enabled and not inSight and not inBino then return end
     layoutPanels()
-    if inSight then
-      local ok, err = pcall(stepSight, tank)
-      if not ok and G.showError then G.showError("瞄准镜：" .. tostring(err)) end
+    if inSight or inBino then
+      if inSight then
+        local ok, err = pcall(stepSight, tank)
+        if not ok and G.showError then G.showError("瞄准镜：" .. tostring(err)) end
+      end
+      if not compact and not G.interiorOptic then
+        local ok, err = pcall(wtBarOnly, tank)
+        if not ok and G.showError then G.showError("瞄准镜弹药栏：" .. tostring(err)) end
+      end
       return
     end
     wtMode = showTank and not compact and G.wtTankStep ~= nil

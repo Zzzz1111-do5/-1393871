@@ -122,23 +122,21 @@ for i, cs in ipairs(CASES) do
       for _, m in ipairs(st.allow or {}) do names[#names + 1] = MODES[m] end
       check(#names == #cs.cycle, cs.vid .. " 能切的通道：" .. table.concat(names, "、"))
       check(MODES[st.mode] == cs.night, string.format("半夜开镜默认是这辆车最好的夜视：%s（要 %s）", tostring(MODES[st.mode]), cs.night))
-      -- 分划：只显示这一套
-      local okRet, vis = true, {}
-      for _, k in ipairs({ "sov", "nato", "lrf" }) do
-        local f = find("Ret_" .. k)
-        local on = f ~= nil and f.Visible == true
-        if on then vis[#vis + 1] = k end
-        if on ~= (k == cs.ret) then okRet = false end
-      end
-      check(okRet, cs.vid .. " 的分划只显示「" .. cs.ret .. "」那套（显示着的：" .. table.concat(vis, "、") .. "）")
-      local rngT = find("FcsRange")
+      -- 分划（用户 11-27 起：GunSight.lua 照真镜子画、全屏、按密位随倍率缩放；按型号 / 年代挑一家，SightDefs.FAMILY）
+      local FAM = { type59 = "tsh", m60a1 = "nato1", t72a = "tpd", leo2a4 = "natolrf", t90m = "sovmod" }
+      check(C.gunSightFamily == FAM[cs.vid], string.format("%s 的分划是「%s」（要 %s）", cs.vid, tostring(C.gunSightFamily), FAM[cs.vid]))
+      local rc, nl = find("Reticle"), 0
+      if rc then for _, f in ipairs(rc:GetChildren()) do if f.Name == "L" and f.Visible then nl = nl + 1 end end end
+      check(nl >= 12, string.format("分划画出来了（%d 根线）", nl))
+      local eye = find("Eyepiece") or nil
+      check(not (eye and eye.Visible), "全屏开镜：不套圆形目镜")
+      local rngT = find("GsRange")
       check((rngT ~= nil and rngT.Visible) == cs.digital, cs.digital and "距离有数字读数" or "光学年代：距离不写数字")
       if not cs.digital then
-        local box = find("Ret_" .. cs.ret)
-        local ptr = box and box:FindFirstChild("RangePtr")
-        check(ptr ~= nil and ptr.Position.Y.Offset ~= 0, string.format("分划上有距离指针（停在 %s）", ptr and tostring(ptr.Position.Y.Offset) or "-"))
+        local lad = C.gunSight and C.gunSight.lastLadder
+        check(lad ~= nil and #lad >= 10, string.format("光学年代：竖线左边有这一发弹的表尺（%d 格）", lad and #lad or 0))
       end
-      local amm = find("FcsAmmo")
+      local amm = find("GsAmmo")
       check((amm ~= nil and amm.Visible) == cs.digital, cs.digital and "有火控计算机：下沿有弹种、距离读数" or "光学年代：没有数字读数（弹种、距离、待发方块都不显示）")
       local beam, scan, blur = find("IrBeam"), find("ThScan"), Lighting:FindFirstChild("SightBlur")
       if cs.night == "ir" then

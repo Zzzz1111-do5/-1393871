@@ -1,6 +1,6 @@
 -- Roblox全面大战场（客户端）——载具内饰：车里按真实布局拼出来的乘员舱，坐在乘员位上看（对标 Steel Beasts），也能拿来拍电影
 --   用户 11-21：所有载具一比一还原内饰和里面所有功能性的东西（屏幕等），全部看 Steel Beasts，每个坦克现实中的内部结构；要拿去拍电影
---   按键（开坦克时）：C 进出车内（车外 → 上次的乘员位 → 车外）；F2 驾驶员、F3 炮长、F4 车长、F5 装填手；炮长位上 Shift 进主瞄准镜；
+--   按键（开坦克时）：F2 驾驶员、F3 炮长、F4 车长、F5 装填手（车外按就进车内那个位）；车里 C 换下一个乘员位、最后回车外（11-27 起车外的 C 是望远镜）；炮长位上 Shift 进主瞄准镜；
 --     B 导演镜头（跟着车走的自由镜头：方向键前后左右、PageUp / PageDown 上下、Ctrl 慢、鼠标转、滚轮变焦）；L 车内灯（白 → 蓝绿 → 红 → 关）；
 --     U 藏起全部界面（拍片）；滚轮在乘员位上是变焦
 --   · 内饰零件只在镜头在车里时才放进场景、每帧按车体 / 炮塔 / 炮的姿态一次 BulkMoveTo（View.lua 算好的 v.hullF、v.tF）
@@ -1550,7 +1550,9 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   black.BorderSizePixel = 0
   black.Parent = sfx
   local holes = {}
-  for i = 1, 5 do   -- 一个透明的圆，外面一圈极粗的黑描边盖住圆外面；里面几圈细的半透明描边做出渐暗的边
+  -- 用户 11-27「光学渐变也有些生硬」：原来 4 圈 10 像素、一档一档的暗边（看得出一道道环）——改成 16 圈挨着的细环、外暗内淡，渐暗连成一片
+  local NRING = 16
+  for i = 1, NRING do   -- 一个透明的圆，外面一圈极粗的黑描边盖住圆外面；里面一圈圈细的半透明描边做出渐暗的边
     local h = Instance.new("Frame")
     h.AnchorPoint = Vector2.new(0.5, 0.5)
     h.BackgroundTransparency = 1
@@ -1560,10 +1562,10 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     cr.Parent = h
     local sk = Instance.new("UIStroke")
     sk.Color = RGB(0, 0, 0)
-    sk.Thickness = (i == 1) and 4000 or 10
-    sk.Transparency = (i == 1) and 0 or (0.25 + i * 0.13)
+    sk.Thickness = (i == 1) and 4000 or 9
+    sk.Transparency = (i == 1) and 0 or (0.8 + 0.19 * (i - 2) / (NRING - 2))
     sk.Parent = h
-    holes[i] = { f = h, k = 1 - (i - 1) * 0.035 }
+    holes[i] = { f = h, k = 1 - (i - 1) * 0.012, sk = sk }
   end
   local scope = { phase = nil, t = 0, cb = nil, iris = nil, off = Vector2.new(), on = false }
   scopePhase = function() return scope.phase ~= nil end
@@ -1654,6 +1656,22 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       if not inSight then scope.iris = nil sfx.Enabled = false end
       return
     end
+    -- 用户 11-27（照战雷的开镜截图）：车外的炮长瞄准镜是全屏的——开镜那一下（先黑、亮圆滑进来变大）照旧放，放完就把边上那几圈暗角撤掉；
+    --   车里的观瞄设备（optic：车长热像仪、备用镜……）照旧有目镜的效果
+    if optic == nil then
+      -- 车外的炮长瞄准镜（全屏，照战雷）：开镜只从黑平滑淡入 0.2 秒，不放亮圆、不留暗边（用户 11-27「光学渐变也有些生硬」）
+      if scope.iris then
+        scope.iris += dt
+        black.BackgroundTransparency = math.clamp(scope.iris / 0.2, 0, 1)
+        for _, h in ipairs(holes) do if h.f.Visible then h.f.Visible = false end end
+        sfx.Enabled = true
+        if scope.iris >= 0.2 then scope.iris = nil end
+      elseif sfx.Enabled then
+        sfx.Enabled = false
+      end
+      return
+    end
+    for _, h in ipairs(holes) do if not h.f.Visible then h.f.Visible = true end end   -- 车里的观瞄设备：目镜的圆和暗边
     local vp = cam.ViewportSize
     local R = math.sqrt(vp.X * vp.X + vp.Y * vp.Y) / 2 * 1.02
     local md = UIS:GetMouseDelta()
@@ -2766,8 +2784,9 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       end
     elseif k == Enum.KeyCode.C then
       if mode == nil then
-        mode = "seat"
-        if cur then enterStation(cur, lastStation[cur.key] or cur.spec.order[1]) end
+        -- 11-27：车外的 C 归车长望远镜（Drive.lua / GunSight.lua，用户「再做一个望远镜」）——进车内用 F2～F5（直接坐到那个乘员位）或 T（车长主观瞄）；
+        --   车里面 C 照旧是换下一个乘员位、最后回车外
+        return
       elseif mode == "seat" and cur then
         -- 依次换到下一个乘员位，最后一个之后回车外
         local order = cur.spec.order
