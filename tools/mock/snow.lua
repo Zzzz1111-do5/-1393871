@@ -74,6 +74,13 @@ do
   check(steep / n > 0.06 and steep / n < 0.3 and wall / n < 0.06, string.format("坡：陡过 17° 的 %.0f%%，陡过 40°（上不去）的 %.1f%%", steep / n * 100, wall / n * 100))
 end
 check(Map.ground(Map.POINTS[2].x, Map.POINTS[2].z) > Map.ground(0, 0) + 40, string.format("雷达站（B）在台地上（%.0f 格，山村 %.0f 格）", Map.ground(Map.POINTS[2].x, Map.POINTS[2].z), Map.ground(0, 0)))
+do   -- 据点都有高度（11-27：原来没写 p.y，占领数人、客户端判断在不在点里一减就报错）
+  local bad = {}
+  for _, p in ipairs(Map.POINTS) do
+    if type(p.y) ~= "number" or math.abs(p.y - Map.ground(p.x, p.z)) > 0.01 then bad[#bad + 1] = p.id .. "=" .. tostring(p.y) end
+  end
+  check(#bad == 0, "据点都有高度 p.y（= 地面）" .. ((#bad > 0) and ("：不对的 " .. table.concat(bad, " ")) or ""))
+end
 do
   local L = Map.LAKE
   check(Map.inLake(L.x, L.z) and math.abs(Map.ground(L.x, L.z) - L.y) < 0.01 and L.y > Map.PLAIN + 20, string.format("湖在高台上（湖面 %.0f 格）", L.y))
