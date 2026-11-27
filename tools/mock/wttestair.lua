@@ -6,9 +6,12 @@
 --   ② 阵容里的直升机也能选、试驾：停在训练场直升机坪，拉总距飞起来
 --   ③ 科技树里点挂火箭巢的苏-25「试驾」：飞行物理的质量照真机（原来火箭巢按「巢里几发 × 一整个装满的巢」算：凭空重 27 吨、
 --      43 吨推不动，推满油门滑出跑道几公里离不了地），在跑道上离地；按 F 打得出挂着的弹
---   ④ 地面车试驾在「匹配中」也能开炮
---   局内选车（这一局算他的）照旧禁选飞机：tools/mock/match.lua ②
+--   ④ 地面车试驾在「匹配中」也能开炮；打空待发弹架以后会从车体弹架补回来（试驾审查 3：原来回补只在开战以后跑）
+--   ⑤ 满油满弹在训练场跑道上滑不起来的（静态估的滑跑比跑道剩的长：轰-6K）直接在靶区上空出生、在飞（试驾审查 2）；歼-6 照旧在跑道上（①）
+--   ① 里还查手机：摇杆往前推机头往下、往回拉机头往上（试驾审查 8：原来 Fly.lua pitchIn = mv.Z，反着）
+--   局内选车（这一局算他的）照旧禁选飞机、没有「试驾」：tools/mock/match.lua ②
 local T = dofile(MOCK_DIR .. "/common.lua")
+pcall(function() io.stdout:setvbuf("line") end)   -- 跑得久：一行一行写出来（重定向到文件时也看得见进度）
 local R, Enum = T.R, T.Enum
 local check = T.check
 
@@ -101,6 +104,45 @@ local function backToHangar()
   T.runUntil(function() return T.findNamed("HangarTest") ~= nil end, 10)
   R.run(1)
 end
+-- 试驾前服务器怎么估的（Tech.lua testDrive：AirDefs.takeoffRun 满油、默认挂载、改装全装的推力，比第 0 个起飞位往西剩下的跑道的九成五长就空中出生）
+local AD = R.require(RS:FindFirstChild("AirDefs"))
+local WM = R.require(RS:FindFirstChild("WtMods"))
+local LEFT = RM.runwayLeft(0)
+local function estRun(k)
+  local it = TT.byKey[k]
+  local all = {}
+  for _, m in ipairs(WM.list(it)) do all[m.key] = true end
+  return AD.takeoffRun(AD.get(it.play), { treeKey = k, thrK = WM.fx(it, all).thr, h = RM.runwayStart(0).Y })
+end
+-- 机头俯仰角（度，抬头为正）、俯仰角速度（飞行物理的 q，抬头为正）
+local function nose()
+  local st = C.fly
+  if not st then return 0, 0 end
+  local y = math.max(-1, math.min(1, st.cf.LookVector.Y))
+  return math.deg(math.asin(y)), math.deg((st.fm and st.fm.q) or 0)
+end
+-- 手机（试驾审查 8）：摇杆直接当驾驶杆（Fly.lua jetPhysics：G.mobile 时读 controls:GetMoveVector()；模拟器里摇杆是 R.moveVec）——
+--   往前推（MoveVector.Z = −1，同按 W）机头往下，往回拉（Z = +1，同按 S）机头往上。原来 pitchIn = mv.Z，正好反着
+local function mobilePitch()
+  local mob0 = C.mobile
+  C.mobile = true
+  R.moveVec = nil
+  R.run(0.4)
+  local calls0 = R.moveCalls or 0
+  local a0 = nose()
+  R.moveVec = T.V3(0, 0, -1)
+  R.run(0.8)
+  local a1, q1 = nose()
+  R.moveVec = T.V3(0, 0, 1)
+  R.run(1.2)
+  local a2, q2 = nose()
+  R.moveVec = nil
+  C.mobile = mob0
+  R.run(0.3)
+  check((R.moveCalls or 0) > calls0, string.format("手机：摇杆当驾驶杆（读了 %d 次 MoveVector）", (R.moveCalls or 0) - calls0))
+  check(a1 < a0 - 0.5 and q1 < 0, string.format("手机摇杆往前推：机头往下（%.1f° → %.1f°，俯仰角速度 %.1f°/s）", a0, a1, q1))
+  check(a2 > a1 + 0.5 and q2 > 0, string.format("手机摇杆往回拉：机头往上（%.1f° → %.1f°，俯仰角速度 %.1f°/s）", a1, a2, q2))
+end
 
 print("① 机库阵容里的飞机：选中、右边「试驾」、跑道上起飞")
 local keys = G.treeLineup(P)
@@ -123,8 +165,11 @@ local e = P.vehicle
 check(e ~= nil and e.air and e.testDrive and e.treeKey == airKey, "坐进了试驾的飞机（" .. tostring(e and e.def and e.def.id) .. "，原来坐进的是坦克）")
 R.run(1)
 if e and e.air and C.fly then
+  local rj, lj = estRun(airKey)
+  check(rj ~= nil and lj and rj <= LEFT * 0.95, string.format("服务器估的满油满弹滑跑 %s 格，不到跑道剩的 %d 格的九成五：照旧摆在跑道上", rj and string.format("%.0f", rj) or "?", LEFT))
   onRunway(e, C.fly)
   takeoff(e)
+  mobilePitch()
   -- 打靶：这一局还在「匹配中」——原来服务器、客户端都按「没开战」不让打（航炮不出弹、导弹炸弹弹「尚未开战」）
   local g0 = e.gunAmmo or 0
   T.mouse(true)
@@ -231,6 +276,58 @@ if eg and not eg.air then
   ws = eg.wst and eg.wst[wid]
   local after = ws and (ws.mag + ws.reserve) or 0
   check(after < before, string.format("主炮打出去了（%s：%d → %d 发）", tostring(wid), before, after))
+  -- 打空待发弹架（Wt.lua：转盘 22 发 / 尾舱 15 发）以后不开炮的时候从车体弹架一发一发补回来——原来回补（rackStep）只在开战以后跑，
+  --   匹配中试驾打空了就一直不补、后面每一发都按从车体拿的慢速装（试驾审查 3）。这里把待发弹架当成刚打空（上面那一发记着 lastShot）
+  if eg.rdyCap then
+    eg.rdy = 0
+    local ok = T.runUntil(function() return (eg.rdy or 0) > 0 end, 30, 1 / 10)
+    check(ok and eg.model:GetAttribute("Rdy") == eg.rdy, string.format("匹配中试驾打空待发弹架：不开炮的时候补回来（待发 0 → %d / %d 发，属性 Rdy %s）",
+      eg.rdy or 0, eg.rdyCap, tostring(eg.model:GetAttribute("Rdy"))))
+  else
+    check(false, "这辆车有待发弹架（" .. tostring(eg.def.id) .. "）")
+  end
+end
+backToHangar()
+
+print("⑤ 满油满弹在训练场跑道上滑不起来的大飞机（轰-6K）：直接在空中出生、在飞")
+local hKey = "cn_h6k"
+local rh, lh = estRun(hKey)
+check(rh ~= nil and (not lh or rh > LEFT * 0.95), string.format("服务器估的满油满弹滑跑 %s 格（%s），比跑道剩的 %d 格的九成五长",
+  rh and string.format("%.0f", rh) or "?", lh and "离得了地" or "两分钟离不了地", LEFT))
+R.as("client", function() C.openTechTree() end)
+R.run(0.3)
+panel = C.treeGui
+for _, n in ipairs({ "Nat_cn", "Br_air", "Card_" .. hKey }) do
+  local b = find(n)
+  if b then T.press(b) R.run(0.3) end
+end
+tb = find("TestBtn")
+check(tb ~= nil, "科技树详情里有「试驾」")
+if tb then T.press(tb) end
+T.runUntil(function() return P.alive and P.vehicle ~= nil and C.fly ~= nil end, 30)
+local eb = P.vehicle
+check(eb ~= nil and eb.air and eb.testDrive and eb.treeKey == hKey, "坐进了试驾的轰-6K（" .. tostring(eb and eb.def and eb.def.id) .. "）")
+R.run(1)
+if eb and eb.air and C.fly then
+  local st = C.fly
+  local p = st.cf.Position
+  local agl = p.Y - G.Map.height(p.X, p.Z)
+  local tgt = RM.airTarget()
+  local dH = math.sqrt((p.X - tgt.X) ^ 2 + (p.Z - tgt.Z) ^ 2)
+  check(eb.onGround == false and st.ground == false and agl > 600, string.format("空中出生：没摆在跑道上，离地 %.0f 格（服务器 onGround = %s）", agl, tostring(eb.onGround)))
+  check(dH < 3000, string.format("在北边靶区上空（离靶区中心 %.0f 格）", dH))
+  check(st.spd > st.d.stall * 1.2, string.format("带着速度出来（%.0f 格 / 秒，失速 %.0f）", st.spd, st.d.stall))
+  local msg = T.texts("滑不起来")
+  print("  提示：" .. tostring(msg[1]))
+  fixes()
+  R.run(4)
+  st = C.fly
+  local p1 = st and st.cf.Position
+  local agl1 = p1 and (p1.Y - G.Map.height(p1.X, p1.Z)) or 0
+  check(st ~= nil and not st.crashed and eb.alive and not st.ground and agl1 > 400 and st.spd > st.d.stall,
+    string.format("4 秒后还在飞（离地 %.0f 格、%.0f 格 / 秒）", agl1, st and st.spd or 0))
+  local nf = fixes()
+  check(nf == 0, "服务器没往回拉（" .. nf .. " 次）")
 end
 backToHangar()
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | ", 1, math.min(#R.errors, 3)))

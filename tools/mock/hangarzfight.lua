@@ -8,11 +8,14 @@
 --   · 压住：重叠的那一块整个压在第三个不透明方块底下、那个方块朝外的面离得够远（墙裙压顶盖住墙裙和端墙的顶面……）
 --   两块半透明的一层叠一层（同向、离得 < 0.5 格、重叠）也算错：Roblox 按远近排半透明的谁先画，镜头一晃来回换，重叠那块颜色跳。
 --   ① 机库厂房（HangarStage）+ 远处那圈平地（Scenery.lua 的 Ocean：镜头在大厅时这圈平地也跟到大厅）
---   ② 露天停机坪（HangarApron：出击阵容里选中飞机时 TechUI 调 Stage.mode("air")，这里直接调）
+--   ② 露天停机坪（HangarApron：出击阵容里选中飞机时 TechUI 调 Stage.mode("air")，这里点阵容里的飞机卡，没有能点的才直接调）
 --   ③ 主菜单场景（MenuStage：机库顶栏「主菜单」）
 --   ④ 远处那圈平地在各处场景最低的零件底下（不跟地面抢、不盖住厂房的检修地沟）
---   0.04～0.08 格之间的「挨得近」只打印；士兵手里的枪（ToolPreview，枪模型那边搭的）只打印、不算
+--   0.04～0.08 格之间的「挨得近」只打印；士兵手里的枪（ToolPreview，枪模型那边搭的）只打印、不算；
+--   厂房里停的车、停机坪上停的飞机（TechUI 摆进来的子 Model，频闪审查 1）也拆成面查一遍，只打印「车模自己贴面多少对」、不算错——
+--   车模（VehModels / AirModels）和战场里那辆是同一套，要改另开一件事
 local T = dofile(MOCK_DIR .. "/common.lua")
+pcall(function() io.stdout:setvbuf("line") end)   -- 跑得久：一行一行写出来（重定向到文件时也看得见进度）
 local R, Enum = T.R, T.Enum
 local check = T.check
 local LIST = TEST_ARGS:match("%f[%w]list%f[%W]") ~= nil
@@ -382,6 +385,21 @@ local function lowest(parts)
   return m
 end
 local function originOf(cf) return { cf.Position.X, cf.Position.Y, cf.Position.Z } end
+-- 场景里摆的车模（TechUI showVehicle → Stage.put：挂在厂房 / 停机坪那个 Model 底下的子 Model）：每个深度收进来单独查，只打印
+local function vehModels(label, root, O, cam)
+  local n = 0
+  for _, vm in ipairs(root and root:GetChildren() or {}) do
+    if vm.ClassName == "Model" then
+      n = n + 1
+      local vp = {}
+      collect(vp, vm, true)
+      local bad = (#vp > 0) and analyze("（只看看）" .. label .. "「" .. vm.Name .. "」", vp, O, cam) or 0
+      print(string.format("  %s「%s」：车模自己贴面（< %.2f 格）%d 对（%d 个零件；只打印、不算错：车模和战场共用，要改另开）", label, vm.Name, THR, bad, #vp))
+    end
+  end
+  if n == 0 then print("  " .. label .. "：场景里没摆车模") end
+  return n
+end
 
 ---------------------------------------------------------------- ① 机库厂房
 
@@ -405,13 +423,28 @@ check(bad1 == 0, "厂房里没有贴在一起抢深度的面（" .. bad1 .. " �
 check(tr1 == 0, "厂房里没有两块半透明一层叠一层的（" .. tr1 .. " 对）")
 local lowH = lowest(hangarParts)
 check(top ~= nil and top < lowH - 0.5, string.format("远处平地顶面 %s 在厂房最低的零件底面（地沟底 %.2f）底下", tostring(top), lowH))
+vehModels("厂房里停的车", hm, originOf(Zones.HANGAR), { { -88, 2.4, -116 }, { 88, 52, 148 } })
 
 ---------------------------------------------------------------- ② 露天停机坪
 
 print("② 露天停机坪（HangarApron）")
--- 选中飞机 / 直升机时 TechUI 调 Stage.mode("air")（模拟器里科技树存档的阵容是空的、按默认排全是地面车）：这里直接切
-R.as("client", function() if HS and HS.mode then HS.mode("air") end end)
-R.run(0.4)
+-- 像玩家一样点出击阵容里的飞机卡：TechUI 调 Stage.mode("air")、把这架飞机停到停机坪上（默认阵容里有白送的飞机）；没有能点的飞机卡就直接切
+local TT = R.require(RS:FindFirstChild("TechTree"))
+local airKey = nil
+for _, k in ipairs(G.treeLineup(P)) do
+  local it = TT.byKey[k]
+  if it and it.branch == "air" then airKey = k break end
+end
+local airCard = airKey and T.findNamed("Line_" .. airKey)
+if airCard and airCard:GetAttribute("Locked") ~= true then
+  T.press(airCard)
+  R.run(0.4)
+end
+print("  点阵容里的飞机卡：" .. tostring(airKey) .. (airCard and "" or "（没找到卡，直接切）"))
+if not (HS and HS.modeNow and HS.modeNow() == "air") then
+  R.as("client", function() if HS and HS.mode then HS.mode("air") end end)
+  R.run(0.4)
+end
 local am0 = R.workspace:FindFirstChild("HangarApron")
 local airOk = am0 ~= nil and am0.Parent == R.workspace and HS.modeNow() == "air"
 check(airOk, "切到露天停机坪（Stage.mode(\"air\")）")
@@ -437,6 +470,7 @@ for _, p in ipairs(apronParts) do
 end
 check(top ~= nil and #apronParts > 0 and top < math.min(fieldBottom, apronBottom) - 0.5,
   string.format("远处平地顶面 %s 在水泥坪（底 %.2f）、外圈地面（底 %.2f）底下", tostring(top), apronBottom, fieldBottom))
+vehModels("停机坪上停的飞机", am, originOf(Zones.HANGAR_AIR), { { -380, 2.4, -380 }, { 380, 140, 380 } })
 -- 切回厂房
 R.as("client", function() if HS and HS.mode then HS.mode("ground") end end)
 R.run(0.3)

@@ -873,16 +873,19 @@ function Wt.init(G)
     end
     if gotAmmo or gotCrew then msgTo(e, { op = "wtSupply", ammo = gotAmmo or nil, crew = gotCrew }) end
   end
+  -- 据点补给只在开战以后；待发弹架回补（④）开战以后、还有试驾的车什么时候都补——真游戏开着匹配，机库里试驾时这一局还在「匹配中」，
+  --   原来试驾打空待发弹架（15 / 22 发）以后一直不回补，后面每一发都按从车体弹架拿的慢速装（试驾审查 3；同 a03a290 放开试驾开火那几处）
   task.spawn(function()
     while true do
       task.wait(1)
-      if G.round and G.round.phase == "battle" and G.points then
-        for _, e in ipairs(G.ents) do
-          if e.alive and e.wst and e.root and not e.air and not e.sea and (e.cat == "armor" or e.cat == "light") then
+      local battle = G.round and G.round.phase == "battle" and G.points
+      for _, e in ipairs(G.ents) do
+        if (battle or e.testDrive) and e.alive and e.wst and e.root and not e.air and not e.sea and (e.cat == "armor" or e.cat == "light") then
+          if battle then
             local okS, err = pcall(supplyStep, e)
             if not okS then warn("[战雷] 据点补给出错：" .. tostring(err)) end
-            pcall(rackStep, e)   -- ④ 不开炮的时候补待发弹架
           end
+          pcall(rackStep, e)   -- ④ 不开炮的时候补待发弹架
         end
       end
     end

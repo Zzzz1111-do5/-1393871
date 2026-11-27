@@ -173,11 +173,14 @@ function R.laneAt(i, dist, side)
   return Vector3.new(x, R.ground(x, z), z)
 end
 -- 跑道东头（起飞位，第 k 架往后排）：位置、朝向（朝西）
+local function startU(k) return R.RWY.u1 - 160 - floor(k / 2) * 110 end
 function R.runwayStart(k)
   k = k or 0
-  local x, z = R.toWorld(R.RWY.u1 - 160 - floor(k / 2) * 110, R.RWY.w + ((k % 2 == 0) and -18 or 18))
+  local x, z = R.toWorld(startU(k), R.RWY.w + ((k % 2 == 0) and -18 or 18))
   return Vector3.new(x, R.ground(x, z), z), Vector3.new(-1, 0, 0)
 end
+-- 第 k 个起飞位朝西到跑道西头还剩多长（格；第 0 个 3440）：试驾按它挑在跑道上起飞还是空中出生（Tech.lua，AirDefs.takeoffRun 估的滑跑距离）
+function R.runwayLeft(k) return startU(k or 0) - R.RWY.u0 end
 function R.heliPad(k)
   local x, z = R.toWorld(R.HELI.u + ((k or 0) % 3 - 1) * 70, R.HELI.w + floor((k or 0) / 3) * 70)
   return Vector3.new(x, R.ground(x, z), z), Vector3.new(0, 0, -1)

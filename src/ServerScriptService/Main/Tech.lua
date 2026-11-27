@@ -847,6 +847,18 @@ function Tech.init(G)
     if heli then spawnAt, spawnDir = RangeMap.heliPad(idx)
     elseif air then spawnAt, spawnDir = RangeMap.runwayStart(idx)
     else spawnAt, spawnDir = testSpot(idx) end
+    local all = {}   -- 试驾：改装全装上（下面 applyFx）
+    for _, m in ipairs(WM.list(it)) do all[m.key] = true end
+    local fx = WM.fx(it, all)
+    -- 跑道上滑不起来的固定翼直接在空中出生（用户 11-27「飞机试驾不了」：满油满弹的轰-6K、B-2 推满油门照样冲出训练场 3600 格的跑道，
+    --   B-2 冲到训练场铺的地形外面才离地）。不按型号列名单：按飞行物理静态估一下离地要滑多远（AirDefs.takeoffRun，照客户端 Fly.lua 地上那段
+    --   推满油门、到抬头速度拉杆；满油、默认挂载、改装全装的推力），比起飞位往西剩下的跑道（RangeMap.runwayLeft）的九成五还长
+    --   （留一点：拉杆晚一两秒也不冲出去）就不摆在跑道上，同下面「摆不到跑道上」那条在靶区上空出来。估不出来的（没有飞行物理）照旧在跑道上
+    local sky = false
+    if air and not heli then
+      local okR, run, lifted = pcall(AD.takeoffRun, AD.get(it.play), { treeKey = it.key, thrK = fx.thr, h = spawnAt.Y })
+      if okR and run and (not lifted or run > RangeMap.runwayLeft(idx) * 0.95) then sky = true end
+    end
     local function go()
       if not P.alive or not P.char then return end
       testClean(P)
@@ -860,13 +872,14 @@ function Tech.init(G)
         s.base, s.dir = RangeMap.airTarget(), Vector3.new(0, 0, -1)
         local d = AD.get(it.play)
         local pos = Vector3.new(spawnAt.X, G.Map.height(spawnAt.X, spawnAt.Z) + ((d and d.gearH) or 5), spawnAt.Z)
-        if G.spawnAircraft then
+        if G.spawnAircraft and not sky then
           local okS, ee = pcall(G.spawnAircraft, P.team, it.play, CFrame.lookAt(pos, pos + spawnDir), nil, P, nil)
           if okS then e = ee end
         end
-        if not e and G.spawnAircraftAir then   -- 摆不到跑道上：在靶区上空出来
-          local p2 = s.base + Vector3.new(0, G.Map.height(s.base.X, s.base.Z) + (heli and 140 or (W.airSpawnH or 1200)), 0)
+        if not e and G.spawnAircraftAir then   -- 跑道上滑不起来（sky）、摆不到跑道上：在靶区上空出来，朝北、带 0.8 倍军推最大速度（客户端 Fly.lua 空中出发也按这个）
+          local p2 = Vector3.new(s.base.X, G.Map.height(s.base.X, s.base.Z) + (heli and 140 or (W.airSpawnH or 1200)), s.base.Z)
           e = G.spawnAircraftAir(P.team, it.play, CFrame.lookAt(p2, p2 + s.dir), nil, P, nil, heli and 0 or (((d and d.vMil) or 200) * 0.8))
+          if e and not heli then sky = true end
         end
       else
         s.base, s.dir = spawnAt, spawnDir
@@ -879,9 +892,7 @@ function Tech.init(G)
       e.testDrive, e.noScore, e.treeKey = true, true, key
       e.model:SetAttribute("TreeKey", key)
       e.model:SetAttribute("TestDrive", true)
-      local all = {}
-      for _, m in ipairs(WM.list(it)) do all[m.key] = true end
-      applyFx(e, air, WM.fx(it, all), nil)   -- 试驾：改装全装上
+      applyFx(e, air, WM.fx(it, all), nil)   -- 试驾：改装全装上（all 在上面）
       local right = Vector3.new(-s.dir.Z, 0, s.dir.X)
       local function at(fwd, side) return s.base + s.dir * (fwd * M) + right * (side * M) end
       if air then
@@ -902,7 +913,9 @@ function Tech.init(G)
       end
       P.char:PivotTo(e.root.CFrame * CFrame.new(0, 2, 0))
       if G.ACT.enterVeh then G.ACT.enterVeh(P, e.id) end
-      G.msg(P.pl, "info", air and "tree.testOnAir" or "tree.testOn", it.name)
+      -- 无人机在空中出生：人拿着平板站在原地遥控（Air.lua seat 不挪人、把人钉住）——别把操作员留在天上（收起平板就掉下来），挪回跑道东头的地上
+      if sky and e.def and e.def.drone and P.remote == e and P.char then P.char:PivotTo(CFrame.new(spawnAt + Vector3.new(0, 3, 0))) end
+      G.msg(P.pl, "info", air and (sky and "tree.testOnSky" or "tree.testOnAir") or "tree.testOn", it.name)
     end
     P.testDeploy = true   -- Round.lua deploy：试驾不受出生点 / 准备阶段 / 兵力限制（用户 11-26「训练场目前没发试驾飞机了」）
     G.ACT.deploy(P, "crew", air and "baseAir" or "base", go)

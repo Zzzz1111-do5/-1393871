@@ -529,7 +529,8 @@ function Scenery.init(G)
   local HI0, HI1, HK0, HK1, SEA_Y = 0, -1, 0, -1, -0.6
   local zoneNow = nil
   -- 镜头在哪块（Zones.lua，用户 11-26 晚「每个地图单独一个区块」）：战场照这张图的远处（海 / 沙 / 草地）；
-  --   训练场是它自己的草地（顶面同训练场平地，开服先铺好的那片里沉下去）；大厅（主菜单、机库）一圈平地托在场景脚下
+  --   训练场是它自己的草地（顶面同训练场平地，开服先铺好的那片里沉下去）；大厅（主菜单、机库厂房、停机坪）一圈平地沉在三处场景的地面底下
+  --   （不和场景的地面同高、抢深度：下面 lobby 那段）
   -- 换地图：海岛是海水（地形海水占了 [−RI, RI) 这些格：近海 ±R 深水 + 外面 ±SEA_R 一圈薄水，World.lua）；
   --   沙海（Map.DESERT）也没有海：地形一直写到 ±SEA_R（外面一圈平地），再往外这圈平面是沙地，顶面和平原一样高
   local function oceanStyle(zn)
@@ -548,12 +549,18 @@ function Scenery.init(G)
       HK0, HK1 = math.floor((Rg.Z + C0.w0) / OS), math.floor((Rg.Z + C0.w1) / OS) - 1
     elseif zoneNow == "lobby" then
       far, desert = { color = RGB(70, 82, 54), mat = "Grass" }, false
-      -- 大厅场景的地面都在 900 格高（Zones.HANGAR / HANGAR_AIR / MENU）；这圈平地沉到它底下 15 格（顶面 885）。
+      -- 大厅三处场景（Zones.HANGAR 厂房 / HANGAR_AIR 停机坪 / MENU 主菜单）的地面现在都在 900 格高；这圈平地沉到最低那处底下 15 格（顶面 885）。
       --   原来 899.5（块厚 1，顶面正好 900）：和厂房水泥地、停机坪、主菜单地面的顶面重合，整片地面抢深度、一闪一闪
       --   （用户 11-27「开始游戏的那个仓库有些频闪」），还把厂房的检修地沟口盖住了。885 在地沟底板（底 892）、
-      --   停机坪外圈那块地（底 897.9）底下；停机坪远处那道山（底 880）照旧插在地里
-      local ly = (Map.Zones and Map.Zones.HANGAR and Map.Zones.HANGAR.Position.Y) or 900
-      SEA_Y = ly - 15.5
+      --   停机坪外圈那块地（底 897.9）底下；停机坪远处那道山（底 880）照旧插在地里。
+      --   三处取最低的（频闪审查 3）：以后哪处挪了高度，这圈平地跟着沉在它底下（tools/mock/hangarzfight.lua ④、range.lua ⑥ 查）
+      local Zn = Map.Zones
+      local ly = nil
+      for _, k in ipairs({ "HANGAR", "HANGAR_AIR", "MENU" }) do
+        local cf = Zn and Zn[k]
+        if cf then ly = math.min(ly or math.huge, cf.Position.Y) end
+      end
+      SEA_Y = (ly or 900) - 15.5
       HI0, HI1, HK0, HK1 = 0, -1, 0, -1
     end
     local sand = (Map.DESERT and Map.COLORS and Map.COLORS.Sand) or RGB(176, 142, 100)

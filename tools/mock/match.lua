@@ -1,9 +1,11 @@
 -- 匹配与补人机（用户 11-26：「点开战先匹配，匹配一分钟后人不够就补人机，两边的人机的车辆要符合我匹配时带的最高权重的载具，
 --   跟战雷一样，然后人机的分数也要出现在记分板」）：python3 tools/mock/run.py tools/mock/match.lua
---   ① 开服是「匹配中」，没人点开战不开打；② 点开战排上，到点开准备阶段，记成这一局的人、机库变成局内选车页（主按钮「出击」、匹配时点的那一辆选中），点出击坐进去
+--   ① 开服是「匹配中」，没人点开战不开打；② 点开战排上，到点开准备阶段，记成这一局的人、机库变成局内选车页（主按钮「出击」、匹配时点的那一辆选中，
+--      飞机卡禁选、没有「试驾」——同战雷的出击页），点出击坐进去
 --   ③ 开打后两队电脑车补满 teamSize（自己这队少一辆），车的战斗等级按我阵容里最高的那辆挑；④ 电脑车组进记分板，打掉车记击毁、得分、阵亡
 --   ⑤ 车没了回局内选车页（卡上写这一局的账）、「退出战斗」退出这一局；⑥ 一局打完回到匹配中；⑦ 每局开局拨回早上（一天 48 分钟）
 local T = dofile(MOCK_DIR .. "/common.lua")
+pcall(function() io.stdout:setvbuf("line") end)   -- 跑得久：一行一行写出来（重定向到文件时也看得见进度）
 local R = T.R
 local check = T.check
 
@@ -27,6 +29,7 @@ check(G.round.phase == "queue", "开服以后是匹配中（" .. tostring(G.roun
 R.run(8)
 check(G.round.phase == "queue", "没人点开战：一直等着，不开打")
 check(G.round.queueEnds == nil, "没人排：不起算倒计时")
+check(T.findNamed("HangarTest") ~= nil, "匹配中（还没进局）：右边有「试驾」")
 
 print("② 点开战")
 local key = G.treeLineup(P)[1]
@@ -82,6 +85,8 @@ if airKey then
   for _, d in ipairs(T.findNamed("HangarGo"):GetDescendants()) do if d.Name == "GoSub" then go0 = d.Text end end
   check(go0 and go0:find(TTm.byKey[key] and TTm.byKey[key].name or "", 1, true) ~= nil, "点了飞机卡也不选它：主按钮还是那辆地面车（" .. tostring(go0) .. "）")
 end
+-- 局内选车页没有「试驾」（同战雷的出击页；试驾审查 4：飞机卡禁选，原来右边「试驾」还在、点了开的是选中的坦克）
+check(T.findNamed("HangarTest") == nil and T.findNamed("ViewBtn") ~= nil, "局内选车：右边没有「试驾」（「只看车」还在）")
 check(not T.findNamed("MapVote") or not T.findNamed("MapVote").Active or #T.texts("▼") == 0, "局内不能选地图（没有 ▼）")
 -- shot=<目录>：拍一张局内选车（tools/mock/hud_render.py 画成图）
 local shotDir = TEST_ARGS and TEST_ARGS:match("shot=(%S+)")
@@ -164,10 +169,12 @@ local card = T.findNamed("Line_" .. key)
 local spTxt = nil
 for _, d in ipairs(card and card:GetDescendants() or {}) do if d.Name == "Sp" then spTxt = d.Text end end
 check(spTxt ~= nil and spTxt ~= "", "那一辆卡上写着这一局的账（" .. tostring(spTxt) .. "）")
+check(T.findNamed("HangarTest") == nil, "回到局内选车页：还是没有「试驾」")
 T.press(T.findNamed("LeaveMatch"))
 R.run(0.8)
 check(P.match == nil, "点「退出战斗」：这一局不打了")
 check(C.hangarGui.Visible and goLabel() == "加入战斗" and not T.findNamed("LeaveMatch"), "回到普通机库：主按钮「加入战斗」、没有「退出战斗」（" .. tostring(goLabel()) .. "）")
+check(T.findNamed("HangarTest") ~= nil, "回到普通机库（局外）：「试驾」回来了")
 
 print("⑥ 打完回到匹配中")
 G.roundFinish(mine)

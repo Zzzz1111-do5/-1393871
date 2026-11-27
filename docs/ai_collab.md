@@ -73,7 +73,27 @@
     **以后别再把这条禁选放到局外**（用户 11-26「直接禁止选飞机」说的是局内选车）。
   · 试驾打靶：真游戏开着匹配，机库里试驾时这一局还在「匹配中」——Air.lua fireStore / stepGuns、Armor.lua fire、Fly.lua（尚未开战）都按没开战不让打；试驾的车（e.testDrive / TestDrive 属性）放开。
   · 顺手查到：Fly.lua fmMass 火箭巢按「巢里几发 × 一整个装满的巢」算——苏-25（四个 B-8）43 吨推满油门滑出跑道几公里离不了地、A-10 冲出跑道；改成一个巢（空壳四成 + 剩的火箭按发数折）。
-  · 测试 tools/mock/wttestair.lua。没改的：轰-6K（约 4200 格）、B-2（约 8300 格）、MQ-9（约 3500 格）满油满弹在 3600 格跑道上照样冲出跑道、在跑道外平地上离地（战场跑道也是 3600）。
+  · 测试 tools/mock/wttestair.lua（a03a290）。
+  · **后续（审查 a03a290 挑的，分支 hp-followups）**：
+    ① 跑道上滑不起来的直接空中出生（试驾审查 2）：新 AirDefs.takeoffRun 照 Fly.lua 地上那段静态推一遍滑跑（满油、默认挂载、改装全装的推力；歼-6 估 1399 格、
+      同一个测试里实测 1390 格），比起飞位往西剩下的跑道（MapRange.runwayLeft，第 0 个起飞位 3440 格）的九成五长，Tech.lua testDrive 就在靶区上空出生（spawnAircraftAir，
+      不按型号列名单；提示换成 tree.testOnSky）——现在是轰-6K（3628 格）、B-2（6796 格）；MQ-9 改装全装 3026 格，照旧在跑道上。
+      **改 Fly.lua 地上滑跑、抬头、fmMass 的，同时改 AirDefs.takeoffRun**。战场跑道也是 3600 格：出击（deployVeh）没动。
+    ② 手机俯仰反了（试驾审查 8）：Fly.lua jetPhysics pitchIn = −mv.Z（MoveVector 往前推 Z = −1，同按 W：推杆低头；直升机 fwdIn = −mv.Z 本来就对）。
+    ③ 试驾车的待发弹架回补（试驾审查 3）：Wt.lua rackStep 开战以前也给 e.testDrive 的车跑；据点补给照旧只在开战以后。
+    ④ 局内选车页藏掉「试驾」（试驾审查 4，同战雷的出击页）：TechUI H.testBtn 在 S.pick 时藏、「只看车」挪到最右；局外、匹配中照旧。
+    测试：wttestair.lua 加 ⑤（轰-6K 空中出生、在飞）、① 手机摇杆往前推低头 / 往回拉抬头、④ 打空待发弹架会补回来；match.lua ② ⑤ 查「试驾」藏没藏。
+    没做：审查 5（局外开打以后飞机卡写红字 SP，算变化不算 bug）、6（匹配中选飞机点开战 → 进局后选中格回地面车，没测）、7（rbxlx 要重新生成：lune run tools/build.luau）。
+
+- F（11-27，用户「开始游戏的那个仓库有些频闪」，3b8a024）：
+  · **根因**：大厅那圈远处平地（Scenery.lua 的 Ocean）顶面正好 900，和厂房水泥地、停机坪、主菜单地面的顶面重合，整片地面抢深度；沉到场景地面底下 15 格（顶面 885）。
+    HangarStage 地上贴的薄层改成固定几层、层与层差 0.06 格（大厅在 x = −100000，那里 32 位浮点只分得出 1/128 格）；墙、屋顶、杂物上贴面的错开；
+    停机坪用的 Enum.Material.CorrugatedSteel 是 Roblox 没有的材质，换成 Metal——选中飞机时的露天停机坪这才在真游戏里搭得起来。
+    **以后往大厅的场景（HangarStage / MenuStage）加零件**：同向的面别贴在 0.04 格以内、半透明的别叠，跑 tools/mock/hangarzfight.lua。
+  · **后续（审查 3b8a024 挑的，分支 hp-followups）**：远处平地取 Zones.HANGAR / HANGAR_AIR / MENU 三处 Y 的最小值再减 15.5（频闪审查 3）；
+    range.lua ⑥ 不再抄 15.5，改成查「顶面低于场景最低的零件」（频闪审查 4）；hangarzfight.lua 把厂房里停的车、停机坪上停的飞机（TechUI 摆的子 Model）
+    深度收进来，只打印「车模自己贴面多少对」（频闪审查 1）：零件拼的 59 式 91 对、歼-6 77 对——车模（VehModels / AirModels）和战场共用，有导入原模型的不走这套，要改另开。
+    没在 Studio 里亲眼看过（0.06 格层间距、贴地视角下细缝走样）。
 
 - E（11-27，用户「不同弹种击中的 X 光效果不一样」「不光不同动画还要不同效果」）：
   · **弹种**（服务器 Wt.lua xrSub：弹种表写了 sub 就用，没写按参数推）：fs 长杆尾翼稳定脱壳穿甲 / ds 脱壳穿甲 / ap 全口径穿甲 / aphe 穿甲爆破 / heat 破甲 / tandem 串联破甲 / he 杀爆 / hesh 碎甲 / ac 机炮机枪；以后加弹在表里写 sub。
