@@ -10,6 +10,8 @@
 #   → 不再整张降饱和（原来统一降一成，黄铜被洗成土黄）：非金属在 Blender 材质里降，金属不降
 #   → 带药筒伸出图外的那几张记在 fade 表里——左边 16 像素（1 倍）「先压暗、后透明」由弹药栏的 UIGradient 做（烤进图里的话 255 色放不下
 #     一整段透明度渐变，会一道一道的）
+#   → 1 倍那套不写模板字（11-27 美术审查第二轮：720p / 768p 下字高约 2.5 像素，成了 1 像素的竖点）：渲染脚本给有字的另出一张
+#     <名字>_nt.png（不带字），1 倍那套从它缩；meta 里 extra 的（125 穿甲弹的装填形态，留给配弹界面）不打包
 #   → src/ReplicatedStorage/AmmoPics.lua
 #   python3 -I tools/models/ammopics.py <渲染目录> [colors1=96] [bleed=2]
 #   型号 → 图：ammo 按 Ballistics.AMMO 的键（弹种）、w 按 VehDefs.W 的键（机枪、机炮、导弹……）、tool 按弹药栏的工具格
@@ -131,12 +133,15 @@ def encode(arr, colors):
 pics2, pics1 = {}, {}
 for name in sorted(meta):
     p = os.path.join(SRC, name + '.png')
-    if not os.path.exists(p):
-        continue
     m = meta[name]
+    if not os.path.exists(p) or m.get('extra'):   # extra：125 穿甲弹的装填形态（留给配弹界面），不进弹药栏
+        continue
     im = Image.open(p).convert('RGBA')
     pics2[name] = encode(shrink(im, m['w'] * 2, m['h'] * 2), COLORS2)
-    pics1[name] = encode(shrink(im, m['w'], m['h']), COLORS1)
+    # 1 倍那套用不带模板字的那张（_nt.png）：1 倍下字只有 2.5 像素高，缩成 1 像素的竖点（11-27 美术审查第二轮）
+    pnt = os.path.join(SRC, name + '_nt.png')
+    im1 = Image.open(pnt).convert('RGBA') if (m.get('nt') and os.path.exists(pnt)) else im
+    pics1[name] = encode(shrink(im1, m['w'], m['h']), COLORS1)
 ammo = {k: k for k in sorted(AMMO_KEYS) if k in pics2}
 w = {k: W_ALIAS.get(k, k) for k in sorted(W_KEYS) if W_ALIAS.get(k, k) in pics2}
 tool = {k: k for k in TOOLS if k in pics2}
@@ -144,7 +149,7 @@ fade = sorted(k for k in pics2 if meta[k].get('cut'))
 miss = sorted(k for k in AMMO_KEYS if k not in pics2)
 L = ['-- 自动生成（tools/models/ammopics.py），别手改：弹药栏的写实弹种图（用户 11-27「我需要你完全按照战雷的风格去做设计 而不是这种卡通风格……更拟真」）——',
      '--   Blender 按真弹的结构建模、照实物涂装渲的（tools/models/ammopics_blender.py）：横放、弹头朝右、略俯 6° 偏 10°，同一口径的弹一个毫米 → 像素比例；',
-     '--   两套：pics 显示尺寸的 2 倍、pics1 显示尺寸的 1 倍（弹药栏按格子实际几个像素选）；弹种 / 机枪格的图 92 × 40（格子 96 × 60 里 x 0～92、y 10～50）、工具格 56 × 40；',
+     '--   两套：pics 显示尺寸的 2 倍、pics1 显示尺寸的 1 倍（弹药栏按格子实际几个像素选；1 倍那套不写模板字）；弹种 / 机枪格的图 92 × 40（格子 96 × 60 里 x 0～92、y 10～50）、工具格 56 × 40；',
      '--   透明像素里外扩了 %d 圈边缘色（调色板里透明度 0 的颜色）：解码时照写，图缩小显示时边上不混黑；' % BLEED,
      '--   fade：药筒（太长的导弹 / 火箭）伸出图外的那几张，弹药栏给它左边 16 像素加 UIGradient「先压暗、后透明」（不烤进图里：255 色放不下透明度渐变）',
      '--   重新生成：/opt/blender/blender -b --factory-startup -P tools/models/ammopics_blender.py -- <目录>',
