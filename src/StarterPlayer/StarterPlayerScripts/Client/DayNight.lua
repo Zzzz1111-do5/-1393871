@@ -8,7 +8,7 @@
 --     镜头在训练场那块用训练场那套，别处用这一局的战场；纬度（太阳低一点、影子长一点）、全局风按图设
 --   · 钟点跳了（每局开局拨回早上、PvE 关卡、测试拨钟）：几个混合权重一秒左右缓过去，不一下跳
 --   · 后期效果只在用得上的时候开：太阳光束天黑了关（夜里本来就是 0）、机器跟不上（自动画质 G.perfK 低）也关；
---     远处景深（FarBlur）只在开飞机时开（地面上强度只有 0.06 几乎看不出来，却每帧跑一遍整屏后期——远近的层次交给大气）
+--     远处景深（FarBlur，用户 11-22「远处模糊这样」）地面上照旧开着 0.06、开飞机 0.035，开镜、看光电吊舱、画面卡的时候关
 --   开飞机飞得越高大气越淡（用户：飞机视野有点近）。夜视仪（Night.lua）开着时在这上面加亮、变绿，白天开夜视只亮一点点
 --   G.dayK()：0 夜里 ～ 1 白天；G.isNight()：天黑了（出生自动开夜视看这个）
 local Lighting = game:GetService("Lighting")
@@ -28,9 +28,16 @@ function DayNight.init(G)
   local function smooth(a, b, v) local t = math.clamp((v - a) / (b - a), 0, 1) return t * t * (3 - 2 * t) end
 
   -- 夜视增亮多少档曝光（用户 11-22：「夜视仪视角沙漠的地面全是白色的」）：草地、土地（亮度约 0.23）加 2.7 档；沙漠全是沙（约 0.5，亮一倍多），
-  --   同样 +2.7 档沙地直接过曝成一片白（车里的昼光观瞄镜里就是一片黄）——少加 1.2 档；雪地比沙地还亮（反照率约 0.8）：加得更少
+  --   同样 +2.7 档沙地直接过曝成一片白（车里的昼光观瞄镜里就是一片黄）——少加 1.2 档；雪地比沙地还亮（反照率约 0.8）：加得更少。
+  --   11-27 换成按图的光照（LightLooks）以后，夜里的基准曝光低了 0.1～0.2 档（钢城 / 训练场 0.55 → 0.45、沙海 0.55 → 0.35、雪山 0.62 → 0.45）：
+  --   夜视画面要和原来一样亮——半夜开夜视的总曝光钉在原来的数（夜里基准 + 增亮：0.55 + 2.7、沙海 0.55 + 1.5、雪山 0.62 + 1.1），
+  --   增亮 = 这个数减这张图夜里的基准（以后 LightLooks 再调夜里的曝光，夜视也不跟着变暗变亮）
+  local NV_EV = { city = 0.55 + 2.7, range = 0.55 + 2.7, sands = 0.55 + 1.5, snow = 0.62 + 1.1 }
   local look = nil   -- 现在用哪一套（LightLooks.LOOK 的键）
-  local function nvEv() return (look == "sands" and 1.5) or (look == "snow" and 1.1) or 2.7 end
+  local function nvEv()
+    local P = LL.LOOK[look] or LL.LOOK.city
+    return (NV_EV[look] or NV_EV.city) - P.night.exp
+  end
 
   local dayK, clock = 0, 2.3
   G.dayK = function() return dayK end
@@ -51,7 +58,9 @@ function DayNight.init(G)
   -- 昼夜、黄昏权重、夜视、地图上的灯、照明弹都按「6 点日出、18 点日落」算（DayClock.sunAlt）。换纬度要是连日出日落一起挪了
   --   （太阳按季节走的算法：高纬度的夏天 21 点才落山），夜里那套光照就会照在还挂在天上的太阳下——进图、换区块时
   --   在 12 点、6 点、18 点各看一眼太阳（同一帧里拨回来，画面上看不出），6 点、18 点离地平线超过 3°（sin ≈ 0.05）就不用这个纬度，
-  --   依次退回原来的 23 度、0 度（赤道：一年四季都是 6 点日出 18 点日落）；太阳没跟着钟点动（读到的是旧值）判断不了，照用
+  --   退回原来的 23 度就停，打一条提示（不再往 0 度退：赤道上正午太阳在头顶，影子比 23 度还短，跟「太阳低、影子长」反着来；
+  --   23 度是一直用到 11-27 的，昼夜那时就是对的）。读到的太阳方向没跟着钟点变（GetSunDirection 同一帧里不更新）是「判断不了」：
+  --   照用这张图的纬度，等钟点自己走到 6 点、18 点时再看一眼（watchSun：那时的读数隔了好几帧，是新的）
   local latSeen = {}   -- 纬度 → true / false / "?"（看过一次就记住：Roblox 的算法一局里不会变）
   local function sunY(c, lat)
     Lighting.GeographicLatitude = lat
@@ -72,21 +81,49 @@ function DayNight.init(G)
     if not probe then latSeen[lat] = res end
     return res
   end
+  local warned = {}
+  local function latWarn(want, why)
+    if warned[want] then return end
+    warned[want] = true
+    warn("[全面大战场] 纬度 " .. tostring(want) .. "°：" .. why .. "，退回 " .. tostring(LL.LAT0)
+      .. "°（太阳高一点、影子短一点；昼夜照旧按 6 点日出、18 点日落）。要换纬度改 ReplicatedStorage/LightLooks.lua 的 LAT")
+  end
   local function pickLat(want, probe)
-    for _, lat in ipairs({ want, LL.LAT0, 0 }) do
-      if latOk(lat, probe) ~= false then return lat end
-    end
-    return 0
+    if want == LL.LAT0 then return want end
+    if latOk(want, probe) ~= false then return want end   -- true 看过了没问题；"?" 判断不了：照用这张图的纬度
+    if not probe then latWarn(want, "6 点、18 点太阳不在地平线上（Roblox 按这个纬度把日出日落挪了）") end
+    return LL.LAT0
   end
   G.dnLatPick = pickLat   -- 测试用：pickLat(想要的纬度, 假的太阳（钟点, 纬度）→ 太阳方向的 Y)
 
-  -- 换一套（换图、在训练场和战场之间瞬移）：纬度、全局风跟着换。风只在这时写一次——暴风雨（Warfx.lua）在它的基础上往大了插
+  -- 换一套（换图、在训练场和战场之间瞬移）：纬度、全局风跟着换。风只在这时写一次——暴风雨（Warfx.lua）在它的基础上往大了插：
+  --   基数放在 G.windBase，暴风雨里换图、换区块时 Warfx 跟着重新取（原来只在暴风雨开始那一下记一次 GlobalWind：新的风被旧基数插出来的值盖掉）
   local lat = LL.LAT0
   local function applyLook(key)
     look = key
     lat = pickLat(LL.LAT[key] or LL.LAT0)
     local w = LL.WIND[key]
-    if w then pcall(function() workspace.GlobalWind = w end) end
+    if w then
+      G.windBase = w
+      pcall(function() workspace.GlobalWind = w end)
+    end
+  end
+  -- 钟点自己走到 6 点、18 点（日出、日落）时看一眼太阳：进图时判断不了的（"?"）在这儿补上。在写这一次的钟点之前读——
+  --   ClockTime 还是上一次更新写的（隔了好几帧）；离地平线超过 4°（sin ≈ 0.07）就退回 23 度（一局只换这一次，打提示）
+  local function watchSun()
+    if lat == LL.LAT0 or latSeen[lat] ~= "?" then return end
+    local c = Lighting.ClockTime
+    if math.abs(c - 6) > 0.05 and math.abs(c - 18) > 0.05 then return end
+    if math.abs(Lighting.GeographicLatitude - lat) > 1e-3 then return end
+    local ok, y = pcall(function() return Lighting:GetSunDirection().Y end)
+    if not ok or type(y) ~= "number" then return end
+    if math.abs(y) <= 0.07 then
+      latSeen[lat] = true
+      return
+    end
+    latSeen[lat] = false
+    latWarn(lat, string.format("%.2f 点太阳离地平线 %.0f°（Roblox 按这个纬度把日出日落挪了）", c, math.deg(math.asin(math.clamp(y, -1, 1)))))
+    lat = LL.LAT0
   end
 
   -- 手机、自己把画质调到 3 档以下的：太阳光束不开（少一遍整屏后期；Roblox 画质 4 以下本来也没有阴影）
@@ -117,6 +154,7 @@ function DayNight.init(G)
       applyLook(key)
       eased = false   -- 换图、换区块是瞬移过去的：光照直接到位
     end
+    watchSun()
     if eased then
       local a = 1 - math.exp(-h / EASE)
       vk += (dayK - vk) * a
@@ -222,21 +260,27 @@ function DayNight.init(G)
   -- 测试用：现在用的哪一套、纬度、风、混合好的数、缓过的权重
   G.lightLook = function() return { key = look, lat = lat, wind = LL.WIND[look], v = cur, vk = vk, vw = vw, vt = vt } end
 
-  -- 远处模糊（景深，用户 11-22：「视野给我改成无限远好了，然后远处模糊这样」）：近处清楚、越远越糊（Roblox 景深的对焦距离、清楚范围最多 200 + 50 格）。
-  --   用户 11-25「画质一般」压到 0.06（只把很远的地平线柔一点）；11-27 地面上整个关掉：0.06 几乎看不出来，却每帧都跑一遍整屏后期——
-  --   远近的层次交给大气（空气透视，LightLooks）。只在开飞机时开（看的本来就是几公里外：糊得很轻，0.035）；
-  --   要看清远处的时候照样关：飞机光电吊舱、阵亡镜头（它自己有景深）、画面卡（自动画质低）；坐飞机时也照旧看步兵开镜、车上瞄准镜这些
+  -- 远处模糊（景深，用户 11-22：「视野给我改成无限远好了，然后远处模糊这样」）：近处清楚、越远越糊（Roblox 景深的对焦距离、清楚范围最多 200 + 50 格）；
+  --   要看清远处的时候关掉：步兵开镜 / 举枪瞄准、望远镜、坦克瞄准镜、车里的观瞄设备、飞机光电吊舱、阵亡镜头（它自己有景深）；画面卡（自动画质低）也关
+  -- 用户 11-25「画质一般」：原来远处糊 0.2——两百五十格（九十米）以外整片发糊，一两公里外的坦克、房子、山都是一团，画面看着「低清」；
+  --   压到 0.06（只把很远的地平线柔一点）；开飞机 0.035（看的本来就是几公里外：糊得更轻）。
+  --   11-27 光影那一版把地面上的整个关了（省一遍整屏后期），审查时恢复：这是用户要过的，远近的层次一半靠它、一半靠大气（LightLooks 只有 0.07～0.09）；
+  --   机器跟不上的时候照样先关它（G.perfK < 0.7）
   local far = Instance.new("DepthOfFieldEffect")
   far.Name = "FarBlur"
-  far.FocusDistance, far.InFocusRadius, far.NearIntensity, far.FarIntensity = 200, 50, 0, 0.035
-  far.Enabled = false
+  far.FocusDistance, far.InFocusRadius, far.NearIntensity, far.FarIntensity = 200, 50, 0, 0.06
   far.Parent = Lighting
   G.farBlur = far   -- 测试用
   G.frameConn("FarBlur", function()
     local dr, fl = G.drive, G.fly
-    local want = fl ~= nil and not (G.scopeOn == true or G.fpsAiming == true or (dr ~= nil and (dr.sight or dr.eo)) or G.interiorOptic ~= nil
-      or fl.eo == true or (G.killcamOn ~= nil and G.killcamOn()) or (G.perfK or 1) < 0.7)
+    local sharp = G.scopeOn == true or G.fpsAiming == true or (dr ~= nil and (dr.sight or dr.eo)) or G.interiorOptic ~= nil
+      or (fl ~= nil and fl.eo == true) or (G.killcamOn ~= nil and G.killcamOn()) or (G.perfK or 1) < 0.7
+    local want = not sharp
     if far.Enabled ~= want then far.Enabled = want end
+    if want then
+      local k = fl and 0.035 or 0.06
+      if math.abs(far.FarIntensity - k) > 0.005 then far.FarIntensity = k end
+    end
   end)
 end
 
