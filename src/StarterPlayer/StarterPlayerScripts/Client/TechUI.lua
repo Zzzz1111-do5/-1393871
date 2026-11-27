@@ -769,7 +769,9 @@ function TechUI.init(G)
     ht.Font = TH.F.bold
     H.handleT = ht
     handle.MouseButton1Click:Connect(function()
-      if G.treeGui and G.treeGui.Visible then
+      -- 按「科技树开着没有」（treeShown 记的 H.treeOpen），不按面板 Visible：往下滑着关的那 0.18 秒里面板还 Visible，
+      --   原来这时点把手走 closeTree、被 closing 挡掉，什么都不发生；现在走 openTree（它会从现在的位置滑回来）
+      if H.treeOpen then
         if H.closeTree then H.closeTree() end
       elseif G.openTechTree then
         G.openTechTree()
@@ -1052,14 +1054,14 @@ function TechUI.init(G)
     H.bays = {}   -- 这一次重画的阵容卡片的等级底色（treeShown 开关它们）
     -- 底下一条（同战雷）：「科技树」把手 + 各国页签；点国家换系（机库阵容、科技树一起换）
     clear(H.flags)
-    H.handleT.Text = ((G.treeGui and G.treeGui.Visible) and "︾  " or "︽  ") .. L("科技树", "Tech tree") .. ((G.treeGui and G.treeGui.Visible) and "  ︾" or "  ︽")
+    H.handleT.Text = ((H.treeOpen == true) and "︾  " or "︽  ") .. L("科技树", "Tech tree") .. ((H.treeOpen == true) and "  ︾" or "  ︽")   -- 按开没开（滑出那 0.18 秒面板还 Visible）
     dockNations(function(nat)
       if nat == tree.nat then return end
       if G.S and G.S.pick then return end   -- 局内选车：阵容跟着这一局，不换系
       tree.nat = nat
       selSlot = 1
       act("treeNat", nat)
-      if G.treeGui and G.treeGui.Visible and G.treeView then G.treeView(nat) end
+      if H.treeOpen and G.treeView then G.treeView(nat) end   -- 正在滑出去：不再整棵重建（滑的时候卡一下）
       refreshHangar()
     end)
     clear(H.row)
@@ -1224,7 +1226,10 @@ function TechUI.init(G)
     if hangar.Visible ~= want then
       -- 出击（机库收起、人已经出生了）：镜头从机库一下切到战场——盖 0.1 秒黑再 0.25 秒淡开（UI.lua G.sceneFade；
       --   11-27「动画做出丝滑感」，顺便把进战场那一下的加载、阴影重画藏在黑里）。阵亡回机库 DeathFx 自己有淡黑淡开
-      if hangar.Visible and not want and G.sceneFade and G.S and G.S.alive then G.sceneFade(0.1, 0.25) end
+      --   黑着等到镜头真到了车 / 飞机 / 船上（G.drive 可能比 S.alive 晚到），最多多等 0.8 秒（UI.lua 的 opt.ready）
+      if hangar.Visible and not want and G.sceneFade and G.S and G.S.alive then
+        G.sceneFade(0.1, 0.25, { ready = function() return G.drive ~= nil or G.fly ~= nil or G.sail ~= nil end })
+      end
       hangar.Visible = want
       if Stage then
         shownKey = nil
@@ -1403,10 +1408,12 @@ function TechUI.init(G)
     end
     if H.handleT then H.handleT.Text = (on and "︾  " or "︽  ") .. L("科技树", "Tech tree") .. (on and "  ︾" or "  ︽") end
   end
-  -- 关上：原来一下子没了（打开是从下往上滑出来的）——现在先把机库排好，再往下滑出去（0.2 秒，Quart In）、滑完再藏
-  --   （11-27「动画做出丝滑感」；先排机库再开始滑：排机库那一帧卡一下不会吃掉动画的开头）。滑的时候又点开：停下来滑回去
+  -- 关上：原来一下子没了（打开是从下往上滑出来的）——现在先把机库排好，再往下滑出去（Theme.T.out 0.18 秒、Quart Out：docs/style.md
+  --   「界面不用 In」）、滑完再藏（11-27「动画做出丝滑感」；先排机库再开始滑：排机库那一帧卡一下不会吃掉动画的开头）。滑的时候又点开：停下来滑回去。
+  --   开、关都滑出屏幕（原来只挪 520，16:10 的屏上还剩一两百像素的面板盖着阵容卡，到头「啪」一下没了）
   local TSc = game:GetService("TweenService")
-  local SLIDE_OUT = TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+  local SLIDE_OUT = TweenInfo.new((TH.T and TH.T.out) or 0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+  local function offScreen() return UDim2.fromOffset(0, (H.vh or 720) - WIN_TOP + 8) end
   local closing, closeTok, panelHome = false, 0, nil
   H.treeClosing = function() return closing end
   closeTree = function()
@@ -1420,7 +1427,7 @@ function TechUI.init(G)
     closing = true
     closeTok += 1
     local tok = closeTok
-    pcall(function() TSc:Create(panel, SLIDE_OUT, { Position = panelHome + UDim2.new(0, 0, 0, 520) }):Play() end)
+    pcall(function() TSc:Create(panel, SLIDE_OUT, { Position = panelHome + offScreen() }):Play() end)
     task.delay(SLIDE_OUT.Time, function()
       if closeTok ~= tok or not closing then return end
       closing = false
@@ -2183,8 +2190,12 @@ function TechUI.init(G)
     treeShown(true)
     refreshTree()
     if not was then
-      if not back then panel.Position = panelPos + UDim2.new(0, 0, 0, 520) end
-      pcall(function() TS:Create(panel, TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Position = panelPos }):Play() end)
+      if G.reducedMotion and G.reducedMotion() then   -- 「减少动态效果」：跟关的时候一样直接出来
+        panel.Position = panelPos
+      else
+        if not back then panel.Position = panelPos + offScreen() end
+        pcall(function() TS:Create(panel, TweenInfo.new((TH.T and TH.T.panel) or 0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Position = panelPos }):Play() end)
+      end
     end
   end
   -- 底下换了国家（科技树开着）：科技树跟着换
