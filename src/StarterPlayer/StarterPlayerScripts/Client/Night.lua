@@ -323,7 +323,7 @@ function Night.init(G)
       vfSeen, vfDirty = vf, false
       if vf then vfConn = vf.ChildAdded:Connect(function() vfDirty = true end) end
     end
-    if vfDirty and virHlView and os.clock() - vfKick >= 3 then
+    if vfDirty and virHlView and os.clock() - vfKick >= 8 then   -- 同 Drive：保险放到 8 秒
       vfDirty, vfKick = false, os.clock()
       virHlView:Destroy()
       virHlView = nil

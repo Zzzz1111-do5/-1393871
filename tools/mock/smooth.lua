@@ -103,6 +103,13 @@ if hitBox and hitTop then
     R.run(0.1 - 1 / 60, 1 / 60)
   end
   check(pops >= 1 and pops <= 3, string.format("一秒 10 条击穿：只弹了 %d 下（第一条、过 0.4 秒；原来 10 下）", pops))
+  -- 结果混着来（机炮打车：击穿、跳弹交替；11-27 复核）：显示期间只记最高一级，跳弹 → 击穿不算升级
+  local pm = pops
+  for i = 1, 10 do
+    hit((i % 2 == 0) and "ric" or "pen")
+    R.run(0.1 - 1 / 60, 1 / 60)
+  end
+  check(pops - pm <= 3, string.format("一秒 10 条击穿、跳弹交替：只弹了 %d 下（≤ 3；按每条覆盖等级是 5 下）", pops - pm))
   local p0 = pops
   hit("pen", true)   -- 升级：击毁
   check(pops == p0 + 1, "结果升级（击穿 → 击毁）：马上弹一下")

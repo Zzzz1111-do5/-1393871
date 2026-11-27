@@ -856,9 +856,11 @@ function View.init(G)
       end
     end
     -- 粒子上限（11-27 M3 丝滑）：大团半透明的尘一层叠一层是显卡最贵的「填充」——一直开着跑的最多每秒 40 团（原来 60），
-    --   420 格外的车三成（远处看是一条尘带，层数少一些看不出来）
+    --   按「看上去多远」（距离 × min(1, 视场 / 70)，同 VfxLib.lod 的口径；11-27 复核：原来按裸距离 420 格就砍到三成，开 8～12 倍镜看交战距离上的车只剩三成尘带）：
+    --   1100 格外六成、2500 格外三成
     local rate = land and math.min(math.clamp((math.abs(v.speed) - 5) * 1.6, 0, 60) * (v.dustK or 0.5), 40) or 0
-    if far then rate *= 0.35 end
+    local de = camD * viewK
+    rate *= (de > 2500 and 0.35) or (de > 1100 and 0.6) or 1
     -- 侧滑、刚落地：扬尘更浓（自己开的车 Drive 给 slipA）
     if own and own.slipA then rate *= 1 + math.clamp(math.abs(math.sin(own.slipA)) * 4, 0, 2) end
     for _, pe in ipairs(M.dust) do if math.abs(pe.Rate - rate) > 0.5 then pe.Rate = rate end end

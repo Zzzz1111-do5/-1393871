@@ -109,7 +109,7 @@ function WtHud.init(G)
       hitPopAt = now
       if G.uiPop then G.uiPop(hitBox, 1.07) end
     end
-    hitRank = rank
+    hitRank = was and math.max(hitRank, rank) or rank   -- 显示期间只记最高一级（机炮打车击穿、跳弹混着来，跳弹 → 击穿不算升级）
   end
   local function showHit(m)
     local top, col

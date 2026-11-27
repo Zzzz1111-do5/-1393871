@@ -416,7 +416,7 @@ function Drive.init(G)
       vfSeen, vfDirty = vf, false
       if vf then vfConn = vf.ChildAdded:Connect(function() vfDirty = true end) end
     end
-    if vfDirty and hlView and os.clock() - vfKick >= 3 then
+    if vfDirty and hlView and os.clock() - vfKick >= 8 then   -- 保险（新车能不能自己被罩上要在 M3 上验）：打得热闹时每 3 秒重建一次会一顿一顿，放到 8 秒
       vfDirty, vfKick = false, os.clock()
       hlView:Destroy()
       hlView = nil
@@ -2596,7 +2596,7 @@ function Drive.init(G)
       local m = MODES[st.mode]
       if st.hlT <= 0 and (m == "whot" or m == "bhot") then
         st.hlT = 0.5
-        if G.opticsDead and G.opticsDead() then clearHl() else refreshHl(m == "whot") end
+        if (G.opticsDead and G.opticsDead()) or G.interiorOptic then clearHl() else refreshHl(m == "whot") end   -- 车里的辅助镜开着（昼光）也不罩
       end
     end
     -- 车长望远镜：密位刻度、估的距离、方位
