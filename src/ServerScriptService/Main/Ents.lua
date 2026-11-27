@@ -359,13 +359,15 @@ function Ents.init(G)
           end
           -- 溅射出错也要把 wtSkip 放掉：不然这辆车之后再也不掉血
           G.wtSkip = wtE
+          -- 打在钢甲上：爆炸带上材质、来向、弹种（客户端画「打在车上」：没有土柱、弹坑；穿甲弹不画爆炸，11-27）
+          local mInfo = (hs and HitSurf.METAL[hs]) and { h = hs, d = s.vel.Unit, am = s.cls } or nil
           local okE, errE = pcall(function()
             if s.kind == "shell" then
               s.w.splashW = s.w.splashW or { dmg = (s.w.dmg or 100) * 0.3, splash = s.w.splash, vs = s.w.vs,
                 boom = (s.w.fx == "agun" or s.w.fx == "ac" or s.w.fx == "lmg") and "gun" or "shell" }
-              G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10)
+              G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10, mInfo)
             else
-              G.explode(res.Position, s.w, s.src)
+              G.explode(res.Position, s.w, s.src, nil, mInfo)
             end
           end)
           G.wtSkip = nil
@@ -425,7 +427,7 @@ function Ents.init(G)
             end
             G.explode(res.Position, wq, s.src, (s.w.splash or 6) / 10)
           else
-            G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10, ground and { h = hs or "d", d = s.vel.Unit, am = s.cls } or nil)
+            G.explode(res.Position, s.w.splashW, s.src, (s.w.splash or 6) / 10, { h = hs or "d", d = s.vel.Unit, am = s.cls })   -- 钢甲上也带（11-27）
           end
           if ek then G.dmgK = nil end
           done = true
@@ -437,7 +439,7 @@ function Ents.init(G)
           local m = G.eraBlast and G.eraBlast(res.Position, s.w, s.vel)
           if m then G.dmgK = m end
           local hs2 = res.Instance and HitSurf.of(res.Instance, res.Material)
-          G.explode(res.Position, s.w, s.src, nil, (hs2 and not HitSurf.METAL[hs2]) and { h = hs2, d = s.vel.Unit } or nil)   -- 地上：按材质、来向画
+          G.explode(res.Position, s.w, s.src, nil, hs2 and { h = hs2, d = s.vel.Unit } or nil)   -- 按材质、来向画（钢甲上也带：客户端画打在车上的那一套，11-27）
           if res.Instance and s.kind == "rocket" then hitThing(res.Instance, s.w, s.w.dmg * 0.3, s.src) end   -- 直接命中多一点
           if m then G.dmgK = nil end
           done = true

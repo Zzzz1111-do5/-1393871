@@ -32,29 +32,26 @@ end
 cam.CFrame = R.CFrame.lookAt(base + V3(0, 30, 120), base)
 
 -- 机库的镜头每帧把镜头挪走：画之前把镜头放回旁边（特效离镜头太远不画）
+--   11-27 起特效全走 VfxLib 的发射器池（不再每次新建零件）：按池的记录（C.vfx.log，每喷一次一条）看这一下喷了哪几层
 local function fresh(f)
   cam.CFrame = R.CFrame.lookAt(base + V3(0, 30, 120), base)
-  local before = {}
-  for _, c in ipairs(FXF:GetChildren()) do before[c] = true end
+  C.vfx.logOn = true
+  C.vfx.log = {}
   f()
-  local out = {}
-  for _, c in ipairs(FXF:GetChildren()) do if not before[c] then out[#out + 1] = c end end
+  local out = C.vfx.log
+  C.vfx.log = {}
   return out
 end
--- 粒子：组数、用了哪些贴图、第一组烟的颜色、火星（白热贴图）几组、土块几组（模拟器的 Emit 不记数，按组比）
+-- 粒子：层数、用了哪些贴图、第一层烟的颜色、自己发光的白点几层（火星、白闪）、土块几层（白点染色、不发光）
 local function stats(list)
-  local o = { n = 0, tex = {}, col = nil, glow = 0, chunk = 0, pl = 0 }
-  for _, h in ipairs(list) do
-    for _, x in ipairs(h:GetDescendants()) do
-      if x.ClassName == "ParticleEmitter" then
-        o.n = o.n + 1
-        local nm = x.Texture:match("([%w_]+)%.%w+$") or x.Texture
-        o.tex[nm] = true
-        if nm == "explosion01_implosion_main" then o.glow = o.glow + 1 end
-        if nm == "SquareParticle" then o.chunk = o.chunk + 1 end
-        if nm == "smoke_main" and not o.col and x.Color and x.Color.Keypoints then o.col = x.Color.Keypoints[1].Value end
-      elseif x.ClassName == "PointLight" then o.pl = o.pl + 1 end
-    end
+  local o = { n = 0, tex = {}, col = nil, glow = 0, chunk = 0, pl = 0, names = {} }
+  for _, x in ipairs(list) do
+    o.n = o.n + 1
+    o.tex[x.tex] = true
+    o.names[x.name] = true
+    if x.tex == "explosion01_implosion_main" and x.le > 0.5 then o.glow = o.glow + 1 end
+    if (x.tex == "explosion01_implosion_main" and x.le <= 0.5 and x.vp) or x.tex == "SquareParticle" then o.chunk = o.chunk + 1 end
+    if x.tex == "smoke_main" and not o.col then o.col = x.col end
   end
   return o
 end
@@ -117,11 +114,12 @@ local steep = kin("d", -3, -100)
 print(string.format("    沙 %d 组 %s、土 %d 组 %s、石 %d 组 %s（火星 %d）、土垂直 %d 组", sand.n, rgb(sand.col), dirt.n, rgb(dirt.col), rock.n, rgb(rock.col), rock.glow, steep.n))
 check(sand.col and dirt.col and sand.col.R > dirt.col.R + 0.25, "沙地的土是浅黄的、土地是深褐的")
 check(rock.col and math.abs(warm(rock.col)) < 0.06, "石头是灰的 " .. rgb(rock.col))
-check(rock.tex.explosion01_implosion_main and not dirt.tex.explosion01_implosion_main, "石头上迸火星，土地上没有")
+check(rock.glow > 0 and dirt.glow == 0, string.format("石头上迸火星（发光的白点 %d 层），土地上没有（%d）", rock.glow, dirt.glow))
+check(dirt.chunk > 0 and not dirt.tex.SquareParticle, "土块是白点染色拉成短线，不是白方块")
 check(not sand.tex.explosion01_core_main, "穿甲弹没有火球")
 check(dirt.n > steep.n, string.format("擦着地打犁出一道沟（%d 组 > 垂直打 %d 组）", dirt.n, steep.n))
 local wat = kin("w", -0.5, -120)
-check(wat.tex.smoke_main and not wat.tex.SquareParticle, "水面：一柱水，没有土块")
+check(wat.tex.smoke_main and wat.chunk == 0, "水面：一柱水，没有土块")
 
 print("③ 爆炸按材质、弹种")
 local function bm(hs, am, dv, dz)

@@ -59,7 +59,7 @@ C.sfx = function(def, pos, o)
   return sfx0(def, pos, o)
 end
 local ws = R.workspace
-local function holder(name) return ws:FindFirstChild("ClientFx") and ws.ClientFx:FindFirstChild("Imp_" .. name) end
+local function holder(name) return ws:FindFirstChild("ClientFx") and ws.ClientFx:FindFirstChild("Imp_" .. name, true) end
 local function near(h, p, r) return h and (h.CFrame.Position - p).Magnitude < (r or 6) end
 local function has(list, x) for _, v in ipairs(list) do if v == x then return true end end return false end
 
@@ -83,9 +83,9 @@ local gp = V3(tx - 60, gy, tz + 25)
 camHere()
 G.botShot(from, gp - V3(0, 2, 0), W, src, { p1.Character }, 0)
 local eG = sent[#sent]
-check(eG and (eG.h == "d" or eG.h == "n" or eG.h == "r"), "打在地上：h = " .. tostring(eG and eG.h))
+check(eG and (eG.h == "d" or eG.h == "n" or eG.h == "r" or eG.h == "v"), "打在地上：h = " .. tostring(eG and eG.h))
 R.run(0.4)
-local dustH = holder((eG and eG.h == "n") and "sand" or ((eG and eG.h == "r") and "rock" or "dirt"))
+local dustH = holder((eG and eG.h == "n") and "sand" or ((eG and eG.h == "r") and "rock" or ((eG and eG.h == "v") and "grass" or "dirt")))
 check(near(dustH, eG and eG.b or gp, 8), "客户端：扬尘的发射器挪到了弹着点")
 check(not has(sounds, "ping") and not has(sounds, "clang"), "打土没有金属声")
 

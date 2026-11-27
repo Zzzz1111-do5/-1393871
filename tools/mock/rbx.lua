@@ -478,6 +478,8 @@ local ENUMS = {
   RenderPriority = "First Input Camera Character Last",
   StartCorner = "TopLeft TopRight BottomLeft BottomRight",
   ParticleOrientation = "FacingCamera FacingCameraWorldUp VelocityParallel VelocityPerpendicular",
+  ParticleEmitterShape = "Box Sphere Cylinder Disc", ParticleEmitterShapeStyle = "Volume Surface", ParticleEmitterShapeInOut = "Outward Inward InAndOut",   -- 粒子出生的体积（11-27 特效）
+  ActuatorRelativeTo = "Attachment0 Attachment1 World",
   ContextActionPriority = "Low Medium Default High",
   ContextActionResult = "Sink Pass",
 }
@@ -1263,6 +1265,10 @@ def("ParticleEmitter", "Instance", {
   RotSpeed = { T.NumberRange, NumberRange.new(0) }, Acceleration = { T.Vector3, v3() }, EmissionDirection = { E("NormalId"), Enum.NormalId.Top },
   LightEmission = { T.number, 0 }, LightInfluence = { T.number, 0 }, Drag = { T.number, 0 }, LockedToPart = { T.bool, false }, ZOffset = { T.number, 0 },
   VelocityInheritance = { T.number, 0 }, Orientation = { E("ParticleOrientation"), Enum.ParticleOrientation.FacingCamera }, Brightness = { T.number, 1 },
+  -- 11-27 特效用到的（真 Roblox 都有）：Squash 拉长 / 压扁、出生的体积、跟着风、时间缩放
+  Squash = { T.NumberSequence, NumberSequence.new(0) }, Shape = { E("ParticleEmitterShape"), Enum.ParticleEmitterShape.Box },
+  ShapeStyle = { E("ParticleEmitterShapeStyle"), Enum.ParticleEmitterShapeStyle.Volume }, ShapeInOut = { E("ParticleEmitterShapeInOut"), Enum.ParticleEmitterShapeInOut.Outward },
+  ShapePartial = { T.number, 1 }, WindAffectsDrag = { T.bool, false }, TimeScale = { T.number, 1 },
 }, { methods = { Emit = function(_, n) if n ~= nil and type(n) ~= "number" then error("Emit 要数字", 2) end end, Clear = function() end } })
 def("SpotLight", "Instance", { Brightness = { T.number, 1 }, Range = { T.number, 16 }, Angle = { T.number, 90 }, Color = { T.Color3, newC3(1, 1, 1) },
   Face = { E("NormalId"), Enum.NormalId.Front }, Shadows = { T.bool, false }, Enabled = { T.bool, true } })
@@ -1282,6 +1288,9 @@ def("Trail", "Instance", {
   FaceCamera = { T.bool, false }, Enabled = { T.bool, true }, Texture = { T.string, "" }, TextureLength = { T.number, 1 }, LightInfluence = { T.number, 1 },
 }, { methods = { Clear = function() end } })
 def("PointLight", "Instance", { Brightness = { T.number, 1 }, Range = { T.number, 8 }, Color = { T.Color3, newC3(1, 1, 1) }, Shadows = { T.bool, false }, Enabled = { T.bool, true } })
+-- 恒力（殉爆飞出去的钢板：抵掉一部分重力，飞得高、落得慢；模拟器没有物理，只记着）
+def("VectorForce", "Instance", { Force = { T.Vector3, v3() }, Attachment0 = { T.Instance, nil }, RelativeTo = { E("ActuatorRelativeTo"), Enum.ActuatorRelativeTo.Attachment0 },
+  ApplyAtCenterOfMass = { T.bool, false }, Enabled = { T.bool, true } })
 def("Highlight", "Instance", {
   Adornee = { T.Instance, nil }, FillColor = { T.Color3, newC3(1, 0, 0) }, OutlineColor = { T.Color3, newC3(1, 1, 1) }, FillTransparency = { T.number, 0.5 },
   OutlineTransparency = { T.number, 0 }, DepthMode = { E("HighlightDepthMode"), Enum.HighlightDepthMode.AlwaysOnTop }, Enabled = { T.bool, true },
