@@ -5,7 +5,9 @@
 --   · 只在本机有（不碰撞、不挡射线、不投影子），跟着高空风慢慢飘
 --   · 只摆离镜头 14 公里以内的（远了交给雾和地形的云层）；每 0.25 秒按距离调透明度：远处淡入、钻进云里淡出隐藏
 --     （透明的片叠满整屏会很卡：飞机穿云时那一朵整个藏起来，穿过去再出来）
---   · 没导入 clouds.glb：不摆（Warfx 那几十团球拼的积云照旧有）
+--   · 没导入 clouds.glb：不摆（Warfx 那几十团球拼的积云照旧有）；摆了就不再要那几十团球（G.snowCloudsOn，Warfx 收掉）
+--   · 11-27 M3 丝滑：离镜头 4 公里以内的每帧跟着风挪（原来 0.25 秒一挪，贴着云飞看得出一顿一顿），远的照旧 0.25 秒一拍；
+--     最远摆到 12 公里（原来 14，最后 3 公里本来就在淡出）；机器跟不上（自动画质 G.perfK 降了）再按比例收近
 local RS = game:GetService("ReplicatedStorage")
 
 local SnowClouds = {}
@@ -15,7 +17,8 @@ local PART = {   -- 三块切片（模型坐标：中心、大小）
   Y = { c = Vector3.new(0, 0.069, 0), s = Vector3.new(1, 0.596, 1) },
   Z = { c = Vector3.new(0, 0, 0.004), s = Vector3.new(1, 1, 0.751) },
 }
-local VIEW = 14000     -- 离镜头多远以内才摆（画质低时 9000）
+local VIEW = 12000     -- 离镜头多远以内才摆（画质低时 9000；自动画质降档时再乘 G.perfK）
+local NEAR_MOVE = 4000 -- 这么近的每帧挪
 local FADE_FAR = 3000  -- 最远那 3 公里慢慢淡出
 local WIND = Vector3.new(6, 0, 2.5)   -- 高空风（格 / 秒）
 
@@ -53,26 +56,34 @@ function SnowClouds.init(G)
     return t
   end
 
+  local nearList = {}   -- 上一拍离镜头 NEAR_MOVE 以内、摆着的（每帧挪）
   local function clear()
     if folder then folder:Destroy() end
     folder = nil
     table.clear(puffs)
+    table.clear(nearList)
+  end
+  -- 这边的体积云开着没有：开着就不要 Warfx 那几十团半透明的球（雪山上两套云叠着，透明的一层层排序、填满屏幕最贵）
+  local function setOn(on)
+    if G.snowCloudsOn == on then return end
+    G.snowCloudsOn = on
+    if G.cloudBanksRefresh then pcall(G.cloudBanksRefresh) end
   end
 
   local nBuild, nTick, nSpawn = 0, 0, 0   -- 测试、性能面板看
   local function build()
     nBuild += 1
     clear()
-    if Map.NAME ~= "snow" then return end
+    if Map.NAME ~= "snow" then setOn(false) return end
     src = srcParts()
-    if not src then return end
+    if not src then setOn(false) return end
     folder = Instance.new("Folder")
     folder.Name = "SnowClouds"
     folder.Parent = workspace
     local R = Random.new(26112)
     local span = 30000
     local low = lowGfx(G)
-    VIEW = low and 9000 or 14000
+    VIEW = low and 9000 or 12000
     for _ = 1, (low and 60 or 150) do
       -- 谷上空多一些（交战的地方），外面也有（飞出去还是有云）
       local cx, cz
@@ -95,6 +106,7 @@ function SnowClouds.init(G)
           r = math.max(sx, sy) * 0.5, parts = nil })
       end
     end
+    setOn(true)
   end
 
   local function spawnPuff(P)
@@ -117,12 +129,34 @@ function SnowClouds.init(G)
   local acc, t0 = 0, os.clock()
   local moveP, moveC = {}, {}
   local tick
+  -- 一朵现在在哪：跟着风飘，飘出作战区的从另一头回来（±32 公里一圈）
+  local function placeOf(P, drift)
+    local pos = P.pos + drift
+    return Vector3.new(((pos.X + 32000) % 64000) - 32000, pos.Y, ((pos.Z + 32000) % 64000) - 32000)
+  end
   G.frameConn("snowclouds", function(dt)
     if not folder then return end
     acc += dt or 0
-    if acc < 0.25 then return end
-    acc = 0
-    tick(workspace.CurrentCamera.CFrame.Position)
+    if acc >= 0.25 then
+      acc = 0
+      tick(workspace.CurrentCamera.CFrame.Position)
+      return
+    end
+    -- 两拍之间：近处的每帧跟着风挪一点（透明度、摆 / 收照旧按拍）
+    if #nearList == 0 then return end
+    local drift = WIND * (os.clock() - t0)
+    table.clear(moveP)
+    table.clear(moveC)
+    for _, P in ipairs(nearList) do
+      if P.parts then
+        local cf = CFrame.new(placeOf(P, drift))
+        for i, p in ipairs(P.parts) do
+          moveP[#moveP + 1] = p
+          moveC[#moveC + 1] = cf * P.rel[i]
+        end
+      end
+    end
+    if #moveP > 0 then workspace:BulkMoveTo(moveP, moveC, Enum.BulkMoveMode.FireCFrameChanged) end
   end)
   -- 一拍：按镜头位置摆近处的、收远处的、调透明度（测试也直接调：G.snowCloudTick）
   tick = function(cam)
@@ -130,16 +164,14 @@ function SnowClouds.init(G)
     nTick += 1
     local drift = WIND * (os.clock() - t0)
     local made = 0
+    local view = VIEW * math.clamp(G.perfK or 1, 0.6, 1)   -- 自动画质降档：云也收近
     table.clear(moveP)
     table.clear(moveC)
+    table.clear(nearList)
     for _, P in ipairs(puffs) do
-      local pos = P.pos + drift
-      -- 飘出作战区的从另一头回来（±32 公里一圈）
-      local wx = ((pos.X + 32000) % 64000) - 32000
-      local wz = ((pos.Z + 32000) % 64000) - 32000
-      pos = Vector3.new(wx, pos.Y, wz)
+      local pos = placeOf(P, drift)
       local d = (pos - cam).Magnitude
-      if d < VIEW then
+      if d < view then
         if not P.parts and made < 12 then   -- 一次最多新摆 12 朵（刚开局、飞得快时不一下子卡住）
           spawnPuff(P)
           made += 1
@@ -148,7 +180,7 @@ function SnowClouds.init(G)
         if P.parts then
           -- 透明度：贴近（半径的 0.9～2.2 倍）淡掉、钻进去全透明；远处最后 3 公里淡出
           local near = math.clamp((d - P.r * 0.9) / (P.r * 1.3), 0, 1)
-          local far = math.clamp((VIEW - d) / FADE_FAR, 0, 1)
+          local far = math.clamp((view - d) / FADE_FAR, 0, 1)
           local tr = 1 - near * far
           local cf = CFrame.new(pos)
           for i, p in ipairs(P.parts) do
@@ -156,6 +188,7 @@ function SnowClouds.init(G)
             moveP[#moveP + 1] = p
             moveC[#moveC + 1] = cf * P.rel[i]
           end
+          if d < NEAR_MOVE + P.r and tr < 1 then nearList[#nearList + 1] = P end
         end
       elseif P.parts then
         dropPuff(P)

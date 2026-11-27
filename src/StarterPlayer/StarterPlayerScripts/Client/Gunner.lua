@@ -231,7 +231,7 @@ function Gunner.init(G)
   end
 
   -- 高炮：准星附近（20° 以内）最近的敌机，按它的速度和炮弹速度算提前量
-  local track = {}
+  local track = setmetatable({}, { __mode = "k" })   -- [敌机模型] = 速度记录（模型没了跟着回收）
   local function leadFor(o)
     local ents = workspace:FindFirstChild("Ents")
     if not ents then return nil end
@@ -245,11 +245,13 @@ function Gunner.init(G)
         if r then
           local p = r.Position
           local tr = track[m]
-          if tr and t > tr.t then
-            local v = (p - tr.p) / (t - tr.t)
-            tr.v = tr.v and tr.v:Lerp(v, 0.25) or v
+          if not tr then
+            tr = {}
+            track[m] = tr
           end
-          track[m] = { p = p, t = t, v = tr and tr.v or V() }
+          -- 速度：只在服务器真挪了它时按两次挪之间的时间算、按时间平滑（View.lua G.velTrack；原来每帧差分 × 0.25、每帧新建一张表）
+          if G.velTrack then G.velTrack(tr, p, t, 2000)
+          else tr.p, tr.t, tr.v = p, t, tr.v or V() end
           local to = p - o
           local d = to.Magnitude
           if d < gs.w.range * 1.1 and to.Unit:Dot(look) > math.cos(math.rad(20)) and d < bd then best, bd = m, d end

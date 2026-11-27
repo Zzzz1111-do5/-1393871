@@ -190,7 +190,7 @@ function Operation.init(G)
     local closest, best = nil, capture.r ^ 2
     for _, state in ipairs(s.points or {}) do
       local p = pointById[state.id]
-      if p and state.act and not state.locked and math.abs(p.y - pos.Y) < capture.height then
+      if p and state.act and not state.locked and math.abs((p.y or pos.Y) - pos.Y) < capture.height then   -- 没写高度的图（原来的雪山）别每帧报错
         local distance = (p.x - pos.X) ^ 2 + (p.z - pos.Z) ^ 2
         if distance < best then closest, best = state, distance end
       end

@@ -61,13 +61,17 @@ function Shock.init(G)
     if m < 0.005 and S.flash < 0.01 then
       if not idle then
         idle = true
-        if blur then blur.Size = 0 end
-        if cc then cc.Brightness, cc.Saturation, cc.Contrast = 0, 0, 0 end
+        -- 震完了把两个后期关掉（11-27 M3 丝滑：原来只把大小、亮度归零，第一次近处爆炸以后一直开着，每帧白画两遍全屏）
+        if blur then blur.Size = 0 blur.Enabled = false end
+        if cc then cc.Brightness, cc.Saturation, cc.Contrast = 0, 0, 0 cc.Enabled = false end
       end
       return
     end
-    idle = false
     ensure()
+    if idle then
+      idle = false
+      blur.Enabled, cc.Enabled = true, true
+    end
     blur.Size = 2 + 14 * math.max(m, S.flash * 0.8)
     cc.Brightness = 0.32 * S.flash
     cc.Saturation = -0.45 * m

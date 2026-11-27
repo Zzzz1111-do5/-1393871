@@ -104,6 +104,113 @@ function UI.init(G)
   local function hpColor(k) return RGB(232, 84, 72):Lerp(TEXT, math.clamp(k, 0, 1)) end   -- 满血白、快没了红
   G.ui = { frame = frame, round = round, stroke = stroke, label = label, button = button, flatPanel = flatPanel, hpColor = hpColor }
 
+  ---------------------------------------------------------------- 界面出现的短缓动（各模块共用）
+  -- 用户 11-27「把各种动画效果做出丝滑感」：面板原来是 Visible 一下子开、一下子关。
+  --   G.uiShow(界面, true)：马上显示，同时自己挂的 UIScale 从 0.96 弹到 1（0.18 秒，Quart Out）——只动比例、不动位置和透明度，
+  --     别的代码照旧摆位置、改颜色，不打架；界面自己已经有 UIScale（手机缩放……）就不加，只显示
+  --   G.uiShow(界面, false)：马上藏（按住看的、关窗口这些不拖泥带水）；opt.out = true 时先缩到 0.97（0.1 秒）再藏
+  --   G.uiPop(界面, 从多大, 慢)：已经显示着的（命中结果、新的一行）从 1.15 之类缩回 1（0.12 秒）；慢 = true 时按打开面板的 0.18 秒 Quart Out
+  --   系统打开「减少动态效果」（GuiService.ReducedMotionEnabled）就都不动。准星、命中标记、报错红字不用这个
+  do
+    local TweenService = game:GetService("TweenService")
+    local GuiService = game:GetService("GuiService")
+    local function reduced()
+      local ok, v = pcall(function() return GuiService.ReducedMotionEnabled end)
+      return ok and v == true
+    end
+    G.reducedMotion = reduced
+    local IN_T = TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    local OUT_T = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
+    local POP_T = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local own = setmetatable({}, { __mode = "k" })   -- [界面] = { sc = 自己挂的 UIScale, tok = 第几次（关的动画结束时还是这一次才藏）}
+    local function scaleOf(obj)
+      local e = own[obj]
+      if e and e.sc and e.sc.Parent == obj then return e end
+      if obj:FindFirstChildOfClass("UIScale") then return nil end   -- 界面自己有 UIScale：不叠第二个
+      local sc = Instance.new("UIScale")
+      sc.Name = "EaseScale"
+      sc.Parent = obj
+      e = { sc = sc, tok = 0 }
+      own[obj] = e
+      return e
+    end
+    function G.uiShow(obj, on, opt)
+      if not obj then return end
+      local e = own[obj]
+      if e then e.tok += 1 end
+      if on then
+        local was = obj.Visible
+        obj.Visible = true
+        if was and not (opt and opt.again) then return end   -- 本来就开着：不重弹
+        if reduced() then
+          if e and e.sc.Parent then e.sc.Scale = 1 end
+          return
+        end
+        e = scaleOf(obj)
+        if not e then return end
+        e.sc.Scale = (opt and opt.from) or 0.96
+        TweenService:Create(e.sc, IN_T, { Scale = 1 }):Play()
+      else
+        if not obj.Visible then return end
+        if not (opt and opt.out) or reduced() or not (e and e.sc.Parent) then
+          obj.Visible = false
+          if e and e.sc.Parent then e.sc.Scale = 1 end
+          return
+        end
+        local tok = e.tok
+        TweenService:Create(e.sc, OUT_T, { Scale = 0.97 }):Play()
+        task.delay(OUT_T.Time, function()
+          if e.tok ~= tok then return end   -- 中间又打开了
+          obj.Visible = false
+          e.sc.Scale = 1
+        end)
+      end
+    end
+    function G.uiPop(obj, from, slow)
+      if not obj or reduced() then return end
+      local e = scaleOf(obj)
+      if not e then return end
+      e.tok += 1
+      e.sc.Scale = from or 1.15
+      TweenService:Create(e.sc, slow and IN_T or POP_T, { Scale = 1 }):Play()
+    end
+    -- 镜头硬切的地方（机库出击进战场……）盖一下黑：先全黑 hold 秒（把加载、阴影重画那一顿藏在黑里），再 fade 秒淡开（Quad Out）。
+    --   盖在界面上面、不挡鼠标；「减少动态效果」时不盖。别的模块也能用：G.sceneFade(0, 0.12) 就是一下淡开
+    local fadeGui = Instance.new("ScreenGui")
+    fadeGui.Name = "SceneFade"
+    fadeGui.ResetOnSpawn = false
+    fadeGui.IgnoreGuiInset = true
+    fadeGui.DisplayOrder = 42   -- 阵亡黑幕（DeathFx 41）上面、性能面板（60）下面
+    fadeGui.Enabled = false
+    fadeGui.Parent = gui.Parent
+    local fadeF = Instance.new("Frame")
+    fadeF.Name = "Black"
+    fadeF.Size = UDim2.fromScale(1, 1)
+    fadeF.BackgroundColor3 = Color3.new(0, 0, 0)
+    fadeF.BackgroundTransparency = 1
+    fadeF.BorderSizePixel = 0
+    fadeF.Active = false
+    fadeF.Parent = fadeGui
+    local fadeTok = 0
+    function G.sceneFade(hold, fade)
+      if reduced() then return end
+      fadeTok += 1
+      local tok = fadeTok
+      hold, fade = math.max(0, hold or 0.12), math.max(0.05, fade or 0.25)
+      fadeF.BackgroundTransparency = 0
+      fadeGui.Enabled = true
+      task.delay(hold, function()
+        if fadeTok ~= tok then return end
+        TweenService:Create(fadeF, TweenInfo.new(fade, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
+        task.delay(fade, function()
+          if fadeTok ~= tok then return end
+          fadeGui.Enabled = false
+          fadeF.BackgroundTransparency = 1
+        end)
+      end)
+    end
+  end
+
   local function teamColor(t)   -- 征服模式的中立据点（owner = "none"）：灰
     -- 队伍的颜色按看的人算：自己这一边绿、对面红、中立灰（统一外观 docs/style.md，不再攻方一律红、守方一律绿）
     if t ~= "atk" and t ~= "def" then return TH.C.NEUTRAL end
@@ -978,8 +1085,11 @@ function UI.init(G)
     cols[t] = { head = h, list = list }
   end
   local boardData = {}
+  local drawnData, drawnLang = nil, nil   -- 上次画的是哪一份数据、哪种语言：按 Tab 打开时数据没变就不再整张重建（几十行、上百个字）
   function G.onBoard(d) boardData = d or {} if board.Visible then G.drawBoard() end end
   function G.drawBoard()
+    if drawnData == boardData and drawnLang == G.lang then return end
+    drawnData, drawnLang = boardData, G.lang
     boardTitle.Text = T("ui.scoreboard")
     for t, c in pairs(cols) do
       for _, k in ipairs(c.list:GetChildren()) do if k:IsA("Frame") then k:Destroy() end end
@@ -1011,13 +1121,13 @@ function UI.init(G)
   end
   UIS.InputBegan:Connect(function(io, gp)
     if io.KeyCode == Enum.KeyCode.Tab then
-      board.Visible = true
-      G.drawBoard()
+      G.drawBoard()   -- 先画好再弹出来（同一帧）
+      G.uiShow(board, true)
     end
     G.boardShown = function() return board.Visible end
   end)
   UIS.InputEnded:Connect(function(io)
-    if io.KeyCode == Enum.KeyCode.Tab then board.Visible = false end
+    if io.KeyCode == Enum.KeyCode.Tab then G.uiShow(board, false) end
   end)
   local boardBtn = button(hud, "≡", UDim2.fromOffset(36, 36), UDim2.new(0, 16, 0, 70), RGB(8, 10, 12))   -- 顶栏下面：左上角是 Roblox 自带的菜单、聊天按钮
   boardBtn.BackgroundTransparency = 0.5
@@ -1025,8 +1135,11 @@ function UI.init(G)
   for _, c in ipairs(boardBtn:GetChildren()) do if c:IsA("UICorner") then c:Destroy() end end   -- 直角，跟新界面一样
   boardBtn.TextSize = 22
   boardBtn.Activated:Connect(function()
-    board.Visible = not board.Visible
-    if board.Visible then G.drawBoard() end
+    if board.Visible then G.uiShow(board, false)
+    else
+      G.drawBoard()
+      G.uiShow(board, true)
+    end
   end)
 
   ---------------------------------------------------------------- 结算

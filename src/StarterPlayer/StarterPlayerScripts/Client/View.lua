@@ -94,6 +94,30 @@ function View.init(G)
   KINDS.c4 = function(m) return { b = { p(m, V(1.1, 0.5, 0.7), CF(), RGB(176, 156, 112)), CF() }, l = { p(m, V(0.2, 0.2, 0.2), CF(), RGB(255, 40, 40), Enum.Material.Neon), CF(0, 0.3, 0) } } end
   KINDS.mine = function(m) return { b = { p(m, V(0.4, 1.4, 1.4), CF(), RGB(86, 96, 64), Enum.Material.Metal, Enum.PartType.Cylinder), CFrame.Angles(0, 0, math.pi / 2) } } end
 
+  -- 别人的东西（飞机、车）的速度（锁定圈、提前量、接近率用；服务器不发速度）：服务器一秒只挪 Root 十来次，
+  --   原来各处每帧算两帧的位置差，算出来是「0、0、一大截、0……」，平滑系数又是按帧给的——锁定圈、提前量跟着一跳一跳，帧率不同手感也不同。
+  --   现在只在位置真的变了才算（这次变和上次变之间挪了多少 / 隔了多久），再按时间常数 0.15 秒平滑（1 − e^(−Δt/0.15)）；
+  --   0.6 秒没挪过就当停了（同 G.follow）。rec：调用方自己留的一张表（第一次给空表）；maxV：一次挪得比这还快当成传送、不算。返回平滑后的速度
+  local VEL_TAU = 0.15
+  function G.velTrack(rec, p, now, maxV)
+    local lp = rec.p
+    if not lp then
+      rec.p, rec.t, rec.v = p, now, Vector3.zero
+      return rec.v
+    end
+    if p ~= lp then
+      local g = now - rec.t
+      if g > 1e-3 then
+        local raw = (p - lp) / g
+        if raw.Magnitude < (maxV or 2000) then rec.v = rec.v:Lerp(raw, 1 - math.exp(-g / VEL_TAU)) end
+      end
+      rec.p, rec.t = p, now
+    elseif now - rec.t > 0.6 then
+      rec.v = Vector3.zero
+    end
+    return rec.v
+  end
+
   local views = {}   -- [entModel] = { model, parts, cf, kind, t, … }
   G.views = views
   local byId = {}    -- [实体编号] = view（开炮后坐要按编号找）
@@ -188,6 +212,15 @@ function View.init(G)
       local cm = (type(camo) == "string") and SK.CAMO[camo] or nil
       if cm and not cm.base then cm = nil end
       local M = VM.build(d, team, em:GetAttribute("Mods"), cm or (tit and TT.paint(tit)) or nil)   -- 坦克改装：发射器、雷达板、加特林、补贴的爆反块（TankMods）
+      -- 影子（11-27 M3 丝滑）：三边都不到 2 格的小零件（螺栓、灯座、把手、工具、天线座……）不投影子——在阴影图里只有几个像素看不出来，
+      --   车多的时候阴影那一遍少画几百个小物体（太阳一挪整张阴影图重画时也少画）；机库、车库里的车（Garage、TechUI 自己 build）不动
+      for _, it in ipairs(M.parts) do
+        local bp = it[1]
+        if bp:IsA("BasePart") and bp.CastShadow then
+          local sz = bp.Size
+          if sz.X < 2 and sz.Y < 2 and sz.Z < 2 then bp.CastShadow = false end
+        end
+      end
       M.model.Parent = VF
       v.modsAttr = em:GetAttribute("Mods")
       v.treeKey = tk
@@ -735,6 +768,13 @@ function View.init(G)
     if not still and (not far or own or v.farN % 3 == 0) then
       v.putH, v.putT, v.putG, v.putR, v.putRG, v.putSteer = hullF, tF, gF, rF, rgF, v.steer
       local plist, clist = v.plist, v.clist
+      -- 一个轮子（履带段）由好几块零件拼成：轮子的变换这一帧只算一次，同一个轮子的零件共用（原来每块零件各算一遍，
+      --   stepView 里最热的就是这几行；乘法的先后和原来一样，摆出来的位置一模一样）
+      local wcs, scs = v.wcC, v.scC
+      if not wcs then wcs, scs = {}, {} v.wcC, v.scC = wcs, scs end
+      table.clear(wcs)
+      table.clear(scs)
+      local kitF, plowF = nil, nil
       for i, it in ipairs(M.parts) do
         local grp, off = it[2], it[3]
         local cf
@@ -745,16 +785,31 @@ function View.init(G)
         elseif grp == "gun" then cf = gF * off
         elseif grp == "rws" then cf = (rF or tF) * off
         elseif grp == "rwg" then cf = (rgF or rF or tF) * off
-        elseif grp == "kit" then cf = (M.kpiv and (tF * CF(M.kpiv) * CFrame.Angles(math.rad(v.gp), 0, 0)) or tF) * off   -- 车顶加特林：跟着炮俯仰
-        elseif grp == "plow" then cf = hullF * CF(M.plowPiv) * CFrame.Angles(v.plowA or 0, 0, 0) * off   -- 扫雷犁：绕车头下沿的转轴抬起 / 放下
+        elseif grp == "kit" then   -- 车顶加特林：跟着炮俯仰
+          if not kitF then kitF = M.kpiv and (tF * CF(M.kpiv) * CFrame.Angles(math.rad(v.gp), 0, 0)) or tF end
+          cf = kitF * off
+        elseif grp == "plow" then   -- 扫雷犁：绕车头下沿的转轴抬起 / 放下
+          if not plowF then plowF = hullF * CF(M.plowPiv) * CFrame.Angles(v.plowA or 0, 0, 0) end
+          cf = plowF * off
         elseif grp == "wheel" then
-          local w = W[it[4]]
-          local wcf = base * CF(w.x, w.r + w.dy, w.z)
-          if w.steer then wcf = wcf * CFrame.Angles(0, -steerA, 0) end
-          cf = wcf * CFrame.Angles(w.spin, 0, 0) * off
+          local j = it[4]
+          local wcf = wcs[j]
+          if not wcf then
+            local w = W[j]
+            wcf = base * CF(w.x, w.r + w.dy, w.z)
+            if w.steer then wcf = wcf * CFrame.Angles(0, -steerA, 0) end
+            wcf = wcf * CFrame.Angles(w.spin, 0, 0)
+            wcs[j] = wcf
+          end
+          cf = wcf * off
         elseif grp == "seg" then
-          local w = W[it[4]]
-          cf = base * CF(0, w.dy, 0) * off
+          local j = it[4]
+          local scf = scs[j]
+          if not scf then
+            scf = base * CF(0, W[j].dy, 0)
+            scs[j] = scf
+          end
+          cf = scf * off
         else cf = hullF * off end
         clist[i] = cf
       end
@@ -781,7 +836,10 @@ function View.init(G)
         for _, pe in ipairs(M.dust) do pe.Color = ColorSequence.new(col) end
       end
     end
-    local rate = land and math.clamp((math.abs(v.speed) - 5) * 1.6, 0, 60) * (v.dustK or 0.5) or 0
+    -- 粒子上限（11-27 M3 丝滑）：大团半透明的尘一层叠一层是显卡最贵的「填充」——一直开着跑的最多每秒 40 团（原来 60），
+    --   420 格外的车三成（远处看是一条尘带，层数少一些看不出来）
+    local rate = land and math.min(math.clamp((math.abs(v.speed) - 5) * 1.6, 0, 60) * (v.dustK or 0.5), 40) or 0
+    if far then rate *= 0.35 end
     -- 侧滑、刚落地：扬尘更浓（自己开的车 Drive 给 slipA）
     if own and own.slipA then rate *= 1 + math.clamp(math.abs(math.sin(own.slipA)) * 4, 0, 2) end
     for _, pe in ipairs(M.dust) do if math.abs(pe.Rate - rate) > 0.5 then pe.Rate = rate end end
