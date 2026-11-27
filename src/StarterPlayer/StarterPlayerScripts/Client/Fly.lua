@@ -1197,17 +1197,20 @@ function Fly.init(G)
       end
     end
     if not best then st.stickV = nil return nil end
-    -- 目标的速度：两帧位置差，平滑一下
+    -- 目标的速度：只在服务器真挪了它时按两次挪之间的时间算、按时间平滑（View.lua G.velTrack；原来每帧差分 × 0.3，
+    --   提前量一跳一跳、帧率不同手感也不同）；换了目标重新量
     local now = os.clock()
     local sv = st.stickV
-    local vT = V()
-    if sv and sv.em == best.em and now > sv.t + 1e-3 then
-      local raw = (best.p - sv.p) / (now - sv.t)
-      vT = (raw.Magnitude < 1500) and (sv.v or raw):Lerp(raw, 0.3) or (sv.v or V())
-    elseif sv and sv.em == best.em then
-      vT = sv.v or V()
+    if not sv or sv.em ~= best.em then
+      sv = { em = best.em }
+      st.stickV = sv
     end
-    st.stickV = { em = best.em, p = best.p, t = now, v = vT }
+    local vT
+    if G.velTrack then vT = G.velTrack(sv, best.p, now, 1500)
+    else
+      sv.p, sv.t, sv.v = best.p, now, sv.v or V()
+      vT = sv.v
+    end
     local vr = vT - (st.vel or V())
     local t = best.dist / gw.speed
     local lead = best.p

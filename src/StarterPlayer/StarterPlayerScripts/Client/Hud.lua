@@ -95,6 +95,7 @@ function Hud.init(G)
   goal.TextTruncate = Enum.TextTruncate.AtEnd
   -- A～E 小菱形（换地图时重摆：沙漠 A～G）
   local diamonds = {}
+  local hudS, hudKey = nil, {}   -- 比分条、计时、目标、菱形上次按哪一份战况（G.S）、哪种语言 / 排版 / 阵营写的（stepHud）
   local function buildDiamonds()
     for _, d in pairs(diamonds) do
       for _, k in ipairs({ "d", "l", "pb" }) do if d[k] then d[k]:Destroy() end end
@@ -110,6 +111,7 @@ function Hud.init(G)
       local pf = line(pb, UDim2.fromScale(0, 1), nil, WHITE, 0)
       diamonds[p.id] = { d = d, st = st, l = l, pb = pb, pf = pf }
     end
+    hudS = nil   -- 新摆的菱形：下一帧一定重写一遍
   end
   buildDiamonds()
 
@@ -516,76 +518,87 @@ function Hud.init(G)
     local mine = S.team or "atk"
     local foe = other(mine)
     local pts = S.points or {}
-    -- 比分：手里的据点数
-    local held = { atk = 0, def = 0 }
-    for _, s in ipairs(pts) do held[s.owner] = (held[s.owner] or 0) + 1 end
-    local n = math.max(1, #pts)
-    -- 分阶段突破：攻方那头是兵力（剩多少、细线按开局的比例），守方那头还是手里的据点数
-    local tk = S.tickets
     local conq = S.mode == "conquest"
-    for sx, t in pairs({ [-1] = mine, [1] = foe }) do
-      local s = sides[sx]
-      local c = teamColor(t)
-      if conq then   -- 征服：两边都是兵力
-        local v = (t == "atk") and (S.tickets or 0) or (S.ticketsDef or 0)
-        s.name.Text = T("hud." .. t) .. " · " .. T("hud.tickets")
-        s.score.Text = tostring(v)
-        s.bar.Size = UDim2.new(math.clamp(v / math.max(S.ticketsMax or v, 1), 0, 1), 0, 0, 2)
-        s.score.TextColor3 = v <= 60 and RGB(255, 119, 105) or c:Lerp(WHITE, 0.15)
-      elseif t == "atk" and tk then
-        s.name.Text = T("hud.atk") .. " · " .. T("hud.tickets")
-        s.score.Text = tostring(tk)
-        s.bar.Size = UDim2.new(math.clamp(tk / math.max(S.ticketsMax or tk, 1), 0, 1), 0, 0, 2)
-        s.score.TextColor3 = tk <= 30 and RGB(255, 119, 105) or c:Lerp(WHITE, 0.15)
-      else
-        s.name.Text = T("hud." .. t)
-        s.score.Text = tostring(held[t] or 0)
-        s.bar.Size = UDim2.new((held[t] or 0) / n, 0, 0, 2)
-        s.score.TextColor3 = c:Lerp(WHITE, 0.15)
+    -- 比分条、计时、目标、据点菱形只跟服务器推的战况（G.S，一秒两次）有关：没来新的就不每帧重算、重写
+    --   （11-27 M3 丝滑：原来每帧建表、拼富文本、写几十个界面属性）；在争的据点那圈闪烁照旧每帧
+    local side = me:GetAttribute("Side")
+    local fresh = S ~= hudS or G.lang ~= hudKey[1] or compactScore ~= hudKey[2] or side ~= hudKey[3]
+    hudS, hudKey[1], hudKey[2], hudKey[3] = S, G.lang, compactScore, side
+    if fresh then
+      -- 比分：手里的据点数
+      local held = { atk = 0, def = 0 }
+      for _, s in ipairs(pts) do held[s.owner] = (held[s.owner] or 0) + 1 end
+      local n = math.max(1, #pts)
+      -- 分阶段突破：攻方那头是兵力（剩多少、细线按开局的比例），守方那头还是手里的据点数
+      local tk = S.tickets
+      for sx, t in pairs({ [-1] = mine, [1] = foe }) do
+        local s = sides[sx]
+        local c = teamColor(t)
+        if conq then   -- 征服：两边都是兵力
+          local v = (t == "atk") and (S.tickets or 0) or (S.ticketsDef or 0)
+          s.name.Text = T("hud." .. t) .. " · " .. T("hud.tickets")
+          s.score.Text = tostring(v)
+          s.bar.Size = UDim2.new(math.clamp(v / math.max(S.ticketsMax or v, 1), 0, 1), 0, 0, 2)
+          s.score.TextColor3 = v <= 60 and RGB(255, 119, 105) or c:Lerp(WHITE, 0.15)
+        elseif t == "atk" and tk then
+          s.name.Text = T("hud.atk") .. " · " .. T("hud.tickets")
+          s.score.Text = tostring(tk)
+          s.bar.Size = UDim2.new(math.clamp(tk / math.max(S.ticketsMax or tk, 1), 0, 1), 0, 0, 2)
+          s.score.TextColor3 = tk <= 30 and RGB(255, 119, 105) or c:Lerp(WHITE, 0.15)
+        else
+          s.name.Text = T("hud." .. t)
+          s.score.Text = tostring(held[t] or 0)
+          s.bar.Size = UDim2.new((held[t] or 0) / n, 0, 0, 2)
+          s.score.TextColor3 = c:Lerp(WHITE, 0.15)
+        end
+        s.bar.BackgroundColor3 = c
       end
-      s.bar.BackgroundColor3 = c
-    end
-    local stg = S.stageId and (T("hud.stage", S.stage or 1, S.stages or 3) .. " · " .. T("stage." .. S.stageId .. ".short")) or T("hud.mode")
-    if S.phase == "prep" then
-      timer.Text = fmtTime(S.left)
-      mode.Text = compactScore and T("hud.prep") or (T("hud.prep") .. " · " .. stg)
-    elseif S.ot then timer.Text = fmtTime(S.ot) mode.Text = T("hud.ot")
-    else timer.Text = fmtTime(S.left) mode.Text = stg end
-    -- 现在的目标：当前阶段开放的据点（侧翼另写）
-    local main, flank = {}, {}
-    for _, s in ipairs(pts) do
-      if s.act and not s.locked then table.insert(s.flank and flank or main, compactScore and s.id or T("point." .. s.id)) end
-    end
-    local gtext = ""
-    if #main > 0 then
-      local col = hex(teamColor(mine):Lerp(WHITE, 0.25))
-      gtext = '<font color="' .. col .. '">' .. T((mine == "atk") and "hud.goalAtk" or "hud.goalDef") .. "</font>  " .. table.concat(main, "  ·  ")
-      if #flank > 0 then gtext ..= '   <font color="#9aa0a6">' .. T("hud.goalFlank", table.concat(flank, "  ·  ")) .. "</font>" end
-    end
-    goal.Text = gtext
+      local stg = S.stageId and (T("hud.stage", S.stage or 1, S.stages or 3) .. " · " .. T("stage." .. S.stageId .. ".short")) or T("hud.mode")
+      if S.phase == "prep" then
+        timer.Text = fmtTime(S.left)
+        mode.Text = compactScore and T("hud.prep") or (T("hud.prep") .. " · " .. stg)
+      elseif S.ot then timer.Text = fmtTime(S.ot) mode.Text = T("hud.ot")
+      else timer.Text = fmtTime(S.left) mode.Text = stg end
+      -- 现在的目标：当前阶段开放的据点（侧翼另写）
+      local main, flank = {}, {}
+      for _, s in ipairs(pts) do
+        if s.act and not s.locked then table.insert(s.flank and flank or main, compactScore and s.id or T("point." .. s.id)) end
+      end
+      local gtext = ""
+      if #main > 0 then
+        local col = hex(teamColor(mine):Lerp(WHITE, 0.25))
+        gtext = '<font color="' .. col .. '">' .. T((mine == "atk") and "hud.goalAtk" or "hud.goalDef") .. "</font>  " .. table.concat(main, "  ·  ")
+        if #flank > 0 then gtext ..= '   <font color="#9aa0a6">' .. T("hud.goalFlank", table.concat(flank, "  ·  ")) .. "</font>" end
+      end
+      goal.Text = gtext
+    end   -- fresh
     local t = os.clock()
     for _, s in ipairs(pts) do
       local d = diamonds[s.id]
       if d then
-        local ours = s.owner == mine
         local idle = s.act == false and not s.locked   -- 还没轮到的阶段
-        d.d.BackgroundColor3 = teamColor(s.owner)
-        d.d.BackgroundTransparency = (ours or idle) and 1 or (s.locked and 0.45 or 0.05)
         local fight = (s.atk or 0) > 0 and (s.def or 0) > 0
-        d.st.Transparency = fight and (reducedMotion and 0.12 or (0.4 + 0.3 * math.sin(t * 8))) or ((s.locked or idle) and 0.7 or 0.15)
-        d.st.Color = ours and WHITE or teamColor(s.owner):Lerp(WHITE, 0.3)
-        d.l.TextTransparency = (s.locked or idle) and 0.55 or 0
-        local pr = (not s.locked and s.owner == "def") and (s.prog or 0) or 0
-        local pc = teamColor("atk")
-        if conq then   -- 征服：往哪边推、推了几成（推满就是那边的了）
-          local c = s.cap or 0
-          pr = (s.owner == "none" or (s.owner == "atk" and c < 1) or (s.owner == "def" and c > -1)) and math.abs(c) or 0
-          pc = teamColor((c >= 0) and "atk" or "def")
-          if s.owner == "none" then d.d.BackgroundColor3 = NEUTRAL d.d.BackgroundTransparency = 0.6 end
+        if fight or fresh then
+          d.st.Transparency = fight and (reducedMotion and 0.12 or (0.4 + 0.3 * math.sin(t * 8))) or ((s.locked or idle) and 0.7 or 0.15)
         end
-        d.pb.Visible = pr > 0
-        d.pf.Size = UDim2.fromScale(pr, 1)
-        d.pf.BackgroundColor3 = pc
+        if fresh then
+          local ours = s.owner == mine
+          d.d.BackgroundColor3 = teamColor(s.owner)
+          d.d.BackgroundTransparency = (ours or idle) and 1 or (s.locked and 0.45 or 0.05)
+          d.st.Color = ours and WHITE or teamColor(s.owner):Lerp(WHITE, 0.3)
+          d.l.TextTransparency = (s.locked or idle) and 0.55 or 0
+          local pr = (not s.locked and s.owner == "def") and (s.prog or 0) or 0
+          local pc = teamColor("atk")
+          if conq then   -- 征服：往哪边推、推了几成（推满就是那边的了）
+            local c = s.cap or 0
+            pr = (s.owner == "none" or (s.owner == "atk" and c < 1) or (s.owner == "def" and c > -1)) and math.abs(c) or 0
+            pc = teamColor((c >= 0) and "atk" or "def")
+            if s.owner == "none" then d.d.BackgroundColor3 = NEUTRAL d.d.BackgroundTransparency = 0.6 end
+          end
+          d.pb.Visible = pr > 0
+          d.pf.Size = UDim2.fromScale(pr, 1)
+          d.pf.BackgroundColor3 = pc
+        end
       end
     end
     if not P.hud.Visible or not cam then return end

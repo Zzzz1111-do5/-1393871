@@ -375,12 +375,13 @@ function Drive.init(G)
     ZOOMS = zoomList()
     if st then st.zoom = math.clamp(st.zoom or 1, 1, #ZOOMS) end
   end
-  local hl = {}   -- 热成像的高亮
-  local function clearHl()
-    for _, h in ipairs(hl) do h:Destroy() end
-    hl = {}
-  end
+  -- 热成像的高亮（同 Night.lua 车辆热成像那套，11-27 M3 丝滑）：原来开着热像每半秒把全部 Highlight 拆掉重建——引擎每次都要把几百上千块
+  --   载具零件重新收一遍，镜里每半秒一顿。现在罩所有实体样子（G.viewFolder）的那个进热像建一次、一直留着；白热 / 黑热切换只改颜色；
+  --   最近的 24 个别的玩家只在换人时增删（没变的不动）；出热像、出镜才全拆
+  local hlView, hlPl, hlCol = nil, {}, nil   -- 罩实体的那个、[角色] = Highlight、现在的颜色（"w" 白热 / "b" 黑热）
+  local hlMade = 0   -- 一共新建过几个（测试看）
   local function newHl(adornee, color)
+    hlMade += 1
     local h = Instance.new("Highlight")
     h.Adornee = adornee
     h.FillColor = color
@@ -389,13 +390,41 @@ function Drive.init(G)
     h.OutlineTransparency = 0.5
     h.DepthMode = Enum.HighlightDepthMode.Occluded
     h.Parent = cam   -- 镜头下面的东西只在本机
-    table.insert(hl, h)
     return h
   end
-  -- 热的东西：所有实体（一个 Model）+ 最近的 24 个别的玩家
-  local function refreshHl(color)
-    clearHl()
-    if G.viewFolder then newHl(G.viewFolder, color) end
+  -- 新出来的车（View 往 G.viewFolder 里放了新模型）：照理 Highlight 会跟着罩上，M3 上还没核实——记一笔，下一次挑人时重建罩车的那一个（最多 3 秒一次）
+  local vfConn, vfSeen, vfDirty, vfKick = nil, nil, false, -99
+  local function clearHl()
+    if hlView then hlView:Destroy() hlView = nil end
+    for _, h in pairs(hlPl) do h:Destroy() end
+    hlPl, hlCol = {}, nil
+    if vfConn then vfConn:Disconnect() vfConn = nil end
+    vfSeen, vfDirty = nil, false
+  end
+  -- 热的东西：所有实体（一个 Model）+ 最近的 24 个别的玩家；white：白热（白）/ 黑热（黑）
+  local function refreshHl(white)
+    local key = white and "w" or "b"
+    local color = white and Color3.new(1, 1, 1) or Color3.new(0, 0, 0)
+    if key ~= hlCol then   -- 白热 / 黑热换了：只改颜色
+      hlCol = key
+      if hlView then hlView.FillColor, hlView.OutlineColor = color, color end
+      for _, h in pairs(hlPl) do h.FillColor, h.OutlineColor = color, color end
+    end
+    local vf = G.viewFolder
+    if vf ~= vfSeen then
+      if vfConn then vfConn:Disconnect() vfConn = nil end
+      vfSeen, vfDirty = vf, false
+      if vf then vfConn = vf.ChildAdded:Connect(function() vfDirty = true end) end
+    end
+    if vfDirty and hlView and os.clock() - vfKick >= 3 then
+      vfDirty, vfKick = false, os.clock()
+      hlView:Destroy()
+      hlView = nil
+    end
+    if vf and not (hlView and hlView.Parent and hlView.Adornee == vf) then
+      if hlView then hlView:Destroy() end
+      hlView = newHl(vf, color)
+    end
     local list = {}
     local cp = cam.CFrame.Position
     for _, pl in ipairs(Players:GetPlayers()) do
@@ -404,7 +433,22 @@ function Drive.init(G)
       if pl ~= me and hrp then table.insert(list, { ch, (hrp.Position - cp).Magnitude }) end
     end
     table.sort(list, function(a, b) return a[2] < b[2] end)
-    for i = 1, math.min(24, #list) do newHl(list[i][1], color) end
+    local want = {}
+    for i = 1, math.min(24, #list) do want[list[i][1]] = true end
+    for ch, h in pairs(hlPl) do
+      if not want[ch] or not h.Parent or h.Adornee ~= ch then
+        h:Destroy()
+        hlPl[ch] = nil
+      end
+    end
+    for ch in pairs(want) do
+      if not hlPl[ch] then hlPl[ch] = newHl(ch, color) end
+    end
+  end
+  G.driveHlCount = function()   -- 测试用：热像的高亮有几个、罩实体的那个是哪个、一共新建过几个
+    local n = hlView and 1 or 0
+    for _ in pairs(hlPl) do n += 1 end
+    return n, hlView, hlMade
   end
 
   local function applyMode()
@@ -456,10 +500,10 @@ function Drive.init(G)
       clearHl()
     elseif m == "whot" then
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.45, -0.32, RGB(225, 225, 225)
-      refreshHl(Color3.new(1, 1, 1))
+      refreshHl(true)
     else
       cc.Saturation, cc.Contrast, cc.Brightness, cc.TintColor = -1, 0.25, 0.22, RGB(235, 235, 235)
-      refreshHl(Color3.new(0, 0, 0))
+      refreshHl(false)
     end
     -- 热像仪的增益（对比度）、电平（亮度）：炮长控制面板上的两个旋钮（车里 Interior：st.thGain / st.thLevel，0～4，2 是中间）
     if m == "whot" or m == "bhot" then
@@ -786,12 +830,18 @@ function Drive.init(G)
 
   -- 进出瞄准镜、换光电模式、放烟幕：键盘、手机按钮共用
   -- 车长望远镜（用户 11-27「再做一个望远镜」）：C 开关；开着时 Shift / 右键直接进炮长瞄准镜
+  -- 退镜、收望远镜原来是镜头硬切（11-27「把各种动画效果做出丝滑感」；进镜那边有 Interior 的 0.2 秒黑场）：盖一下半黑很快淡开（UI.lua G.sceneFade）——
+  --   对狙时来回切得勤，不闪全黑、不超过 0.12 秒（审查：闪一下全黑会被当成卡）。车里从目镜抬头（Interior 自己演镜头）不盖
+  local function camCutFade(t)
+    if G.sceneFade then G.sceneFade(0, t, { from = 0.5 }) end
+  end
   local function setBinoc(on)
     on = on and true or false
     if not st or (st.binoc == true) == on then return end
     if on and st.arty and G.artyOff then G.artyOff() st.arty = false end
     st.binoc = on
     GS.binoShow(on, st.kit)
+    if not on then camCutFade(0.1) end
     if G.sfx then pcall(G.sfx, "uiClick") end
   end
   local function setSight(on)
@@ -826,6 +876,7 @@ function Drive.init(G)
       if not (G.interiorEnterSeat and G.interiorEnterSeat()) then return end
     end
     if G.interiorScope and G.interiorScope(want, function() setSight(want) end) then return end
+    if not want and st.sight then camCutFade(0.12) end
     setSight(want)
   end
   G.driveToggleSight = function() toggleSight() end   -- 测试用：同按 Shift（曲射武器进炮兵视角）
@@ -838,6 +889,7 @@ function Drive.init(G)
       if not (G.interiorEnterSeat and G.interiorEnterSeat()) then return end   -- 全真模式：不能退回第三人称
     end
     if G.interiorScope and G.interiorScope(want, function() setSight(want) end) then return end
+    if not want and st.sight then camCutFade(0.12) end
     setSight(want)
   end
   local function xrayDown()
@@ -2538,11 +2590,13 @@ function Drive.init(G)
           g.BackgroundTransparency = 0.45 + math.random() * 0.5
         end
       end
+      -- 别的玩家走近走远：半秒重挑一次（罩实体的那个留着不动）。观瞄打坏了热像通道没了（applyMode 换成昼光）：不加、有就拆
+      --   （原来这里照旧每半秒把热像的高亮建回来，画面是昼光、车却发白）
       st.hlT -= dt
       local m = MODES[st.mode]
       if st.hlT <= 0 and (m == "whot" or m == "bhot") then
         st.hlT = 0.5
-        refreshHl((m == "whot") and Color3.new(1, 1, 1) or Color3.new(0, 0, 0))
+        if G.opticsDead and G.opticsDead() then clearHl() else refreshHl(m == "whot") end
       end
     end
     -- 车长望远镜：密位刻度、估的距离、方位

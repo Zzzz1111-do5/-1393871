@@ -9,8 +9,10 @@ local nums = {}
 for x in TEST_ARGS:gmatch("%d+") do nums[#nums + 1] = tonumber(x) end
 local warm, secs = nums[1] or 120, nums[2] or 8
 
+-- map=snow / map=city：量线上那两张图（默认照旧沙海，common.lua）
+T.mapName = TEST_ARGS:match("map=(%w+)")
 local G = T.boot()
-T.runUntil(function() return G.worldReady end, 120)
+T.runUntil(function() return G.worldReady end, 900)
 local me = T.join("P1", 7401, true)
 T.runUntil(function() return G.round and (G.round.phase == "prep" or G.round.phase == "battle") end, 30)
 local P = G.P[me]
@@ -21,9 +23,12 @@ me:SetAttribute("Side", "atk")
 G.pushOne(P)
 R.run(1)
 local C = T.C
-T.act("deploy", "rifle", "fleet")
-R.run(2)
-check(P.alive, "攻方在舰队出生")
+-- 出生（11-27）：舰队出生点没了（Round.lua 只剩 base），主菜单要先关掉——原来的 deploy rifle fleet 出不了生，开坦克那段被跳过
+T.leaveMenu()
+T.actAs(me, "deploy", "rifle", "base")
+T.runUntil(function() return P.alive and me.Character ~= nil end, 15)
+R.run(1)
+check(P.alive, "攻方在自己基地出生")
 T.runUntil(function() return G.round.phase == "battle" end, 200, 1 / 10)
 check(G.round.phase == "battle", "开战了")
 print(string.format("开战后先打 %d 秒（步长 1/10）", warm))

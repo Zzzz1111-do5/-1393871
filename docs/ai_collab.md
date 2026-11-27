@@ -89,6 +89,19 @@
     WtTank 弹药栏按新规范重排（96 × 60 / 60 × 60 平涂格子、三组细分隔线、琥珀选中、膛内白竖条、底边装填进度、打空去色、名牌全称），
     左下损伤图挡着时整排往右让。预览：hud_render.py 认 AmmoPic 属性；wttank.lua 查每格有图、[noedit=1] 查退回剪影。
 
+- F（11-27，用户要游戏在 M3 的 Mac 上「非常丝滑」、「各种动画效果做出丝滑感」——本地分支 wip/perf → perf-2，没 push）。**新加的公用东西，别再写一套**：
+  · UI.lua：`G.uiShow(界面, 开关, opt)` / `G.uiPop(界面, 从多大, 慢)`（自己挂一个 UIScale 叫 EaseScale：只动比例、不动位置透明度；
+    界面上有别人的 UIScale 就不弹、uiPop 返回 false——WtTank 的 barScale / diScale 这种每帧写的别拿它弹）、`G.reducedMotion()`、
+    `G.sceneFade(hold, fade, opt)`（镜头硬切盖黑：hold > 0 的等连着两帧顺、opt.ready 成立再淡，最多多等 0.8 秒；opt.from 半黑起淡；又来一次两边条件都要满足）。
+    时长、缓动照 docs/style.md「动效」（Theme.T / EASE 进了主分支就取它的；界面不用 In）。
+  · View.lua：`G.velTrack(rec, 位置, 时间, maxV)`——别人的飞机、车的速度（锁定圈、提前量、接近率）：只在服务器真挪了它时算、按时间平滑；
+    停了 0.6 秒以上又挪、一拍跳得离谱的不算。AaFcs、Gunner、Fly、Radar、WtFlight 都用它，**别再每帧差分**。
+    远处的车三帧一摆按「看上去多远」（距离 × min(1, 视场 / 70)，同 VfxLib.lod 的口径）；三边不到 2 格的小零件 120 格内、自己的车才投影子（v.smallSh）。
+  · 热成像的 Highlight（Night.lua 车辆热成像、Drive.lua 瞄准镜热像）：罩 G.viewFolder 的那个进热像建一次一直留着、白热 / 黑热只换颜色、玩家的换人才增删——
+    **别改回每半秒全拆全建**（镜里每半秒一顿）。viewFolder 来了新车最多 3 秒重建一次那一个（M3 上还没核实 Highlight 会不会自己罩上新零件）。
+  · 雪山：SnowClouds 开着（`G.snowCloudsOn`）时 Warfx 不摆球拼的积云（`G.cloudBanksRefresh()` 让它重摆 / 1 秒淡掉）；体积云 14000 格、近处每帧挪和调透明度。
+  · 测试：**tools/mock/smooth.lua（新，不出生，几分钟）**；gunsight / veh / snow 里加了几条。
+
 - F（11-27，审查 b7bfaae「X 透视画细」挑出来的，用户 11-27「x透视不够细节」）——Client/XrayOwn.lua、Drive.lua、Night.lua、UI.lua、init.client.lua：
   · 鼠标指部件原来用不了（开车每帧 LockCenter，GetMouseLocation 永远是屏幕中心，只指得到炮管；测试是手动挪镜头、直接写鼠标位置的假阳性）：
     按住 X 时 Drive 放开鼠标（Default、UI.lua 画指针，这段时间鼠标增量清零：镜头、炮塔不转），松手锁回；手机加「透视」键（按住），另一只手指点部件（TouchTap）；没有指针不显示提示框。

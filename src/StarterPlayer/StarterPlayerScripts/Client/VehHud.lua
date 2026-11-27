@@ -601,24 +601,38 @@ function VehHud.init(G)
   local DIR = { [0] = "N", [45] = "NE", [90] = "E", [135] = "SE", [180] = "S", [225] = "SW", [270] = "W", [315] = "NW" }
   local function deg360(r) return (math.deg(r) % 360 + 360) % 360 end
   local function hdgOf(yaw) return (360 - deg360(yaw or 0)) % 360 end   -- 偏航（逆时针、从 −Z 起）→ 航向（顺时针从北）
+  -- 11-27 M3 丝滑：镜头没转就不重摆；转了只挪刻度的位置，刻度长短、字只在换了一格（5°）时重写（原来每帧 40 格 × 5 个属性）。
+  --   罗盘宽 CW 也算在里面（layoutPanels 跟着窗口宽度改它：舵回正直行、鼠标不动时切全屏，刻度和 ▲ 原来还按旧宽度摆，跟居中的 ▼ 对不上）
+  local cmpCam, cmpMark, cmpFirst, cmpW = nil, nil, nil, nil
   local function stepCompass(camHdg, markHdg)
-    if not compGroup.Visible then return end
+    if not compGroup.Visible then cmpCam = nil return end
+    if camHdg == cmpCam and markHdg == cmpMark and CW == cmpW then return end
+    if CW ~= cmpW then cmpFirst = nil end
+    cmpCam, cmpMark, cmpW = camHdg, markHdg, CW
     local first = math.floor((camHdg - CW / 2 / PX) / 5) * 5
+    local relabel = first ~= cmpFirst
+    cmpFirst = first
     for i, tk in ipairs(ticks) do
       local a = first + (i - 1) * 5
       local x = CW / 2 + (a - camHdg) * PX
-      local aa = a % 360
-      local major = aa % 15 == 0
       tk.t.Position = UD2(0, x, 0, 0)
-      tk.t.Size = UD2(0, 1, 0, major and 8 or 4)
       tk.l.Position = UD2(0, x, 0, 8)
-      tk.l.Text = major and (DIR[aa] or string.format("%03d", aa)) or ""
-      tk.l.TextColor3 = DIR[aa] and TXT or MUTE
+      if relabel then
+        local aa = a % 360
+        local major = aa % 15 == 0
+        tk.t.Size = UD2(0, 1, 0, major and 8 or 4)
+        tk.l.Text = major and (DIR[aa] or string.format("%03d", aa)) or ""
+        tk.l.TextColor3 = DIR[aa] and TXT or MUTE
+      end
     end
     compHdg.Text = string.format("%03d", math.floor(camHdg + 0.5) % 360)
     local dg = (markHdg - camHdg + 540) % 360 - 180
     compMark.Position = UD2(0, CW / 2 + math.clamp(dg, -CW / 2 / PX, CW / 2 / PX) * PX, 0, 24)
   end
+  -- 测试用：直接走一拍罗盘、看罗盘宽和刻度、▲ 摆在哪；setCW 照 layoutPanels 换罗盘宽（模拟器的窗口大小改不了）
+  G.vehCompass = { group = compGroup, step = function(h, m) stepCompass(h, m) end,
+    setCW = function(w) CW = w compGroup.Size = UD2(0, CW, 0, 51) end,
+    state = function() return { cw = CW, px = PX, ticks = ticks, mark = compMark.Position.X.Offset } end }
 
   ---------------------------------------------------------------- 中间：准星——坦克照 MWT（现代战争坦克）、舰艇照《现代战舰》，两套样子
   --   用户 11-19：「船、坦克的准心可以不一样，参考 MWT 和现代战舰」
@@ -786,7 +800,13 @@ function VehHud.init(G)
   local fireCC = Instance.new("ColorCorrectionEffect")
   fireCC.Name = "VehFireFlash"
   fireCC.Brightness = 0
+  fireCC.Enabled = false   -- 只在开炮那一亮时开着（11-27：亮度 0 也开着是白画一遍全屏后期）
   fireCC.Parent = Lighting
+  local function setFlash(b)
+    if fireCC.Brightness ~= b then fireCC.Brightness = b end
+    local on = b > 1e-4
+    if fireCC.Enabled ~= on then fireCC.Enabled = on end
+  end
   local kickT = -9
 
   ---------------------------------------------------------------- 瞄着谁：实体（workspace.Ents 下的模型）、它的航速
@@ -925,7 +945,7 @@ function VehHud.init(G)
       lagArrow.Position = UD2(0, sp.X + u.X * 40, 0, sp.Y + u.Y * 40)
       lagArrow.Rotation = math.deg(math.atan2(u.Y, u.X))
     end
-    fireCC.Brightness = 0.12 * kick * kick
+    setFlash(0.12 * kick * kick)
   end
   G.tankPen = penState   -- 测试用
 
@@ -935,7 +955,7 @@ function VehHud.init(G)
     for _, x in ipairs(MR.plus) do x.Visible = false end
     SR.lead.Visible, SR.card.Visible, SR.lock.Visible, SR.lockTxt.Visible = false, false, false, false
     for _, dd in ipairs(SR.leadDots) do dd.Visible = false end
-    fireCC.Brightness = 0
+    setFlash(0)
   end
 
   ---------------------------------------------------------------- 每帧：坦克
@@ -953,24 +973,33 @@ function VehHud.init(G)
   local function stepTank(st)
     local d = st.d
     local vs = G.S and G.S.veh
+    -- 老的坦克读数面板（TK）电脑、触屏都不显示（下面每帧设成隐藏：电脑是 MWT 那套、触屏是紧凑面板）——
+    --   只留给它们读的几样（车名、车体 / 炮塔转角、车速、档位、航向、选中那一行），其余（血条十格、装填环 24 颗点、弹药行……）
+    --   看不见就不写（11-27 M3 丝滑：开坦克每帧少写一百来个界面属性、少拼六七个字符串）
+    local tkOn = TK.car.Visible or TK.arm.Visible
+    local rowsOn = tkOn or MS.box.Visible   -- 紧凑面板读选中那一行的名字、弹数
     TK.name.Text = T("veh." .. d.id)
     TK.hp.lab.Text = T("vh.hull")
     local k, col = hpColor(st.em)
-    TK.hullStroke.Color = col
-    setHp(TK.hp, k, col)
-    TK.hp.pct.Text = string.format("%d / %d", math.floor(st.em:GetAttribute("Hp") or 0), math.floor(st.em:GetAttribute("MaxHp") or 0))
+    if tkOn then
+      TK.hullStroke.Color = col
+      setHp(TK.hp, k, col)
+      TK.hp.pct.Text = string.format("%d / %d", math.floor(st.em:GetAttribute("Hp") or 0), math.floor(st.em:GetAttribute("MaxHp") or 0))
+    end
     local camY = math.deg(st.camYaw or 0)
     local hullY = math.deg(st.yaw or 0)
     TK.hull.Rotation = -(hullY - camY)
     TK.tur.Rotation = -(hullY - (st.ty or 0) - camY)
-    TK.tur.Visible = d.turret ~= nil
+    if tkOn then TK.tur.Visible = d.turret ~= nil end
     TK.spd.Text = string.format("%d", math.floor(math.abs(st.speed or 0) / 2.8 * 3.6 + 0.5))
     local back = (st.speed or 0) < -0.4
     local gn = st.gearN or 0   -- Drive 的变速箱：1～5 档、R、N（战雷那样显示档位数字）
     TK.gear.Text = st.locked and "-" or ((gn >= 1) and tostring(gn) or ((gn <= -1 or back) and ((st.gb and st.gb.nr > 1 and gn <= -1) and ("R" .. tostring(-gn)) or "R") or "N"))   -- 倒挡两档：R1 / R2
-    TK.gear.TextColor3 = back and AMBER or TXT
     TK.hdg.Text = string.format("%03d°  HDG", math.floor(hdgOf(st.yaw) + 0.5) % 360)
-    TK.thr.Size = UD2(math.clamp(math.abs(st.speed or 0) / math.max(d.speed or 1, 1), 0, 1), 0, 1, 0)
+    if tkOn then
+      TK.gear.TextColor3 = back and AMBER or TXT
+      TK.thr.Size = UD2(math.clamp(math.abs(st.speed or 0) / math.max(d.speed or 1, 1), 0, 1), 0, 1, 0)
+    end
     local relK, ready, left = 1, true, 0
     local selAmmo = nil
     for i, r in ipairs(TK.rows) do
@@ -978,7 +1007,7 @@ function VehHud.init(G)
       if wid then
         local w = VD.W[wid]
         local ammo = vs and vs.ammo and vs.ammo[wid]
-        setRow(r, tostring(i), T("vw." .. wid), ammo and string.format("%d / %d", ammo[1], ammo[2]) or "∞", i == st.wi, ammo and ammo[1] + ammo[2] == 0)
+        if rowsOn then setRow(r, tostring(i), T("vw." .. wid), ammo and string.format("%d / %d", ammo[1], ammo[2]) or "∞", i == st.wi, ammo and ammo[1] + ammo[2] == 0) end
         if i == st.wi and w then
           selAmmo = ammo and tostring(ammo[1] + ammo[2]) or "∞"
           local l = (st.next[wid] or 0) - os.clock()
@@ -988,12 +1017,14 @@ function VehHud.init(G)
           if lastNext[wid] and (st.next[wid] or 0) > lastNext[wid] + 0.05 and (w.dmg or 0) > 150 then kickT = os.clock() end
         end
         lastNext[wid] = st.next[wid] or 0
-      else
+      elseif rowsOn then
         setRow(r, nil, nil)
       end
     end
-    TK.smoke.Text = string.format("X   %s ×%d", T("vh.smoke"), vs and vs.smoke or 0)
-    setRing(TK.ring, relK, ready, left)
+    if tkOn then
+      TK.smoke.Text = string.format("X   %s ×%d", T("vh.smoke"), vs and vs.smoke or 0)
+      setRing(TK.ring, relK, ready, left)
+    end
     if mwtOn then
       -- MWT 右下：车名、剪影（挨打闪红、血少变色）、血量「当前/满」；六边形弹种按钮靠右排；烟幕弹图标
       MW.name.Text = string.match(TK.name.Text, "^(%S+)") or TK.name.Text   -- 只写型号（「ZTZ-96 主战坦克」→「ZTZ-96」，MWT 那样）
@@ -1146,7 +1177,7 @@ function VehHud.init(G)
     SR.tof.Text = ready and string.format("T %.1f s", tof or 0) or string.format("%s %.1f", T("vh.reload"), left)
     SR.tof.TextColor3 = ready and CYAN or AMBER
     SR.wpn.Text = wname or ""
-    fireCC.Brightness = 0.1 * kick * kick
+    setFlash(0.1 * kick * kick)
     -- 瞄着的敌人（落点附近 90 像素内最近的）
     local em = on and enemyNear(sp.X, sp.Y, 90) or nil
     local r = em and em:FindFirstChild("Root")
@@ -1293,7 +1324,7 @@ function VehHud.init(G)
     else
       SR.root.Visible, SR.lead.Visible, SR.card.Visible = false, false, false
       for _, dd in ipairs(SR.leadDots) do dd.Visible = false end
-      fireCC.Brightness = 0
+      setFlash(0)
     end
     placeLock(st)
   end
@@ -1441,6 +1472,7 @@ function VehHud.init(G)
       SG.info.Position, SG.info.Size = UD2(0.5, 206, 0.5, -26), UD2(0, 184, 0, 43)
     end
   end
+  G.vehCompass.layout = function() layoutPanels() end   -- 测试用
 
   local function stepSight(st)
     local d = st.d
@@ -1474,17 +1506,23 @@ function VehHud.init(G)
     if not SG.scale.Visible then return end
     local dist = st.aimPt and (st.aimPt - cam.CFrame.Position).Magnitude / 2.8 or 0
     SG.ptr.Position = UD2(0, 46, 0, 220 - math.clamp(dist / 2000, 0, 1) * 220)
-    -- 小罗盘：炮管朝向
+    -- 小罗盘：炮管朝向（11-27：炮管没转就不重摆；转了只挪位置，刻度长短、字换了一格才重写）
     local h = hdgOf((st.yaw or 0) - math.rad(st.ty or 0))
+    if h == SG.cmpH then return end
+    SG.cmpH = h
     local first = math.floor((h - 150 / 3) / 5) * 5
+    local relabel = first ~= SG.cmpFirst
+    SG.cmpFirst = first
     for i, tk in ipairs(SG.ticks) do
       local a = first + (i - 1) * 5
       local x = 150 + (a - h) * 3
-      local aa = a % 360
       tk.t.Position = UD2(0, x, 0, 0)
-      tk.t.Size = UD2(0, 1, 0, (aa % 15 == 0) and 7 or 4)
       tk.l.Position = UD2(0, x, 0, 8)
-      tk.l.Text = (aa % 30 == 0) and (DIR[aa] or string.format("%03d", aa)) or ""
+      if relabel then
+        local aa = a % 360
+        tk.t.Size = UD2(0, 1, 0, (aa % 15 == 0) and 7 or 4)
+        tk.l.Text = (aa % 30 == 0) and (DIR[aa] or string.format("%03d", aa)) or ""
+      end
     end
   end
 
@@ -1516,7 +1554,7 @@ function VehHud.init(G)
     local showTank = driving and not inSight and not inBino and not (G.interiorOn and G.interiorOn())   -- 坐在车里看（Interior.lua）：车里的屏幕就是仪表
     gui.Enabled, sg.Enabled = showTank or sailing, inSight and not G.interiorOptic
     if not gui.Enabled then
-      if fireCC.Brightness ~= 0 then fireCC.Brightness = 0 end
+      setFlash(0)
       hp0 = nil
       mwtOn, wtMode = false, false
       G.tankHudActive = false

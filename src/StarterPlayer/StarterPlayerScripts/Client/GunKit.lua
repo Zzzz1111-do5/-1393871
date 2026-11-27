@@ -195,6 +195,7 @@ function GunKit.init(G)
   local MAXL, MAXD = 6, 320   -- 最多画几道、离镜头多远以内
 
   local scanT = 0
+  local list, lit = {}, {}   -- 这一帧要画的激光（每帧重用一张表）；[第几道] = 上一帧亮着没有
   G.frameConn("GunKit", function()
     local t = now()
     if t - scanT > 0.5 then
@@ -202,7 +203,7 @@ function GunKit.init(G)
       scan()
     end
     local cp = cam.CFrame.Position
-    local list = {}
+    table.clear(list)
     for tool, L in pairs(lasers) do
       local ch = tool.Parent
       if ch and ch:IsA("Model") and ch:FindFirstChildOfClass("Humanoid") and L.h.Parent == tool then
@@ -214,10 +215,12 @@ function GunKit.init(G)
         end
       end
     end
-    table.sort(list, function(a, b) return a.d < b.d end)
+    if #list > 1 then table.sort(list, function(a, b) return a.d < b.d end) end
+    -- 11-27 M3 丝滑：原来每帧建表、排序，没有激光也每帧把每一道写一遍透明；现在只写这一帧要亮的和上一帧亮过的
     for i = 1, MAXL do
       local L = list[i]
-      local b = (L or pool[i]) and beamPart(i)
+      local b = (L or (pool[i] and lit[i])) and beamPart(i)
+      lit[i] = L ~= nil
       if b then
         if L then
           rp.FilterDescendantsInstances = { L.ch, folder }

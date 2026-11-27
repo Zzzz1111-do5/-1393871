@@ -72,6 +72,31 @@ function Settings.init(G)
     blur.Enabled = false
     blur.Parent = Lighting
   end)
+  -- 模糊淡进淡出（11-27「动画做出丝滑感」：原来一下子 0 → 14）：开 0.22 秒、关 0.18 秒（Theme.T.ui / out、Quart Out，docs/style.md「动效」）；
+  --   关完了把效果关掉。系统开了「减少动态效果」就直接开关
+  local TweenService = game:GetService("TweenService")
+  local MT = (TH and type(TH.T) == "table") and TH.T or {}
+  local BLUR_IN = TweenInfo.new(MT.ui or 0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+  local BLUR_OUT = TweenInfo.new(MT.out or 0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+  local blurTok = 0
+  local function blurTo(on)
+    if not blur then return end
+    blurTok += 1
+    local still = G.reducedMotion and G.reducedMotion()
+    if on then
+      if not blur.Enabled then blur.Size = still and 14 or 0 end
+      blur.Enabled = true
+      if not still then TweenService:Create(blur, BLUR_IN, { Size = 14 }):Play() end
+    else
+      if not blur.Enabled then return end
+      if still then blur.Enabled = false return end
+      local tok = blurTok
+      TweenService:Create(blur, BLUR_OUT, { Size = 0 }):Play()
+      task.delay(BLUR_OUT.Time, function()
+        if blurTok == tok then blur.Enabled = false blur.Size = 14 end
+      end)
+    end
+  end
 
   G.uiRefit = G.uiRefit or {}   -- 界面比例变了要重新排的（TechUI 的机库、这一页）
   local function apply()
@@ -80,7 +105,8 @@ function Settings.init(G)
     G.noShake = P.shake == false
     G.voiceOff = P.voice == false
     if master then pcall(function() master.Volume = P.vol end) end
-    if gammaCC then pcall(function() gammaCC.Brightness = P.gamma gammaCC.Contrast = math.abs(P.gamma) * 0.4 end) end
+    -- 灰度是 0（默认）就把这层调色关掉（11-27 M3 丝滑：亮度、对比都是 0 也开着是白画一遍全屏后期）
+    if gammaCC then pcall(function() gammaCC.Brightness = P.gamma gammaCC.Contrast = math.abs(P.gamma) * 0.4 gammaCC.Enabled = math.abs(P.gamma) > 1e-3 end) end
     if P.lang == "zh" or P.lang == "en" then G.lang = P.lang end
     if G.uiScaleK ~= P.ui then
       G.uiScaleK = P.ui
@@ -544,7 +570,7 @@ function Settings.init(G)
   local function close()
     if gui.Enabled then hideOthers(false) end
     gui.Enabled = false
-    if blur then blur.Enabled = false end
+    blurTo(false)
     if openDrop then openDrop:Destroy() openDrop = nil end
     if sendAt then sendAt = os.clock() end   -- 关的时候马上发（不用等 0.4 秒）
   end
@@ -569,7 +595,7 @@ function Settings.init(G)
     fit()
     if not gui.Enabled then hideOthers(true) end
     gui.Enabled = true
-    if blur then blur.Enabled = true end
+    blurTo(true)
   end
   G.closeSettings = close
   function G.settingsShown() return gui.Enabled end

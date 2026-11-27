@@ -302,12 +302,57 @@ function Warfx.init(G)
   banks.Parent = FXF
   G.cloudBanks = banks   -- 测试用
   local cloudParts = {}   -- { 零件, 上下位置 0 云底 ～ 1 云顶 }：昼夜更替跟着时间重新上色（stepCloudTint）
+  -- 云跟着时间变色（用户 11-25「给沙漠地图做个昼夜更替」）：夜里月光照着的灰蓝、白天白、日出日落染一层橙粉；
+  --   地形的那层云（clouds）也一样。亮度变了 0.02 以上才重新上色（几秒一次）
+  local C_NLOW, C_NHIGH = RGB(70, 78, 94), RGB(122, 130, 146)
+  local C_DLOW, C_DHIGH = RGB(198, 200, 206), RGB(248, 248, 246)
+  local C_TW = RGB(250, 178, 140)
+  local tintK = -1        -- 上次按哪个亮度上的色
+  local tintLo, tintHi, tintI = nil, nil, 0   -- 正在重新上色（drainTint）：这一轮的云底色、云顶色，上到第几块了
+  -- 现在该是什么颜色：亮度键、云底色、云顶色、昼夜（0 夜 ～ 1 昼）、日出日落的染色
+  local function tintNow()
+    local dk = G.dayK and G.dayK() or 0
+    local c = G.clockNow and G.clockNow() or 2.3
+    local alt = math.sin((c - 6) / 12 * math.pi)
+    local tw = math.clamp(1 - math.abs(alt - 0.05) / 0.25, 0, 1) * 0.55
+    return dk + tw * 3, C_NLOW:Lerp(C_DLOW, dk):Lerp(C_TW, tw), C_NHIGH:Lerp(C_DHIGH, dk):Lerp(C_TW, tw * 0.8), dk, tw
+  end
+  local fading, builtAt = nil, -99   -- fading：正在淡掉的那批球 { t0, list = { { 零件, 原来的透明度 } }, acc }；builtAt：这批是什么时候摆的
+  local function dropFading()
+    if not fading then return end
+    for _, f in ipairs(fading.list) do f[1]:Destroy() end
+    fading = nil
+  end
   local function cloudBanks()
+    -- 雪山上导入了体积云（SnowClouds.lua 开着，G.snowCloudsOn）：不再摆这几十团半透明的球——两套云叠着，
+    --   五百多个透明大球一层层排序、填满屏幕是显卡最贵的（11-27 M3 丝滑）；没导入体积云照旧摆。
+    --   已经摆了一会儿的（clouds.glb 晚到：SnowClouds 每 3 秒查一次、最多两分钟）1 秒淡掉再删，不一下子全没；刚摆的（换图那一下）直接删
+    if G.snowCloudsOn then
+      if #cloudParts > 0 then
+        if os.clock() - builtAt > 2 then
+          dropFading()
+          local list = {}
+          for _, it in ipairs(cloudParts) do if it[1].Parent then list[#list + 1] = { it[1], it[1].Transparency } end end
+          fading = { t0 = os.clock(), list = list, acc = 0 }
+        else
+          dropFading()
+          banks:ClearAllChildren()
+        end
+        table.clear(cloudParts)
+      end
+      tintLo = nil
+      return
+    end
+    fading = nil
     banks:ClearAllChildren()
     table.clear(cloudParts)
+    -- 摆的时候就按现在的钟点上色（原来先摆成夜里的灰蓝，要等下一次一秒一查才重新上色；正在分帧上色的那一轮也作废，不刷到新零件上）
+    local key, LOW, HIGH, dk, tw = tintNow()
+    tintK, tintLo = key, nil
+    if clouds then clouds.Color = RGB(66, 72, 88):Lerp(RGB(244, 242, 238), dk):Lerp(C_TW, tw) end   -- 地形那层云同一个钟点（stepCloudTint 看到键没变就不再上）
+    builtAt = os.clock()
     local rng = Random.new(91124)
     local span = (MapM.PLAY or 20000) * 0.9
-    local LOW, HIGH = RGB(70, 78, 94), RGB(122, 130, 146)
     for _ = 1, 54 do
       local cx, cz = rng:NextNumber(-span, span), rng:NextNumber(-span, span)
       local cy = rng:NextNumber(1900, 3600)
@@ -340,27 +385,43 @@ function Warfx.init(G)
     end
   end
   pcall(cloudBanks)
-  if G.onMap then G.onMap(function() pcall(cloudBanks) end) end
-  -- 云跟着时间变色（用户 11-25「给沙漠地图做个昼夜更替」）：夜里月光照着的灰蓝、白天白、日出日落染一层橙粉；
-  --   地形的那层云（clouds）也一样。亮度变了 0.02 以上才重新上色（几秒一次）
-  local tintK = -1
-  local C_NLOW, C_NHIGH = RGB(70, 78, 94), RGB(122, 130, 146)
-  local C_DLOW, C_DHIGH = RGB(198, 200, 206), RGB(248, 248, 246)
-  local C_TW = RGB(250, 178, 140)
+  if G.onMap then G.onMap(function() pcall(cloudBanks) end) end   -- 换地图（作战区大小变了）重摆
+  G.cloudBanksRefresh = function() pcall(cloudBanks) end   -- SnowClouds 开 / 关时调
+  -- 淡掉的那批球：一秒 20 次往透明走，1 秒后删（五百多块，每帧都写太多）
+  local function stepFading(dt)
+    local f = fading
+    if not f then return end
+    local u = (os.clock() - f.t0) / 1
+    if u >= 1 then
+      dropFading()
+      return
+    end
+    f.acc += dt or 1 / 60
+    if f.acc < 0.05 then return end
+    f.acc = 0
+    for _, it in ipairs(f.list) do it[1].Transparency = it[2] + (1 - it[2]) * u end
+  end
+  G.cloudBanksFading = function() return fading ~= nil end   -- 测试用
+  G.cloudTintBusy = function() return tintLo ~= nil end       -- 测试用：还在分帧上色
   local function stepCloudTint()
-    local dk = G.dayK and G.dayK() or 0
-    local c = G.clockNow and G.clockNow() or 2.3
-    local alt = math.sin((c - 6) / 12 * math.pi)
-    local tw = math.clamp(1 - math.abs(alt - 0.05) / 0.25, 0, 1) * 0.55
-    local key = dk + tw * 3
+    local key, lo, hi, dk, tw = tintNow()
     if math.abs(key - tintK) < 0.02 then return end
     tintK = key
-    local lo, hi = C_NLOW:Lerp(C_DLOW, dk):Lerp(C_TW, tw), C_NHIGH:Lerp(C_DHIGH, dk):Lerp(C_TW, tw * 0.8)
-    for _, it in ipairs(cloudParts) do
-      if it[1].Parent then it[1].Color = lo:Lerp(hi, it[2]) end
-    end
+    tintLo, tintHi, tintI = lo, hi, 0   -- 五百多块分几帧上色（drainTint），不在一帧里全改（11-27：那一帧一顿）
     if clouds then clouds.Color = RGB(66, 72, 88):Lerp(RGB(244, 242, 238), dk):Lerp(C_TW, tw) end
-  end   -- 换地图（作战区大小变了）重摆
+  end
+  local TINT_N = 120   -- 一帧最多上色几块
+  local function drainTint()
+    if not tintLo then return end
+    local n = #cloudParts
+    local stop = math.min(n, tintI + TINT_N)
+    for i = tintI + 1, stop do
+      local it = cloudParts[i]
+      if it[1].Parent then it[1].Color = tintLo:Lerp(tintHi, it[2]) end
+    end
+    tintI = stop
+    if tintI >= n then tintLo = nil end
+  end
 
   ---------------------------------------------------------------- 探照灯
   -- 守方几处要地（指挥部、机场、港口、营地）各两盏对空探照灯：灰绿色的灯筒架在矮杆上，一道淡蓝白的光柱斜着照上天，慢慢来回扫
@@ -937,6 +998,8 @@ function Warfx.init(G)
       end)
       if not ok2 and G.showError then G.showError("战场氛围：" .. tostring(err2)) end
     end
+    if tintLo then pcall(drainTint) end
+    if fading then pcall(stepFading, dt) end
     bAcc += dt or 1 / 60
     if bAcc >= 1 then   -- 房子着火、废墟、云的颜色：一秒查一次
       bAcc = 0

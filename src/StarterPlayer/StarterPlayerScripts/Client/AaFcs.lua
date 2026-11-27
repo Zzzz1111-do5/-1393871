@@ -150,14 +150,13 @@ function AaFcs.init(G)
           local id = m:GetAttribute("EntId") or m.Name
           local p = r.Position
           local tr = track[id]
-          if tr and now > tr.t + 1e-3 then
-            local v = (p - tr.p) / (now - tr.t)
-            if v.Magnitude < 1500 then tr.v = tr.v:Lerp(v, 0.3) end
-            tr.p, tr.t = p, now
-          elseif not tr then
-            tr = { p = p, t = now, v = V() }
+          if not tr then
+            tr = {}
             track[id] = tr
           end
+          -- 速度：只在服务器真挪了它时按两次挪之间的时间算、按时间平滑（View.lua G.velTrack；原来每帧差分 × 0.3，锁定圈一跳一跳）
+          if G.velTrack then G.velTrack(tr, p, now, 1500)
+          else tr.p, tr.t, tr.v = p, now, tr.v or V() end
           tr.seen = now
           table.insert(list, { id = id, m = m, p = p, v = tr.v, model = m:GetAttribute("Model") })
         end

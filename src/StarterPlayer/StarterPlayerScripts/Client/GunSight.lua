@@ -147,7 +147,18 @@ function GunSight.new(G, sightFrame, gui)
   focus.Parent = Lighting
   local RC = canvas(root, "Reticle", 6)      -- 分划（视场、弹种、装定距离变了才重画）
   local DC = canvas(root, "Dyn", 7)          -- 每帧：炮管指向、跟踪框
-  local HC = canvas(root, "Tape", 7)         -- 方位刻度
+  -- 方位刻度（11-27 M3 丝滑：原来每帧重画 17 根线、7 个字，一帧 160 来次属性写入）：画成一条长带（镜头两边各三个窗口半宽的刻度），
+  --   放在只露出窗口那么宽的裁剪框里，每帧只挪带子的 X；转出一个窗口半宽、视场 / 窗口大小 / 颜色变了才重画
+  local tapeClip = Instance.new("Frame")
+  tapeClip.Name = "TapeClip"
+  tapeClip.BackgroundTransparency = 1
+  tapeClip.ClipsDescendants = true
+  tapeClip.AnchorPoint = V2(0.5, 0.5)
+  tapeClip.ZIndex = 7
+  tapeClip.Parent = root
+  local HC = canvas(tapeClip, "Tape", 7)     -- 带子（名字、子零件跟原来一样：L 线、T 字）
+  HC.root.AnchorPoint = V2(0.5, 0.5)
+  local MC = canvas(root, "TapeMark", 7)     -- 中间那个 ^（不跟着挪）
   -- 镜下读数（数字火控）
   local function lbl(name, size, z)
     local t = Instance.new("TextLabel")
@@ -199,7 +210,7 @@ function GunSight.new(G, sightFrame, gui)
     cur.col = col
     cur.tr = ({ 0, 0.25, 0.5, 0.75 })[((st and st.retLvl) or 0) + 1] or 0
     cur.symTr = ({ 0, 0.3, 0.6, 1 })[((st and st.symLvl) or 0) + 1] or 0
-    for _, c in ipairs({ RC, DC, HC }) do c.col, c.tr = col, cur.tr end
+    for _, c in ipairs({ RC, DC, HC, MC }) do c.col, c.tr = col, cur.tr end
     for _, t in ipairs({ rangeT, ammoT, statT, setT }) do t.TextColor3, t.TextTransparency = col, cur.symTr end
     readyS.Color, readyS.Transparency = col, cur.symTr
     readyB.BackgroundColor3 = col
@@ -345,30 +356,51 @@ function GunSight.new(G, sightFrame, gui)
   end
 
   -- 顶上方位刻度：镜头朝向（度），刻度跟着视场——一度多少像素和画面上一样
+  local CARD = { [0] = "N", [90] = "E", [180] = "S", [270] = "W" }
+  local tape = { vx = nil, vy = nil, px = nil, col = nil, tr = nil, base = 0, xo = nil }
   local function drawTape(P, hdg)
-    HC.begin()
     local s = math.clamp(P.vp.Y / 720, 0.8, 1.6)
     local y = -P.hh + 128 * s   -- 顶上是比分条（Hud，到 82）和目标那行字（到 108）：刻度放在它们下面
     local half = P.hw * 0.34
     local pxDeg = P.F * math.rad(1)
-    local minor, major = SD.tapeSteps(pxDeg)
-    local first = math.floor((hdg - half / pxDeg) / minor) * minor
-    local a = first
-    local CARD = { [0] = "N", [90] = "E", [180] = "S", [270] = "W" }
-    while (a - hdg) * pxDeg <= half do
-      local x = (a - hdg) * pxDeg
-      if x >= -half then
-        local aa = a % 360
-        local big = (aa % major) == 0
-        HC.line(x, y, x, y + (big and 8 or 4) * s, 1)
-        if big then HC.text(x, y - 8 * s, CARD[aa] or tostring(aa), 13) end
+    local d = ((hdg - tape.base + 540) % 360) - 180   -- 镜头离带子中间多少度
+    if tape.vx ~= P.vp.X or tape.vy ~= P.vp.Y or math.abs((tape.px or 0) - pxDeg) > 1e-3 or tape.col ~= HC.col or tape.tr ~= HC.tr
+      or math.abs(d) * pxDeg > half then
+      tape.vx, tape.vy, tape.px, tape.col, tape.tr = P.vp.X, P.vp.Y, pxDeg, HC.col, HC.tr
+      tape.base, d, tape.xo = hdg, 0, nil
+      local H = math.floor(34 * s + 0.5)
+      local yc = y - 2 * s   -- 框的中线：字在上、刻度在下
+      local ty = y - yc
+      local span = half * 3
+      tapeClip.Size = UDim2.fromOffset(math.floor(2 * half + 0.5), H)
+      tapeClip.Position = UD2(0.5, 0, 0.5, math.floor(yc + 0.5))
+      HC.root.Size = UDim2.fromOffset(math.floor(2 * span + 0.5), H)
+      HC.begin()
+      local minor, major = SD.tapeSteps(pxDeg)
+      local a = math.floor((hdg - span / pxDeg) / minor) * minor
+      while (a - hdg) * pxDeg <= span do
+        local x = (a - hdg) * pxDeg
+        if x >= -span then
+          local aa = a % 360
+          local big = (aa % major) == 0
+          HC.line(x, ty, x, ty + (big and 8 or 4) * s, 1)
+          if big then HC.text(x, ty - 8 * s, CARD[aa] or tostring(aa), 13) end
+        end
+        a += minor
       end
-      a += minor
+      HC.finish()
+      MC.begin()
+      MC.line(-6 * s, y + 16 * s, 0, y + 10 * s, 1)
+      MC.line(6 * s, y + 16 * s, 0, y + 10 * s, 1)
+      MC.finish()
     end
-    HC.line(-6 * s, y + 16 * s, 0, y + 10 * s, 1)
-    HC.line(6 * s, y + 16 * s, 0, y + 10 * s, 1)
-    HC.finish()
+    local xo = math.floor(-d * pxDeg + 0.5)
+    if xo ~= tape.xo then
+      tape.xo = xo
+      HC.root.Position = UD2(0.5, xo, 0.5, 0)
+    end
   end
+  o.tapeState = function() return { base = tape.base, xo = tape.xo, clip = tapeClip, strip = HC.root } end   -- 测试用
 
   -- info（Drive 每帧给）：
   --   am / wid / amKey 弹、炮、弹种键（不是坦克炮时 nil）；R0 装定距离（米，没装定是 bs 战斗瞄准距离）；man / est 手动装定、车长估的；
@@ -634,12 +666,12 @@ function GunSight.new(G, sightFrame, gui)
   ccB.Enabled = false
   ccB.Parent = Lighting
   local banim = { t0 = -99, look = nil, pan = 0, lastT = nil }
-  local binoSig = nil
+  local binoSig, lensSig = nil, nil
   o.binoFov = 70 / SD.BINOC.mag
 
   function o.binoShow(on, kit)
     bino.Visible = on and true or false
-    binoSig = nil
+    binoSig, lensSig = nil, nil
     if kit then cur.east = kit.east == true end   -- 望远镜的密位制跟着东西方（北约 6400）
     blurB.Enabled, ccB.Enabled = bino.Visible, bino.Visible
     if on then
@@ -665,9 +697,14 @@ function GunSight.new(G, sightFrame, gui)
     local e = 1 - (1 - u) ^ 3
     local D = vp.Y * 0.9 * (0.9 + 0.1 * e)   -- 举起来：镜筒从小放到正常
     local off = D * 0.27
-    layoutLens(LL, vp.X / 2 - off, vp.Y / 2, D)
-    layoutLens(RR, off, vp.Y / 2, D)
-    fade.BackgroundTransparency = math.clamp((now - banim.t0) / 0.16, 0, 1)
+    -- 两只镜筒一共五十几个圈：举起来那 0.35 秒以后大小不变，窗口、镜筒没变就不再每帧重写（原来每帧写 170 来个属性）
+    if not lensSig or lensSig[1] ~= vp.X or lensSig[2] ~= vp.Y or math.abs(lensSig[3] - D) > 0.01 then
+      lensSig = { vp.X, vp.Y, D }
+      layoutLens(LL, vp.X / 2 - off, vp.Y / 2, D)
+      layoutLens(RR, off, vp.Y / 2, D)
+    end
+    local fa = math.clamp((now - banim.t0) / 0.16, 0, 1)
+    if fade.BackgroundTransparency ~= fa then fade.BackgroundTransparency = fa end
     -- 转得快：画面微糊（眼睛、焦距跟不上），停下来清楚
     local lv = cam.CFrame.LookVector
     local dtv = banim.lastT and (now - banim.lastT) or 0
@@ -678,7 +715,11 @@ function GunSight.new(G, sightFrame, gui)
       banim.pan += (target - banim.pan) * math.min(1, dtv * 8)
     end
     banim.look = lv
-    blurB.Size = 14 * (1 - e) + banim.pan
+    -- 对焦放完、没在转：模糊几乎是 0——关掉（11-27 M3 丝滑：Size 0 也开着是白画一遍全屏后期）
+    local bs = 14 * (1 - e) + banim.pan
+    blurB.Size = bs
+    local bOn = bino.Visible and bs > 0.05
+    if blurB.Enabled ~= bOn then blurB.Enabled = bOn end
     -- 镀膜反光：对着太阳亮（夜里不亮）
     local okS, sun = pcall(function() return Lighting:GetSunDirection() end)
     local k = okS and sun and math.clamp((lv:Dot(sun) - 0.55) / 0.45, 0, 1) or 0

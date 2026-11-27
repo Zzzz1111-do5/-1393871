@@ -258,15 +258,21 @@ function WtComms.init(G)
     end
   end)
 
+  local rowC = {}   -- [第几行] = { vis, txt, a } 上一帧写进去的
   G.frameConn("WtComms", function()
     local t = os.clock()
     for i = #lines, 1, -1 do if t - lines[i].t > 8 then table.remove(lines, i) end end
+    -- 只写变了的（11-27 M3 丝滑：原来没有无线电的时候也每帧把每一行写一遍）
     for i, r in ipairs(rows) do
       local L = lines[i]
-      r.Visible = L ~= nil
+      local c = rowC[i]
+      if not c then c = {} rowC[i] = c end
+      local vis = L ~= nil
+      if c.vis ~= vis then c.vis = vis r.Visible = vis end
       if L then
-        r.Text = L.txt
-        r.TextTransparency = math.clamp((t - L.t - 6.5) / 1.5, 0, 1)
+        if c.txt ~= L.txt then c.txt = L.txt r.Text = L.txt end
+        local a = math.clamp((t - L.t - 6.5) / 1.5, 0, 1)
+        if c.a ~= a then c.a = a r.TextTransparency = a end
       end
     end
     for i = #pings, 1, -1 do
