@@ -16,6 +16,7 @@ local UP = ANG(0, 0, math.pi / 2)   -- 圆柱的轴（X）竖起来
 -- 搭在大厅那一块（Zones.LOBBY，x = −100000）：用户 11-26 晚「目前游戏里的几个地图是连起来的 不行」——原来在 (−9000, 900, 9000)，
 --   钢城地形铺到 ±12288，厂房就悬在战场上空（开飞机看得见，从厂房里也看得见底下的城）
 local Zones = require(game:GetService("ReplicatedStorage"):WaitForChild("Zones"))
+local Theme = require(game:GetService("ReplicatedStorage"):WaitForChild("Theme"))   -- 高亮的琥珀（选中）、动效的缓动（Theme.ease）
 local ORIGIN = Zones.HANGAR
 -- 看飞机、直升机（用户 11-25「查看飞机和直升机的时候单独做个背景吧」）：大厅里另一处搭一块露天机场停机坪（隔三万格），选中飞机就切过去
 local ORIGIN_AIR = Zones.HANGAR_AIR
@@ -27,7 +28,14 @@ local model = nil    -- 整间厂房
 local slot = nil     -- 停在正中的那辆车（TechUI 给的模型）
 local shown = false
 -- 镜头：yaw / pitch / dist 是要去的，s* 是现在的（慢慢跟过去）；h 看向离地多高；base 这辆车合适的距离
-local view = { yaw = math.pi - 0.62, pitch = 0.15, dist = 58, base = 58, h = 3, t = 0, sy = math.pi - 0.62, sp = 0.15, sd = 58, sh = 3 }
+--   at：看向哪一点（底座系，nil 是车正中离地 h；整备点挂点时看挂点），sat 是现在的；tilt：镜头往下压多少（rad，默认 −3.5°：车在画面里偏上）；
+--   shift：镜头往右平移多少格（正的：车在画面里往左挪，给右栏让地方）；fly：Stage.focus 正在飞的那一段（缓动，飞完交回上面的慢慢跟）
+local TILT0 = math.rad(-3.5)
+local view = { yaw = math.pi - 0.62, pitch = 0.15, dist = 58, base = 58, h = 3, t = 0, sy = math.pi - 0.62, sp = 0.15, sd = 58, sh = 3,
+  at = nil, sat = V(0, 3, 0), tilt = TILT0, stilt = TILT0, shift = 0, sshift = 0, fly = nil }
+-- 每个场景镜头的俯仰范围（rad，正的从上往下看）、眼睛离地至少几格：厂房里只能从上往下看、上面有屋顶；
+--   停机坪（用户 11-27 整备）允许从机翼下面往上看（−0.15，看翼下挂点），露天没有屋顶，也能升高到 1.2 往下看机翼上面
+local LIM = { ground = { p0 = 0.03, p1 = 0.8, eye = 2.4 }, air = { p0 = -0.15, p1 = 1.2, eye = 0.8 } }
 
 local function part(parent, name, size, cf, color, mat, shape)
   local p = Instance.new("Part")
@@ -649,15 +657,21 @@ local function camCF()
   local yaw = v.sy + math.sin(v.t * 0.11) * 0.03   -- 不动的时候也微微晃
   local pitch = v.sp + math.sin(v.t * 0.17) * 0.006
   local cp = math.cos(pitch)
-  local tgt = V(0, v.sh, 0)
+  local tgt = v.sat
   local eye = tgt + V(math.sin(yaw) * cp, math.sin(pitch), math.cos(yaw) * cp) * v.sd
+  local lim = LIM[mode] or LIM.ground
+  local cf
   if mode == "air" then
-    eye = V(math.clamp(eye.X, -APRON.HX, APRON.HX), math.clamp(eye.Y, 2.4, APRON.HY), math.clamp(eye.Z, APRON.Z0, APRON.Z1))
-    return ORIGIN_AIR * CFrame.lookAt(eye, tgt) * ANG(math.rad(-3.5), 0, 0)
+    eye = V(math.clamp(eye.X, -APRON.HX, APRON.HX), math.clamp(eye.Y, lim.eye, APRON.HY), math.clamp(eye.Z, APRON.Z0, APRON.Z1))
+    cf = ORIGIN_AIR * CFrame.lookAt(eye, tgt)
+  else
+    eye = V(math.clamp(eye.X, -HX + 8, HX - 8), math.clamp(eye.Y, lim.eye, HY - 10), math.clamp(eye.Z, Z0 + 8, Z1 - 8))   -- 别钻到墙外面
+    cf = ORIGIN * CFrame.lookAt(eye, tgt)
   end
-  eye = V(math.clamp(eye.X, -HX + 8, HX - 8), math.clamp(eye.Y, 2.4, HY - 10), math.clamp(eye.Z, Z0 + 8, Z1 - 8))   -- 别钻到墙外面
-  return ORIGIN * CFrame.lookAt(eye, tgt) * ANG(math.rad(-3.5), 0, 0)   -- 镜头压低一点：车在画面里偏上（底下是阵容卡片）
+  if v.sshift ~= 0 then cf = cf * CF(v.sshift, 0, 0) end   -- 整备：镜头横着挪（车在画面里让到一边）
+  return cf * ANG(v.stilt, 0, 0)   -- 镜头压低一点：车在画面里偏上（底下是阵容卡片）
 end
+local function wrapPi(a) return (a + math.pi) % (2 * math.pi) - math.pi end
 
 ---------------------------------------------------------------- 给 TechUI 的
 
@@ -682,8 +696,71 @@ function Stage.mode(k)
     if airModel then airModel.Parent = (mode == "air") and workspace or nil end
   end
   if slot then slot:Destroy() slot = nil end   -- 车 / 飞机按新场景的原点重新摆（TechUI 接着 put）
+  local lim = LIM[mode] or LIM.ground   -- 停机坪上从翼下往上看的那个俯仰，回厂房时夹回厂房的范围
+  view.pitch = math.clamp(view.pitch, lim.p0, lim.p1)
+  view.sp = math.clamp(view.sp, lim.p0, lim.p1)
 end
 function Stage.modeNow() return mode end
+
+---------------------------------------------------------------- 轮廓高亮（整备：选中挂点上的弹琥珀、鼠标挂着的白色淡轮廓、改装对应的部位）
+--   Roblox 一个画面最多同时画 31 个 Highlight（X 光一组组占掉不少：XrayOwn.lua），厂房里最多借 HL_MAX 个：
+--   Stage.highlight(零件或模型, o) → 句柄（借完了返回 nil）；Stage.unhighlight(句柄) 还回去，不给句柄全部还；换车（put）、关机库时全部还
+--   o：{ fill 填充色, fillT 填充透明度（默认 0.85）, line 描边色, lineT 描边透明度（默认 0）, front = true 隔着东西也画（默认被挡住的不画） }
+local HL_MAX = 4
+local hlPool = {}   -- [i] = { h = Highlight, used = 借出去了 }
+local hlFolder = nil
+local function hlRelease(e)
+  e.used = false
+  pcall(function()
+    e.h.Enabled = false
+    e.h.Adornee = nil
+  end)
+end
+function Stage.highlight(obj, o)
+  if typeof(obj) ~= "Instance" then return nil end
+  o = o or {}
+  local e = nil
+  for _, x in ipairs(hlPool) do if not x.used then e = x break end end
+  if not e then
+    if #hlPool >= HL_MAX then return nil end
+    if not hlFolder then
+      hlFolder = Instance.new("Folder")
+      hlFolder.Name = "StageHighlights"
+    end
+    local h = Instance.new("Highlight")
+    h.Name = "StageHL" .. (#hlPool + 1)
+    h.Enabled = false
+    h.Parent = hlFolder
+    e = { h = h, used = false }
+    table.insert(hlPool, e)
+  end
+  local ok = pcall(function()
+    local h = e.h
+    h.FillColor = o.fill or Theme.C.WARN
+    h.FillTransparency = o.fillT or 0.85
+    h.OutlineColor = o.line or o.fill or Theme.C.WARN
+    h.OutlineTransparency = o.lineT or 0
+    h.DepthMode = o.front and Enum.HighlightDepthMode.AlwaysOnTop or Enum.HighlightDepthMode.Occluded
+    h.Adornee = obj
+    h.Enabled = true
+  end)
+  if not ok then return nil end
+  if hlFolder then hlFolder.Parent = shown and workspace or nil end
+  e.used = true
+  return e
+end
+function Stage.unhighlight(e)
+  if e == nil then
+    for _, x in ipairs(hlPool) do if x.used then hlRelease(x) end end
+    return
+  end
+  for _, x in ipairs(hlPool) do if x == e and x.used then hlRelease(x) end end
+end
+function Stage.highlightsUsed()   -- 测试用：借出去几个
+  local n = 0
+  for _, x in ipairs(hlPool) do if x.used then n += 1 end end
+  return n
+end
 
 -- 打开 / 关上。keep：关的时候镜头已经有人接手了——"all" 一点不动（开了主菜单：它有自己的场景和视场角）；
 --   "type" 镜头类型不动、只把视场角还回去（坐进了车 / 飞机、在观战）；不给就整个还给游戏
@@ -699,6 +776,7 @@ function Stage.show(on, keep)
     end
     model.Parent = (mode == "ground") and workspace or nil
     if airModel then airModel.Parent = (mode == "air") and workspace or nil end
+    if hlFolder then hlFolder.Parent = workspace end
     shown = true
     if cam then
       cam.CameraType = Enum.CameraType.Scriptable
@@ -708,6 +786,9 @@ function Stage.show(on, keep)
   else
     if model then model.Parent = nil end
     if airModel then airModel.Parent = nil end
+    Stage.unhighlight()   -- 关机库：借的高亮全部还回去
+    if hlFolder then hlFolder.Parent = nil end
+    view.fly = nil
     if shown and cam and keep ~= "all" then
       if keep ~= "type" then cam.CameraType = Enum.CameraType.Custom end
       cam.FieldOfView = 70
@@ -719,8 +800,10 @@ end
 
 function Stage.active() return shown end
 
--- 把一辆车（已经摆在 floorCF 上的模型）停进来；dims = { L, W, H }：镜头按车的大小退到合适的距离
-function Stage.put(m, dims)
+-- 把一辆车（已经摆在 floorCF 上的模型）停进来；dims = { L, W, H }：镜头按车的大小退到合适的距离。
+--   keep：同一辆只换了模型（存了新挂载）——镜头不动（整备里正看着某个挂点时不跳回全景）；借出去的高亮照样全还（原来的零件没了）
+function Stage.put(m, dims, keep)
+  Stage.unhighlight()
   if slot then
     slot:Destroy()
     slot = nil
@@ -733,18 +816,75 @@ function Stage.put(m, dims)
   slot = m
   local L, Wd, H = (dims and dims.L) or 26, (dims and dims.W) or 12, (dims and dims.H) or 9
   view.base = math.clamp(math.max(L * 1.5, Wd * 2, H * 3.2) + 12, 40, 118)
-  view.dist = view.base
   view.h = math.clamp(H * 0.3, 2, 6)
+  view.dims = { L = L, W = Wd, H = H }
+  if keep then return end
+  view.dist = view.base
+  view.at, view.fly, view.zmin, view.zmax = nil, nil, nil, nil
+  view.tilt, view.shift = TILT0, 0
 end
+function Stage.model() return slot end   -- 停着的那辆（整备找挂点上的弹、做高亮）
 
 function Stage.drag(dx, dy)
+  view.fly = nil   -- 正在飞的镜头被拖动打断：从现在的位置接着跟手
+  local lim = LIM[mode] or LIM.ground
   view.yaw -= dx * 0.006
-  view.pitch = math.clamp(view.pitch + dy * 0.004, 0.03, 0.8)
+  view.pitch = math.clamp(view.pitch + dy * 0.004, lim.p0, lim.p1)
 end
 
 function Stage.zoom(k)
-  view.dist = math.clamp(view.dist * (1 - 0.1 * k), view.base * 0.55, view.base * 1.5)
+  view.fly = nil
+  view.dist = math.clamp(view.dist * (1 - 0.1 * k), view.zmin or view.base * 0.55, view.zmax or view.base * 1.5)
 end
+
+-- 镜头飞到一处（整备：进整备、点挂点、换页签；docs/style.md「动效」：0.55 秒、两头慢）：
+--   o = { at 看向哪一点（底座系 Vector3，同 floorCF 的坐标：飞机的挂点 = CFrame.new(0, gearH, 0) * 挂点位置；不给是车正中）,
+--     dist 离那一点多远（格；不给照现在的）, yaw 从哪个方向看（同 drag 的：0 从车尾、π/2 从右边（+X）、π 从车头、−π/2 从左边；按近的那一边转过去）,
+--     pitch 俯仰（rad，正的从上往下；按场景夹：停机坪 −0.15～1.2，从翼下往上看 / 往下看机翼上面，厂房 0.03～0.8）, tilt 镜头往下压多少（rad，默认 −3.5°）,
+--     shift 镜头往右挪几格（车在画面里往左让）, t 飞几秒（默认 Theme.T.cam；0 = 不缓动，交给平时的慢慢跟） }
+--   飞的时候拖动、滚轮直接打断（从当时的位置接着跟手）；飞完以后照常能拖、能缩放（缩放的范围按这辆车）
+function Stage.focus(o)
+  o = o or {}
+  local v = view
+  local lim = LIM[mode] or LIM.ground
+  local yaw = (o.yaw ~= nil) and (v.sy + wrapPi(o.yaw - v.sy)) or v.yaw
+  local pitch = math.clamp((o.pitch ~= nil) and o.pitch or v.pitch, lim.p0, lim.p1)
+  local dist = math.max(4, (o.dist ~= nil) and o.dist or v.dist)
+  local at = (typeof(o.at) == "Vector3") and o.at or nil
+  local tilt = (o.tilt ~= nil) and o.tilt or TILT0
+  local shift = (o.shift ~= nil) and o.shift or 0
+  v.yaw, v.pitch, v.dist, v.at, v.tilt, v.shift = yaw, pitch, dist, at, tilt, shift
+  v.zmin, v.zmax = math.min(v.base * 0.55, dist), math.max(v.base * 1.5, dist)   -- 飞近了（挂点特写）以后滚轮从这里接着缩放，不先跳到整车的范围
+  local t = (o.t ~= nil) and o.t or ((Theme.T and Theme.T.cam) or 0.55)
+  if t > 0 then
+    v.fly = { t0 = v.t, T = t, y0 = v.sy, p0 = v.sp, d0 = v.sd, a0 = v.sat, l0 = v.stilt, s0 = v.sshift }
+  else
+    v.fly = nil
+  end
+end
+-- 回到这辆车的全景（put 以后那样）
+function Stage.home(t)
+  Stage.focus({ yaw = math.pi - 0.62, pitch = 0.15, dist = view.base, t = t })
+end
+-- 现在的镜头（整备、测试用）：yaw / pitch / dist / at 是要去的，sy / sp / sd / sat 是现在的；flying 还在飞
+function Stage.viewState()
+  local v = view
+  return { yaw = v.yaw, pitch = v.pitch, dist = v.dist, at = v.at, sy = v.sy, sp = v.sp, sd = v.sd, sat = v.sat, tilt = v.stilt, shift = v.sshift,
+    base = v.base, h = v.h, dims = v.dims, flying = v.fly ~= nil, mode = mode, lim = LIM[mode] }
+end
+
+-- 世界坐标 → 屏幕（整备的 3D 挂点标签每帧按它摆）：返回 视口像素的 Vector2（同 IgnoreGuiInset 的 ScreenGui：左上角 0, 0）、深度（格，在镜头前面是正的）、在不在画面里；
+--   机库没开时返回 nil。挂在 TechUI 的 Root 里要除以它的 UIScale（G.hangarParts.vw × vh 是缩放后的画布）
+function Stage.toScreen(p)
+  if not shown or typeof(p) ~= "Vector3" then return nil, nil, false end
+  local cam = workspace.CurrentCamera
+  if not cam then return nil, nil, false end
+  local ok, sp, on = pcall(function() return cam:WorldToViewportPoint(p) end)
+  if not ok or not sp then return nil, nil, false end
+  return Vector2.new(sp.X, sp.Y), sp.Z, on == true and sp.Z > 0
+end
+-- 底座系的一点 → 世界（飞机挂点：Stage.world(CFrame.new(0, gearH, 0) * 挂点位置)）
+function Stage.world(p) return Stage.floorCF() * p end
 
 function Stage.step(dt)
   if not shown then return end
@@ -752,11 +892,29 @@ function Stage.step(dt)
   if not cam then return end
   local v = view
   v.t += dt
-  local k = 1 - math.exp(-dt * 7)
-  v.sy += (v.yaw - v.sy) * k
-  v.sp += (v.pitch - v.sp) * k
-  v.sd += (v.dist - v.sd) * k
-  v.sh += (v.h - v.sh) * k
+  local want = v.at or V(0, v.h, 0)
+  local F = v.fly
+  if F then   -- Stage.focus：按缓动曲线从起点飞到终点（时间按秒算，不跟帧率走）
+    local x = math.clamp((v.t - F.t0) / math.max(F.T, 1e-3), 0, 1)
+    local e = Theme.ease and Theme.ease("cam", x) or x
+    v.sy = F.y0 + (v.yaw - F.y0) * e
+    v.sp = F.p0 + (v.pitch - F.p0) * e
+    v.sd = F.d0 + (v.dist - F.d0) * e
+    v.sat = F.a0:Lerp(want, e)
+    v.sh = v.sat.Y
+    v.stilt = F.l0 + (v.tilt - F.l0) * e
+    v.sshift = F.s0 + (v.shift - F.s0) * e
+    if x >= 1 then v.fly = nil end
+  else
+    local k = 1 - math.exp(-dt * 7)
+    v.sy += (v.yaw - v.sy) * k
+    v.sp += (v.pitch - v.sp) * k
+    v.sd += (v.dist - v.sd) * k
+    v.sh += (v.h - v.sh) * k
+    v.sat = v.sat + (want - v.sat) * k
+    v.stilt += (v.tilt - v.stilt) * k
+    v.sshift += (v.shift - v.sshift) * k
+  end
   if cam.CameraType ~= Enum.CameraType.Scriptable then cam.CameraType = Enum.CameraType.Scriptable end
   if cam.FieldOfView ~= FOV then cam.FieldOfView = FOV end
   cam.CFrame = camCF()

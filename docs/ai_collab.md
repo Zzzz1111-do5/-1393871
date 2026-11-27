@@ -26,6 +26,16 @@
 
 ## 正在做
 
+- F（11-27，用户「整个给载具配置武器的系统 做的很粗糙 我需要非常艺术经验的效果 参考战雷」）——**整备（Workshop）第一段：止血 + 地基**（分支 workshop-a）：
+  · 止血：科技树机库里飞机 / 直升机能配挂载了——顶栏弹药键对飞机打开老的 3D 挂载编辑器（Hangar.lua，加了上面一排预设、「（已改）」），不再淡掉；
+    Tech.lua 新动作 **treeLoad**（AD.cleanLoad / cleanFuel 校验），存档 tree 多了 **load / ammo / skin**（ammo、skin 先只存、读档校验）；
+    **出击、试驾都按存的挂载和内油**（Tech.lua → Depots padSpawnAt / Air spawnAircraft*）；机库里摆的飞机、资料卡「当前挂载」也按存的。
+  · 地基：Theme.T / EASE / tween / stagger / ease（docs/style.md「动效」一节）；HangarStage.focus / home / highlight（最多 4 个）/ toScreen / world / viewState，
+    停机坪俯仰 −0.15～1.2（从翼下往上看、露天升高往下看机翼上面；厂房照旧 0.03～0.8）；FlightModel.loadout（外挂重量、阻力增量，弹舱里的不算）+ perf、vTop / card 吃阻力增量（Fly.lua fmMass 改调它，结果一位不差）；
+    TechUI 交出 G.techRoot / G.hangarStage / G.hangarParts / G.hangarSel，点空白处转车的判断认 G.stageBlockers、挂载编辑器、配弹面板。
+  · **没碰** WtTank.lua（弹药栏写实炮弹图在改）、View.lua（特效在改）：剪影抽 ShellArt、上色抽 VehModels.skin 留到下一段。
+  · 下一段：新 Client/Workshop.lua（整备外壳）+ WsArms.lua（挂载页）+ WsKit.lua；测试 tools/mock/workshop.lua（第一段已有）。**改 TechUI 机库顶栏、HangarStage 镜头的先在这里看一眼**。
+
 - F（11-27，用户：「坦克的开镜你直接去按照战雷的做」+ 一张战雷开镜截图「这个样子」、「然后再做一个望远镜」、「镜子里的线条和字太粗了而且不够清晰 光学渐变也有些生硬」；
   11-26 的「照真镜子重画」）——**新：ReplicatedStorage/SightDefs.lua（数据、算法）+ Client/GunSight.lua（画）**，Drive.lua 建它、每帧调：
   · 全屏开镜（圆形目镜、热像框、红色发光分划、镜下红字都收了；Interior 的 ScopeFx 车外开炮长镜只从黑淡入 0.2 秒、不留暗边，车里的观瞄设备暗边改成 16 圈细环）；

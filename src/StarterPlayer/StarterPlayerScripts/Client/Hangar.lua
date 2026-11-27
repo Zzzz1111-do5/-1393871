@@ -1,8 +1,10 @@
 -- Roblox全面大战场（客户端）——挂载编辑器（部署界面飞机卡片上的「改挂载」）
 --   全屏黑底，中间是 3D 的飞机（AirModels 拼的，放下起落架、打开弹舱，挂着现在选的弹；拖动转视角、滚轮缩放）；
 --   每个挂点一个白色圆圈，点一下镜头拉近到那个挂点，左边列出这个挂点能挂的弹（名字、类别、导引方式），点哪个挂哪个（默认左右对称一起换），
---   选中的弹发白光；右下角是这枚弹的资料（类别、导引方式、射程、数量、锁定时间）；上面一排是预设方案；底部「返回」「保存」
---   G.openHangar(id, load, onSave)：load 是每个挂点的武器（同 AirDefs.presetLoad 的格式），保存时 onSave(新的 load)
+--   选中的弹发白光；右下角是这枚弹的资料（类别、导引方式、射程、数量、锁定时间）；上面一排是预设方案（Preset_<键>，
+--   选中的白底；照这套改过挂点的后面写「（已改）」）；底部「返回」「保存」
+--   G.openHangar(id, load, onSave, presetKey, opts)：load 是每个挂点的武器（同 AirDefs.presetLoad 的格式），保存时 onSave(新的 load, 照哪套预设改的, 内油)
+--   用的地方：老的步兵召唤台（Depot.lua）、科技树机库顶栏的弹药键（TechUI.lua：选中的是飞机 / 直升机时；整备的挂载页做好以前先用它）
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 local UIS = game:GetService("UserInputService")
@@ -84,7 +86,7 @@ function Hangar.init(G)
   end
   local summary = ui.label(bg, "", UDim2.new(0.5, 0, 0, 18), UDim2.new(0.5, 0, 1, -112), 13, MUTE, Enum.Font.BuilderSansMedium, Vector2.new(0.5, 1))
   -- 左上：内油（用户：增加油量这个东西）——四档，少带油轻、加速快，多带飞得久；下面写巡航能飞多久（副油箱另算）、重量
-  local fuelBox = ui.frame(bg, UDim2.fromOffset(300, 104), UDim2.fromOffset(40, 80), RGB(10, 12, 14), 0.1)
+  local fuelBox = ui.frame(bg, UDim2.fromOffset(300, 104), UDim2.fromOffset(40, 96), RGB(10, 12, 14), 0.1)   -- y 96：让开上面那排预设（窄屏上会碰到）
   fuelBox.Name = "Fuel"
   ui.stroke(fuelBox, RGB(255, 255, 255), 1, 0.85)
   local fTitle = ui.label(fuelBox, "", UDim2.new(1, -28, 0, 18), UDim2.fromOffset(14, 10), 13, MUTE, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
@@ -101,13 +103,20 @@ function Hangar.init(G)
   fInfo.TextWrapped = true
   fInfo.TextYAlignment = Enum.TextYAlignment.Top
   local backBtn = square(ui.button(bg, "", UDim2.fromOffset(130, 52), UDim2.new(0.5, -8, 1, -28), RGB(0, 0, 0), Vector2.new(1, 1)))
+  backBtn.Name = "HangarBack"
   ui.stroke(backBtn, RGB(255, 255, 255), 1, 0.7)
   backBtn.TextSize = 20
   backBtn.Font = Enum.Font.BuilderSans
   local saveBtn = square(ui.button(bg, "", UDim2.fromOffset(170, 52), UDim2.new(0.5, 8, 1, -28), RGB(255, 255, 255), Vector2.new(0, 1)))
+  saveBtn.Name = "HangarSave"
   saveBtn.TextColor3 = RGB(10, 10, 10)
   saveBtn.TextSize = 20
   saveBtn.Font = Enum.Font.BuilderSans
+  -- 上面一排：预设方案（标题下面、居中）。一块一块小键，选中白底黑字（docs/style.md：页签、分段键选中白底）；按 openHangar 时这架飞机的预设现建
+  local TH = G.Theme
+  local presetRow = ui.frame(bg, UDim2.fromOffset(10, 30), UDim2.new(0.5, 0, 0, 60), RGB(0, 0, 0), 1, Vector2.new(0.5, 0))
+  presetRow.Name = "Presets"
+  local presetBtns = {}
 
   ---------------------------------------------------------------- 状态
 
@@ -204,6 +213,7 @@ function Hangar.init(G)
     for k, wid in ipairs(opts) do
       local on = (H.load[H.sel] or false) == wid
       local b = Instance.new("TextButton")
+      b.Name = "Opt_" .. (wid or "none")
       b.Text = ""
       b.LayoutOrder = k
       b.Size = UDim2.new(1, 0, 0, 62)
@@ -229,7 +239,7 @@ function Hangar.init(G)
           local s2 = H.d.st[j]
           H.load[j] = (wid and table.find(s2.opts, wid)) and wid or false
         end
-        H.presetKey = nil
+        -- H.presetKey 照旧记着「照哪套预设改的」（上面那排写「（已改）」；存档里也记着，整备的挂载页同样写）
         rebuild()
         buildList()
         showInfo(wid, n)
@@ -256,10 +266,23 @@ function Hangar.init(G)
     G.refreshHangar()
   end
 
+  local function sameLoad(a, b)
+    for i = 1, #(H.d.st or {}) do
+      if (a[i] or false) ~= (b[i] or false) then return false end
+    end
+    return true
+  end
   function G.refreshHangar()
     if not H then return end
     title.Text = T("veh." .. H.d.id)
     symBtn.Text = T(H.sym and "hangar.symOn" or "hangar.symOff")
+    -- 预设那一排：照哪套改的那块白底；挂的跟那套不一样了后面写「（已改）」
+    for _, x in ipairs(presetBtns) do
+      local on = x.key == H.presetKey
+      local mod = on and not sameLoad(H.load, AD.presetLoad(H.d, x.key))
+      x.b.Text = T("preset." .. x.key) .. (mod and T("hangar.modified") or "")
+      if TH then TH.setSelected(x.b, on) end
+    end
     backBtn.Text = T("hangar.back")
     saveBtn.Text = T(H.confirm or "hangar.save")
     -- 总共挂了什么
@@ -318,6 +341,38 @@ function Hangar.init(G)
     H.tYaw, H.tPitch, H.tDist, H.tFocus = H.yaw, H.pitch, H.dist, H.focus
     H.home = { yaw = H.yaw, pitch = H.pitch, dist = H.dist, focus = H.focus }
     for i = 1, #(d.st or {}) do if H.load[i] == nil then H.load[i] = false end end
+    -- 没说照哪套改的：挂的正好是哪套预设就算哪套
+    if not H.presetKey then
+      for _, p in ipairs(d.presets or {}) do
+        if not H.presetKey and sameLoad(H.load, AD.presetLoad(d, p.key)) then H.presetKey = p.key end
+      end
+    end
+    -- 预设那一排：这架飞机的每一套（只有一套的不画）
+    for _, x in ipairs(presetBtns) do x.b:Destroy() end
+    presetBtns = {}
+    local plist = d.presets or {}
+    local PW, PG = 132, 6
+    presetRow.Size = UDim2.fromOffset(math.max(0, #plist * (PW + PG) - PG), 30)
+    presetRow.Visible = #plist > 1
+    for k, p in ipairs(plist) do
+      local b = square(ui.button(presetRow, "", UDim2.fromOffset(PW, 30), UDim2.fromOffset((k - 1) * (PW + PG), 0), RGB(30, 34, 38)))
+      b.Name = "Preset_" .. p.key
+      b.TextSize = 14
+      ui.stroke(b, RGB(255, 255, 255), 1, 0.82)
+      b.Activated:Connect(function()
+        if not H then return end
+        H.load = AD.presetLoad(H.d, p.key)
+        H.presetKey = p.key
+        rebuild()
+        buildList()
+        if H.sel then
+          local w2 = H.load[H.sel]
+          showInfo(w2, w2 and AD.count(H.d.st[H.sel], w2) or 0)
+        end
+        G.refreshHangar()
+      end)
+      presetBtns[k] = { b = b, key = p.key }
+    end
     gui.Enabled = true
     rebuild()
     -- 挂点的白圈（空心圈 + 中间一个点，不把弹盖住；选中的变黄、变大）
