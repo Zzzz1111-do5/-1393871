@@ -117,6 +117,12 @@ local function wheeled(t)
 end
 -- 同族的另一型（用户 11-25：科技树里一族车共用一个真模型，各自按真车给炮、弹、装甲、机动）：深拷一份再改，
 --   嵌套的表（炮塔、炮、武器表）各自一份，后面按原模型改转轴、换机枪时不会互相改到
+--   11-27（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」「各维度还原一致」）：变型的 over 里写明
+--     like = 同族那一型（借谁的模型）：按型号登记的表查不到这一型时退到它——驾驶界面的剪影（VehHud）、坦克改装页（TankMods.FOR / ERADEF / PRESETS）；
+--     noEra = true：借来的模型上有后来才加的爆反 / ARAT / TUSK 块（模型网格里自带的、默认贴的），这一型真车没有——
+--       TankMods.eraOf 返回 nil：服务器 Era.lua 不装、客户端 VehModels 不另画、驾驶界面不画、改装页没有爆反格
+--       （网格里烘焙着的那几块看得见、不起作用；另画的默认格都不画了）；
+--     noStab = true：没有炮控稳定器（M60：瞄准线跟着车体颠，Drive.lua 的 st.stab 开局就是关的）
 local function dcopy(t)
   -- Vector3 这类值不拷（Roblox 里是 userdata；测试台里是带元表的表，拷了会丢元表）
   if type(t) ~= "table" or getmetatable(t) ~= nil then return t end
@@ -184,8 +190,9 @@ D.t80u = tracked({ cat = "tank", turbine = true, L = 19.6, W = 10.1, H = 6.2, hu
   smoke = { banks = { { at = V(3.3, 1.3, -1.8), yaw = 40 }, { at = V(-3.3, 1.3, -1.8), yaw = -40 } }, n = 4 },
   sightZoom = { day = { 3.6, 12 }, th = { 5.5 } },   -- 1G46 炮长瞄准镜：昼光 3.6–12 倍；夜视「布兰-PA」5.5 倍
   weapons = { "gun125u", "coax" } })
--- T-80B（1978）：42.5 吨、GTD-1000TF 1100 马力；2A46-2 炮、3BM22「别针」；还没有爆反（模型是 T-80U，科技树上写「暂用」）；TPD-K1 瞄准镜 8 倍
-D.t80b = variant(D.t80u, { speed = 54.4, accel = 5.7, rev = 8.6, era = false, weapons = { "gun125b", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
+-- T-80B（1978）：42.5 吨、GTD-1000TF 1100 马力；2A46-2 炮、3BM22「别针」；还没有爆反（模型是 T-80U，科技树上写「同族模型」）；TPD-K1 瞄准镜 8 倍
+--   11-27：借来的 T-80U 模型上的 22 格接触-5 原来照样起作用（TankMods.eraOf 按模型拿 EraMeta）——noEra 挡住
+D.t80b = variant(D.t80u, { like = "t80u", noEra = true, speed = 54.4, accel = 5.7, rev = 8.6, era = false, weapons = { "gun125b", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
 -- T-80BVM（2018）：T-80B 的大改，GTD-1250TF 1250 马力、2A46M-4 炮打 3BM60「铅-2」、「化石」重型爆反、「松树-U」热像瞄准镜
 D.t80bvm = variant(D.t80u, { weapons = { "gun125r", "coax" }, sightZoom = { day = { 4, 12 }, th = { 3.7, 12 } } })
 -- T-64A / T-64B（用户 11-25「还有很多没有建模」：原来借 T-80B，换成真 T-64，原模型 MirzaArrafiERV_45）：哈尔科夫的第一代苏联主战坦克，
@@ -340,12 +347,13 @@ D.t72b3 = tracked({ cat = "tank", L = 19.9, W = 10.6, H = 6.4, hullH = 4.0, clea
   sightZoom = { day = { 4, 12 }, th = { 3.7, 12 } },
   weapons = { "gun125r", "coax" } })
 -- T-72 一族（用户 11-25「坦克单独找建模很多坦克没有建模」：科技树 T-72 乌拉尔 / A / B 原来借 T-90M，改借同族的 T-72B3 模型，性能各按自己的）
+--   11-27：借来的 T-72B3 模型上的接触-5（37 格）原来三型都照样起作用——noEra 挡住（乌拉尔、A 没有爆反；B 的接触-1 按装甲算进 WtDamage.PROF）
 -- T-72「乌拉尔」（1973）：41 吨、V-46 780 马力、公路 60 公里 / 时；2A26M2 125 毫米炮（游戏里按 2A46 打 3BM22 算）、TPD-2-49 合像测距 8 倍；没有爆反、没有热像
-D.t72ural = variant(D.t72b3, { speed = 46.7, accel = 4.2, rev = 3.9, weapons = { "gun125b", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
+D.t72ural = variant(D.t72b3, { like = "t72b3", noEra = true, speed = 46.7, accel = 4.2, rev = 3.9, weapons = { "gun125b", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
 -- T-72A（1979）：41.5 吨、780 马力；2A46 炮、3BM22，TPD-K1 激光测距；炮塔正面「沙」复合装甲
-D.t72a = variant(D.t72b3, { speed = 46.7, accel = 4.2, rev = 3.9, weapons = { "gun125b", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
+D.t72a = variant(D.t72b3, { like = "t72b3", noEra = true, speed = 46.7, accel = 4.2, rev = 3.9, weapons = { "gun125b", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
 -- T-72B（1985）：44.5 吨、V-84 840 马力；2A46M 炮打 3BM42「芒果」、9K120 炮射导弹；接触-1 爆反（游戏里没挂爆反块，按装甲算进去）
-D.t72b = variant(D.t72b3, { speed = 46.7, accel = 4.6, rev = 3.9, weapons = { "gun125u", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
+D.t72b = variant(D.t72b3, { like = "t72b3", noEra = true, speed = 46.7, accel = 4.6, rev = 3.9, weapons = { "gun125u", "coax" }, sightZoom = { day = { 8 }, th = { 5.5 } } })
 
 ---------------------------------------------------------------- 装甲车（履带）
 

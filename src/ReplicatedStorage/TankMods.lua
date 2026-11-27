@@ -105,9 +105,13 @@ TM.CATS = {
 }
 -- 用户 11-22：「坦克不要弄哪个机枪」——坦克不带机枪（VehDefs.TANK_MG）：车顶武器这一位（原装机枪 / GAU-8 加特林）也去掉
 local TANK_MG = false
+local VD = nil   -- 型号表（noEra、like 按它查：TM.eraOf、文件末尾的退同族）
 do
-  local okV, VD = pcall(function() return require(RS:WaitForChild("VehDefs", 3)) end)
-  if okV and type(VD) == "table" and VD.TANK_MG ~= false then TANK_MG = true end
+  local okV, vd = pcall(function() return require(RS:WaitForChild("VehDefs", 3)) end)
+  if okV and type(vd) == "table" then
+    VD = vd
+    if vd.TANK_MG ~= false then TANK_MG = true end
+  end
 end
 if TANK_MG then table.insert(TM.SLOTS, "roof") end
 
@@ -183,7 +187,11 @@ local function meta()
   return EM, IM
 end
 -- 型号的爆反布局：{ kind, tur, tb, hb, roof, b = { … }, aps, own }；没有的 nil
+--   11-27：借同族模型、真车没有这些块的型号（VehDefs 的 noEra：T-80B、T-72 乌拉尔 / A / B、M1～M1A2 SEP、96 式）返回 nil——
+--   原来按模型拿 EraMeta，T-80B 平白多 22 格接触-5、T-72 乌拉尔 / A / B 37 格；服务器 Era、驾驶界面、VehModels、改装页都走这里，一处挡住
 function TM.eraOf(id)
+  local d = VD and VD.get and VD.get(id)
+  if d and d.noEra then return nil end
   local em, im = meta()
   if not em or not im or not im.alias then return nil end
   local key = im.alias[id]
@@ -489,6 +497,22 @@ function TM.bearing(base, yaw, from)
   local horiz = math.sqrt(lp.X * lp.X + lp.Z * lp.Z)
   local el = math.deg(math.atan2(lp.Y, math.max(horiz, 1e-3)))
   return az, el
+end
+
+---------------------------------------------------------------- 同族的变型退到同族（11-27 拆重叠的版本）
+-- VehDefs 里写了 like 的变型（M1A2 SEPv3 借 M1A2 SEPv2、T-90A 借 T-90M、99 式借 99A……）没单独登记改装时，能选的、默认贴哪些区、预设
+--   照同族那一型（爆反格按同一个模型的 EraMeta，本来就一样）；车重、功率按各自的 SPEC（没写才退到同族：TM.stats 要有它）。
+--   noEra 的不退：真车没有这些块，也就没有改装页（要给就单独写一份不带爆反的 TM.FOR）
+if VD and type(VD.D) == "table" then
+  for id, d in pairs(VD.D) do
+    local like = d.like
+    if like and not d.noEra and TM.FOR[id] == nil and TM.FOR[like] ~= nil then
+      TM.FOR[id] = TM.FOR[like]
+      TM.ERADEF[id] = TM.ERADEF[id] or TM.ERADEF[like]
+      TM.PRESETS[id] = TM.PRESETS[id] or TM.PRESETS[like]
+      TM.SPEC[id] = TM.SPEC[id] or TM.SPEC[like]
+    end
+  end
 end
 
 return TM

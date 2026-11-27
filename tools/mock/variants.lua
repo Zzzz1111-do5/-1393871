@@ -1,0 +1,172 @@
+-- 拆开重叠的版本（用户 11-27「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」「各维度还原一致」）：python3 tools/mock/run.py tools/mock/variants.lua
+--   不开服，只读共用的数据模块（一秒内跑完）：
+--   ① 爆反老 bug：借同族模型、真车没有爆反的型号（VehDefs 的 noEra）TankMods.eraOf 是 nil、一格都不贴、没有改装页；有爆反的照旧
+--   ② 科技树原来写 base（模型、性能都借）的地面项：有自己的型号（veh）、借同族的模型（model），不再是「暂用」；TT.byVeh 找得回这一项
+--   ③ 每个拆出来的型号：同族模型（like、ImportedMeta 的 alias 跟同族一样、炮塔转轴照模型）、炮和弹种表（每种弹有弹道和穿深，
+--      第一种是原厂弹、射流弹在最后）、装甲表、名字（中英文，炮也有）、夜视、写实图、驾驶界面的剪影（没有自己的就退到同族）
+--   ④ 跟同族比真的不一样（炮 / 弹、加速、炮塔正面装甲至少一样），数值在合理范围；同一族按年代往上走（默认弹的穿深、炮塔正面装甲）
+--   ⑤ 改装页：noEra 的没有；有爆反的同族变型退到同族那一套（TankMods.FOR），车重按自己的（TankMods.SPEC）
+local T = dofile(MOCK_DIR .. "/common.lua")
+local R, V3 = T.R, T.V3
+local check = T.check
+local t0 = os.clock()
+T.scripts = dofile(MOCK_DIR .. "/load.lua")(R, SRC_DIR)
+local RS = R.services.ReplicatedStorage
+local function req(n) return R.require(RS:FindFirstChild(n)) end
+local VD, TM, TT, B, WD = req("VehDefs"), req("TankMods"), req("TechTree"), req("Ballistics"), req("WtDamage")
+local IM, OPT, WM, Lang, VP = req("ImportedMeta"), req("WtOptics"), req("WtMods"), req("Lang"), req("VehPics")
+local function cnt(t) local n = 0 for _ in pairs(t or {}) do n = n + 1 end return n end
+local function near(a, b) return a ~= nil and b ~= nil and (a - b).Magnitude < 0.02 end
+-- HudIcons 有 1.5 MB：只看键在不在，不整个载入
+local hudKeys = {}
+do
+  local f = io.open(SRC_DIR .. "/ReplicatedStorage/HudIcons.lua")
+  local s = f and f:read("a") or ""
+  if f then f:close() end
+  for k in s:gmatch("\n  ([%w_]+) = { w = ") do hudKeys[k] = true end
+end
+
+-- 拆出来的每一项：{ 科技树的键, 新型号, 同族型号（VehDefs 的 like = 科技树的 model）, noEra, nv 夜视, fam 族（年代顺序检查用） }
+local SPLIT = {
+}
+-- 一族里按年代排的型号（拆出来的 + 原来就有的）：默认弹的穿深、炮塔正面装甲（动能）不往回掉；skip 不比的（年代错位的老车，写进回报）
+local FAMILY = {
+}
+-- 借同族模型、真车没有爆反的老车（11-27 一起修的老 bug：原来 T-80B 22 格接触-5、T-72 乌拉尔 / A / B 各 37 格）
+local NOERA_OLD = { "t80b", "t72ural", "t72a", "t72b" }
+-- 自己有爆反的照旧（几格是 11-27 修之前探针量的）
+local KEEP = { { "t80u", 22 }, { "t80bvm", 22 }, { "t72b3", 37 }, { "ztz96", 36 }, { "m1a1", 26 }, { "m1a2", 10 } }
+
+print("① 爆反：借来的模型上后来才有的块不起作用")
+for _, id in ipairs(NOERA_OLD) do
+  local d = VD.get(id)
+  local n = cnt(TM.cellsOn(id))
+  check(d ~= nil and d.noEra == true and TM.eraOf(id) == nil and n == 0 and not TM.has(id),
+    string.format("%s：noEra，eraOf 是 nil、贴了 %d 格、没有改装页", id, n))
+end
+for _, s in ipairs(SPLIT) do
+  if s.noEra then
+    local n = cnt(TM.cellsOn(s[2]))
+    check(TM.eraOf(s[2]) == nil and n == 0 and not TM.has(s[2]), string.format("%s（%s）：真车没有爆反，借来的模型上的块不起作用（%d 格）", s[2], s[1], n))
+  end
+end
+for _, k in ipairs(KEEP) do
+  local n = cnt(TM.cellsOn(k[1]))
+  check(TM.eraOf(k[1]) ~= nil and n == k[2], string.format("%s：自己的爆反照旧（%d 格，原来 %d 格）", k[1], n, k[2]))
+end
+
+print("② 科技树：原来写 base 的地面项有了自己的型号")
+for _, s in ipairs(SPLIT) do
+  local it = TT.get(s[1])
+  check(it ~= nil and it.veh == s[2] and it.play == s[2] and it.model == s[3] and it.base == nil and not it.stand and TT.byVeh[s[2]] == it,
+    string.format("%s：开 %s、模型借同族的 %s（科技树写「同族模型」）", s[1], tostring(it and it.play), tostring(it and it.model)))
+end
+
+print("③ 每个型号的数据齐全")
+local GRID = 2.8
+for _, s in ipairs(SPLIT) do
+  local key, vid, like = s[1], s[2], s[3]
+  local d, dl = VD.get(vid), VD.get(like)
+  local bad = {}
+  local function need(ok, what) if not ok then table.insert(bad, what) end end
+  need(d ~= nil and dl ~= nil, "型号")
+  if d and dl then
+    need(d.like == like, "like")
+    local mk = IM.alias[vid]
+    need(mk ~= nil and mk == IM.alias[like] and d.model == mk, "模型 alias（" .. tostring(mk) .. "）")
+    local info = mk and IM.m[mk]
+    if info and info.tur then
+      local tur = V3(info.tur[1], info.tur[2], info.tur[3])
+      need(near(d.turret.pivot, tur), "炮塔转轴照模型")
+      if info.gun then need(near(d.gun.pivot, V3(info.gun[1], info.gun[2], info.gun[3]) - tur), "炮耳轴照模型") end
+    end
+    need(d.weapons ~= dl.weapons and d.turret ~= dl.turret, "深拷（各有一份武器表、炮塔）")
+    for _, w in ipairs(d.weapons) do
+      need(VD.W[w] ~= nil, "武器 " .. w)
+      need(Lang.zh["vw." .. w] ~= nil and Lang.en["vw." .. w] ~= nil, "武器名 vw." .. w)
+      local W = VD.W[w]
+      if W and w ~= "coax" and not B.GUN[w] then need(WD.WPN[w] ~= nil, "穿深 WtDamage.WPN." .. w) end
+    end
+    local w1 = d.weapons[1]
+    local list = B.GUN[w1]
+    if d.cat == "tank" then
+      need(list ~= nil, "弹种表 Ballistics.GUN." .. tostring(w1))
+      for i, am in ipairs(list or {}) do
+        need(B.AMMO[am] ~= nil, "弹道 " .. am)
+        need(WD.AMMO[am] ~= nil, "穿深 " .. am)
+        if i == 1 then need(not am:match("^jet"), "第一种是原厂弹") end
+      end
+      if list and #list > 1 then need(list[#list]:match("^jet") ~= nil, "射流弹在最后") end
+      local a1 = list and B.AMMO[list[1]]
+      if a1 and VD.W[w1] then need(math.abs(VD.W[w1].speed - a1.v0 * GRID) < 2, string.format("炮的 speed（%.0f）= 默认弹初速 × 2.8", VD.W[w1].speed)) end
+    end
+    need(WD.PROF[vid] ~= nil, "装甲 WtDamage.PROF")
+    need(Lang.zh["veh." .. vid] ~= nil and Lang.en["veh." .. vid] ~= nil, "名字 veh." .. vid)
+    need(OPT.VEH_NV[vid] == s.nv and OPT.TREE_NV[key] == s.nv, string.format("夜视 %s（型号 %s、科技树 %s）", s.nv, tostring(OPT.VEH_NV[vid]), tostring(OPT.TREE_NV[key])))
+    need(VP.veh and VP.veh[vid] ~= nil and VP.veh[vid] == VP.veh[like], "写实图（VehPics）")
+    need(hudKeys["veh_" .. vid] or hudKeys["veh_" .. like], "剪影（HudIcons，退到同族）")
+    need((d.noEra == true) == (s.noEra == true), "noEra")
+    need(d.turbine == dl.turbine, "发动机（燃气轮机）跟同族一样")
+  end
+  check(#bad == 0, string.format("%s（%s ← %s）：%s", vid, key, like, #bad == 0 and "齐全" or table.concat(bad, "；")))
+end
+
+print("④ 跟同族真的不一样、数值合理")
+local function profTf(id) local P = WD.PROF[id] return P and P.tur and P.tur.f and P.tur.f[1] or (P and P.hull.f[1]) end
+local function pen0(id)
+  local d = VD.get(id)
+  local w1 = d and d.weapons[1]
+  local list = w1 and B.GUN[w1]
+  if list then local a = WD.AMMO[list[1]] return a and a.p0 end
+  local a = w1 and WD.WPN[w1]
+  return a and a.p0
+end
+for _, s in ipairs(SPLIT) do
+  local d, dl = VD.get(s[2]), VD.get(s[3])
+  if d and dl then
+    local diff = {}
+    if d.weapons[1] ~= dl.weapons[1] or table.concat(d.weapons, ",") ~= table.concat(dl.weapons, ",") then table.insert(diff, "武器") end
+    if math.abs((d.accel or 0) - (dl.accel or 0)) > 0.05 then table.insert(diff, "加速") end
+    if math.abs(d.speed - dl.speed) > 0.05 then table.insert(diff, "极速") end
+    if profTf(s[2]) ~= profTf(s[3]) then table.insert(diff, "装甲") end
+    if OPT.VEH_NV[s[2]] ~= OPT.VEH_NV[s[3]] then table.insert(diff, "夜视") end
+    local tank = d.cat == "tank"
+    local tf, p = profTf(s[2]) or 0, pen0(s[2]) or 0
+    local okR = d.speed >= 30 and d.speed <= 60 and d.accel >= 2.5 and d.accel <= 7.5 and (d.rev or 0) > 0
+      and (tank and (tf >= 150 and tf <= 1000 and p >= 250 and p <= 950) or (not tank and tf >= 20 and tf <= 150 and p >= 50))
+    check(#diff > 0 and okR, string.format("%s 跟 %s 不一样（%s）；极速 %.1f、加速 %.1f、炮塔正面 %d 毫米、默认弹穿深 %d 毫米", s[2], s[3],
+      #diff > 0 and table.concat(diff, "、") or "一模一样", d.speed, d.accel, tf, p))
+  end
+end
+for _, F in ipairs(FAMILY) do
+  local back = {}
+  local lastP, lastA, lastId = -1, -1, nil
+  for _, id in ipairs(F.ids) do
+    if not (F.skip and F.skip[id]) then
+      local p, a = pen0(id) or 0, profTf(id) or 0
+      if p < lastP or a < lastA then table.insert(back, string.format("%s（穿深 %d、装甲 %d）比 %s 还低", id, p, a, tostring(lastId))) end
+      lastP, lastA, lastId = math.max(lastP, p), math.max(lastA, a), id
+    end
+  end
+  check(#back == 0, F.name .. "：按年代默认弹穿深、炮塔正面装甲不往回掉" .. (#back > 0 and ("：" .. table.concat(back, "；")) or ""))
+end
+
+print("⑤ 改装页、火控")
+for _, s in ipairs(SPLIT) do
+  local d = VD.get(s[2])
+  if d and not s.noEra and TM.FOR[s[3]] then
+    local st = TM.stats(s[2], nil)
+    check(TM.has(s[2]) and st ~= nil and TM.SPEC[s[2]] ~= nil and TM.SPEC[s[2]] ~= TM.SPEC[s[3]] and cnt(TM.cellsOn(s[2])) > 0,
+      string.format("%s：改装页照同族 %s（爆反 %s，%d 格），车重按自己的 %.1f 吨", s[2], s[3], tostring(TM.FOR[s[2]] and TM.FOR[s[2]].era[1]),
+        cnt(TM.cellsOn(s[2])), TM.SPEC[s[2]] and TM.SPEC[s[2]].t or 0))
+  end
+  if s.gen then
+    local g = WM.fcsGen(TT.get(s[1]))
+    check(g == s.gen, string.format("%s：原厂火控第 %s 代（应为 %d）", s[1], tostring(g), s.gen))
+  end
+end
+
+local dt = os.clock() - t0
+check(dt < 1.5, string.format("跑了 %.2f 秒（不开服）", dt))
+check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "):sub(1, 600))
+T.summary()
