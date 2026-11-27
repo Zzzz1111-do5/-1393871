@@ -384,7 +384,7 @@ Config.Wt = { on = true, noInfantry = true, sp0 = 0, spMax = 3000, perScore = 0.
   br0 = 4.0, brUp = 1.0, teamSize = 8, aiMax = 8,   -- aiMax 原来 5：用户 11-26「人不够就补人机」——每队补满 teamSize（AIVeh.lua）
   -- 三种模式（机库里投票，准备阶段按票数，开战定住；Tech.lua）：ab 街机（敌人都标、飞机空中出生）、rb 历史（只标近处看得见的）、
   --   （全真 sb 用户 11-27「把全真模式去掉」删了）；研究点、乘员经验按 modeK 乘
-  mode0 = "rb", modeK = { ab = 1, rb = 1.3 }, airSpawnH = 1200,
+  mode0 = "rb", modeK = { rb = 1.3 }, airSpawnH = 1200,
   -- 击毁奖励（用户 11-26「你自己设计一个击杀效果和音效以及奖励」）：每打掉一辆当场发金币 coin0 + 对方等级 × coinRank，按模式 modeK 乘；
   --   研究点照旧结算时发（一局按击毁数 × rpKill 算，Tech.lua roundRp）——击毁那一下先报这一辆算多少；
   --   加成：弹药殉爆、一发击毁（这一辆只挨了我一发）、越级击毁（对方战斗等级比我高 brUp 以上）各乘一下

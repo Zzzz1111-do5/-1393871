@@ -657,36 +657,15 @@ function Tech.init(G)
     if R and R.phase == "battle" and best > 0 then lockN = n end
     return v
   end
-  -- 两种模式（街机 ab / 历史 rb；全真 sb 用户 11-27「把全真模式去掉」删了）：准备阶段按在线的人投的票（票一样多按 W.mode0），开战以后定住；写给客户端 workspace 属性 WtMode
-  local MODES = { ab = true, rb = true }
-  local modeNow, modeLock = nil, -1
+  -- 只有历史一种模式（用户 11-27「把全真模式去掉」「历史和街机就保留一个吧」）：不再投票，workspace 属性 WtMode 一直是 rb
+  --   （客户端很多地方按它判断；老客户端还会发 wtModeVote，收了不理）
   function G.wtModeNow()
-    local R = G.round
-    local n = R and R.n or 0
-    if modeNow and modeLock == n then return modeNow end
-    local cnt, real = { ab = 0, rb = 0 }, 0
-    for _, P in pairs(G.P) do
-      if P.pl then
-        real += 1
-        if MODES[P.modeVote] then cnt[P.modeVote] += 1 end
-      end
-    end
-    local best, bn = W.mode0 or "rb", 0
-    for _, m in ipairs({ "ab", "rb" }) do
-      if cnt[m] > bn then best, bn = m, cnt[m] end
-    end
-    if best ~= modeNow then pcall(function() workspace:SetAttribute("WtMode", best) end) end
-    modeNow = best
-    if R and R.phase == "battle" and real > 0 then modeLock = n end
-    return best
+    if workspace:GetAttribute("WtMode") ~= "rb" then pcall(function() workspace:SetAttribute("WtMode", "rb") end) end
+    return "rb"
   end
-  G.ACT.wtModeVote = function(P, m)
-    if not MODES[m] then return end
-    P.modeVote = m
-    pcall(function() P.pl:SetAttribute("ModeVote", m) end)
-    G.wtModeNow()
-  end
-  G.on("roundStart", function() modeNow, modeLock = nil, -1 G.wtModeNow() end)
+  G.ACT.wtModeVote = function() end
+  G.wtModeNow()
+  G.on("roundStart", function() G.wtModeNow() end)
 
   -- 这一局能出的最高战斗等级（战雷：最多碰到比自己高 brUp 的）
   function G.treeBrCap() return G.treeRoundBr() + (W.brUp or 1.0) end

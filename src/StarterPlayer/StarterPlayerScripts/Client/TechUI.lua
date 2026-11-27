@@ -437,7 +437,7 @@ function TechUI.init(G)
   H.mid = mid
 
   -- 三种模式（服务器 Tech.lua：准备阶段按票数，开战定住，workspace 属性 WtMode；每人投的票是玩家属性 ModeVote）
-  local MODE_NAME = { ab = L("街机", "Arcade"), rb = L("历史", "Realistic") }   -- 全真 11-27 删了
+  local MODE_NAME = { rb = L("历史", "Realistic") }   -- 只有历史（11-27 删了全真、街机）
   local selSlot = 1   -- 出击阵容里选中的第几位（厂房里停的、右下「战斗」出的都是这一辆）
   -- 选中的那一辆：键、科技树里的项
   local function selIt()
@@ -903,7 +903,7 @@ function TechUI.init(G)
     local mid = (S.map or (G.Map and G.Map.id)) or "sands"
     local mname = (G.T and G.T("map." .. mid .. ".name")) or mid
     if mname == ("map." .. mid .. ".name") then mname = mid end
-    local cur = workspace:GetAttribute("WtMode") or "rb"
+    local cur = "rb"
     local inMatch = S.pick == true   -- 局内：只写这一局打的是什么图，不能点开选图（没有 ▼）
     H.mapT.Text = L("陆战 · ", "Ground · ") .. mname .. "  ·  " .. (MODE_NAME[cur] or MODE_NAME.rb) .. (inMatch and "" or "  ▼")
     if H.mapB then H.mapB.Active = not inMatch H.mapB.AutoButtonColor = false end

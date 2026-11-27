@@ -374,9 +374,9 @@ function TankHud.init(G)
     -- 三种模式（服务器 Tech.lua 写 workspace 属性 WtMode）：街机 ab 看得见的都标（地面 2500 格内）；历史 rb 只标近处（500 格内）；
     --   全真 sb 一个都不标
     --   用户 11-25「全部都做」①：历史 rb 也不标了（战雷历史模式屏幕上没有敌人名牌，只有侦察标记的红菱形——Fx.lua 的 spots）
-    local wtMode = workspace:GetAttribute("WtMode")
-    local gR = (wtMode == "ab") and 2500 or 1100
-    local tagsOn = wtMode ~= "rb"
+    -- 只有历史（11-27 删了街机、全真）：不画敌人名牌，只有侦察 / 标记的红菱形
+    local gR = 1100
+    local tagsOn = false
     if t - lastScan > 0.25 then
       lastScan = t
       cands = {}

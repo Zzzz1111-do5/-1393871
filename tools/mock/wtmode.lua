@@ -1,5 +1,5 @@
--- 两种模式（用户 11-25「都要做」：街机 / 历史；全真 11-27「把全真模式去掉」删了）：python3 tools/mock/run.py tools/mock/wtmode.lua
---   ① 默认历史；准备阶段投街机 → 这一局街机（workspace 属性 WtMode）；开战以后定住（再投全真也不变）；机库上的模式按钮
+-- 战雷式模式、跑道出发（模拟器）：python3 tools/mock/run.py tools/mock/wtmode.lua
+--   ① 只有历史一种模式（用户 11-27「把全真模式去掉」「历史和街机就保留一个吧」）：workspace 属性 WtMode 一直是 rb，投别的不认；机库上是选地图
 --   ② 飞机从自己机场的跑道出发（用户 11-25「召唤飞机就从机场跑道开始 然后自己起飞 包括回跑道降落补给也做出来」）：
 --      停在跑道上、起落架放着、没有初速；地图上没有召唤柱；停在跑道上补给：加油、挂弹、修部件（发动机、机翼……）
 local T = dofile(MOCK_DIR .. "/common.lua")
@@ -45,18 +45,14 @@ R.run(0.3)
 local ml
 for _, c in ipairs(hg:GetDescendants()) do if c.Name == "MapList" then ml = c end end
 check(ml ~= nil and ml.Visible and #ml:GetChildren() >= 1, "点了展开地图列表")
-T.act("wtModeVote", "ab")
-R.run(1)
-check(me:GetAttribute("ModeVote") == "ab" and G.wtModeNow() == "ab" and ws:GetAttribute("WtMode") == "ab", "投了街机：这一局街机")
+for _, m in ipairs({ "ab", "sb" }) do
+  T.act("wtModeVote", m)
+  R.run(0.5)
+  check(G.wtModeNow() == "rb" and ws:GetAttribute("WtMode") == "rb", "投「" .. m .. "」不认：还是历史（只有历史一种模式）")
+end
 T.runUntil(function() return G.round.phase == "battle" end, 200, 1 / 10)
 R.run(1)
-G.wtModeNow()
-T.act("wtModeVote", "rb")
-R.run(1)
-check(G.wtModeNow() == "ab", "开战以后定住：再投历史也还是街机")
-T.act("wtModeVote", "sb")
-R.run(0.5)
-check(me:GetAttribute("ModeVote") ~= "sb", "全真模式删了（用户 11-27「把全真模式去掉」）：投全真不认")
+check(G.wtModeNow() == "rb" and ws:GetAttribute("WtMode") == "rb", "开战以后也是历史")
 
 print("② 飞机从跑道出发、落地补给")
 local padsF = ws:FindFirstChild("Map") and ws.Map:FindFirstChild("Pads")
