@@ -879,7 +879,12 @@ function Air.init(G)
   local function crash(e, why)
     if not e.alive then return end
     G.fx({ k = "boom", p = e.root.CFrame.Position, s = 2.8, c = "wreck" })
-    G.damageEnt(e, 1e6, e.lastHitBy or { team = "none", name = why or "crash" })
+    -- 整架直接判毁（G.wtRaw：不走战雷式按零件分伤——原来撞地 / 出界的 1e6 被当成一发普通命中分到各个零件上，飞机不一定马上毁，
+    --   常常要等断翼的计时才算打下来，摔了十几秒才回机库；用户 11-27「我坠机能不能自动返回主页」）
+    G.wtRaw = true
+    local ok, err = pcall(G.damageEnt, e, 1e9, e.lastHitBy or { team = "none", name = why or "crash" })
+    G.wtRaw = nil
+    if not ok then G.reportError("飞机坠毁", err) end
   end
 
   -- 出作战区：读秒，读完判毁（用户 11-27「超出战场区域开始读秒吧 读完了自动炸」，同战雷）——出了作战区的方框（Zones.play）开始读，
