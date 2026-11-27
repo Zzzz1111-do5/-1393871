@@ -280,10 +280,9 @@ end
 do
   local m60, a1, rise, l1, l2a0, l2a5 = VD.get("m60"), VD.get("m60a1"), VD.get("m60a1rise"), VD.get("leo1a1a1"), VD.get("leo2a0"), VD.get("leo2a5")
   if m60 and a1 and rise and l1 and l2a0 and l2a5 then
-    -- 稳定器只查 M60（没有）、RISE（有）：1962 年的 M60A1 真车也没有（AOS 1972 年才加装），照 1962 加 noStab 还是照战雷改成 M60A1 (AOS)
-    --   要用户定——这里不锁（二审：原来断言「M60A1 有」，等于把一条跟公开资料相反的数据保护起来）
-    check(m60.noStab == true and not rise.noStab and profTf("m60") < profTf("m60a1") and m60.accel > a1.accel,
-      "M60 没有稳定器（noStab）、RISE 有；M48 式短炮塔比 M60A1 薄、车轻加速快")
+    -- 稳定器：M60、1962 年的 M60A1 没有（AOS 1972 年才加装；用户 11-27 定了照原型），RISE 有
+    check(m60.noStab == true and a1.noStab == true and not rise.noStab and profTf("m60") < profTf("m60a1") and m60.accel > a1.accel,
+      "M60、M60A1（1962 原型）没有稳定器（noStab）、RISE 有；M48 式短炮塔比 M60A1 薄、车轻加速快")
     check(B.GUN[rise.weapons[1]][1] == "m735" and m60.weapons[1] == a1.weapons[1], "M60A1 RISE 打 M735；M60 同 M60A1 打 M392")
     check(not m60.lrf and not rise.lrf and not l1.lrf and l2a0.lrf and VD.get("m60a3").lrf, "合像 / 体视测距的没有激光（M60、RISE、豹 1A1A1），豹 2A0、M60A3 有")
     check(l2a5.weapons[1] == "gun120l44" and VD.get("leo2a6").weapons[1] == "gun120l55" and B.GUN[l2a0.weapons[1]][1] == "dm13l44",
@@ -433,11 +432,11 @@ do
   -- c. 火控代见 ⑤（M60、M60A1 第 1 代）
   -- d. 没有稳定器的：M60（1960）、59 式、豹 1 头一批（1965）；从它们拷出来、真车有稳定器的变型写了 noStab = false
   local leo1, l1a1, l1a5, t59, t69 = VD.get("leo1"), VD.get("leo1a1a1"), VD.get("leo1a5"), VD.get("type59"), VD.get("type69")
-  -- 1962 年的 M60A1 不在这里锁（见 ⑤：真车 AOS 稳定器 1972 年才有，照 1962 还是照战雷 M60A1 (AOS) 要用户定）
-  check(TT.get("de_leo1").play == "leo1" and TT.get("de_leo1").year == 1965 and leo1.noStab == true and t59.noStab == true and VD.get("m60").noStab == true
+  -- 1962 年的 M60A1 照原型没有稳定器（用户 11-27 定的；真车 AOS 稳定器 1972 年才有）
+  check(TT.get("de_leo1").play == "leo1" and TT.get("de_leo1").year == 1965 and leo1.noStab == true and t59.noStab == true and VD.get("m60").noStab == true and VD.get("m60a1").noStab == true
     and not l1a1.noStab and not l1a5.noStab and not t69.noStab and not VD.get("m60a1rise").noStab and not VD.get("m60a3").noStab
     and not VD.get("gepard1a1").noStab,
-    "没有稳定器：59 式、豹 1（1965 年头一批）、M60；69-II、豹 1A1A1、豹 1A5、M60A1 RISE、M60A3 有")
+    "没有稳定器：59 式、豹 1（1965 年头一批）、M60、M60A1（1962）；69-II、豹 1A1A1、豹 1A5、M60A1 RISE、M60A3 有")
 end
 
 local dt = os.clock() - t0

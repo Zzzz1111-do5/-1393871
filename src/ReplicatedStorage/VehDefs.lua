@@ -376,15 +376,16 @@ D.m551 = tracked({ cat = "tank", L = 18.2, W = 8.0, H = 7.5, hullH = 4.5, clear 
   smoke = { banks = { { at = V(3.0, 1.3, -1.4), yaw = 40 }, { at = V(-3.0, 1.3, -1.4), yaw = -40 } }, n = 4 },
   sightZoom = { day = { 8 }, th = { 8 } },   -- M127 / M129 炮长瞄准镜 8 倍（没有热像）
   weapons = { "gun152", "coax" } })
--- M60A1（1962）：49.7 吨、750 马力；M68 炮打 M392A2 脱壳穿甲弹，合像式测距、没有热像（模型是 M60A3，科技树上写「暂用」）
-D.m60a1 = variant(D.m60a3, { speed = 37.3, accel = 3.4, rev = 13.2, weapons = { "gun105m60", "coax" }, sightZoom = { day = { 8 }, th = { 8 } } })
+-- M60A1（1962）：49.7 吨、750 马力；M68 炮打 M392A2 脱壳穿甲弹，合像式测距、没有热像（模型是 M60A3，科技树上写「暂用」）；
+--   没有炮控稳定器（用户 11-27「用原型就行」：照 1962 年原型，AOS 稳定器 1972 年起才加装——不照战雷的 M60A1 (AOS)）
+D.m60a1 = variant(D.m60a3, { noStab = true, speed = 37.3, accel = 3.4, rev = 13.2, weapons = { "gun105m60", "coax" }, sightZoom = { day = { 8 }, th = { 8 } } })
 -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开」「各维度还原一致」）：科技树 M60、M60A1 RISE 原来写 base（借 M60A1 的模型和性能）
 -- M60（1960）：46.3 吨、AVDS-1790-2 750 马力、48 公里 / 时；M68 105 毫米（M392 脱壳 / M456 破甲）；M48 式的短炮塔（长鼻子炮塔是 M60A1 才换的）；
 --   M17 合像测距仪 + 机械弹道计算机（没有激光）；没有炮控稳定器（noStab：瞄准线跟着车体颠；M60A1 1972 年起才加装 AOS 稳定器）；AN/VSS-1 红外探照灯
 D.m60 = variant(D.m60a1, { like = "m60a3", noStab = true, speed = 37.3, accel = 3.6, rev = 13.2 })
 -- M60A1 RISE（1977，Reliability Improved Selected Equipment）：约 50.5 吨（估）、AVDS-1790-2C 750 马力；M735 钨合金尾翼稳定脱壳穿甲弹（1978）；
 --   还是合像测距（激光测距是 M60A3 才有）、加装稳定器；RISE Passive 型被动微光夜视
-D.m60a1rise = variant(D.m60a1, { like = "m60a3", speed = 37.3, accel = 3.3, rev = 13.2, weapons = { "gun105m60r", "coax" } })
+D.m60a1rise = variant(D.m60a1, { like = "m60a3", noStab = false, speed = 37.3, accel = 3.3, rev = 13.2, weapons = { "gun105m60r", "coax" } })
 D.m1a2 = tracked({ cat = "tank", turbine = true, L = 23, W = 10.2, H = 7.6, hullH = 4.2, clear = 1.4, speed = 52.1, accel = 5.2, rev = 29.6, turn = 35,
   rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.8, z1 = 7.6 }, era = false, skirt = true, tusk = false,
   turret = { pivot = V(0, 4.2, 0.9), size = V(7.8, 2.4, 9.4), style = "abrams", trav = 42, elev = { -9, 20 }, bustle = 3.0 },
