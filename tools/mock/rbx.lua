@@ -465,7 +465,7 @@ local ENUMS = {
   HighlightDepthMode = "AlwaysOnTop Occluded",
   UserInputType = "MouseButton1 MouseButton2 MouseButton3 MouseWheel MouseMovement Touch Keyboard Focus Accelerometer Gyro Gamepad1 TextInput InputMethod None",
   UserInputState = "Begin Change End Cancel None",
-  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl LeftAlt RightAlt One Two Three Four Five Six Seven Eight Nine Zero F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 PageUp PageDown Home End Insert Delete ButtonA ButtonB ButtonX ButtonY ButtonL1 ButtonR1 ButtonL2 ButtonR2",
+  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl LeftAlt RightAlt One Two Three Four Five Six Seven Eight Nine Zero F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 PageUp PageDown Home End Insert Delete ButtonA ButtonB ButtonX ButtonY ButtonL1 ButtonR1 ButtonL2 ButtonR2 LeftSuper RightSuper",
   MouseBehavior = "Default LockCenter LockCurrentPosition",
   CameraType = "Fixed Attach Watch Track Follow Custom Scriptable Orbital",
   RaycastFilterType = "Exclude Include Blacklist Whitelist",
@@ -1464,7 +1464,8 @@ R.services = {}
 local camera = make("Camera")
 def("Camera", "Instance", {
   CFrame = { T.CFrame, CFrame.new(0, 20, 20) }, CameraType = { E("CameraType"), Enum.CameraType.Custom }, CameraSubject = { T.Instance, nil }, FieldOfView = { T.number, 70 },
-}, { ro = { ViewportSize = newV2(1280, 720) }, methods = {   -- 能新建（挂载编辑器给 ViewportFrame 一个自己的镜头）
+}, { ro = { ViewportSize = function() return R.viewSize or newV2(1280, 720) end }, methods = {   -- 能新建（挂载编辑器给 ViewportFrame 一个自己的镜头）；
+  --   画面多大：默认 1280 × 720，测试可以设 R.viewSize（手机横屏的截图：tools/mock/loadshots.lua mobile=1 用 1280 × 640）
   ScreenPointToRay = function(o, x, y)
     if type(x) ~= "number" or type(y) ~= "number" then error("ScreenPointToRay 要两个数字", 2) end
     return R.pixelRay(o, x, y + 58)
@@ -1473,16 +1474,17 @@ def("Camera", "Instance", {
     if type(x) ~= "number" or type(y) ~= "number" then error("ViewportPointToRay 要两个数字", 2) end
     return R.pixelRay(o, x, y)
   end,
-  -- 透视投影到 1280 × 720 的画面：返回（像素 x, 像素 y, 深度）、在不在画面里
+  -- 透视投影到画面（默认 1280 × 720，R.viewSize 改）：返回（像素 x, 像素 y, 深度）、在不在画面里
   WorldToViewportPoint = function(o, p)
     if typeof(p) ~= "Vector3" then error("WorldToViewportPoint 要 Vector3", 2) end
+    local vw, vh = R.viewSize and R.viewSize.X or 1280, R.viewSize and R.viewSize.Y or 720
     local rel = o.CFrame:Inverse() * p
     local depth = -rel.Z
     local f = 1 / math.tan(math.rad(o.FieldOfView) / 2)
     local d = (math.abs(depth) < 1e-6) and 1e-6 or depth
-    local x = 640 + rel.X / d * f * 360
-    local y = 360 - rel.Y / d * f * 360
-    return v3(x, y, depth), depth > 0 and x >= 0 and x <= 1280 and y >= 0 and y <= 720
+    local x = vw / 2 + rel.X / d * f * (vh / 2)
+    local y = vh / 2 - rel.Y / d * f * (vh / 2)
+    return v3(x, y, depth), depth > 0 and x >= 0 and x <= vw and y >= 0 and y <= vh
   end,
 } })
 
@@ -1490,7 +1492,8 @@ def("Camera", "Instance", {
 function R.pixelRay(o, x, y)
   local f = 1 / math.tan(math.rad(o.FieldOfView) / 2)
   local cf = o.CFrame
-  local d = cf.RightVector * ((x - 640) / (f * 360)) + cf.UpVector * (-(y - 360) / (f * 360)) + cf.LookVector
+  local cx, cy = (R.viewSize and R.viewSize.X or 1280) / 2, (R.viewSize and R.viewSize.Y or 720) / 2
+  local d = cf.RightVector * ((x - cx) / (f * cy)) + cf.UpVector * (-(y - cy) / (f * cy)) + cf.LookVector
   return setmetatable({ Origin = cf.Position, Direction = d.Unit }, { __type = "Ray" })
 end
 def("WorldModel", "Model", {}, { methods = {
@@ -1718,7 +1721,9 @@ R.services.StarterGui = service("StarterGui", {}, { methods = {
   end,
   SetCore = function() end,
 } })
-R.services.GuiService = service("GuiService", {}, { methods = { GetGuiInset = function() return newV2(0, 58), newV2(0, 0) end } })
+-- MenuIsOpen：Roblox 自己的系统菜单（按 Esc 开）开着没有——测试可以设 true，看整备的 Esc 是不是让给系统菜单
+R.services.GuiService = service("GuiService", { MenuIsOpen = { T.bool, false } }, { events = { MenuOpened = true, MenuClosed = true },
+  methods = { GetGuiInset = function() return newV2(0, 58), newV2(0, 0) end } })
 -- HttpService：只有 JSONEncode / JSONDecode（科技树存档写给客户端用，Tech.lua / TechUI.lua）；表里只认字符串 / 数字 / 布尔 / 表
 do
   local function enc(v, out)
@@ -2016,7 +2021,8 @@ R.services.CollectionService = service("CollectionService", {}, { methods = {
 R.keys = {}
 R.services.UserInputService = service("UserInputService", { MouseBehavior = { E("MouseBehavior"), Enum.MouseBehavior.Default }, MouseIconEnabled = { T.bool, true } }, {
   events = { InputBegan = true, InputEnded = true, InputChanged = true, TouchTap = true, TouchPan = true, TouchPinch = true, TouchRotate = true },
-  ro = { TouchEnabled = false, KeyboardEnabled = true, MouseEnabled = true },
+  -- 手机（触屏、没有键盘鼠标）：测试在玩家进服之前设 R.touch = true（tools/mock/loadshots.lua mobile=1）
+  ro = { TouchEnabled = function() return R.touch == true end, KeyboardEnabled = function() return R.touch ~= true end, MouseEnabled = function() return R.touch ~= true end },
   methods = {
     IsKeyDown = function(_, kc)
       if typeof(kc) ~= "EnumItem" or kc.EnumType ~= "KeyCode" then error("IsKeyDown 要 Enum.KeyCode", 2) end

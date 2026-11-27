@@ -3,7 +3,10 @@
 --   存档 P.data.tree：res 研究完的、own 买下的、rp[key] 攒着的研究点、cur[系:树] 正在研究的、lineup[系] 出击阵容（最多 5 辆）、nat 现在用哪个系、
 --     free[系] 没处放的研究点（研究完多出来的、没选研究目标时挣的）；P.data.codes[码的编号] 兑换过的码（不写给客户端）
 --   白送的只有每系每棵树一辆起步车（TechTree TT.starter，用户 11-26「每个系从只给一辆最基础的坦克开始」），别的研究完再拿金币买
---   给客户端：玩家属性 Tree（JSON，变了才写）；动作（客户端 Act）：treeResearch / treeBuy / treeLineup / treeNat / deployVeh
+--   整备（用户 11-27「整个给载具配置武器的系统 做的很粗糙」）：load[键] 飞机 / 直升机的挂载 { p 照哪套预设改的, l 每个挂点挂什么, f 内油几成 }
+--     （出击、试驾都按它挂；没存过的按第一套预设、满内油）、ammo[键] 地面车配弹 { 弹种 = 几发 }、skin[键] 涂装 { c 涂装, n 战术号码, e 国徽 }
+--     ——ammo / skin 这一步只存着、读档时校验（整备的弹药、涂装页以后用）
+--   给客户端：玩家属性 Tree（JSON，变了才写）；动作（客户端 Act）：treeResearch / treeBuy / treeLineup / treeNat / treeLoad / deployVeh
 --   挣研究点：一局结束按得分（G.treeAward，Round.lua 结算时调）；出车时记下这一局用过哪棵树，研究点分给用过的树正在研究的那辆
 --   出击（deployVeh）：从出击阵容里挑一辆，人直接坐进车里 / 飞机里出现在自己基地（不步行：Config.Wt.noInfantry）；车没了回出击界面
 local RS = game:GetService("ReplicatedStorage")
@@ -19,6 +22,8 @@ function Tech.init(G)
   local AD = require(RS:WaitForChild("AirDefs"))
   local WM = require(RS:WaitForChild("WtMods"))   -- 每辆车的改装（研究点逐项研究，效果真的生效）
   local WC = require(RS:WaitForChild("WtCrew"))   -- 乘员（阵容每个位置一组，攒经验、点技能）
+  local BAL = require(RS:WaitForChild("Ballistics"))   -- 弹种（存档里的配弹只认认得的弹）
+  local SKS = require(RS:WaitForChild("WtSkins"))      -- 涂装（存档里的涂装只认认得的）
   local W = Config.Wt or {}
   local LINEUP = W.lineup or 5
   -- 用户 11-25「5 个槽位限制只能带两个飞行单位」「最多两个飞行单位」：阵容里飞机 + 直升机加起来最多 AIR_MAX 个
@@ -30,7 +35,9 @@ function Tech.init(G)
   local function save(P) if G.saveData then task.spawn(G.saveData, P) end end
   -- mods[车] = { done = { 改装 = true }, cur = 正在研究的改装, rp = 攒在它上面的研究点 }
   --   crew[系]["位置"] = { xp = 乘员经验, sk = { 技能 = 级 } }（位置写成字符串：JSON 不认有空洞的数组）
-  local function blank() return { res = {}, own = {}, rp = {}, cur = {}, lineup = {}, nat = "cn", free = {}, mods = {}, crew = {} } end
+  --   load[车] = { p = 预设, l = { 每个挂点的武器或 false }, f = 内油 }、ammo[车] = { 弹种 = 几发 }、skin[车] = { c, n, e }（见文件头「整备」）
+  --   sets[车] = { ["1"～"3"] = { l, f } }：整备挂载页的三个「我的方案」（键写成字符串：JSON 不认有空洞的数组）
+  local function blank() return { res = {}, own = {}, rp = {}, cur = {}, lineup = {}, nat = "cn", free = {}, mods = {}, crew = {}, load = {}, ammo = {}, skin = {}, sets = {} } end
   local function T(P)
     local d = P.data
     if not d then return nil end
@@ -67,6 +74,98 @@ function Tech.init(G)
     if ok then P.pl:SetAttribute("Tree", s) end
   end
   G.treePublish = publish
+
+  ---------------------------------------------------------------- 整备存档（挂载、配弹、涂装）：客户端发来的、读档读到的都过一遍这里
+  -- 挂载：只收科技树里的飞机 / 直升机、有挂点的；每个挂点只能挂它能挂的（AD.cleanLoad，不对的清成空），内油 0.25～1（AD.cleanFuel）；
+  --   p 是照哪套预设改的（认得的预设才记；改过几个挂点照样记着，界面写「（已改）」）。没给 l 只给了 p：按那套预设展开
+  local function cleanTreeLoad(it, v)
+    local d = it and (it.branch == "air" or it.branch == "heli") and AD.get(it.play)
+    if not d or not d.st or #d.st == 0 or type(v) ~= "table" then return nil end
+    local p = nil
+    if type(v.p) == "string" then
+      for _, x in ipairs(d.presets or {}) do if x.key == v.p then p = v.p end end
+    end
+    local l = (type(v.l) == "table") and AD.cleanLoad(d, v.l) or AD.presetLoad(d, p)
+    return { p = p, l = l, f = AD.cleanFuel(v.f) }
+  end
+  -- 配弹：认得的弹种、0～200 发、最多 8 种（同 Wt.lua wtAmmoSet）
+  local function cleanTreeAmmo(it, v)
+    if not it or it.branch ~= "ground" or type(v) ~= "table" then return nil end
+    local c, n = {}, 0
+    for k, x in pairs(v) do
+      if type(k) == "string" and BAL.AMMO[k] and type(x) == "number" and n < 8 then
+        c[k] = math.clamp(math.floor(x), 0, 200)
+        n += 1
+      end
+    end
+    return (n > 0) and c or nil
+  end
+  -- 涂装：认得的涂装（标准涂装不记）、战术号码 0～999、贴不贴国徽（同 WtMatch.lua wtSkinSet）
+  local function cleanTreeSkin(it, v)
+    if not it or type(v) ~= "table" then return nil end
+    local c = (type(v.c) == "string" and SKS.CAMO[v.c] and v.c ~= "std") and v.c or nil
+    local n = tonumber(v.n)
+    if n then n = math.clamp(math.floor(n), 0, 999) end
+    return { c = c, n = n, e = v.e == true }
+  end
+  -- 我的方案（整备挂载页左栏的三个）：每个照挂载那样清（AD.cleanLoad / cleanFuel），只认 "1"～"3"；一个都没有返回 nil
+  local function cleanTreeSets(it, v)
+    if type(v) ~= "table" then return nil end
+    local out, n = {}, 0
+    for i = 1, 3 do
+      local x = v[tostring(i)] or v[i]
+      local o = (type(x) == "table") and cleanTreeLoad(it, { l = x.l, f = x.f }) or nil
+      if o and type(x.l) == "table" then
+        out[tostring(i)] = { l = o.l, f = o.f }
+        n += 1
+      end
+    end
+    return (n > 0) and out or nil
+  end
+  -- 这一辆存的挂载（出击、试驾用）：挂载表、内油；没存过（或者不是飞机）返回 nil（Air.lua 按第一套预设、满内油）
+  local function treeLoadOf(P, key)
+    local t = T(P)
+    local it = type(key) == "string" and TT.byKey[key] or nil
+    local v = t and t.load and it and t.load[key]
+    local o = v and cleanTreeLoad(it, v)
+    if not o then return nil, nil end
+    return o.l, o.f
+  end
+  G.treeLoadOf = treeLoadOf
+  -- 存挂载（整备的挂载页 / 挂载编辑器 Hangar.lua 的「保存」）：key 科技树的键，load 每个挂点的武器（false 是空），preset 照哪套预设改的，fuel 内油几成；
+  --   quiet：整备的挂载页改一下存一下（即时存），不弹「挂载已保存」。没买的也能存（科技树里随便哪一架都能试驾）；不是飞机、没有挂点的不理
+  G.ACT.treeLoad = function(P, key, load, preset, fuel, quiet)
+    local t = T(P)
+    local it = type(key) == "string" and TT.byKey[key] or nil
+    if not t or not it then return end
+    local o = cleanTreeLoad(it, { l = load, p = preset, f = fuel })
+    if not o then return end
+    t.load = t.load or {}
+    t.load[key] = o
+    if P.pl and quiet ~= true then G.msg(P.pl, "info", "tree.loadSaved", { k = "tree." .. key }) end
+    publish(P)
+    save(P)
+  end
+  -- 我的方案：slot 1～3；load 是 false 清掉这一格
+  G.ACT.treeLoadSet = function(P, key, slot, load, fuel)
+    local t = T(P)
+    local it = type(key) == "string" and TT.byKey[key] or nil
+    slot = tonumber(slot)
+    if not t or not it or not slot or slot ~= math.floor(slot) or slot < 1 or slot > 3 then return end
+    t.sets = t.sets or {}
+    local cur = t.sets[key] or {}
+    if load == false then
+      cur[tostring(slot)] = nil
+    else
+      if type(load) ~= "table" then return end
+      local o = cleanTreeLoad(it, { l = load, f = fuel })
+      if not o then return end
+      cur[tostring(slot)] = { l = o.l, f = o.f }
+    end
+    t.sets[key] = next(cur) and cur or nil
+    publish(P)
+    save(P)
+  end
 
   ---------------------------------------------------------------- 兑换码（用户 11-25「设置一个兑换码 在设置里」「兑换码 Zhengyongshuo 直接解锁所有载具」）
   --   码只放在服务器脚本里（客户端看不到）；存档里记的是编号 id（P.data.codes[id] = 兑换的时间，不进写给客户端的 Tree 属性）；
@@ -210,6 +309,14 @@ function Tech.init(G)
         if type(m.cur) == "string" and WM.canResearch(it, o.done, m.cur) then o.cur = m.cur end
         if type(m.rp) == "number" and m.rp > 0 then o.rp = math.floor(m.rp) end
         t.mods[k] = o
+      end
+    end
+    -- 整备：挂载、配弹、涂装——只留认得的车，内容按上面 cleanTree* 再过一遍（改过挂点、弹种、涂装表以后，旧档里不对的清掉）
+    for f, clean in pairs({ load = cleanTreeLoad, ammo = cleanTreeAmmo, skin = cleanTreeSkin, sets = cleanTreeSets }) do
+      for k, v in pairs(type(src[f]) == "table" and src[f] or {}) do
+        local it = type(k) == "string" and TT.byKey[k] or nil
+        local o = it and clean(it, v)
+        if o then t[f][k] = o end
       end
     end
     P.data.tree = t
@@ -846,6 +953,7 @@ function Tech.init(G)
     if now() < (P.canDeployAt or 0) then G.msg(P.pl, "info", "tree.waitDeploy", math.ceil((P.canDeployAt or 0) - now())) return end
     local air = it.branch == "air" or it.branch == "heli"
     local heli = it.branch == "heli"
+    local tl, tf = treeLoadOf(P, key)   -- 试驾也按机库里存的挂载、内油（整备；没存过是 nil：第一套预设、满内油）
     if not G.rangeReady then G.msg(P.pl, "info", "tree.rangeBusy") return end   -- 训练场还在后台建（开服头一会儿）
     local idx = testIndex(P)
     -- 出车的地方（训练场里）：车在第 idx 条靶道的射击线上、飞机在跑道东头、直升机在直升机坪
@@ -891,11 +999,11 @@ function Tech.init(G)
       if air then
         local pos = Vector3.new(spawnAt.X, G.Map.height(spawnAt.X, spawnAt.Z) + ((d and d.gearH) or 5), spawnAt.Z)
         if G.spawnAircraft and not sky then
-          local okS, ee = pcall(G.spawnAircraft, P.team, it.play, CFrame.lookAt(pos, pos + spawnDir), nil, P, nil)
+          local okS, ee = pcall(G.spawnAircraft, P.team, it.play, CFrame.lookAt(pos, pos + spawnDir), tl, P, tf)
           if okS then e = ee end
         end
         if not e and G.spawnAircraftAir then   -- 跑道上滑不起来（sky）、摆不到跑道 / 直升机坪上：在空中出来
-          e = G.spawnAircraftAir(P.team, it.play, CFrame.lookAt(skyAt, skyAt + s.dir), nil, P, nil, skyV)
+          e = G.spawnAircraftAir(P.team, it.play, CFrame.lookAt(skyAt, skyAt + s.dir), tl, P, tf, skyV)
           aloft = e ~= nil
         end
       else
@@ -1011,7 +1119,9 @@ function Tech.init(G)
       -- 飞机（用户 11-25「召唤飞机就从机场跑道开始 然后自己起飞 包括回跑道降落补给也做出来」）：不再空中出生（原来街机在机场上空、
       --   历史 / 全真退后 1500 格再高一半，C 11-25 ⑫）——停在自己机场的跑道上（Depots.lua runwayPads：顺着跑道、机头朝起飞方向），
       --   起落架放着、发动机慢车，自己推油门滑跑起飞；落回自己的跑道停稳就加油、补弹、维修（Air.lua 落地补给）
-      okS, e = pcall(function() return G.padSpawnAt and G.padSpawnAt(P, p, nil, vid) end)
+      --   挂载、内油按机库里存的（整备；没存过是 nil：Air.lua 按第一套预设、满内油）
+      local tl, tf = treeLoadOf(P, key)
+      okS, e = pcall(function() return G.padSpawnAt and G.padSpawnAt(P, p, tl, vid, tf) end)
       P.treeSpawn, P.wtKey = nil, nil
       if not okS then warn("[科技树] 出击出错：" .. tostring(e)) e = nil end
       if not e then return end

@@ -48,7 +48,7 @@ function TechUI.init(G)
     if type(s) ~= "string" then return end
     local ok, t = pcall(function() return Http:JSONDecode(s) end)
     if ok and type(t) == "table" then
-      for _, f in ipairs({ "res", "own", "rp", "cur", "lineup", "free" }) do t[f] = (type(t[f]) == "table") and t[f] or {} end
+      for _, f in ipairs({ "res", "own", "rp", "cur", "lineup", "free", "load", "ammo", "skin", "sets" }) do t[f] = (type(t[f]) == "table") and t[f] or {} end
       if not TT.NAT[t.nat] then t.nat = "cn" end
       tree = t
     end
@@ -73,6 +73,38 @@ function TechUI.init(G)
     return out
   end
   local function defOf(it) return VD.get(it.play) or AD.get(it.play) end
+  -- 飞机 / 直升机存的挂载（服务器 Tech.lua treeLoad 收的：tree.load[键] = { p 照哪套预设改的, l 每个挂点, f 内油 }）：
+  --   挂载表（同 AD.presetLoad）、预设键、内油；没存过按第一套预设、满内油（同服务器出击）。机库里摆的、资料卡写的、挂载编辑器打开时都按它
+  local function airLoad(it)
+    local a = it and AD.get(it.play)
+    if not a then return nil, nil, 1 end
+    local v = tree.load and tree.load[it.key]
+    if type(v) == "table" and type(v.l) == "table" then
+      return AD.cleanLoad(a, v.l), (type(v.p) == "string") and v.p or nil, AD.cleanFuel(v.f)
+    end
+    local p = (type(v) == "table" and type(v.p) == "string") and v.p or nil
+    return AD.presetLoad(a, p), p or (a.presets and a.presets[1] and a.presets[1].key), (type(v) == "table") and AD.cleanFuel(v.f) or 1
+  end
+  local function loadSig(load)
+    local s = {}
+    for i, w in ipairs(load or {}) do s[i] = w or "" end
+    return table.concat(s, ",")
+  end
+  G.treeAirLoad = airLoad   -- 整备的挂载页（WsArms.lua）、测试用
+  -- 整备改了挂载（即时存，不设「保存」键）：先改自己这份（机库里摆的、资料卡马上按新的），再发服务器（Tech.lua treeLoad；quiet：不弹「挂载已保存」）
+  --   没有预设传 false：中间夹着 nil 的参数表有空洞（同 Depot.lua）
+  G.treeSaveLoad = function(key, l, p, f, quiet)
+    tree.load = tree.load or {}
+    tree.load[key] = { p = p or nil, l = table.clone(l), f = f }
+    act("treeLoad", key, l, p or false, f, quiet == true)
+  end
+  -- 「我的方案」（整备左栏，每一架三个）：存 / 清（l = false）；存档 tree.sets[键]["1"～"3"] = { l, f }（Tech.lua treeLoadSet）
+  G.treeSaveSet = function(key, slot, l, f)
+    tree.sets = tree.sets or {}
+    tree.sets[key] = tree.sets[key] or {}
+    tree.sets[key][tostring(slot)] = l and { l = table.clone(l), f = f } or nil
+    act("treeLoadSet", key, slot, l or false, f or 1)
+  end
 
   ---------------------------------------------------------------- 小零件
   local gui = Instance.new("ScreenGui")
@@ -138,7 +170,7 @@ function TechUI.init(G)
       local s = math.clamp(math.min(vp.X / (mobile and 1000 or 1280), vp.Y / (mobile and 500 or 720)), 0.4, 2.2) * (G.uiScaleK or 1)   -- 设置里的界面比例
       sc.Scale = s
       root.Size = UDim2.fromScale(1 / s, 1 / s)
-      H.vw, H.vh = vp.X / s, vp.Y / s
+      H.vw, H.vh, H.scale = vp.X / s, vp.Y / s, s   -- scale：屏幕像素 ÷ 它 = Root 里的坐标（整备把 HangarStage.toScreen 的点换进来）
     end
     fit()
     G.uiRefit = G.uiRefit or {}
@@ -314,13 +346,39 @@ function TechUI.init(G)
     local ok, S2 = pcall(function() return require(script.Parent:WaitForChild("HangarStage", 3)) end)
     if ok and type(S2) == "table" then Stage = S2 end
     -- 点在空白处（没点到按钮、上面也没开着别的窗口）才算拖车；位移自己拿位置算（鼠标没锁定时 Delta 不一定有）
-    local dragIo, last = nil, nil
-    local function free()
-      return hangar.Visible and not ((G.crewGui and G.crewGui.Visible) or (G.modsGui and G.modsGui.Visible)
-        or (G.infoGui and G.infoGui.Visible) or (G.treeGui and G.treeGui.Visible))
+    --   浮在 3D 上的面板（整备的左右栏、底部条，配弹面板……）多半是不接收点击的 Frame：gp 是 false，只看 gp 的话在面板空白处按住拖动会转后面的车——
+    --   登记进 G.stageBlockers（[界面零件] = true）的、看得见的，按位置挡住；面板自己最好也设 Active = true（引擎直接把点击吞掉、gp 为 true）
+    G.stageBlockers = G.stageBlockers or {}
+    local function shownGui(o)
+      local g = o
+      while g and g:IsA("GuiObject") do
+        if not g.Visible then return false end
+        g = g.Parent
+      end
+      return not (g and g:IsA("LayerCollector") and not g.Enabled)
     end
+    local function overBlocker(pos)
+      if not pos then return false end
+      for o in pairs(G.stageBlockers) do
+        local ok, hit = pcall(function()
+          if not o.Parent or not shownGui(o) then return false end
+          local a, s = o.AbsolutePosition, o.AbsoluteSize
+          return pos.X >= a.X and pos.X <= a.X + s.X and pos.Y >= a.Y and pos.Y <= a.Y + s.Y
+        end)
+        if ok and hit then return true end
+      end
+      return false
+    end
+    local dragIo, last = nil, nil
+    local function free(pos)
+      return hangar.Visible and not ((G.crewGui and G.crewGui.Visible) or (G.modsGui and G.modsGui.Visible)
+        or (G.infoGui and G.infoGui.Visible) or (G.treeGui and G.treeGui.Visible)
+        or (G.hangarOpen and G.hangarOpen()) or (G.ammoPanelOpen and G.ammoPanelOpen())   -- 挂载编辑器（Hangar.lua）、配弹面板（WtAmmo.lua）开着
+        or overBlocker(pos))
+    end
+    G.stageFree = free   -- 整备、测试用：这个位置按下去算不算拖车
     UIS.InputBegan:Connect(function(io, gp)
-      if gp or not Stage or not free() then return end
+      if gp or not Stage or not free(io.Position) then return end
       if io.UserInputType == Enum.UserInputType.MouseButton1 or io.UserInputType == Enum.UserInputType.Touch then
         dragIo, last = io, io.Position
       end
@@ -331,7 +389,7 @@ function TechUI.init(G)
     UIS.InputChanged:Connect(function(io, gp)
       if not (Stage and hangar.Visible) then return end
       if io.UserInputType == Enum.UserInputType.MouseWheel then
-        if not gp and free() then Stage.zoom(io.Position.Z) end
+        if not gp and free(io.Position) then Stage.zoom(io.Position.Z) end
       elseif last and dragIo and (io == dragIo
         or (io.UserInputType == Enum.UserInputType.MouseMovement and dragIo.UserInputType == Enum.UserInputType.MouseButton1)) then
         local p = io.Position
@@ -357,8 +415,15 @@ function TechUI.init(G)
       g.Parent = sh
     end
   end
+  -- 交给整备（Workshop，下一步：挂载 / 弹药 · 改装 · 乘员 · 涂装 · 资料）：同一块 1280 × 720 缩放的画布、同一间 3D 厂房 / 停机坪
+  --   G.techRoot：Root（UIScale 缩放，H.vw × H.vh 是缩放后的画布、H.scale 是缩放倍数）；G.hangarStage：HangarStage（focus / highlight / toScreen，见那个文件）；
+  --   G.hangarParts：机库界面里整备时要收起来的那几层（下面建好以后填：ui、mid、top、row、dock、match）；G.hangarSel()：选中的那一辆（科技树的项、键）
+  G.techRoot = root
+  G.hangarStage = Stage
+  G.hangarParts = H
   local ui = frame(hangar, UDim2.fromScale(1, 1), nil, nil, 1)    -- 整套界面（「只看车」时整个藏起来）
   ui.Name = "UI"
+  H.ui = ui
   do   -- 顶栏底下一条深色渐变（上浓下淡），字和按钮压在 3D 机库上也清楚
     local band = frame(ui, UDim2.new(1, 0, 0, 92), nil, RGB(0, 0, 0), 0)
     band.Name = "TopBand"
@@ -377,8 +442,9 @@ function TechUI.init(G)
   -- 选中的那一辆：键、科技树里的项
   local function selIt()
     local key = lineupOf(tree.nat)[selSlot]
-    return key and TT.get(key), key
+    return key and TT.get(key), key, selSlot
   end
+  G.hangarSel = selIt
   -- 「帮助」：怎么玩
   local function toggleHelp()
     if H.help then
@@ -422,6 +488,7 @@ function TechUI.init(G)
     --   左边那组从 Roblox 自己的按钮右边开始（GuiService.TopbarInset）；屏幕窄到排不下时整条等比缩小（layoutTop）
     local top = frame(ui, UDim2.fromScale(1, 1), nil, nil, 1)
     top.Name = "TopRow"
+    H.top = top
     local topScale = Instance.new("UIScale")
     topScale.Parent = top
     local leftEls = {}   -- { 元素, 相对左边起点的 x }
@@ -502,6 +569,20 @@ function TechUI.init(G)
           local md = tree.mods and tree.mods[key]
           local fx = WM.fx and WM.fx(it, md and md.done)
           G.openAmmo(key, fx and fx.ammo)
+        elseif it and G.openWorkshop and G.openWorkshop(it, "arms") then
+          -- 飞机 / 直升机（用户 11-27「整个给载具配置武器的系统 做的很粗糙 我需要非常艺术经验的效果 参考战雷」）：打开整备的挂载页（Workshop.lua / WsArms.lua）——
+          --   舞台就是这间停机坪，改动即时存（Tech.lua treeLoad），出击、试驾都按它
+        elseif it and G.openHangar then
+          -- 整备没搭起来（模块出错）：退回老的 3D 挂载编辑器（Hangar.lua）——按存的那套打开，「保存」发服务器存档
+          local a = AD.get(it.play)
+          if not (a and a.st and #a.st > 0) then return end
+          local load, pk, fuel = airLoad(it)
+          G.openHangar(it.play, load, function(nl, npk, nf)
+            tree.load = tree.load or {}
+            tree.load[key] = { p = npk, l = nl, f = nf }   -- 先按自己存的摆（服务器收完再推一份 Tree 过来，内容一样）
+            act("treeLoad", key, nl, npk or false, nf)   -- 没有预设传 false：中间夹着 nil 的参数表有空洞（同 Depot.lua）
+            if hangar.Visible and G.refreshLineup then G.refreshLineup() end   -- refreshHangar 在下面才定义
+          end, pk, { fuel = fuel })
         end
       end },
       { "HelpBtn", L("帮助", "Help"), letter("?"), toggleHelp },
@@ -554,6 +635,7 @@ function TechUI.init(G)
       local MW = mobile and 260 or 330
       local card = frame(top, UDim2.new(0, MW, 0, mobile and 40 or 46), UDim2.new(0.5, -MW / 2, 0, TY + THh + (mobile and 8 or 10)), TH.C.PANEL, 0.18)
       card.Name = "Match"
+      H.match = card   -- 整备时收起（正好压在整备的抬头上）
       TH.corner(card)
       TH.stroke(card)
       local mapB = Instance.new("TextButton")
@@ -628,7 +710,9 @@ function TechUI.init(G)
       b.MouseEnter:Connect(function() b.BackgroundColor3 = HOVER tip.Visible = true end)
       b.MouseLeave:Connect(function() b.BackgroundColor3 = INK tip.Visible = false end)
       b.MouseButton1Click:Connect(ic[4])
-      if ic[1] == "AmmoBtn" then H.ammoBtn = b end
+      if ic[1] == "AmmoBtn" then H.ammoBtn, H.ammoTip = b, tip end
+      H.icons = H.icons or {}
+      table.insert(H.icons, { name = ic[1], b = b, pos = b.Position })   -- 整备开着时收起和页签重复的那几个、剩下的往左并（G.hangarWsMode）
       x += IW + IG
     end
     -- 右上：金币（硬币 + 斜头的条），左边一格 SP（这一局的出击点）
@@ -826,13 +910,53 @@ function TechUI.init(G)
     if inMatch and H.mapList then H.mapList.Visible = false end
   end
 
-  -- 厂房里停哪一辆：出击阵容里选中的（按真车涂装；有原模型的就是原模型）
-  local shownKey = nil
+  -- 厂房里停哪一辆：出击阵容里选中的（按真车涂装；有原模型的就是原模型）；飞机挂着存的那套挂载
+  --   shownKey 是「键 | 挂载」：存了新挂载重新摆（同一辆只换模型、镜头不动：整备里正看着某个挂点时不跳回全景）
+  local shownKey, shownVeh = nil, nil
+  G.hangarShown = function() return shownKey end   -- 测试用
+  -- 整备（Workshop.lua / WsArms.lua）给停机坪上这架飞机的：airOver 换上预览 / 刚改的挂载（只认同一架）、airPose 摆的姿势（弹舱开着）；
+  --   airShown 现在摆着的 { M = AirModels 的模型表, d, cf 飞机的 CFrame, it, key, load }；每次（重新）搭好以后回调 G.onHangarAir(airShown)
+  --   （整备把挂点上的零件分组、补高亮、做装上的动效）
+  local airOver, airPose, airShown = nil, nil, nil
+  -- 整备里来回换挂载（悬停预览、装上、撤销）：同一架搭过的几套先收着（最多 6 套，留最近用过的），换回来只换模型、不重搭——
+  --   原模型几百个零件，扫一列武器卡时每次重搭会卡一下；点了装上的那一套就是刚才悬停预览搭好的那套，直接换上。整备关了、换了别的车全部清掉
+  local airCache = {}   -- [「键 | 挂载」] = { A = 当时的 airShown, t = 收进来的时间 }
+  local function airCacheClear()
+    for k, e in pairs(airCache) do
+      pcall(function() e.A.M.model:Destroy() end)
+      airCache[k] = nil
+    end
+  end
+  G.hangarAirCacheClear = airCacheClear
+  G.hangarAirCached = function() local n = 0 for _ in pairs(airCache) do n += 1 end return n end   -- 测试用
   local function showVehicle(it)
     if not (Stage and Stage.active()) then return end
     local key = it and it.key or ""
-    if shownKey == key then return end
-    shownKey = key
+    local aload = it and it.branch ~= "ground" and ((airOver and airOver.key == key and airOver.load) or (airLoad(it))) or nil
+    local sig = key .. "|" .. loadSig(aload)
+    if shownKey == sig then return end
+    local prevSig, prevAir = shownKey, airShown
+    shownKey = sig
+    local keepCam = shownVeh == key and key ~= ""
+    if shownVeh ~= key then airCacheClear() end
+    shownVeh = key
+    airShown = nil
+    -- 整备开着、还是这一架：现在摆着的那套收进缓存（不销毁）
+    if H.wsOn and prevAir and prevAir.key == key and prevSig and Stage.take then
+      local m = Stage.take()
+      if m then
+        airCache[prevSig] = { A = prevAir, t = os.clock() }
+        local n, oldK, oldT = 0, nil, math.huge
+        for k, e in pairs(airCache) do
+          n += 1
+          if e.t < oldT then oldK, oldT = k, e.t end
+        end
+        if n > 6 and oldK then
+          pcall(function() airCache[oldK].A.M.model:Destroy() end)
+          airCache[oldK] = nil
+        end
+      end
+    end
     if not it then
       Stage.put(nil)
       return
@@ -862,15 +986,47 @@ function TechUI.init(G)
       local a = AD.get(it.play)
       local okA, AM = pcall(function() return require(script.Parent:WaitForChild("AirModels", 2)) end)
       if a and okA and AM then
-        local ok, M = pcall(AM.build, a, side, AD.presetLoad(a))
+        local ce = H.wsOn and airCache[sig] or nil
+        local ok, M = false, nil
+        if ce and ce.A and ce.A.M and ce.A.M.model then   -- 搭过这一套：直接换上
+          airCache[sig] = nil
+          ok, M = true, ce.A.M
+        else
+          -- 真机上用 MicroProfiler 看一套原模型飞机搭多久（整备悬停预览的卡顿就看这一段）
+          local prof = debug and debug.profilebegin
+          if prof then pcall(debug.profilebegin, "hangarAirBuild") end
+          ok, M = pcall(AM.build, a, side, aload or AD.presetLoad(a))
+          if prof then pcall(debug.profileend) end
+        end
         if ok and M and M.model then
-          pcall(AM.pose, M, base * CFrame.new(0, a.gearH or 6, 0), { gear = 1, thr = 0 }, os.clock())
-          Stage.put(M.model, { L = a.L or 50, W = a.W or 36, H = (a.H or 13) + (a.gearH or 0) * 0.5 })
+          local cf = base * CFrame.new(0, a.gearH or 6, 0)
+          pcall(AM.pose, M, cf, airPose or { gear = 1, thr = 0 }, os.clock())
+          Stage.put(M.model, { L = a.L or 50, W = a.W or 36, H = (a.H or 13) + (a.gearH or 0) * 0.5 }, keepCam)
+          airShown = { M = M, d = a, cf = cf, it = it, key = key, load = aload or AD.presetLoad(a), AM = AM }
+          if G.onHangarAir then
+            local okH, err = pcall(G.onHangarAir, airShown)
+            if not okH and G.showError then G.showError("local workshop: " .. tostring(err)) end
+          end
           return
         end
       end
     end
     Stage.put(nil)
+  end
+  G.hangarAir = function() return airShown end
+  -- 换上一套挂载（整备：悬停预览、刚改的）；nil 还原成存的那套。返回 true = 重新搭了模型（同一架只换模型、镜头不动）
+  G.hangarAirLoad = function(load)
+    local it = selIt()
+    airOver = (load and it) and { key = it.key, load = table.clone(load) } or nil
+    local before = shownKey
+    if hangar.Visible then showVehicle(it) end
+    return shownKey ~= before
+  end
+  -- 摆姿势（整备：放下起落架、打开弹舱 { gear = 1, bay = 1, bayS = 1, thr = 0 }）；nil 回到机库平时的样子
+  G.hangarAirPose = function(c)
+    airPose = c
+    local a = airShown
+    if a and a.M and a.AM then pcall(a.AM.pose, a.M, a.cf, c or { gear = 1, thr = 0 }, os.clock()) end
   end
 
   -- 正在试驾（服务器 Tech.lua testDrive 给车 / 飞机的模型打 TestDrive 属性）：Drive.lua、Interior.lua 也看这个
@@ -1194,7 +1350,14 @@ function TechUI.init(G)
       H.selCrew.Text, H.selMods.Text, H.selNote.Text = "", "", ""
       H.crewBoxT.Text = L("乘员", "CREW")
     end
-    if H.ammoBtn then H.ammoBtn.BackgroundTransparency = (it and it.branch == "ground" and G.openAmmo) and 0.06 or 0.5 end   -- 飞机、直升机没有配弹：键淡掉
+    -- 弹药键：地面车配弹、飞机 / 直升机打开整备的挂载页（Workshop.lua）；没有挂点的直升机（运输型）、没车时才淡掉
+    if H.ammoBtn then
+      local ad = it and it.branch ~= "ground" and AD.get(it.play)
+      local can = it ~= nil and ((it.branch == "ground" and G.openAmmo ~= nil) or (ad and ad.st and #ad.st > 0 and (G.openWorkshop ~= nil or G.openHangar ~= nil)))
+      H.ammoBtn.BackgroundTransparency = can and 0.06 or 0.5
+      H.ammoBtn:SetAttribute("Off", not can)
+      if H.ammoTip then H.ammoTip.Text = (it and it.branch ~= "ground") and L("挂载", "Loadout") or L("弹药", "Ammo loadout") end
+    end
     -- 右下「战斗」：出选中的那一辆；出不了（超出战斗等级、备用用完、SP 不够）就灰掉、写原因
     local can, why = it ~= nil, nil
     if it then
@@ -1219,6 +1382,88 @@ function TechUI.init(G)
   me:GetAttributeChangedSignal("Coins"):Connect(function() if hangar.Visible then refreshTop() end end)
   me:GetAttributeChangedSignal("CoinsInf"):Connect(function() if hangar.Visible then refreshTop() end end)
 
+  -- 顶栏的主按钮放哪：br = true 放到右下角（局内选车），false 放回顶栏正中
+  function H.placeGo(br)
+    if H.goBR == br or not (H.goBtn and H.go0) then return end
+    H.goBR = br
+    local b, o = H.goBtn, H.go0
+    if br then
+      local vs = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
+      local rowW = 5 * H.SW + 4 * H.SG
+      local free = vs.X - 2 * M0 - rowW - 12
+      local w = math.clamp(free, 200, mobile and 220 or 320)
+      b.Parent = ui
+      b.Size = UDim2.new(0, w, 0, H.SH)
+      if free >= 200 then   -- 阵容卡右边放得下：和卡并排
+        b.Position = UDim2.new(1, -(M0 + w), 1, -((mobile and 12 or 18) + H.SH))
+      else                  -- 屏幕窄（手机）：放在「科技树」那一条上面、靠右
+        b.Position = UDim2.new(1, -(M0 + w), 1, -(H.dockTop + 8 + H.SH))
+      end
+      H.goT.Size, H.goT.Position, H.goT.TextSize = UDim2.new(1, 0, 0, math.floor(H.SH * 0.5)), UDim2.new(0, 0, 0, math.floor(H.SH * 0.16)), mobile and 26 or 34
+      H.goSub.Position, H.goSub.TextSize = UDim2.new(0, 6, 1, -(mobile and 22 or 28)), TH.S.small
+    else
+      b.Parent = o.parent
+      b.Size, b.Position = o.size, o.pos
+      H.goT.Size, H.goT.Position, H.goT.TextSize = o.tSize, o.tPos, o.tTs
+      H.goSub.Position, H.goSub.TextSize = o.sPos, o.sTs
+    end
+  end
+  -- 整备开着（Workshop.lua）：机库中间那一层（国旗、乘员框、选中车的资料）、顶栏下面「这一局」那块、「退出战斗」收起；
+  --   阵容卡、科技树把手往下滑出 24 像素再藏（0.18 秒）；关了照原样滑回来（0.28 秒）。开着的时候 hangarSet、treeShown 也不把它们翻出来（H.wsOn）
+  G.hangarWsMode = function(on, instant)
+    on = on == true
+    if (H.wsOn == true) == on then return end
+    H.wsOn = on or nil
+    H.wsBase = H.wsBase or { row = H.row.Position, dock = H.dock.Position }
+    local S = G.S or {}
+    local tok = {}
+    H.wsTok = tok
+    -- 顶栏上和整备页签重复的扳手（改装）、弹药（挂载）、i（资料）收起，剩下的（帮助、设置）往左并，不留空位；关了照原样摆回去
+    local DUP = { ModsBtn = true, AmmoBtn = true, InfoBtn = true }
+    local k = 0
+    for _, e in ipairs(H.icons or {}) do
+      if on and DUP[e.name] then
+        e.b.Visible = false
+      else
+        k += 1
+        e.b.Visible = true
+        e.b.Position = on and (H.icons[k] and H.icons[k].pos or e.pos) or e.pos
+      end
+    end
+    if on then
+      if G.treeGui and G.treeGui.Visible and H.closeTree then H.closeTree() end   -- 科技树盖在机库上面：先收起
+      H.mid.Visible = false
+      if H.match then H.match.Visible = false end
+      if H.mapList then H.mapList.Visible = false end
+      if H.leaveBtn then H.leaveBtn.Visible = false end
+      for _, k in ipairs({ "row", "dock" }) do
+        local f = H[k]
+        if instant then
+          f.Visible = false
+        else
+          TH.tween(f, { Position = H.wsBase[k] + UDim2.new(0, 0, 0, 24) }, "out", "out")
+          task.delay(TH.T.out, function() if H.wsTok == tok and H.wsOn then f.Visible = false end end)
+        end
+      end
+    else
+      airCacheClear()
+      H.mid.Visible = not H.treeOpen
+      if H.match then H.match.Visible = true end
+      if H.leaveBtn then H.leaveBtn.Visible = S.pick == true end
+      for _, k in ipairs({ "row", "dock" }) do
+        local f = H[k]
+        f.Visible = (k ~= "dock") or not S.pick
+        if instant then
+          f.Position = H.wsBase[k]
+        else
+          f.Position = H.wsBase[k] + UDim2.new(0, 0, 0, 24)
+          TH.tween(f, { Position = H.wsBase[k] }, "panel", "out")
+        end
+      end
+    end
+    H.placeGo(S.pick == true and not H.wsOn)
+  end
+
   -- 原来的部署界面（UI.lua）每次刷新都问一下：该显示部署页的时候机库盖上去
   local lastSig = nil
   function G.hangarSet(show)
@@ -1232,7 +1477,7 @@ function TechUI.init(G)
       end
       hangar.Visible = want
       if Stage then
-        shownKey = nil
+        shownKey, shownVeh = nil, nil
         if want then
           Stage.show(true)
         else
@@ -1288,33 +1533,10 @@ function TechUI.init(G)
           --   机库就是选车页（同一套外观：用户「你这个做的风格跟我目前的主界面风格完全不一样」），主按钮是「出击」，顶上多一个「退出战斗」
           H.goT.Text = S.pick and L("出击", "SPAWN") or L("加入战斗", "TO BATTLE")
         end
-        if H.leaveBtn then H.leaveBtn.Visible = S.pick == true end
+        if H.leaveBtn then H.leaveBtn.Visible = S.pick == true and not H.wsOn end
         -- 局内选车：「出击」放到右下角（用户 11-26「出击的按钮放到右下角吧」，同战雷的出击页），和阵容卡一样高；不在局里放回顶栏正中
-        local br = S.pick == true
-        if H.goBR ~= br and H.goBtn and H.go0 then
-          H.goBR = br
-          local b, o = H.goBtn, H.go0
-          if br then
-            local vs = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
-            local rowW = 5 * H.SW + 4 * H.SG
-            local free = vs.X - 2 * M0 - rowW - 12
-            local w = math.clamp(free, 200, mobile and 220 or 320)
-            b.Parent = ui
-            b.Size = UDim2.new(0, w, 0, H.SH)
-            if free >= 200 then   -- 阵容卡右边放得下：和卡并排
-              b.Position = UDim2.new(1, -(M0 + w), 1, -((mobile and 12 or 18) + H.SH))
-            else                  -- 屏幕窄（手机）：放在「科技树」那一条上面、靠右
-              b.Position = UDim2.new(1, -(M0 + w), 1, -(H.dockTop + 8 + H.SH))
-            end
-            H.goT.Size, H.goT.Position, H.goT.TextSize = UDim2.new(1, 0, 0, math.floor(H.SH * 0.5)), UDim2.new(0, 0, 0, math.floor(H.SH * 0.16)), mobile and 26 or 34
-            H.goSub.Position, H.goSub.TextSize = UDim2.new(0, 6, 1, -(mobile and 22 or 28)), TH.S.small
-          else
-            b.Parent = o.parent
-            b.Size, b.Position = o.size, o.pos
-            H.goT.Size, H.goT.Position, H.goT.TextSize = o.tSize, o.tPos, o.tTs
-            H.goSub.Position, H.goSub.TextSize = o.sPos, o.sTs
-          end
-        end
+        --   整备开着时（H.wsOn）照旧放在顶栏正中：右下是整备的底部条
+        H.placeGo(S.pick == true and not H.wsOn)
         if H.nats then H.nats.Visible = not S.pick end   -- 这一局里不能换系（阵容跟着这一局）
         -- 局内选车页没有「试驾」（同战雷的出击页；试驾审查 4：局内飞机卡按设计禁选，右边「试驾」还在、点了开的是选中的坦克）——
         --   「只看车」挪到最右边补上空位；局外、匹配中照旧
@@ -1322,8 +1544,8 @@ function TechUI.init(G)
           H.testBtn.Visible = not S.pick
           if H.viewBtn then H.viewBtn.Position = UDim2.new(1, S.pick and -84 or -174, 0, 108) end
         end
-        -- 用户 11-26「那个局内选车的界面别弄科技树了」：底下「科技树」那一条整条收起、开着的科技树关上
-        if H.dock then H.dock.Visible = not S.pick end
+        -- 用户 11-26「那个局内选车的界面别弄科技树了」：底下「科技树」那一条整条收起、开着的科技树关上（整备开着时也收着）
+        if H.dock then H.dock.Visible = not S.pick and not H.wsOn end
         if S.pick and G.treeGui and G.treeGui.Visible and closeTree then closeTree() end
         -- 刚进这一局：阵容里先选中匹配时点的那一辆（服务器记的 pickPref）
         if S.pick and S.pickPref and H.lastPref ~= tostring(S.round) .. S.pickPref then
@@ -1398,8 +1620,8 @@ function TechUI.init(G)
   local detail = frame(panel, UDim2.new(0, DETAIL_W, 1, -(HEAD_H + 12)), UDim2.new(1, -DETAIL_W - 6, 0, HEAD_H + 6), TH.C.BG, 0.25)
   detail.Name = "Detail"
   TH.corner(detail)
-  local function treeShown(on)   -- 开着科技树：底下的「科技树」把手亮着、箭头朝下，机库中间那一层（乘员、选中的车）让开
-    H.mid.Visible = not on
+  local function treeShown(on)   -- 开着科技树：底下的「科技树」把手亮着、箭头朝下，机库中间那一层（乘员、选中的车）让开（整备开着时也让开）
+    H.mid.Visible = not on and not H.wsOn
     H.treeOpen = on
     for _, b in ipairs(H.bays or {}) do if b.Parent then b.Visible = on or (G.S ~= nil and G.S.pick == true) end end   -- 阵容卡片的等级底色：科技树开着、局内选车时画
     if H.navTree then
@@ -1662,7 +1884,7 @@ function TechUI.init(G)
       local AD2 = AD.get(it.play)
       local okA, AM = pcall(function() return require(script.Parent:WaitForChild("AirModels", 2)) end)
       if AD2 and okA and AM then
-        local okB, M = pcall(AM.build, AD2, "atk", AD.presetLoad(AD2))
+        local okB, M = pcall(AM.build, AD2, "atk", (airLoad(it)) or AD.presetLoad(AD2))   -- 挂着存的那套（整备）
         if okB and M and M.model then
           pcall(AM.pose, M, CFrame.new(), { gear = 1, thr = 0 }, os.clock())
           M.model.Parent = vp
@@ -1791,9 +2013,19 @@ function TechUI.init(G)
           add(L("持续转弯 ", "Sustained turn ") .. string.format("%.1f°/s", c.str * dg) .. (c.strV and string.format(" @ %d km/h", math.floor(c.strV * 3.6 + 0.5)) or "")
             .. L(" · 瞬时转弯 ", " · instant. ") .. string.format("%.1f°/s", c.itr * dg), DIM, 12)
         end
-        add(L("默认挂载", "Default loadout"), WHITE, 15)
-        local okG, list = pcall(AD.groups, a, AD.presetLoad(a))
+        -- 当前挂载（整备里存的那套，没存过是第一套预设）：武器、内油；外挂重量、阻力增量用飞行物理同一套算（FlightModel.loadout）
+        local cl, cpk, cf = airLoad(it)
+        local pName = cpk and T2("preset." .. cpk) or nil
+        add(L("当前挂载", "Current loadout") .. ((pName and pName ~= "preset." .. cpk) and ("  ·  " .. pName) or ""), WHITE, 15)
+        local okG, list = pcall(AD.groups, a, cl or AD.presetLoad(a))
         for _, wid in ipairs(okG and list or {}) do add("   " .. T2("aw." .. wid), DIM, 12) end
+        if FM and FM.loadout and cl then
+          local okL, Lo = pcall(FM.loadout, a, cl, cf, { key = it.key, AD = AD })
+          if okL and Lo then
+            add(L("内油 ", "Internal fuel ") .. math.floor(cf * 100 + 0.5) .. "%" .. L(" · 外挂 ", " · stores ") .. math.floor(Lo.ext + 0.5) .. " kg"
+              .. (Lo.dCD0 and (L(" · 阻力 ΔCD0 +", " · drag ΔCD0 +") .. string.format("%.4f", Lo.dCD0)) or ""), DIM, 12)
+          end
+        end
       end
     end
     -- 这辆车现在的改装、乘员（买下了才有）

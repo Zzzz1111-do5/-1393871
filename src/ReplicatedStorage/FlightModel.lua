@@ -405,6 +405,56 @@ function FM.storeDrag(w, M)
   return 0.35 * math.pi * (d / 2) ^ 2 + 0.01
 end
 
+-- 一套挂载的重量和阻力（开飞机 Fly.lua、机库整备的性能对比、资料卡都用这一个，不另编数）：
+--   d 是 AirDefs 的型号（d.st 挂点），load 每个挂点挂什么（同 AirDefs.presetLoad，false 是空），fuel 内油几成（0～1，默认满）
+--   o（可选）：D 飞行物理量（默认 FM.get(d.id, o.key)，没登记的借 d.like）、stores 每个挂点还剩几枚（默认挂满：AD.count）、
+--     fuelX 副油箱里的油（按内油的几成，默认副油箱加满：AD.tankFuel）、AD（AirDefs 模块：FM 本身不 require 它——它反过来要 FM；Lune 里跑要传）
+--   每个挂点：弹 / 副油箱的壳按外形估的重量（FM.storeMass）× 枚数；火箭巢一个挂点一个巢（空巢壳四成 + 剩下的火箭按发数折）；
+--     阻力面积（FM.storeDrag）只算外挂，弹舱里的不算；火箭巢打空了巢还挂着、照算阻力
+--   返回 { m 总重 kg（空重 + 内油 + 副油箱里的油 + 外挂）, ext 外挂重 kg（弹、巢、副油箱的壳，不含油）, xf 副油箱里的油 kg,
+--     dS 外挂阻力面积 m², dCD0 零升阻力系数增量（dS / 翼面积）, fuelX, D }；没有飞行物理量（直升机、没登记的）D、m、dCD0 是 nil
+local ADlazy = nil
+local function airDefs(o)
+  if o and o.AD then return o.AD end
+  if ADlazy == nil then
+    local ok, m = pcall(function() return require(game:GetService("ReplicatedStorage"):WaitForChild("AirDefs", 5)) end)
+    ADlazy = (ok and type(m) == "table") and m or false
+  end
+  return ADlazy or nil
+end
+function FM.loadout(d, load, fuel, o)
+  o = o or {}
+  local AD = airDefs(o)
+  local D = o.D or (d and (FM.get(d.id, o.key) or (d.like and FM.get(d.like)))) or nil
+  local W = AD and AD.W or {}
+  local Mst = (AD and AD.M) or 2.8
+  local fuelX = o.fuelX
+  if fuelX == nil then fuelX = (AD and AD.tankFuel and d) and (AD.tankFuel(d, load)) or 0 end
+  local fi = D and D.fi or 0
+  -- 同 Fly.lua 原来的 fmMass：先空重 + 内油 + 副油箱的油，再一个挂点一个挂点加（加的顺序一样，结果一位不差）
+  local m = D and (D.m0 + fi * clamp(fuel or 1, 0, 1) + fi * math.max(fuelX or 0, 0)) or 0
+  local ext, dS = 0, 0
+  for i, s in ipairs((d and d.st) or {}) do
+    local wid = load and load[i]
+    local w = wid and W[wid]
+    local n
+    if o.stores then n = o.stores[i] or 0 else n = (w and AD and AD.count(s, wid)) or 0 end
+    if w and w.kind == "rkt" then
+      local full = math.max(w.tubes or 1, 1)
+      local mm = FM.storeMass(w, Mst) * (0.4 + 0.6 * clamp(n / full, 0, 1))
+      m += mm
+      ext += mm
+      if not s.bay then dS += FM.storeDrag(w, Mst) end
+    elseif w and n > 0 then
+      local mm = FM.storeMass(w, Mst) * n
+      m += mm
+      ext += mm
+      if not s.bay then dS += FM.storeDrag(w, Mst) * n end
+    end
+  end
+  return { m = D and m or nil, ext = ext, xf = fi * math.max(fuelX or 0, 0), dS = dS, dCD0 = D and dS / D.S or nil, fuelX = fuelX, D = D }
+end
+
 ---------------------------------------------------------------- 状态
 
 -- 四元数（w, x, y, z）：机体（Roblox 局部：X 右、Y 上、Z 后）→ 世界；从旋转矩阵（CFrame:GetComponents 的 R00 … R22）求
@@ -799,38 +849,52 @@ function FM.em(D, m, V, h, thr, dCD0)
 end
 
 -- 平飞最大速度（m/s，海平面附近 1000 米、这个质量、thr 油门）：剩余推力加速度过零的速度（二分）
-function FM.vTop(D, m, thr, h)
+--   dCD0：外挂的零升阻力增量（FM.loadout 的 dCD0；不给就是干净构型，同原来）
+function FM.vTop(D, m, thr, h, dCD0)
   -- 从失速速度往上找最后一个还有剩余推力的速度（再二分细找）：太慢时诱导阻力大、加速度也是负的，不能从低速一头二分
   local rho = FM.atmo(h or 1000)
   local vs = sqrt(2 * m * G0 / (rho * D.S * D.CLm))
   local lo, hi = nil, nil
   for V = vs * 1.15, 720, 5 do
-    if FM.em(D, m, V, h or 1000, thr).acc > 0 then lo = V elseif lo then hi = V break end
+    if FM.em(D, m, V, h or 1000, thr, dCD0).acc > 0 then lo = V elseif lo then hi = V break end
   end
   if not lo then return vs * 1.15 end
   hi = hi or 720
   for _ = 1, 30 do
     local mid = (lo + hi) / 2
-    if FM.em(D, m, mid, h or 1000, thr).acc > 0 then lo = mid else hi = mid end
+    if FM.em(D, m, mid, h or 1000, thr, dCD0).acc > 0 then lo = mid else hi = mid end
   end
   return lo
 end
 
--- 一型的性能摘要（机库信息卡、测试）：海平面附近（1000 米）、一半内油 + 两枚中距弹
-function FM.card(D, m)
+-- 一型的性能摘要（机库信息卡、测试）：海平面附近（1000 米）、一半内油 + 两枚中距弹；
+--   给了 m、dCD0（FM.loadout 算的这一套挂载）就按那套算。roc 最大爬升率 m/s（全加力、剩余功率 = 剩余推力 × 速度 / 重量）、rocV 在哪个速度
+function FM.card(D, m, dCD0)
   m = m or (D.m0 + 0.5 * D.fi + 320)
   local W = m * G0
   local rho = FM.atmo(1000)
-  local best = { ws = 0, wi = 0 }
+  local best = { ws = 0, wi = 0, roc = 0 }
   for V = 60, 420, 5 do
     if V < D.vne * 1.02 then
-      local e = FM.em(D, m, V, 1000)
+      local e = FM.em(D, m, V, 1000, nil, dCD0)
       if e.ws > best.ws then best.ws, best.vs = e.ws, V end
       if e.wi > best.wi then best.wi, best.vi = e.wi, V end
+      local roc = e.acc * V / G0
+      if roc > best.roc then best.roc, best.vr = roc, V end
     end
   end
   return { m = m, tw = D.Ta / W, wl = m / D.S, vs = sqrt(2 * W / (rho * D.S * D.CLm)), str = best.ws, strV = best.vs, itr = best.wi, itrV = best.vi,
-    roll = D.pmax, nz = D.nzP }
+    roll = D.pmax, nz = D.nzP, roc = best.roc, rocV = best.vr }
+end
+
+-- 性能卡（整备「挂载」页右栏：空挂 vs 当前）：这一质量、这一阻力增量下的极速（军推 / 加力，1000 米）、推重比、持续 / 瞬时转弯、最大爬升率——
+--   全是上面现成的 vTop / card（em）算的；m、dCD0 一般来自 FM.loadout
+function FM.perf(D, m, dCD0)
+  local c = FM.card(D, m, dCD0)
+  c.vMil = FM.vTop(D, m, 100, 1000, dCD0)
+  c.vAB = (D.Ta > D.Tm) and FM.vTop(D, m, 130, 1000, dCD0) or c.vMil
+  c.dCD0 = dCD0 or 0
+  return c
 end
 
 return FM

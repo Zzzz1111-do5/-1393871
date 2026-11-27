@@ -65,6 +65,38 @@
     lightreal 查着钢城、训练场白天 ≤ 0.4、夜里 ≤ 0.5、任何时候 ≤ 0.8。这次还改了：照明弹顺风飘 ×0.15、最多 60 格；纬度自检退到 23° 就停、打提示
     （17 点、18 点各看一眼太阳）；夜视总曝光、月光亮度、天光反照补回改之前的数。
     测试 tools/mock/lightreal.lua、battle.lua（照明弹漂移、暴风雨里换风的基数）、veh.lua（退出瞄准镜景深又开）。
+- F（11-27，用户「整个给载具配置武器的系统 做的很粗糙 我需要非常艺术经验的效果 参考战雷」）——**整备（Workshop）第一段：止血 + 地基**（分支 workshop-a）：
+  · 止血：科技树机库里飞机 / 直升机能配挂载了——顶栏弹药键对飞机打开老的 3D 挂载编辑器（Hangar.lua，加了上面一排预设、「（已改）」），不再淡掉；
+    Tech.lua 新动作 **treeLoad**（AD.cleanLoad / cleanFuel 校验），存档 tree 多了 **load / ammo / skin**（ammo、skin 先只存、读档校验）；
+    **出击、试驾都按存的挂载和内油**（Tech.lua → Depots padSpawnAt / Air spawnAircraft*）；机库里摆的飞机、资料卡「当前挂载」也按存的。
+  · 地基：Theme.T / EASE / tween / stagger / ease（docs/style.md「动效」一节）；HangarStage.focus / home / highlight（最多 4 个）/ toScreen / world / viewState，
+    停机坪俯仰 −0.15～1.2（从翼下往上看、露天升高往下看机翼上面；厂房照旧 0.03～0.8）；FlightModel.loadout（外挂重量、阻力增量，弹舱里的不算）+ perf、vTop / card 吃阻力增量（Fly.lua fmMass 改调它，结果一位不差）；
+    TechUI 交出 G.techRoot / G.hangarStage / G.hangarParts / G.hangarSel，点空白处转车的判断认 G.stageBlockers、挂载编辑器、配弹面板。
+  · **没碰** WtTank.lua（弹药栏写实炮弹图在改）、View.lua（特效在改）：剪影抽 ShellArt、上色抽 VehModels.skin 留到下一段。
+  · 下一段：新 Client/Workshop.lua（整备外壳）+ WsArms.lua（挂载页）+ WsKit.lua；测试 tools/mock/workshop.lua（第一段已有）。**改 TechUI 机库顶栏、HangarStage 镜头的先在这里看一眼**。
+  · **第二段（分支 workshop-b）：整备外壳 + 挂载页**——顶栏弹药键对飞机 / 直升机打开整备（G.openWorkshop），地面车照旧开配弹面板：
+    **Client/Workshop.lua**（外壳：抬头「‹ 机库」+ 车名 + BR、五个页签，挂载以外先开现有的面板；进出的动效；机库那几层收起 / 还原走 TechUI **G.hangarWsMode**；Esc 一层层退）、
+    **Client/WsArms.lua**（挂载页：底部挂点卡从左翼尖排到右翼尖、对称合卡；机身上 3D 挂点标签；左栏预设 + 三个「我的方案」+ 武器卡；悬停预览、装上的动效；
+    右栏外挂 / 阻力 / 性能对比全用 FlightModel.loadout / perf；内油四档；航炮、干扰弹固定卡）、**Client/WsKit.lua**（卡片、小块、分段键、拖动条、对比条、引线标签、武器剪影——后面几页共用）。
+    TechUI 多了 G.hangarAir / hangarAirLoad / hangarAirPose / onHangarAir（停机坪上那架换挂载预览、开弹舱）、G.treeSaveLoad / treeSaveSet；
+    Tech.lua：treeLoad 第 6 个参数 quiet（即时存不弹提示）、新动作 **treeLoadSet**（我的方案，存档 tree.sets[键]["1"～"3"]）；AirModels 记 M.stPos（每个挂点在模型里的位置）。
+    旧 Hangar.lua 留给步兵召唤台和 Lune 老测试。写实武器图这一轮是 WsKit 里照 WeaponModels 画的线条剪影（**没动 WtTank.lua**），下一轮换 Blender 渲的图。
+    截图 tools/mock/loadshots.lua（+ scene_render.py 画 3D 背景）；模拟器 rbx.lua 多了 R.viewSize / R.touch（手机截图），uidump / hud_render.py 跟着认画面大小。
+  · **第三段（分支 workshop-c）：照界面评审逐条返修**（评审：满屏白剪影、卡片和弹药栏不是一套、白底太多、面板太透、3D 编号乱、左栏只露 2 张半……）：
+    卡片照 WtTank 弹药栏的画法（不抬起、不画状态色条；选中 = 琥珀细描边 + 底边 2 像素；装着的 = 左边白竖条；键位框编号、右上数目、图后横向柔光）——
+    **docs/style.md 第 4、5、6 条和动效表跟着改了**（一屏白底只有页签 + 主按钮；次级选中用新的 **Theme.setPicked**；中文小字 K.text 自动粗一档）；
+    面板 0.06 + 两边压暗；3D 编号只写镜头这一边、引线只走横竖、镜头动着淡掉、落在面板底下的不画；全景按透视算准取景（翼尖不再钻到右栏底下）、不自己转；
+    挂点卡按全景画面从左到右排（和机身编号对得上）、整组放在两栏中间；左栏选了挂点时方案收成一行、武器卡整张整张放 +「还有 N 种」、卷到装着的那张；
+    右栏去掉条、悬停时「现在 → 换上」红绿；资料卡里是这枚弹的 3D 小视口（WeaponModels 拼的真模型，慢慢滚着转）；撤销（最近 10 步、Ctrl+Z）、
+    车名右边的保存状态（服务器回了才写「已保存」，4 秒没回「没存上 · 重试」）；右键 / Backspace / 3D 空白处点一下返回，Esc 让给 Roblox 系统菜单；
+    「我的方案」右键 / 长按：覆盖、清空；手机：能点的 ≥ 44、点一下预览再点装上。飞机不再放涂装页签。
+    **TechUI（C 的文件，先在这里打个招呼）**：G.hangarWsMode 整备开着时收起顶栏的扳手 / 弹药 / i（和页签重复）、剩下的往左并（H.icons）；
+    showVehicle 整备开着时把同一架搭过的几套模型收着（最多 6 套，G.hangarAirCached / hangarAirCacheClear）——悬停预览、装上、撤销来回换不重搭；
+    AM.build 外面包了 debug.profilebegin("hangarAirBuild")，真机上用 MicroProfiler 看卡不卡。**HangarStage 多了 Stage.take()**（拿下停着的模型、不销毁）。
+    **截图工具（大家都用的）**：uidump 多记了 Font / RichText / TextTruncate / 描边方式；**hud_render.py 照字体挑字了**（英文数字 Inter / JetBrains Mono、
+    窄体横向压 0.86、中文文泉驿、粗体中文描一圈；RichText 的颜色 / 字号 / 粗细；放不下截「…」；字没有黑描边就不画阴影）——合进去以后各位的截图字会和以前不一样；
+    scene_render.py 认 vp = true 的小场景（视口里的 3D，透明底），loadshots.lua 写 <名>.vp.json。模拟器：GuiService.MenuIsOpen、MenuOpened / MenuClosed，KeyCode 加了 LeftSuper / RightSuper。
+    下一轮：Blender 武器图（走 ammopics 那条管线）、弹药页、改装 / 乘员、涂装 / 资料。
 
 - F（11-27，用户：「坦克的开镜你直接去按照战雷的做」+ 一张战雷开镜截图「这个样子」、「然后再做一个望远镜」、「镜子里的线条和字太粗了而且不够清晰 光学渐变也有些生硬」；
   11-26 的「照真镜子重画」）——**新：ReplicatedStorage/SightDefs.lua（数据、算法）+ Client/GunSight.lua（画）**，Drive.lua 建它、每帧调：
