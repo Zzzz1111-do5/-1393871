@@ -211,18 +211,40 @@ function WtTank.init(G)
   --   同一门炮的弹一个毫米 → 像素比例（M1028 就是比 M829A3 短、榴弹就是比穿甲弹粗），整排像一张弹药识别图；
   --   机枪格是一小段弹链，工具格（烟幕弹、扳手 / 灭火器、望远镜、电台话筒、激光测距仪）也是实物渲染，同一套光。
   --   用不了 EditableImage（游戏设置没开 Mesh / Image API）时退回单色剪影（icon）。
-  --   界面骨架零装饰：格子平涂深色半透明底 + 1 像素细线、小圆角，不要玻璃渐变、不抬起；图后面一块横向柔光（黑弹托从暗底上分出来）；
+  --   界面骨架零装饰：格子平涂深色半透明底 + 1 像素细线、小圆角，不要玻璃渐变、不抬起；
   --   三组：主炮弹 | 机枪 / 其他武器 | 工具，组间一道细竖线，不要整排的底板；
-  --   字只用 Theme.S 的字号，战场字黑描边：右上发数（等宽 15）、左上 14 × 14 键位框（等宽 12 灰）、左下类型（窄体 12 灰）、
-  --   右下装填 / 冷却秒数（等宽 12）；整排上方名牌写这一发的全称（窄体 15 白「M829A3」+ 13 灰「· APFSDS-T」），装填时右边「装填 4.1 s」。
-  --   颜色只表示状态（白、灰、琥珀、红，不用蓝）：选中（下一发装这种）琥珀细描边 + 底边 2 像素琥珀线；膛里那发左边一道 2 像素白竖条；
-  --   装填中底边那条线当进度条从左往右匀速走、图压暗到六成、右下剩几秒，装好 120 毫秒内图回来；
+  --   字只用 Theme.S 的字号，战场字黑描边：右上发数（等宽 15）、左上 12 × 12 键位框（等宽 12 灰）、选中那格左下类型（窄体 12）、
+  --   右下冷却秒数（等宽 12）；整排上方名牌写这一发的全称（窄体 15 白「M829A3」+ 13 灰「· APFSDS-T」），装填时右边「装填 4.1 s」。
+  --   颜色只表示状态（白、灰、琥珀、红，不用蓝）：选中（下一发装这种）琥珀细描边；装好了键位框右边一个 4 像素白点；
+  --   装填中底边一道琥珀进度条从左往右匀速走、图压暗到八成，装好 120 毫秒内图回来；
   --   打空：图去色、35% 不透明、发数红 0，按它的键描边红闪两下、名牌写「无弹」；冷却：暗遮罩从上往下退 + 灰色秒数；
-  --   主炮坏了（炮长阵亡 / 炮闩炮管损毁）：发数的位置红字「损坏」、键位框变暗；补给：发数每加 1 白闪 80 毫秒。
+  --   主炮坏了（炮长阵亡 / 炮闩炮管损毁）：图 25%、发数变暗、键位框变暗，名牌右边一次红字「主炮损坏」；补给：发数每加 1 白闪 80 毫秒。
   --   动效 80～150 毫秒（线性），不跳、不缩放、不抬升、不循环闪；整排出现时淡入 150 毫秒
+  -- 11-27 美术审查（17 条）以后：
+  --   · 状态信号去重：「选中」和「膛内」在这个游戏里永远是同一格（换弹种就重新装填）——左边白竖条、平时的底边琥珀线去掉，
+  --     底边线只在装填 / 维修时当进度条；装填秒数只写在名牌右边（格子里不再重复）；装填压暗六成 → 八成（DTC10 不再成一团泥）
+  --   · 格子不挤：没选中的格子不写类型（名牌上有），图区 34 → 40 高、从 y 10 起，键位框 14 → 12；
+  --     名牌后面垫一条两端渐隐的暗底（亮地面上浅灰字看得清；描边照规范 0.45）
+  --   · 去掉图后面那块横向柔光（上下是硬边的一条亮横带）：渲染里加了一盏下后方的轮廓光，黑件的上下沿都勾出来了
+  --   · 带药筒的左边 16 像素「先压暗、后透明」：颜色在 16 像素内从 0.25 灰到白、透明度只在最左 4 像素里从 1 到 0（读起来是药筒伸进阴影，不是雾）
+  --   · 图两套：屏幕（逻辑像素）高 ≥ 850 用 2 倍图（1080p：正好 2:1；Retina Mac 1470 × 956 这类：接近 1:1），更矮的用 1 倍
+  --     （1280 × 720、1366 × 768 这类低分屏格子只有 78 像素宽，2 倍图要缩 2.4 倍，没有 mipmap 时细杆断线、字成噪点）——
+  --     Roblox 不给脚本看屏幕的 DPI 缩放，只能按逻辑屏高估
+  --   · 上车时按格子排队解图（HudArt G.ammoPicPump：每帧一张，彩色的先、去色的后），整排都解好了才一起显示；
+  --     有一格解不出 / 没有图就整排退回剪影（不混着）；只有 EditableImage 建不出来才算用不了，换车再试一次
+  --   · 每帧只在值变了的时候才写属性（put；名牌的字串也只在内容变了时才拼）——M3 上省下每格每帧二十来次属性写入
+  -- 11-27 美术审查第二轮以后：
+  --   · 主炮坏了只说一次：原来 5 个弹种格都把发数换成红字「损坏」（左下损伤图、「按 Y 维修」也在说）——格子里发数照写
+  --     （FAINT、透明 0.4），图照样压到 25%、键位框变暗；只在名牌这一行右边（装填秒数的位置）写一次红色「主炮损坏」
+  --   · 装填秒数只说一次：车外的准星在屏幕上时它自己写着秒数 + 琥珀弧，名牌右边就不写；开镜、望远镜里没有那个准星
+  --     （瞄准镜里只有一个装好的小方块），名牌照写
+  --   · 换分辨率不闪：窗口跨过逻辑高 850（Mac 在窗口和全屏之间切）时，旧的那套图先留着显示，新的一套在后台每帧解一张，
+  --     全解好了一起换（原来整排先清掉、约 18 帧后才淡入回来）
   local AW, AH, TW = 96, 60, 60      -- 弹种 / 机枪格、工具格（按 1080p 的像素，整排再按屏幕高缩放，layout）
   local GAP, GRP = 4, 10             -- 格间距；组之间各空 10 像素、中间一道 1 像素的线
   local PLATE = 22                   -- 名牌那一行
+  local IMG_Y, IMG_H = 10, 40        -- 图区：x 0～92（工具格 2～58）、y 10～50（弹轴压在 y 30）
+  local KEY = 12                     -- 键位框
   local COND_F = (TH.F and TH.F.cond) or MED
   local SZ = TH.S or { tiny = 12, small = 13, body = 15 }
   local MUTE, FAINT = TH.C.MUTE, TH.C.FAINT
@@ -241,12 +263,29 @@ function WtTank.init(G)
     end
     return dv
   end
-  -- 名牌：这一发的全称；右边装填剩几秒
+  -- 只在值变了时才写（每帧每格二十来个属性，大多数帧里都没变）：c 是这个东西自己的「上次写的值」表
+  local function put(c, key, obj, prop, v)
+    if c[key] ~= v then
+      c[key] = v
+      obj[prop] = v
+    end
+  end
+  -- 名牌：这一发的全称；右边装填剩几秒；后面垫一条两端渐隐的暗底（亮地面上也看得清）
+  local plateBg = frame(BAR, UD2(0, 0, 0, 20), UD2(0, -8, 0, -1), TH.C.PANEL, 0.5)
+  plateBg.Name = "PlateBg"
+  do
+    local g = Instance.new("UIGradient")
+    g.Transparency = NumberSequence.new({ nk(0, 1), nk(0.08, 0), nk(0.92, 0), nk(1, 1) })
+    g.Parent = plateBg
+  end
   local ammoName = label(BAR, "", UD2(0, 420, 0, 18), UD2(0, 2, 0, 0), SZ.body, TH.C.TEXT, COND_F, V2(0, 0), LEFT)
   ammoName.Name = "AmmoName"
   ammoName.RichText = true
+  ammoName.ZIndex = 2
   local loadTxt = label(BAR, "", UD2(0, 140, 0, 18), UD2(0, 0, 0, 0), SZ.small, AMBER, MONO_F, V2(1, 0), RIGHT)
   loadTxt.Name = "LoadTime"
+  loadTxt.ZIndex = 2
+  local plateC = {}   -- 名牌这一行上次写的值（put）
   local function hex(c) return string.format("%02X%02X%02X", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)) end
   local MUTE_HEX = hex(MUTE)
   -- 全称、类型（名牌）和左下的短类型；没写的弹按 Ballistics 的 name
@@ -345,11 +384,11 @@ function WtTank.init(G)
       b(0, -1, 4, 3)
       b(-6, -6, 5, 3, 0.3, 1)
       b(6, -6, 5, 3, 0.3, 1)
-    elseif kind == "arty" then   -- 火炮支援：瞄准圈 + 十字 + 往下落的炮弹
-      ring(-3, 1, 14)
-      b(-3, 1, 1.2, 18, 0.3)
-      b(-3, 1, 18, 1.2, 0.3)
-      b(9, -5, 3.5, 8, nil, 1.5, 25)
+    elseif kind == "arty" then   -- 火炮支援：野战电台话筒（同写实图：弯手柄、两头朝下的听筒 / 话筒、背上的按讲键；原来画的是准星，两套图意思不一样）
+      b(0, -2.5, 24, 3.4, nil, 1.7)
+      b(-12, 1.5, 7, 6.5, nil, 2, -14)
+      b(12, 1.5, 6, 5.5, nil, 2, 14)
+      b(0, -5.5, 8, 2, 0.3, 1)
     elseif kind == "ext" then   -- 灭火器
       b(-2, 1, 16, 7, nil, 2)
       b(7.5, -2.5, 6, 2)
@@ -367,62 +406,62 @@ function WtTank.init(G)
     s.f.Name = "Slot" .. i
     s.f.ClipsDescendants = true
     s.st = stroke(s.f, WHITE, 1, 0.85)
-    -- 图后面一块横向柔光：中间比底色亮约 8%，往两头回到底色
-    s.lb = frame(s.f, UD2(0, 88, 0, 34), UD2(0, 4, 0, 12), WHITE, 0.92)
-    s.lb.Name = "Lightbox"
-    do
-      local g = Instance.new("UIGradient")
-      g.Transparency = NumberSequence.new({ nk(0, 1), nk(0.5, 0), nk(1, 1) })
-      g.Parent = s.lb
-    end
+    -- （原来图后面一块 88 × 34 的横向柔光：上下是硬边的一条亮横带——去掉，黑件靠渲染里下后方那盏轮廓光勾边）
     s.img = Instance.new("ImageLabel")
     s.img.Name = "Pic"
     s.img.BackgroundTransparency = 1
     s.img.BorderSizePixel = 0
-    s.img.Size, s.img.Position = UD2(0, 92, 0, 34), UD2(0, 0, 0, 12)
+    s.img.Size, s.img.Position = UD2(0, 92, 0, IMG_H), UD2(0, 0, 0, IMG_Y)
     s.img.ZIndex = 2
     s.img.Visible = false
     s.img.Parent = s.f
-    -- 药筒往左伸出格子：最左边 16 像素渐隐（smoothstep 取五个点）；图不伸出去的（125 毫米分装弹、工具）关掉
+    -- 药筒往左伸出格子：最左边 16 像素「先压暗、后透明」——颜色从 0.25 灰过到白（药筒伸进阴影里），
+    --   透明度只在最左 4 像素里从 1 到 0（原来浅色药筒整段透明渐隐，读成一团往左淡出的白雾）；图不伸出去的（125 毫米分装弹、工具）关掉
     s.imgFade = Instance.new("UIGradient")
     do
-      local e = 16 / 92
-      s.imgFade.Transparency = NumberSequence.new({ nk(0, 1), nk(e * 0.25, 0.844), nk(e * 0.5, 0.5), nk(e * 0.75, 0.156), nk(e, 0), nk(1, 0) })
+      local e, f = 16 / 92, 4 / 92
+      local g0 = Color3.new(0.25, 0.25, 0.25)
+      s.imgFade.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, g0), ColorSequenceKeypoint.new(e * 0.5, g0:Lerp(WHITE, 0.62)),
+        ColorSequenceKeypoint.new(e, Color3.new(1, 1, 1)), ColorSequenceKeypoint.new(1, Color3.new(1, 1, 1)) })
+      s.imgFade.Transparency = NumberSequence.new({ nk(0, 1), nk(f * 0.5, 0.4), nk(f, 0), nk(1, 0) })
     end
     s.imgFade.Enabled = false
     s.imgFade.Parent = s.img
-    s.ic = frame(s.f, UD2(0, 46, 0, 18), UD2(0, 46, 0, 29), WHITE, 1, V2(0.5, 0.5))   -- 后备：单色剪影
+    s.ic = frame(s.f, UD2(0, 46, 0, 18), UD2(0, 46, 0, IMG_Y + IMG_H / 2), WHITE, 1, V2(0.5, 0.5))   -- 后备：单色剪影
     s.ic.Name = "Icon"
     s.mask = frame(s.f, UD2(1, 0, 0, 0), UD2(0, 0, 1, 0), TH.C.PANEL, 0.3, V2(0, 1))   -- 冷却：暗遮罩，从上往下退
     s.mask.Name = "Cooldown"
     s.mask.ZIndex = 3
     s.mask.Visible = false
-    s.keyBox = frame(s.f, UD2(0, 14, 0, 14), UD2(0, 4, 0, 4), WHITE, 1)
+    s.keyBox = frame(s.f, UD2(0, KEY, 0, KEY), UD2(0, 4, 0, 4), WHITE, 1)
     s.keyBox.ZIndex = 4
     s.keyS = stroke(s.keyBox, MUTE, 1, 0)
     s.key = label(s.keyBox, "", UD2(1, 0, 1, 0), nil, SZ.tiny, MUTE, MONO_F)
     s.key.ZIndex = 4
+    s.rdy = round(frame(s.f, UD2(0, 4, 0, 4), UD2(0, 4 + KEY + 4, 0, 4 + KEY / 2), WHITE, 0, V2(0, 0.5)))   -- 装好了：键位框右边一个白点
+    s.rdy.Name = "Ready"
+    s.rdy.ZIndex = 4
+    s.rdy.Visible = false
     s.nBg = frame(s.f, UD2(0, 28, 0, 16), UD2(1, -3, 0, 2), WHITE, 1, V2(1, 0))   -- 补给：发数后面白闪一下
     s.nBg.ZIndex = 4
     s.n = label(s.f, "", UD2(0, 46, 0, 16), UD2(1, -6, 0, 2), SZ.body, WHITE, MONO_F, V2(1, 0), RIGHT)
     s.n.ZIndex = 5
-    s.tag = label(s.f, "", UD2(0, 60, 0, 13), UD2(0, 6, 1, -4), SZ.tiny, MUTE, COND_F, V2(0, 1), LEFT)
+    s.tag = label(s.f, "", UD2(0, 60, 0, 13), UD2(0, 6, 1, -4), SZ.tiny, TH.C.TEXT, COND_F, V2(0, 1), LEFT)   -- 只在选中那格写
     s.tag.Name = "Tag"
     s.tag.ZIndex = 4
-    s.tm = label(s.f, "", UD2(0, 40, 0, 13), UD2(1, -6, 1, -4), SZ.tiny, AMBER, MONO_F, V2(1, 1), RIGHT)
+    s.tag.Visible = false
+    s.tm = label(s.f, "", UD2(0, 40, 0, 13), UD2(1, -6, 1, -4), SZ.tiny, MUTE, MONO_F, V2(1, 1), RIGHT)   -- 冷却秒数
     s.tm.Name = "Secs"
     s.tm.ZIndex = 4
-    s.line = frame(s.f, UD2(1, 0, 0, 2), UD2(0, 0, 1, 0), WHITE, 1, V2(0, 1))   -- 底边：选中琥珀线 / 装填、冷却的进度条
+    s.line = frame(s.f, UD2(1, 0, 0, 2), UD2(0, 0, 1, 0), WHITE, 0.85, V2(0, 1))   -- 底边：装填 / 维修的进度条（平时不画）
     s.line.Name = "Line"
     s.line.ZIndex = 4
+    s.line.Visible = false
     s.fill = frame(s.line, UD2(0, 0, 1, 0), nil, AMBER, 0)
     s.fill.ZIndex = 4
-    s.ch = frame(s.f, UD2(0, 2, 1, 0), UD2(0, 0, 0, 0), WHITE, 0)               -- 膛里那发：左边白竖条
-    s.ch.Name = "Chambered"
-    s.ch.ZIndex = 4
-    s.ch.Visible = false
-    s.kind, s.pic, s.picOk = nil, false, false
+    s.kind, s.pic = nil, nil
     s.selK, s.bri, s.emptyT, s.nFlashT, s.lastN = 0, 1, -9, -9, nil
+    s.c = {}   -- put：每个属性上次写的值
     s.x = 0
     slots[i] = s
     return s
@@ -433,6 +472,7 @@ function WtTank.init(G)
   local loadX = 0   -- 名牌右边「装填」写到哪（武器那几组的右边）
   -- 带了哪几种弹：服务器 Wt.lua 的 AmL 把这门炮所有弹种都写上（没带的 0 发）——出车以后出现过大于 0 发的就算带了（补给多出来的也算）
   local carriedBy = setmetatable({}, { __mode = "k" })   -- [车模型] = { [弹种] = true }
+  local amlSeen = setmetatable({}, { __mode = "k" })     -- [车模型] = 上次解析过的 AmL 字串（没变就不再 gmatch：每帧都要问）
   local function carriedOf(em)
     if not em then return nil end
     local L = em:GetAttribute("AmL")
@@ -442,17 +482,25 @@ function WtTank.init(G)
       c = {}
       carriedBy[em] = c
     end
-    for k, n in string.gmatch(L, "([%w_]+):(%d+)") do if tonumber(n) > 0 then c[k] = true end end
+    if amlSeen[em] ~= L then
+      amlSeen[em] = L
+      for k, n in string.gmatch(L, "([%w_]+):(%d+)") do if tonumber(n) > 0 then c[k] = true end end
+    end
     return c
   end
   G.wtCarried = carriedOf   -- Drive 的 ammoList（Q 换弹）也只在带了的里面转
   -- 11-27 用户：「训练场有时候显示按4是切换射流 但是实际上切换不了」「如果我没有携带 就不要显示了吧」——这门炮的弹种原来全列出来、按位置编号，
   --   可车上只能打研究过的前 ModAmmo 种、带了的那几种（Drive ammoList / 服务器 Armor.lua 只认这些），按了换不过去。
   --   现在：没研究的、没带的不显示；剩下的弹和武器从 1 往下连着编（打光了的那格还在，发数红）
+  local lastBuild = {}   -- 上一帧的（车型、研究到第几种、AmL 字串）：都没变就直接用排好的格子（不每帧拼键、排序）
   local function buildSlots(d, st)
-    local nAm = st and st.em and st.em:GetAttribute("ModAmmo")
+    local em = st and st.em
+    local nAm = em and em:GetAttribute("ModAmmo")
+    local aml = em and em:GetAttribute("AmL")
+    if lastBuild.d == d and lastBuild.nAm == nAm and lastBuild.aml == aml and lastBuild.em == em and slotKey then return slotDef end
+    lastBuild.d, lastBuild.nAm, lastBuild.aml, lastBuild.em = d, nAm, aml, em
     nAm = (type(nAm) == "number") and math.max(1, nAm) or nil
-    local car = carriedOf(st and st.em)
+    local car = carriedOf(em)
     local carKeys = {}
     for k in pairs(car or {}) do table.insert(carKeys, k) end
     table.sort(carKeys)
@@ -504,24 +552,25 @@ function WtTank.init(G)
           x = edge + GRP * 2 + 1
         end
         prevG = grp
-        s.kind, s.pic, s.picOk = nil, false, false   -- 换车：下一帧重新装图（pic = false 一定跟这一格要的不一样）
-        s.img.Visible, s.ic.Visible = false, true
+        s.kind, s.pic = nil, nil   -- 换车：下一帧重新装图
+        s.img.Visible, s.ic.Visible = false, false
+        s.c = {}                   -- put 的缓存清掉：这一格下一帧全部重写
         s.lastN = nil
         -- 机枪那格写「空格」（11-27 起按住空格打机枪；数字键照样能把它选成左键的武器）
         s.key.Text = (sd.k == "w" and sd.icon == "mg") and T("wtt.space") or (sd.num and tostring(sd.num) or (sd.keyTxt or ""))
-        local kw = 6   -- 键位框跟着字宽：等宽 12 号一个英文字母约 7.5 像素、中文约 12.5
+        local kw = 4.5   -- 键位框跟着字宽：等宽 12 号一个英文字母约 7.5 像素、中文约 12.5（一个数字 12 × 12）
         for _, cp in utf8.codes(s.key.Text) do kw += (cp < 128) and 7.5 or 12.5 end
-        s.keyBox.Size = UD2(0, math.max(14, math.ceil(kw)), 0, 14)
+        kw = math.max(KEY, math.ceil(kw))
+        s.keyBox.Size = UD2(0, kw, 0, KEY)
+        s.rdy.Position = UD2(0, 4 + kw + 4, 0, 4 + KEY / 2)
         s.tag.Text = sd.tag or ""
         local sw = wide and AW or TW
         s.f.Size = UD2(0, sw, 0, AH)
         s.f.Position = UD2(0, x, 1, 0)
-        -- 图片区：弹种 / 机枪格 x 0～92、y 12～46（弹轴压在 y 29）；工具格没有类型字，图往下挪一点、别压着左上的键位框
-        local iy = wide and 12 or 17
-        s.img.Size = wide and UD2(0, 92, 0, 34) or UD2(0, 56, 0, 34)
-        s.img.Position = UD2(0, wide and 0 or 2, 0, iy)
-        s.lb.Size, s.lb.Position = UD2(0, sw - 8, 0, 34), UD2(0, 4, 0, iy)
-        s.ic.Position = UD2(0, wide and 46 or 30, 0, iy + 17)
+        -- 图片区：弹种 / 机枪格 x 0～92、工具格 x 2～58，都是 y 10～50（弹轴压在 y 30）
+        s.img.Size = wide and UD2(0, 92, 0, IMG_H) or UD2(0, 56, 0, IMG_H)
+        s.img.Position = UD2(0, wide and 0 or 2, 0, IMG_Y)
+        s.ic.Position = UD2(0, wide and 46 or 30, 0, IMG_Y + IMG_H / 2)
         s.x = x
         x += sw + GAP
         if grp < 3 then loadX = x - GAP end
@@ -535,6 +584,7 @@ function WtTank.init(G)
   end
 
   -- 这一格还剩几发（nil = 不计数）
+  local amlStr, amlN = nil, {}   -- AmL 解析好的 [弹种] = 几发（字串变了才重新解析：每帧每格都要问）
   local function countOf(sd, st)
     local vs = G.S and G.S.veh
     local em = st and st.em
@@ -543,8 +593,12 @@ function WtTank.init(G)
       local tot = am and (am[1] + am[2]) or nil
       if sd.k == "am" and em then   -- ④ 配弹：每种弹各剩几发（服务器 Wt.lua 写 AmL = "m829a3:20,m830:12,…"）
         local L = em:GetAttribute("AmL")
-        local n = L and string.match("," .. L .. ",", "," .. sd.am .. ":(%d+),")
-        if n then tot = tonumber(n) end
+        if L ~= amlStr then
+          amlStr, amlN = L, {}
+          if type(L) == "string" then for k, n in string.gmatch(L, "([%w_]+):(%d+)") do amlN[k] = tonumber(n) end end
+        end
+        local n = amlN[sd.am]
+        if n then tot = n end
       end
       return tot
     elseif sd.k == "smoke" then
@@ -572,6 +626,115 @@ function WtTank.init(G)
   end
 
   local barShownT, lastBarT = -9, nil
+  -- 写实图这一排的状态：整排一起出、一格不行整排退回剪影（11-27 美术审查第 16 条：原来一排里写实图、剪影会混着）
+  --   key 这辆车的格子；k 正在显示的那一套（1 / 2 倍）；state "wait" 模块还没到 / "decoding" 排队解着 / "ok" 都解好了 / "fallback" 整排剪影；
+  --   need / gray：这一排要的彩色图、去色图的名字；nextK：屏幕跨过 850、要换另一套时，后台在解的那一套（解好了才换，旧的一直显示着）；
+  --   badK[k]：那一套解不出（不再试，留着旧的）
+  local row = { key = nil, k = 2, state = "wait", need = nil, gray = nil, okT = -9, nextK = nil, badK = {} }
+  local retried = {}  -- [格子 key] = true：用不了 EditableImage 时，换到这辆车只再试一次
+  -- 这一格可能用到的图：弹种 / 武器一张，工具格一张（维修那格起火时换灭火器：两张都要）；没有图返回 nil
+  local function picNames(sd)
+    if sd.k == "am" then
+      local n = G.ammoPicName("ammo", sd.am)
+      return n and { n } or nil
+    elseif sd.k == "w" then
+      local n = G.ammoPicName("w", sd.wid)
+      return n and { n } or nil
+    elseif sd.k == "fix" then
+      local a, b = G.ammoPicName("tool", "fix"), G.ammoPicName("tool", "ext")
+      return (a and b) and { a, b } or nil
+    end
+    local n = G.ammoPicName("tool", sd.icon)
+    return n and { n } or nil
+  end
+  local function counted(sd) return sd.k == "am" or sd.k == "w" or sd.k == "smoke" end   -- 会打空：去色的也要
+  -- 一套图（k 倍）排进解码队列：彩色的先（整排要等它们），去色的跟着（打空那一下不用现解）
+  local function wantSet(k)
+    for _, n in ipairs(row.need) do G.ammoPicWant(n, false, k) end
+    for _, n in ipairs(row.gray) do G.ammoPicWant(n, true, k) end
+  end
+  -- 这一套解好了没有（withGray：去色的也算上——后台换套时等它们也好，免得打空的那格先闪一下彩色）：true 好了 / false 有一张解不出 / nil 还在解
+  local function setDone(k, withGray)
+    local done = true
+    for pass = 1, withGray and 2 or 1 do
+      for _, n in ipairs((pass == 1) and row.need or row.gray) do
+        local r = G.ammoPic(n, pass == 2, k)
+        if r == false then return false end
+        if r == nil then done = false end
+      end
+    end
+    return done or nil
+  end
+  -- wantK：按现在的屏幕该用哪一套（逻辑屏高 ≥ 850 用 2 倍、更矮的用 1 倍，见上面的说明）
+  local function stepRow(def, t, wantK)
+    if not G.ammoPicState then
+      row.state = "fallback"
+      return
+    end
+    if row.key ~= slotKey then   -- 换车 / 格子变了：整排重来（先空着，都解好了一起淡入）
+      row.key, row.k, row.state, row.need, row.gray, row.names = slotKey, wantK, "wait", nil, nil, nil
+      row.nextK, row.badK = nil, {}
+      for _, s in ipairs(slots) do s.pic = nil end
+      if G.ammoPicState() == "broken" and not retried[slotKey] then   -- 换车：用不了 EditableImage 的再试一次
+        retried[slotKey] = true
+        if G.ammoPicRetry then G.ammoPicRetry() end
+      end
+    elseif row.state ~= "ok" and row.k ~= wantK and row.state ~= "fallback" then
+      row.k = wantK   -- 还没出图：直接改解另一套
+      if row.state == "decoding" then wantSet(wantK) end
+    elseif row.state == "ok" and wantK ~= row.k and row.nextK ~= wantK and not row.badK[wantK] then
+      row.nextK = wantK   -- 只是屏幕跨过了 850：旧的那套先留着显示，新的一套在后台解（不清空、不重新淡入）
+      wantSet(wantK)
+    elseif row.nextK and wantK == row.k then
+      row.nextK = nil     -- 又跨回来了
+    end
+    local stt = G.ammoPicState()
+    if row.state == "wait" then
+      if stt == "ready" then
+        local color, gray, names = {}, {}, {}
+        for i, sd in ipairs(def) do
+          local ns = picNames(sd)
+          if not ns then   -- 有一格没有图：整排用剪影
+            row.state = "fallback"
+            return
+          end
+          names[i] = ns   -- 每格的图名记下来（每帧不用再查、再建表）
+          for _, n in ipairs(ns) do
+            table.insert(color, n)
+            if counted(sd) then table.insert(gray, n) end
+          end
+        end
+        row.need, row.gray, row.names = color, gray, names
+        wantSet(row.k)
+        row.state = "decoding"
+      elseif stt == "failed" or stt == "broken" then
+        row.state = "fallback"
+      end
+    end
+    if row.state == "decoding" or row.state == "ok" then
+      G.ammoPicPump()   -- 每帧最多解一张
+      if G.ammoPicState() == "broken" then
+        row.state = "fallback"
+        return
+      end
+      if row.state == "decoding" then
+        local d = setDone(row.k)
+        if d == false then
+          row.state = "fallback"
+          return
+        elseif d then
+          row.state, row.okT = "ok", t
+        end
+      elseif row.nextK then   -- 后台那一套：都解好了就换过去（每格的图名带着 @k，下一段逐格换图，不淡入）；解不出就留着旧的
+        local d = setDone(row.nextK, true)
+        if d == false then
+          row.badK[row.nextK], row.nextK = true, nil
+        elseif d then
+          row.k, row.nextK = row.nextK, nil
+        end
+      end
+    end
+  end
   local function stepBar(st, I)
     local d = st.d
     local def = buildSlots(d, st)
@@ -590,12 +753,17 @@ function WtTank.init(G)
       caps = {}
       capBy[em] = caps
     end
+    stepRow(def, t, (cam.ViewportSize.Y >= 850) and 2 or 1)
+    local picK = row.k   -- 正在显示的那一套
+    local pa = math.clamp((t - row.okT) / 0.12, 0, 1)   -- 整排写实图解好那一下淡入 120 毫秒
     local curName, curType, curLoad = "", "", nil
+    local gunDmg = false   -- 主炮坏了（有主炮弹种格的车）：名牌右边写一次「主炮损坏」
     for i, sd in ipairs(def) do
       local s = slots[i]
+      local c = s.c
       local sel, empty, cnt = false, false, ""
       local ic = sd.icon
-      local fillK, timeTxt, timeCol = nil, "", AMBER
+      local fillK, timeTxt = nil, ""
       local reloading, cool, dmg = false, false, false
       local tot = countOf(sd, st)
       if sd.k == "am" or sd.k == "w" then
@@ -605,6 +773,7 @@ function WtTank.init(G)
           local c0 = (f and f.am) or (BAL.GUN[sd.wid] and BAL.GUN[sd.wid][1])
           sel = st.wi == sd.wi and c0 == sd.am
           dmg = not gunOk
+          gunDmg = gunDmg or dmg
           if sel then
             local nm, ty = ammoInfo(sd.am)
             curName, curType = nm, ty
@@ -613,9 +782,9 @@ function WtTank.init(G)
           sel = st.wi == sd.wi
           if sel then curName, curType = T("vw." .. sd.wid), "" end
         end
-        if sel and I and I.ready == false then
+        if sel and I and I.ready == false then   -- 装填：秒数只写一处（格子里不写；车外准星写着的时候名牌也不写，见下面）
           reloading = true
-          fillK, timeTxt = math.clamp(I.relK or 0, 0, 1), string.format("%.1fs", I.left or 0)
+          fillK = math.clamp(I.relK or 0, 0, 1)
           curLoad = I.left or 0
         end
       elseif sd.k == "smoke" then
@@ -626,7 +795,7 @@ function WtTank.init(G)
         local bonus = me:GetAttribute("WtArtyBonus")
         if left > 0 and not bonus then
           cool = true
-          fillK, timeTxt, timeCol = 1 - left / 120, string.format("%ds", math.ceil(left)), MUTE
+          fillK, timeTxt = 1 - left / 120, string.format("%ds", math.ceil(left))
         end
         cnt = bonus and ("+" .. bonus) or ""
       elseif sd.k == "scout" then
@@ -647,29 +816,40 @@ function WtTank.init(G)
         s.lastN = tot
       end
       local low = tot and caps and caps[capKey] and caps[capKey] > 0 and tot <= caps[capKey] * 0.2
-      -- 图：写实渲染图（AmmoPics）；打空了换去色的；用不了就单色剪影
-      local picKind = ic
-      local pname = nil
-      if G.ammoPicName then
-        if sd.k == "am" then pname = G.ammoPicName("ammo", sd.am)
-        elseif sd.k == "w" then pname = G.ammoPicName("w", sd.wid)
-        else pname = G.ammoPicName("tool", picKind) end
+      -- 图：写实渲染图（AmmoPics，整排解好了才出）；打空了换去色的（还没解好先用彩色的）；整排退回时单色剪影
+      local showPic = row.state == "ok"
+      if showPic then
+        local ns = row.names and row.names[i]
+        local pname = ns and ((sd.k == "fix" and fire) and ns[2] or ns[1]) or nil
+        local gray = (empty and pname ~= nil and G.ammoPic(pname, true, picK)) and true or false
+        local want = pname and (pname .. (gray and "#g" or "") .. "@" .. picK) or nil
+        if s.pic ~= want then
+          s.pic = want
+          local ok = pname ~= nil and G.ammoPicOn(s.img, pname, gray, picK) == true
+          if ok then
+            s.imgFade.Enabled = G.ammoPicFade(pname)
+            c.imgTr, c.imgCol = nil, nil   -- 换了图：亮度、透明度重写
+          else
+            row.state = "fallback"   -- 有一格装不上：整排退回剪影
+            showPic = false
+          end
+        end
+        if showPic and empty and pname and G.ammoPic(pname, true, picK) == false then   -- 去色的解不出：也整排退回
+          row.state = "fallback"
+          showPic = false
+        end
       end
-      local want = pname and (pname .. (empty and "#g" or "")) or nil
-      if s.pic ~= want then
-        s.pic = want
-        s.picOk = (pname ~= nil) and G.ammoPicOn ~= nil and G.ammoPicOn(s.img, pname, empty) == true
-        s.imgFade.Enabled = s.picOk and G.ammoPicFade ~= nil and G.ammoPicFade(pname)
-        s.img.Visible = s.picOk
-        s.ic.Visible = not s.picOk
+      local showIcon = row.state == "fallback"
+      put(c, "imgV", s.img, "Visible", showPic)
+      put(c, "icV", s.ic, "Visible", showIcon)
+      if showIcon and s.kind ~= ic then
+        s.kind = ic
+        icon(s.ic, ic)
+        c.icTr = nil
       end
-      if not s.picOk and s.kind ~= picKind then
-        s.kind = picKind
-        icon(s.ic, picKind)
-      end
-      -- 状态 → 样子（描边颜色 100 毫秒线性过渡；装填时图压暗到六成，装好 120 毫秒内回来）
+      -- 状态 → 样子（描边颜色 100 毫秒线性过渡；装填时图压暗到八成，装好 120 毫秒内回来）
       s.selK = math.clamp(s.selK + (sel and 1 or -1) * dt / 0.1, 0, 1)
-      local briT = reloading and 0.6 or (sel and 1 or 0.9)
+      local briT = reloading and 0.8 or (sel and 1 or 0.9)
       if s.bri < briT then s.bri = math.min(briT, s.bri + dt / 0.12) else s.bri = math.max(briT, s.bri - dt / 0.1) end
       local unavailable = cool or (dmg and sd.k == "am")
       local imgTr = empty and 0.65 or (unavailable and 0.75 or 0)
@@ -678,77 +858,115 @@ function WtTank.init(G)
       local et = t - s.emptyT   -- 按了打空的那格：红闪两下（各 100 毫秒）
       if et < 0.4 and (et < 0.1 or (et >= 0.2 and et < 0.3)) then stCol, stTr = PEN_NO, 0 end
       if sd.k == "fix" and fire then stCol, stTr = PEN_NO, 0 end   -- 起火：灭火那格红描边（不闪）
-      s.f.BackgroundTransparency = A(0.35)
-      s.st.Color, s.st.Transparency = stCol, A(stTr)
-      s.lb.BackgroundTransparency = A(0.92)
-      if s.picOk then
-        local b = s.bri
-        s.img.ImageColor3 = Color3.new(b, b, b)
-        s.img.ImageTransparency = A(imgTr)
-      else
+      put(c, "fT", s.f, "BackgroundTransparency", A(0.35))
+      put(c, "stC", s.st, "Color", stCol)
+      put(c, "stT", s.st, "Transparency", A(stTr))
+      if showPic then
+        local b = math.floor(s.bri * 100 + 0.5) / 100
+        put(c, "imgCol", s.img, "ImageColor3", Color3.new(b, b, b))
+        put(c, "imgTr", s.img, "ImageTransparency", 1 - (1 - A(imgTr)) * pa)
+      elseif showIcon then
         local icTr = empty and 0.78 or (unavailable and 0.8 or (sel and 0 or 0.35))
         icTr = 1 - (1 - icTr) * fa
-        for _, q in ipairs(s.ic:GetDescendants()) do
-          if q:IsA("Frame") and q.BackgroundColor3 == ICON then
-            q:SetAttribute("Base", q:GetAttribute("Base") or q.BackgroundTransparency)
-            q.BackgroundTransparency = 1 - (1 - q:GetAttribute("Base")) * (1 - icTr)
-          elseif q:IsA("UIStroke") then
-            q.Transparency = icTr
+        if c.icTr ~= icTr then   -- 剪影的零件：透明度变了才挨个改
+          c.icTr = icTr
+          for _, q in ipairs(s.ic:GetDescendants()) do
+            if q:IsA("Frame") and q.BackgroundColor3 == ICON then
+              q:SetAttribute("Base", q:GetAttribute("Base") or q.BackgroundTransparency)
+              q.BackgroundTransparency = 1 - (1 - q:GetAttribute("Base")) * (1 - icTr)
+            elseif q:IsA("UIStroke") then
+              q.Transparency = icTr
+            end
           end
         end
       end
       -- 冷却：暗遮罩从上往下退（盖住还没走完的那一截）
-      s.mask.Visible = cool
+      put(c, "maskV", s.mask, "Visible", cool)
       if cool then
-        s.mask.Size = UD2(1, 0, 1 - math.clamp(fillK or 0, 0, 1), 0)
-        s.mask.BackgroundTransparency = A(0.3)
+        put(c, "maskS", s.mask, "Size", UD2(1, 0, 1 - math.floor(math.clamp(fillK or 0, 0, 1) * 200 + 0.5) / 200, 0))
+        put(c, "maskT", s.mask, "BackgroundTransparency", A(0.3))
       end
-      -- 右上：发数（白；剩两成琥珀；0 红）；主炮坏了换成红字「损坏」
-      if dmg and sd.k == "am" then
-        s.n.Text, s.n.TextColor3 = T("wtt.dmg"), PEN_NO
-      else
-        s.n.Text = cnt
-        s.n.TextColor3 = empty and PEN_NO or (low and AMBER or TH.C.TEXT)
-      end
-      s.n.TextTransparency, s.n.TextStrokeTransparency = A(0), A(0.45)
+      -- 右上：发数（白；剩两成琥珀；0 红）；主炮坏了发数照写、变暗（FAINT、透明 0.4）——「主炮损坏」只在名牌右边写一次
+      --   （11-27 美术审查第二轮：原来 5 个弹种格都换成红字「损坏」，加上左下损伤图、「按 Y 维修」，同一件事说了 5 遍）
+      local nDim = dmg and sd.k == "am"
+      put(c, "nTx", s.n, "Text", cnt)
+      put(c, "nCol", s.n, "TextColor3", nDim and FAINT or (empty and PEN_NO or (low and AMBER or TH.C.TEXT)))
+      put(c, "nT", s.n, "TextTransparency", A(nDim and 0.4 or 0))
+      put(c, "nS", s.n, "TextStrokeTransparency", A(0.45))
       local nf = t - s.nFlashT < 0.08
-      s.nBg.BackgroundTransparency = nf and A(0.55) or 1
-      -- 左上键位框（主炮坏了变暗）、左下类型、右下秒数
+      put(c, "nBg", s.nBg, "BackgroundTransparency", nf and A(0.55) or 1)
+      -- 左上键位框（主炮坏了变暗）；装好了键位框右边一个白点（选中、装好、有弹、炮能打）
       local keyDim = dmg and sd.k == "am"
       local keyCol = keyDim and FAINT or (sel and TH.C.TEXT or MUTE)
-      s.key.TextColor3, s.keyS.Color = keyCol, keyCol
-      s.key.TextTransparency, s.key.TextStrokeTransparency = A(keyDim and 0.4 or 0), A(0.45)
-      s.keyS.Transparency = A(keyDim and 0.5 or 0)
-      s.tag.TextColor3 = sel and TH.C.TEXT or MUTE
-      s.tag.TextTransparency, s.tag.TextStrokeTransparency = A(0), A(0.45)
-      s.tm.Text, s.tm.TextColor3 = timeTxt, timeCol
-      s.tm.TextTransparency, s.tm.TextStrokeTransparency = A(0), A(0.45)
-      -- 底边：选中一道 2 像素琥珀线；装填 / 维修时当进度条（底下一道淡轨道）；冷却只有遮罩，不画线
-      local prog = (fillK ~= nil) and not cool
-      local showLine = sel or prog
-      s.line.Visible = showLine
-      if showLine then
-        local k = prog and fillK or 1
-        s.line.BackgroundTransparency = A((prog and k < 1) and 0.85 or 1)
-        s.fill.Size = UD2(math.clamp(k, 0, 1), 0, 1, 0)
-        s.fill.BackgroundTransparency = A(0)
+      put(c, "kCol", s.key, "TextColor3", keyCol)
+      put(c, "kSCol", s.keyS, "Color", keyCol)
+      put(c, "kT", s.key, "TextTransparency", A(keyDim and 0.4 or 0))
+      put(c, "kS", s.key, "TextStrokeTransparency", A(0.45))
+      put(c, "kST", s.keyS, "Transparency", A(keyDim and 0.5 or 0))
+      local ready = sel and (sd.k == "am" or sd.k == "w") and not reloading and not empty and gunOk
+      put(c, "rdyV", s.rdy, "Visible", ready)
+      if ready then put(c, "rdyT", s.rdy, "BackgroundTransparency", A(0)) end
+      -- 左下类型：只在选中那格写（别的格子名牌上都有）；右下：冷却秒数
+      put(c, "tagV", s.tag, "Visible", sel and (s.tag.Text ~= ""))
+      if sel then
+        put(c, "tagT", s.tag, "TextTransparency", A(0))
+        put(c, "tagS", s.tag, "TextStrokeTransparency", A(0.45))
       end
-      -- 膛里那发：选中、装好了、有弹、炮能打
-      s.ch.Visible = sel and (sd.k == "am" or sd.k == "w") and not reloading and not empty and gunOk
-      s.ch.BackgroundTransparency = A(0)
+      put(c, "tmTx", s.tm, "Text", timeTxt)
+      if timeTxt ~= "" then
+        put(c, "tmT", s.tm, "TextTransparency", A(0))
+        put(c, "tmS", s.tm, "TextStrokeTransparency", A(0.45))
+      end
+      -- 底边：只在装填 / 维修时当进度条（底下一道淡轨道）；平时不画，冷却只有遮罩
+      local prog = (fillK ~= nil) and not cool and fillK < 1
+      put(c, "lineV", s.line, "Visible", prog)
+      if prog then
+        put(c, "lineT", s.line, "BackgroundTransparency", A(0.85))
+        put(c, "fillS", s.fill, "Size", UD2(math.floor(math.clamp(fillK, 0, 1) * 200 + 0.5) / 200, 0, 1, 0))
+        put(c, "fillT", s.fill, "BackgroundTransparency", A(0))
+      end
     end
-    for k = 1, #dividers do dividers[k].BackgroundTransparency = A(0.85) end
-    -- 名牌：型号（白 15）+「· 类型」（灰 13）；按了打空的那格：「无弹」（红）
-    if t - noAmmoT < 1.2 then
-      ammoName.Text = T("wtt.noAmmo")
-      ammoName.TextColor3 = PEN_NO
-    else
-      ammoName.TextColor3 = TH.C.TEXT
-      ammoName.Text = (curType ~= "") and string.format('%s<font size="%d" color="#%s">  ·  %s</font>', curName, SZ.small, MUTE_HEX, curType) or curName
+    for k = 1, #dividers do put(plateC, "dv" .. k, dividers[k], "BackgroundTransparency", A(0.85)) end
+    -- 名牌：型号（白 15）+「· 类型」（灰 13）；按了打空的那格：「无弹」（红）——内容变了才重新拼字串
+    local noAm = t - noAmmoT < 1.2
+    local pk = noAm and "\0" or (curName .. "\1" .. curType)
+    if plateC.key ~= pk then
+      plateC.key = pk
+      local w = 0   -- 名牌后面那条暗底的宽：窄体 15 号一个英文字母约 7.5 像素、中文约 15；类型 13 号约 6.5
+      if noAm then
+        ammoName.Text = T("wtt.noAmmo")
+        ammoName.TextColor3 = PEN_NO
+        for _, cp in utf8.codes(ammoName.Text) do w += (cp < 128) and 7.5 or 15 end
+      else
+        ammoName.TextColor3 = TH.C.TEXT
+        ammoName.Text = (curType ~= "") and string.format('%s<font size="%d" color="#%s">  ·  %s</font>', curName, SZ.small, MUTE_HEX, curType) or curName
+        for _, cp in utf8.codes(curName) do w += (cp < 128) and 7.5 or 15 end
+        if curType ~= "" then for _, cp in utf8.codes("  ·  " .. curType) do w += (cp < 128) and 6.5 or 13 end end
+      end
+      plateC.nameW = w
     end
-    ammoName.TextTransparency, ammoName.TextStrokeTransparency = A(0), A(0.45)
-    loadTxt.Text = curLoad and T("wtt.load", string.format("%.1f", curLoad)) or ""
-    loadTxt.TextTransparency, loadTxt.TextStrokeTransparency = A(0), A(0.45)
+    put(plateC, "nT", ammoName, "TextTransparency", A(0))
+    put(plateC, "nS", ammoName, "TextStrokeTransparency", A(0.45))
+    -- 名牌右边：主炮坏了写一次红字「主炮损坏」（窄体 13 号中文用粗体）；不然装填中写「装填 x.x s」（琥珀等宽 13）——
+    --   车外准星在屏幕上时不写（它自己写着秒数 + 琥珀弧：同一件事不说两遍）；开镜、望远镜里没有那个准星，照写
+    if I and I.p ~= nil and AIM.root.Visible then curLoad = nil end
+    local lt = (not gunDmg) and curLoad and math.floor(curLoad * 10 + 0.5) or nil   -- 装填秒数：到 0.1 秒变了才重写
+    local rk = gunDmg and -1 or lt
+    if plateC.lt ~= rk then
+      plateC.lt = rk
+      if gunDmg then
+        loadTxt.Text, loadTxt.TextColor3, loadTxt.Font = T("wtt.gunDmg"), PEN_NO, BOLD
+      else
+        loadTxt.Text, loadTxt.TextColor3, loadTxt.Font = lt and T("wtt.load", string.format("%.1f", lt / 10)) or "", AMBER, MONO_F
+      end
+    end
+    put(plateC, "lT", loadTxt, "TextTransparency", A(0))
+    put(plateC, "lS", loadTxt, "TextStrokeTransparency", A(0.45))
+    local bw = ((plateC.nameW or 0) > 0) and (plateC.nameW + 26) or 0
+    if rk then bw = math.max(bw, loadTxt.Position.X.Offset + 16) end
+    put(plateC, "bgW", plateBg, "Size", UD2(0, math.ceil(bw), 0, 20))
+    put(plateC, "bgV", plateBg, "Visible", bw > 0)
+    put(plateC, "bgT", plateBg, "BackgroundTransparency", A(0.5))
   end
 
   ---------------------------------------------------------------- 左下：损伤示意图

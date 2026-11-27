@@ -482,10 +482,12 @@ add("wtt.space", "空格", "SPC")   -- 弹药栏机枪那格的键位（11-27 �
 -- 弹药栏（WtTank.lua，用户 11-27「完全按照战雷的风格……更拟真」）：名牌右边的装填、打空了按键、主炮坏了、游戏里的金属射流弹
 add("wtt.load", "装填 {1} s", "Loading {1} s")
 add("wtt.noAmmo", "无弹", "No ammo")
-add("wtt.dmg", "损坏", "DMG")
-add("wtt.jet", "{1} 金属射流弹", "{1} metal jet")
-add("wtt.jetType", "串联破甲", "Tandem HEAT")
-add("wtt.tagJet", "射流", "JET")
+add("wtt.gunDmg", "主炮损坏", "Main gun damaged")   -- 只在名牌右边写一次（11-27 美术审查第二轮：原来 5 个弹种格各写一个「损坏」）
+add("wtt.jet", "{1} 金属射流弹", "{1} metal jet")   -- 游戏自己的弹（没有真型号可写）：名字照叫
+-- 类型短标签、名牌上的类型都用代号（11-27 美术审查：「射流」夹在 APFSDS / HEAT-MP / MPAT 中间，中英混排）——
+--   第二轮：「HEAT-TDM」不是现成的代号，照战雷写串联破甲弹的样子：名牌类型「HEAT-FS (tandem)」、选中格短标签「HEAT-FS」
+add("wtt.jetType", "HEAT-FS (tandem)", "HEAT-FS (tandem)")
+add("wtt.tagJet", "HEAT-FS", "HEAT-FS")
 -- 炮长瞄准镜、车长望远镜（GunSight.lua，用户 11-27 照战雷）
 add("gs.sightSet", "表尺 {1} 米", "Sight {1} m")
 add("gs.estR", "≈{1} 米", "≈{1} m")

@@ -1,13 +1,23 @@
 # 弹药栏的写实弹种图（用户 11-27「我需要你完全按照战雷的风格去做设计 而不是这种卡通风格……更拟真」）：Blender 无界面渲染
-#   /opt/blender/blender -b --factory-startup -P tools/models/ammopics_blender.py -- <输出目录> [only=m829a3,of26] [samples=28] [ss=8] [threads=2]
+#   /opt/blender/blender -b --factory-startup -P tools/models/ammopics_blender.py -- <输出目录> [only=m829a3,of26] [samples=64] [ss=8] [ss1=3] [threads=2]
 #   每一发都按真弹的结构程序化建模（不用网上的模型）：回转体（弹体、弹托、药筒、引信……按毫米写的外形轮廓车出来）+ 非回转件
 #     （尾翼、弹托瓣的缝、折叠翼、弹链），涂装照实物（北约：穿甲类黑、含高爆黄字；苏 / 俄：灰弹体黑模板字、125 毫米棕色可燃筒……）。
-#   摆法（同一套，整排像一张弹药识别图）：横放、弹头朝右，正交相机略俯 6°；同一口径的弹一个毫米 → 像素比例（真的长短粗细）：
-#     比例 = 86 像素 ÷ 这一口径最长的「可见段」（带药筒的：露出药筒的弹丸 + 0.25 倍药筒长；125 毫米分装弹、导弹：整发），
-#     弹尖压在图的 x = 90（1 倍像素），药筒往左伸出图外（打包时左边 16 像素渐隐，tools/models/ammopics.py）；
-#     机枪弹链、机炮弹、导弹、工具（烟幕弹、扳手、望远镜……）各自按框塞满（太长的导弹、火箭只画前段，同药筒那样往左伸出去）。
-#   光：大柔光箱左上 45° 主光、右前补光（三成）、后上方轮廓光（黑弹托、黑弹体靠它从暗底上分出来），没有地面、没有投影；
-#     AgX；透明背景。输出 <输出目录>/<名字>.png（显示尺寸的 ss 倍）+ meta.json（每张多大、要不要左边渐隐）
+#   摆法（同一套，整排像一张弹药识别图）：横放、弹头朝右，正交相机略俯 6°、偏 10°（弹头略朝镜头：圆盘、尾翼不再只是一条侧线）；
+#     同一口径的弹一个毫米 → 像素比例（真的长短粗细）：
+#     比例 = 86 像素 ÷ 这一口径最长的「可见段」（带药筒的：露出药筒的弹丸 + 0.15 倍药筒长；125 毫米分装弹：整发，从 x = 1 画起），
+#     弹尖压在图的 x = 90（1 倍像素），药筒往左伸出图外（弹药栏给左边 16 像素「先压暗、后透明」，WtTank.lua）；
+#     机枪弹链、机炮弹、导弹按框塞满、弹尖也压在 x = 90（整排右边一条线；太长的导弹、火箭只画前段，同药筒那样往左伸出去）；
+#     工具格（烟幕弹、扳手、望远镜……）六件一个机位：偏航 30°、俯 20°，都不斜放，高不超过 24 像素（比弹种图小一号，主次分明）。
+#     右边对齐按画面上最靠右的那一点（平头的 M1028：圆盘远侧那一圈），不按弹轴上的弹尖——偏了 10° 以后平头会多出 r·sin10°
+#   光（11-27 美术审查两轮）：大柔光箱左上主光、右前补光、后上方轮廓光（主光的六成：强了金属上全是火花点、黑件上沿一道亮线）；
+#     环境是带两条大横向柔光条的影棚（金属上一条长长的横向高光），下后方那条很弱（0.12）、反光再垫一层很淡的底（0.03）；
+#     不要下后方的轮廓光（第二轮复审：它和下光条在每发弹的下沿掠射出一道亮边，缩小后读成一圈描边——规范禁止描边）；
+#     金属件（Light Linking 只照金属）另有一盏前下方的补光（主光的 15%）：黄铜、钢药筒的下半截不再是一片黑（「黑金」），
+#     又因为在镜头这一侧，亮的是下半截的正面、不是轮廓边；
+#     没有地面、没有投影；AgX Base Contrast；64 采样 + OIDN 降噪 + 限亮点（clamp）；透明背景；工具格曝光 +0.15（弹种图 −0.3：工具大多是暗色的东西）。
+#     输出 <输出目录>/<名字>.png（显示尺寸的 ss 倍）+ meta.json（每张多大、要不要左边渐隐）；
+#     有模板字的另出一张不带字的 <名字>_nt.png（ss1 倍，默认 3）：1 倍那套图用它（1 倍下字只有 2.5 像素高，缩成 1 像素的竖点）
+#   材质：金属的粗糙度不加细噪声（只有顺着弹轴的低频拉伸痕），非金属的颜色这里先降饱和一成（打包时不再统一降：黄铜不会被洗成土黄）
 #   尺寸、外形依据：厂家资料（诺格 M829A3 / M830A1、GD-OTS M1028 / M456A2）、FAS 剖面图、乌克兰弹药识别手册、NGIC 苏式弹药图、实物照片；
 #     没找到实物的（DM12、BR-412D、3BM60、中国 125 毫米弹的颜色……）按同族、按涂装通则推（注释里写了）
 import bpy, bmesh, json, math, os, sys
@@ -18,16 +28,24 @@ pos = [a for a in argv if '=' not in a]
 opt = dict(a.split('=', 1) for a in argv if '=' in a)
 OUT = pos[0] if pos else '/tmp/ammopics'
 ONLY = set(opt['only'].split(',')) if opt.get('only') else None
-SAMPLES = int(opt.get('samples', 28))
+SAMPLES = int(opt.get('samples', 64))
 SS = int(opt.get('ss', 8))
+SS1 = int(opt.get('ss1', 3))   # 不带字的那张（给 1 倍那套）渲几倍
 THREADS = int(opt.get('threads', 2))
-ELEV = math.radians(float(opt.get('elev', 6)))
+EV = {'ammo': float(opt.get('ev', -0.3)), 'tool': float(opt.get('evtool', 0.15))}   # 曝光：弹种图一套、工具格一套（工具大多是暗色的东西）
 MM = 0.001
 os.makedirs(OUT, exist_ok=True)
+# 机位：弹种图略俯 6°、偏 10°（弹头朝镜头）；工具格俯 20°、偏 30°（render() 按种类设 CAM，stencil 按它把字转向镜头）
+CAM_AMMO = dict(elev=math.radians(float(opt.get('elev', 6))), yaw=math.radians(float(opt.get('yaw', 10))))
+CAM_TOOL = dict(elev=math.radians(20.0), yaw=math.radians(30.0))
+CAM = dict(CAM_AMMO)
+CUR = {'k': None}   # 这一张的比例（1 倍像素 / 毫米，口径定了的才有）：模板字按它保证 2 倍图上字高 ≥ 5 像素
 
-# 图的大小（1 倍像素，同 WtTank.lua）：弹种 / 机枪格 96 × 60 里 x 0～92、y 12～46 一块；工具格 60 × 60 里 56 × 34
-IMG = {'ammo': (92, 34), 'tool': (56, 34)}
-NOSE_PX, LEFT_PX = 90, 4   # 弹尖压在 x = 90，可见段从 x = 4 起
+# 图的大小（1 倍像素，同 WtTank.lua）：弹种 / 机枪格 96 × 60 里 x 0～92、y 10～50 一块；工具格 60 × 60 里 56 × 40
+IMG = {'ammo': (92, 40), 'tool': (56, 40)}
+NOSE_PX, LEFT_PX = 90, 4   # 弹尖压在 x = 90，可见段从 x = 4 起（125 毫米分装弹不切药筒：从 x = 1 起）
+LEFT_PX_FULL = 1
+TOOL_H = 24                # 工具格的图最高 24 像素（1 倍）
 
 
 def lin(c):
@@ -39,13 +57,21 @@ def lin(c):
     return (out[0], out[1], out[2], 1.0)
 
 
+DESAT = 0.10   # 非金属（漆、可燃药筒、塑料）降饱和一成；金属不降（原来打包时整张图一起降，黄铜被洗成土黄偏橄榄）
+
+
+def desat(c, k=DESAT):
+    l = 0.299 * c[0] + 0.587 * c[1] + 0.114 * c[2]
+    return tuple(v + (l - v) * k for v in c[:3])
+
+
 ################################################################ 场景
 MATS = {}
 FONT = None
 CREATED = []
 
 
-def reset():
+def reset(kind='ammo'):
     global FONT
     bpy.ops.wm.read_factory_settings(use_empty=True)
     MATS.clear()   # 换了场景，原来的材质、字体都没了
@@ -56,11 +82,21 @@ def reset():
     s.cycles.device = 'CPU'
     s.cycles.samples = SAMPLES
     s.cycles.use_adaptive_sampling = True
-    s.cycles.use_denoising = False   # 渲大图再缩：16 个像素平均一个，比降噪干净
+    s.cycles.adaptive_threshold = 0.02
+    # 64 采样 + OIDN 降噪（11-27 美术审查：原来 28 采样不降噪，黄铜、铝像砂纸，铜弹头上有火花点）
+    s.cycles.use_denoising = opt.get('denoise', '1') != '0'
+    try:
+        s.cycles.denoiser = 'OPENIMAGEDENOISE'
+        s.cycles.denoising_input_passes = 'RGB_ALBEDO_NORMAL'
+        s.cycles.denoising_prefilter = 'ACCURATE'
+    except Exception:
+        pass
+    s.cycles.sample_clamp_direct = 12.0     # 限亮点：灯在金属上打出的单个超亮采样不再成火花点
+    s.cycles.sample_clamp_indirect = 3.0
     s.cycles.max_bounces = 6
     s.cycles.glossy_bounces = 4
     s.cycles.transparent_max_bounces = 4
-    s.cycles.blur_glossy = 0.6          # 金属面上的噪点少一些
+    s.cycles.blur_glossy = 1.0
     s.cycles.caustics_reflective = False
     s.cycles.caustics_refractive = False
     s.render.threads_mode = 'FIXED'
@@ -71,71 +107,162 @@ def reset():
     s.render.image_settings.color_depth = '8'
     vt = [v.identifier for v in s.view_settings.bl_rna.properties['view_transform'].enum_items]
     s.view_settings.view_transform = 'AgX' if 'AgX' in vt else 'Filmic'
-    try:
-        s.view_settings.look = opt.get('look', 'AgX - Medium High Contrast') if 'AgX' in vt else 'Medium Contrast'
+    try:   # 原来 Medium High Contrast：浅色药筒亮成一团白雾
+        s.view_settings.look = opt.get('look', 'AgX - Base Contrast') if 'AgX' in vt else 'None'
     except Exception:
         pass
-    # 环境：上亮下暗的影棚（金属要有东西可反），画面上看不见（透明背景）
+    # 曝光：弹种图整体压暗一点（浅色药筒、浅灰弹体不发白，所有弹种图同一个曝光）；工具格亮一档（第二轮复审：望远镜、测距仪、
+    #   话筒都是暗底上的一团暗色，中位亮度 71～86，弹种图多在 100～150）
+    s.view_settings.exposure = EV.get(kind, EV['ammo'])
+    # 环境：暗影棚 + 两条顺着弹轴（X）的大横向柔光条——头顶略靠前一条（金属上半截一条长长的横向高光）、
+    #   下后方一条很弱的（0.55 → 0.12：第二轮复审——它在每发弹的下沿掠射出一道亮边，缩小后读成描边）；
+    #   反光另垫一层很淡的底（只给 Glossy 光线 0.03：金属不至于只剩一亮一黑；再高下沿又亮起来）；
+    #   画面上看不见（透明背景）。坐标跟着相机偏航转（同一套光对着镜头）
     w = bpy.data.worlds.new('W')
     s.world = w
     w.use_nodes = True
     nt = w.node_tree
     bg = nt.nodes['Background']
     tc = nt.nodes.new('ShaderNodeTexCoord')
+    mp = nt.nodes.new('ShaderNodeMapping')
+    mp.inputs['Rotation'].default_value = (0, 0, -CAM['yaw'])
+    nt.links.new(tc.outputs['Generated'], mp.inputs['Vector'])
     sep = nt.nodes.new('ShaderNodeSeparateXYZ')
-    ramp = nt.nodes.new('ShaderNodeValToRGB')
-    nt.links.new(tc.outputs['Generated'], sep.inputs[0])
-    nt.links.new(sep.outputs['Z'], ramp.inputs['Fac'])
-    ramp.color_ramp.elements[0].position = 0.35
-    ramp.color_ramp.elements[0].color = (0.035, 0.035, 0.036, 1)
-    ramp.color_ramp.elements[1].position = 0.75
-    ramp.color_ramp.elements[1].color = (0.32, 0.33, 0.34, 1)
-    nt.links.new(ramp.outputs['Color'], bg.inputs['Color'])
-    bg.inputs['Strength'].default_value = float(opt.get('world', 0.3))
+    nt.links.new(mp.outputs['Vector'], sep.inputs[0])
+
+    def node_math(op, a, b=None, clamp=False):
+        n = nt.nodes.new('ShaderNodeMath')
+        n.operation = op
+        n.use_clamp = clamp
+        for i, v in enumerate((a, b)):
+            if v is None:
+                continue
+            if isinstance(v, (int, float)):
+                n.inputs[i].default_value = v
+            else:
+                nt.links.new(v, n.inputs[i])
+        return n.outputs[0]
+
+    def band(comp, c, half, soft):
+        """comp 在 c ± half 里为 1，往外 soft 内平滑落到 0"""
+        d = node_math('ABSOLUTE', node_math('SUBTRACT', comp, c))
+        mr = nt.nodes.new('ShaderNodeMapRange')
+        mr.interpolation_type = 'SMOOTHSTEP'
+        mr.inputs['From Min'].default_value = half + soft
+        mr.inputs['From Max'].default_value = half
+        mr.inputs['To Min'].default_value = 0.0
+        mr.inputs['To Max'].default_value = 1.0
+        nt.links.new(d, mr.inputs['Value'])
+        return mr.outputs['Result']
+
+    def above(comp, lo, soft):
+        mr = nt.nodes.new('ShaderNodeMapRange')
+        mr.interpolation_type = 'SMOOTHSTEP'
+        mr.inputs['From Min'].default_value = lo
+        mr.inputs['From Max'].default_value = lo + soft
+        nt.links.new(comp, mr.inputs['Value'])
+        return mr.outputs['Result']
+    X, Y, Z = sep.outputs['X'], sep.outputs['Y'], sep.outputs['Z']
+    negZ = node_math('MULTIPLY', Z, -1.0)
+    stripA = node_math('MULTIPLY', band(Y, -0.12, 0.16, 0.12), above(Z, 0.35, 0.2))      # 头顶略靠前
+    stripB = node_math('MULTIPLY', band(Y, 0.38, 0.12, 0.12), above(negZ, 0.25, 0.2))    # 下后方
+    amb = node_math('ADD', node_math('MULTIPLY', Z, 0.02), 0.03, clamp=True)             # 很暗的底（上亮一点）
+    strips = node_math('ADD', node_math('MULTIPLY', stripA, float(opt.get('stripA', 1.6))),
+                       node_math('MULTIPLY', stripB, float(opt.get('stripB', 0.12))))
+    # 柔光条主要给反光用（金属上的长高光）：漫反射只拿一成多——不然哑光的药筒、漆面被头顶那一大条照得发白
+    lp = nt.nodes.new('ShaderNodeLightPath')
+    gk = node_math('ADD', node_math('MULTIPLY', lp.outputs['Is Glossy Ray'], 1.0 - float(opt.get('stripDiff', 0.12))), float(opt.get('stripDiff', 0.12)))
+    v = node_math('ADD', node_math('MULTIPLY', strips, gk), amb)
+    v = node_math('ADD', v, node_math('MULTIPLY', lp.outputs['Is Glossy Ray'], float(opt.get('gamb', 0.03))))   # 反光的淡底
+    nt.links.new(v, bg.inputs['Color'])
+    bg.inputs['Strength'].default_value = float(opt.get('world', 1.0))
     return s
 
 
 ################################################################ 材质
-def mat(name, col, metal=0.0, rough=0.5, noise=0.04, fiber=False, bump=0.0):
-    """Principled：col 是 sRGB；noise 颜色 / 粗糙度的细微起伏（不要纯平的塑料感）；fiber 可燃药筒的纤维纹"""
-    if metal >= 0.5 and noise == 0.04:   # 金属：起伏小一点（大了像撒了沙）
-        noise = 0.012
-    key = (name, tuple(col), metal, rough, noise, fiber, bump)
+def mat(name, col, metal=0.0, rough=0.5, noise=0.04, fiber=False, bump=0.0, spec_tint=None):
+    """Principled：col 是 sRGB（非金属在这里降饱和一成）；
+       金属：粗糙度不加细噪声（细噪声在小图上就是一层砂纸），只有顺着弹轴拉长的低频起伏（拉伸痕，Mapping (2, 40, 40)、±0.03）；
+       非金属：noise 颜色 / 粗糙度的细微起伏（不要纯平的塑料感）；
+       fiber 可燃药筒（毡质）：顺着弹轴的纤维纹（Mapping (12, 200, 200)，按 0.12～0.17 像素 / 毫米的渲染精度看得见）+ 大块的污痕"""
+    key = (name, tuple(col), metal, rough, noise, fiber, bump, spec_tint)
     if key in MATS:
         return MATS[key]
     m = bpy.data.materials.new(name)
     m.use_nodes = True
     nt = m.node_tree
     p = nt.nodes['Principled BSDF']
-    base = lin(col)
+    base = lin(col if metal >= 0.5 else desat(col))
     p.inputs['Metallic'].default_value = metal
     p.inputs['Roughness'].default_value = rough
-    if noise > 0 or fiber:
-        tc = nt.nodes.new('ShaderNodeTexCoord')
+    if spec_tint is not None:
+        try:
+            p.inputs['Specular Tint'].default_value = tuple(spec_tint) + (1.0,)
+        except Exception:
+            pass
+    tc = nt.nodes.new('ShaderNodeTexCoord')
+
+    def noise_tex(scale, detail=4.0):
         mp = nt.nodes.new('ShaderNodeMapping')
         nt.links.new(tc.outputs['Object'], mp.inputs['Vector'])
-        mp.inputs['Scale'].default_value = (60, 900, 900) if fiber else (260, 260, 260)   # 纤维纹顺着弹轴拉长
+        mp.inputs['Scale'].default_value = scale
         nz = nt.nodes.new('ShaderNodeTexNoise')
         nz.inputs['Scale'].default_value = 1.0
-        nz.inputs['Detail'].default_value = 6.0
+        nz.inputs['Detail'].default_value = detail
         nt.links.new(mp.outputs['Vector'], nz.inputs['Vector'])
+        return nz.outputs['Fac']
+
+    def color_var(fac, k):
         mix = nt.nodes.new('ShaderNodeMix')
         mix.data_type = 'RGBA'
-        k = noise if noise > 0 else 0.05
         mix.inputs[6].default_value = tuple(max(0, c * (1 - k * 2)) for c in base[:3]) + (1,)
         mix.inputs[7].default_value = tuple(min(1, c * (1 + k * 2)) for c in base[:3]) + (1,)
-        nt.links.new(nz.outputs['Fac'], mix.inputs['Factor'])
-        nt.links.new(mix.outputs[2], p.inputs['Base Color'])
+        nt.links.new(fac, mix.inputs['Factor'])
+        return mix.outputs[2]
+
+    def rough_var(fac, d):
         rr = nt.nodes.new('ShaderNodeMapRange')
-        rr.inputs['To Min'].default_value = max(0.02, rough - 0.08)
-        rr.inputs['To Max'].default_value = min(1.0, rough + 0.08)
-        nt.links.new(nz.outputs['Fac'], rr.inputs['Value'])
+        rr.inputs['To Min'].default_value = max(0.02, rough - d)
+        rr.inputs['To Max'].default_value = min(1.0, rough + d)
+        nt.links.new(fac, rr.inputs['Value'])
         nt.links.new(rr.outputs['Result'], p.inputs['Roughness'])
-        if bump > 0 or fiber:
+
+    if metal >= 0.5:
+        if noise > 0:   # 拉伸痕：顺着弹轴拉长的低频起伏（颜色只动 2%）
+            f = noise_tex((2, 40, 40), 2.0)
+            nt.links.new(color_var(f, 0.02), p.inputs['Base Color'])
+            rough_var(f, 0.03)
+        else:
+            p.inputs['Base Color'].default_value = base
+    elif fiber:
+        f = noise_tex((12, 200, 200), 6.0)    # 纤维：顺着弹轴拉长（沿轴约 80 毫米、横向约 5 毫米一道）
+        stain = noise_tex((5, 14, 14), 3.0)   # 污痕：大块的深浅
+        mx = nt.nodes.new('ShaderNodeMath')
+        mx.operation = 'MULTIPLY_ADD'
+        nt.links.new(f, mx.inputs[0])
+        mx.inputs[1].default_value = 0.45
+        nt.links.new(stain, mx.inputs[2])
+        cm = nt.nodes.new('ShaderNodeMath')   # 两张合起来约 0～1.45：缩回 0～1
+        cm.operation = 'MULTIPLY'
+        cm.use_clamp = True
+        nt.links.new(mx.outputs[0], cm.inputs[0])
+        cm.inputs[1].default_value = 0.69
+        nt.links.new(color_var(cm.outputs[0], max(noise, 0.06)), p.inputs['Base Color'])
+        rough_var(f, 0.04)
+        bp = nt.nodes.new('ShaderNodeBump')
+        bp.inputs['Strength'].default_value = bump if bump > 0 else 0.2
+        bp.inputs['Distance'].default_value = 0.0015
+        nt.links.new(f, bp.inputs['Height'])
+        nt.links.new(bp.outputs['Normal'], p.inputs['Normal'])
+    elif noise > 0:
+        f = noise_tex((260, 260, 260), 6.0)
+        nt.links.new(color_var(f, noise), p.inputs['Base Color'])
+        rough_var(f, 0.06)
+        if bump > 0:
             bp = nt.nodes.new('ShaderNodeBump')
-            bp.inputs['Strength'].default_value = bump if bump > 0 else 0.08
+            bp.inputs['Strength'].default_value = bump
             bp.inputs['Distance'].default_value = 0.0004
-            nt.links.new(nz.outputs['Fac'], bp.inputs['Height'])
+            nt.links.new(f, bp.inputs['Height'])
             nt.links.new(bp.outputs['Normal'], p.inputs['Normal'])
     else:
         p.inputs['Base Color'].default_value = base
@@ -147,53 +274,80 @@ class M:
     """常用材质（颜色照实物照片取，sRGB）"""
 
 
+def oc(key, dflt):
+    """命令行改颜色（试渲用）：key=r,g,b"""
+    return tuple(int(v) for v in opt[key].split(',')) if key in opt else dflt
+
+
+def of(key, dflt):
+    return float(opt[key]) if key in opt else dflt
+
+
 def init_mats():
-    M.black_paint = mat('BlackPaint', (24, 24, 24), rough=0.42)
-    M.black_sabot = mat('BlackSabot', (26, 26, 26), rough=0.35)          # 黑色复合 / 铝弹托（#1A1A1A，不要纯黑）
-    M.us_comb = mat('UsComb', (150, 158, 142), rough=0.85, fiber=True)   # 美 120 可燃药筒：浅灰略带青绿、哑光纸感
-    M.tan_comb = mat('TanComb', (160, 140, 100), rough=0.85, fiber=True) # 152 毫米可燃药筒：土黄
-    M.seal = mat('Seal', (226, 226, 214), rough=0.6, noise=0.02)          # 药筒口白色密封环
+    # 颜色、粗糙度：11-27 美术审查两轮给的值（每条后面注了原来的）
+    M.black_paint = mat('BlackPaint', (24, 24, 24), rough=of('blackr', 0.6))    # 原 0.42：上下沿的掠射反光太集中（读成描边）
+    M.black_sabot = mat('BlackSabot', (26, 26, 26), rough=of('sabotr', 0.55))   # 黑色复合 / 铝弹托（#1A1A1A，不要纯黑；原 0.35）
+    M.us_comb = mat('UsComb', (118, 122, 106), rough=0.9, fiber=True, bump=0.2)   # 美 120 可燃药筒：哑光、毡质、中等明度（原 150,158,142 亮成白雾）
+    M.tan_comb = mat('TanComb', (150, 132, 96), rough=0.9, fiber=True, bump=0.25)  # 152 毫米可燃药筒：土黄（原来太平：加纤维纹）
+    M.seal = mat('Seal', oc('seal', (148, 144, 126)), rough=0.7, noise=0.02)   # 药筒口密封环：灰象牙（原 226,226,214 → 186,180,160 还是整发最亮的一块，
+    #   四个 120 格左边排成一列浅色竖条，正好在键位框下面）
     M.rubber = mat('Rubber', (16, 16, 16), rough=0.75)
     M.stub = mat('Stub', (116, 104, 74), metal=1.0, rough=0.55)          # 钢底座：暗青铜 / 橄榄灰的磷化钢
     M.du = mat('DU', (66, 68, 70), metal=0.85, rough=0.45)               # 贫铀杆：深灰近黑
     M.wha = mat('WHA', (150, 152, 156), metal=1.0, rough=0.35)           # 钨合金杆：钢灰
-    M.steel = mat('Steel', (196, 198, 202), metal=1.0, rough=0.24)      # 钢尖、亮钢件
+    M.steel = mat('Steel', (196, 198, 202), metal=1.0, rough=0.26)      # 钢尖、亮钢件
     M.steel_dk = mat('SteelDk', (120, 122, 126), metal=1.0, rough=0.38)  # 探针、开关
+    # 125 破甲弹的尾管、尾翼：缎面暗钢，金属感压到三成半（原来共用亮钢 → 镜面线轴；第一轮 0.8 / 0.5 还是 168 / 8 的黑亮线轴）
+    M.tail = mat('Tail', oc('tailc', (78, 82, 76)), metal=of('tailm', 0.35), rough=of('tailr', 0.62))
     M.alu = mat('Alu', (208, 208, 212), metal=1.0, rough=0.3)
+    # PGU-14 铝药筒：平整的哑光银灰（第一轮 176,178,180 / 0.42 还是 214 / 54 / 228 的镀铬亮暗条）；也是 125 裸弹丸的铝弹托
+    M.alu_matte = mat('AluMatte', oc('aluc', (160, 162, 164)), metal=1.0, rough=of('alur', 0.55), noise=0)
     M.gold = mat('Gold', (214, 172, 80), metal=1.0, rough=0.25)
     M.copper = mat('Copper', (190, 116, 76), metal=1.0, rough=0.3)       # 铜弹带
-    M.gilding = mat('Gilding', (204, 132, 90), metal=1.0, rough=0.26)    # 枪弹的铜被甲
-    M.brass = mat('Brass', (214, 178, 102), metal=1.0, rough=0.3)
+    M.gilding = mat('Gilding', (186, 112, 74), metal=1.0, rough=0.30)    # 枪弹的铜被甲（原 204,132,90 / 0.26）
+    M.brass = mat('Brass', oc('brassc', (206, 168, 96)), metal=1.0, rough=of('brassr', 0.32))   # 黄铜（原 0.24：顶上白、下半截黑的「黑金」）
+    M.link = mat('Link', (58, 60, 56), metal=0.7, rough=0.55)            # 弹链链节：磷化钢
     M.od = mat('OD', (88, 92, 58), rough=0.55)                           # 美军橄榄绿漆
     M.yellow = mat('Yellow', (232, 190, 40), rough=0.5, noise=0.01)
     M.yellow_body = mat('YellowBody', (196, 160, 48), rough=0.45)        # 黄色弹体（机炮榴弹）
-    M.white = mat('White', (232, 232, 226), rough=0.55, noise=0.01)
-    M.lt_green = mat('LtGreen', (140, 190, 110), rough=0.5, noise=0.01)  # 发烟弹的浅绿环
+    M.white = mat('White', (226, 226, 218), rough=0.55, noise=0.01)
+    M.lt_green = mat('LtGreen', (118, 150, 100), rough=0.5, noise=0.01)  # 发烟弹的浅绿环（原 140,190,110：工具组里最艳）
     M.ru_grey = mat('RuGrey', (150, 160, 160), rough=0.5)                # 苏 / 俄弹丸：浅灰
-    M.ru_gg = mat('RuGG', (88, 102, 90), rough=0.5)                    # 灰绿
+    M.ru_grey2 = mat('RuGrey2', (124, 132, 130), rough=0.38)             # 3OF32（BMP-3）：灰漆带一点光泽（原来同浅灰，像瓷器）
+    M.ru_gg = mat('RuGG', (88, 102, 90), rough=0.5)                      # 灰绿
     M.ru_dkgrey = mat('RuDkGrey', (92, 100, 100), rough=0.5)
-    M.ru_brown = mat('RuBrown', (152, 78, 34), rough=0.5, fiber=True)    # 125 毫米可燃筒：橙褐
-    M.ru_tan = mat('RuTan', (176, 120, 72), rough=0.6, fiber=True)       # 老一点的可燃筒：浅褐
-    M.ru_sabot = mat('RuSabot', (192, 196, 196), rough=0.42)             # 浅灰漆的铝弹托
+    M.ru_brown = mat('RuBrown', (112, 74, 46), rough=0.9, fiber=True, bump=0.25)   # 125 可燃筒：棕（原 152,78,34 像橙色塑料管）
+    M.ru_tan = mat('RuTan', (146, 116, 80), rough=0.9, fiber=True, bump=0.25)      # 老一点的可燃筒：浅褐（原 176,120,72）
+    M.ru_sabot = mat('RuSabot', (192, 196, 196), rough=0.42)             # 浅灰漆的铝弹托（只有装填形态那几张还用）
+    M.ru_sabot2 = mat('RuSabot2', (162, 168, 170), rough=0.5)            # 3BM60 的浅灰漆多瓣弹托（压一档：不当整张最亮的一块）
     M.ru_rod = mat('RuRod', (128, 138, 142), rough=0.45)                 # 灰漆钢套杆
-    M.anod = mat('Anod', (168, 178, 156), metal=1.0, rough=0.35)         # 阳极氧化尾管：浅绿金属色
-    M.redbrown = mat('RedBrown', (150, 70, 40), rough=0.5)               # 尾翼
-    M.obtur = mat('Obtur', (176, 88, 42), rough=0.42)                    # 橙褐塑料闭气环
+    M.ru_slate = mat('RuSlate', (116, 128, 136), rough=0.45)             # 3BM42 / 3BM60 杆、尾翼：石板蓝灰漆（2022 军队展 BM44、美军手册照片）
+    M.cream = mat('Cream', (176, 160, 126), rough=0.6)                   # 3BM42 弹托后段的乳白塑料锥（美军手册照片）
+    M.obt_blk = mat('ObtBlk', (20, 20, 20), rough=0.62)                  # 弹托上的黑色闭气带
+    M.anod = mat('Anod', (116, 124, 106), metal=1.0, rough=0.55)         # 阳极氧化尾管：缎面（原 168,178,156 / 0.35 是镜面）
+    M.redbrown = mat('RedBrown', (110, 62, 40), rough=0.6)               # 尾翼、后环（原 150,70,40）
+    M.obtur = mat('Obtur', (122, 74, 46), rough=0.65)                    # 塑料闭气环：哑光（原 176,88,42 / 0.42 像一枚铜币）
     M.ru_case = mat('RuCase', (112, 118, 96), metal=0.6, rough=0.42)     # 苏式钢药筒：灰绿漆
-    M.us_case = mat('UsCase', (108, 104, 86), metal=0.85, rough=0.5)     # 美 105 钢药筒：磷化灰橄榄
+    M.us_case = mat('UsCase', (102, 102, 90), metal=0.85, rough=of('uscaser', 0.42))   # 美 105 钢药筒：磷化灰橄榄（0.5 像哑光塑料、0.35 上沿一道亮线；原色偏黄像黄铜）
     M.missile = mat('Missile', (112, 108, 72), rough=0.5)                # 导弹：橄榄 / 卡其
     M.missile_nose = mat('MissileNose', (84, 82, 52), rough=0.45)
-    M.mgreen = mat('MGreen', (74, 92, 62), rough=0.5)                    # 苏式导弹的绿
+    M.mgreen = mat('MGreen', (74, 92, 62), rough=0.4)                    # 苏式导弹的绿（原 0.5：通体平涂像塑料模型）
     M.band_black = mat('BandBlack', (22, 22, 22), rough=0.5, noise=0.01)
-    M.band_purple = mat('BandPurple', (112, 64, 140), rough=0.5, noise=0.01)
-    M.band_green = mat('BandGreen', (44, 124, 64), rough=0.5, noise=0.01)
-    M.band_red = mat('BandRed', (176, 42, 36), rough=0.5, noise=0.01)
+    M.band_purple = mat('BandPurple', (92, 72, 108), rough=0.6, noise=0.06)   # 色环降饱和 + 起伏（原 112,64,140 像糖纸）
+    M.band_green = mat('BandGreen', (66, 98, 70), rough=0.6, noise=0.06)      # 原 44,124,64
+    M.band_red = mat('BandRed', (132, 54, 44), rough=0.6, noise=0.06)         # 原 176,42,36
+    M.band_white = mat('BandWhite', (206, 204, 192), rough=0.65, noise=0.06)  # 可燃筒上的白环
     M.red_tip = mat('RedTip', (190, 46, 34), rough=0.45, noise=0.01)
+    M.orange_tip = mat('OrangeTip', (214, 96, 36), rough=0.45, noise=0.01)   # M62 曳光弹（7.62）的橙尖
+    M.violet_tip = mat('VioletTip', (112, 60, 132), rough=0.45, noise=0.01)  # БЗТ-44 穿甲燃烧曳光弹（14.5）的紫尖
     M.glass = mat('Glass', (20, 30, 34), rough=0.04, noise=0)
-    M.red_paint = mat('RedPaint', (176, 30, 26), rough=0.35)
-    M.chrome = mat('Chrome', (222, 224, 228), metal=1.0, rough=0.16)
-    M.satin = mat('Satin', (206, 208, 212), metal=1.0, rough=0.36)       # 工具钢（缎面）
+    M.coated = mat('Coated', (26, 22, 40), rough=0.05, noise=0, spec_tint=(0.75, 0.55, 1.0))   # 镀膜物镜：带一点紫的反光
+    M.red_paint = mat('RedPaint', (150, 40, 34), rough=0.5)              # 灭火器（原 176,30,26 / 0.35 正红）
+    M.chrome = mat('Chrome', (222, 224, 228), metal=1.0, rough=0.2)
+    M.forged = mat('Forged', (140, 142, 146), metal=1.0, rough=0.45)     # 扳手：哑光锻钢（原来亮镀铬）
+    M.grip_od = mat('GripOD', (74, 82, 56), rough=0.7)                   # 扳手柄上的橄榄绿浸塑
     M.plastic_blk = mat('PlasticBlk', (30, 30, 30), rough=0.45)
+    M.handset = mat('Handset', oc('handc', (46, 46, 46)), rough=0.45)   # 电台话筒的黑塑料：比 PlasticBlk 亮一档（暗底上一团黑认不出；9M119 的黑翼不跟着变）
     M.rubber_od = mat('RubberOD', (62, 68, 50), rough=0.72)              # 望远镜、测距仪的橄榄色橡胶
     M.cn_olive = mat('CnOlive', (96, 104, 74), rough=0.5)                # 中国弹丸：橄榄灰（没查到实物彩照，△）
     M.label = mat('Label', (210, 208, 196), rough=0.6, noise=0.02)
@@ -419,7 +573,10 @@ def font():
 
 def stencil(txt, x, r, h, m, ang=0.0, narrow=0.82, spacing=1.15):
     """模板字：照实物「绕着弹体一圈写」（弹立起来时字是横的）——横放、弹头朝右时字竖着、从上往下读，字头朝弹头。
-       x = 这几行字的中心在弹轴上的位置，r 弹体半径，h 字高（毫米，约 0.1 倍口径），ang 字中心在圆周上的角度（0 朝镜头）"""
+       x = 这几行字的中心在弹轴上的位置，r 弹体半径，h 字高（毫米，约 0.1 倍口径），ang 字中心在圆周上的角度（0 朝镜头）
+       图标版只写一行型号（11-27 美术审查：小号的几行字缩到 1 倍只剩 2～3 像素的脏点），口径定了比例的，字高至少是 2 倍图上 5 像素"""
+    if CUR['k']:
+        h = max(h, 5.2 / (2 * CUR['k']))
     cu = bpy.data.curves.new('T', 'FONT')
     cu.body = txt
     f = font()
@@ -435,7 +592,7 @@ def stencil(txt, x, r, h, m, ang=0.0, narrow=0.82, spacing=1.15):
     me = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
     bpy.data.objects.remove(ob)
     rr = r + 0.3
-    a_c = ELEV + math.radians(ang)
+    a_c = CAM['elev'] + math.radians(ang)
     for v in me.vertices:
         tx, ty = v.co.x / MM * narrow, v.co.y / MM   # 字的横（沿圆周往下）、竖（朝弹头）
         a = a_c - tx / rr
@@ -546,11 +703,14 @@ def heat_spike(mouth, r_body, body_x1, spike_x0, spike_r, spike_x1, nose, m_body
 ITEMS = {}
 
 
-def item(name, fam=None, kind='ammo', case=None, nose=None, full=None, vis=None, dia=None):
+def item(name, fam=None, kind='ammo', case=None, nose=None, full=None, vis=None, dia=None, hmax=None, noscale=False, extra=False):
     """登记一发：fam 口径（同一口径一个比例尺）；case 药筒长、nose 弹尖 x（毫米，带药筒的）；full 不带药筒的整发长；
-       vis 不归口径的：只画前面这么长（毫米，太长的导弹 / 火箭），不给就整个塞进框；dia 最粗的地方（毫米，比例尺还要让它竖着放得下）"""
+       vis 不归口径的：只画前面这么长（毫米，太长的导弹 / 火箭），不给就整个塞进框；dia 最粗的地方（毫米，比例尺还要让它竖着放得下）；
+       hmax 按框塞满的最高几像素（弹链、机炮弹：比主炮弹种图小一号）；
+       noscale 这一发不参与定口径比例（太长的：按口径比例放不下就自己缩一点塞进框——尾翼不能切）；
+       extra 平时不渲、不打包（only= 点名才渲）：125 穿甲弹的装填形态（棕色可燃筒），留给以后配弹界面的大图"""
     def deco(fn):
-        ITEMS[name] = dict(fn=fn, fam=fam, kind=kind, case=case, nose=nose, full=full, vis=vis, dia=dia)
+        ITEMS[name] = dict(fn=fn, fam=fam, kind=kind, case=case, nose=nose, full=full, vis=vis, dia=dia, hmax=hmax, noscale=noscale, extra=extra)
         return fn
     return deco
 
@@ -566,7 +726,7 @@ def _():   # 诺格资料：全长 982，弹丸 924；黑色线轴形复合弹�
 def _():   # FAS 剖面图：近全口径黑弹体、卵形头、细长钢探针 + 碰炸开关；黑底黄字
     case_us120()
     heat_spike(570, 58.5, 700, 790, 11.5, 952, 982, M.black_paint, 120)
-    stencil('120MM HEAT-MP-T\nM830', 640, 58.5, 9, M.yellow)
+    stencil('M830', 640, 58.5, 16, M.yellow)
 
 
 @item('m830a1', fam='120', case=570, nose=981)
@@ -581,7 +741,7 @@ def _():   # 诺格资料：全长 981；黑色三瓣铝弹托（前端台阶）
     lathe([(935, 13), (941, 11.8)], M.steel, name='ring2')
     lathe([(941, 11.8), (962, 6.5)], M.black_paint, name='cone3')
     lathe([(962, 6.5), (976, 2.5), (981, 0)], M.gold, name='tip')
-    stencil('MPAT\nM830A1', 640, 50, 8, M.yellow)
+    stencil('M830A1', 640, 50, 16, M.yellow)
 
 
 @item('m1028', fam='120', case=570, nose=780)
@@ -591,8 +751,7 @@ def _():   # GD-OTS：全长 780；橄榄绿平头霰弹罐 + 白字，罐尾白
     lathe([(558, 62.6), (568, 62.6)], M.white, name='obt')
     lathe([(568, 61.2), (580, 61.2)], M.stub, name='bronze')
     lathe([(580, 59.6), (774, 59.6), (777, 58.6), (780, 56), (780, 0)], M.od, name='can')
-    stencil('CARTRIDGE, 120MM:\nCanister, M1028', 722, 59.6, 7.5, M.white, spacing=1.25)
-    stencil('FB005840C-001', 632, 59.6, 6.0, M.white)
+    stencil('M1028', 690, 59.6, 16, M.white)   # 实物是两行「CARTRIDGE, 120MM: / Canister, M1028」：图标版只留型号
 
 
 @item('jet120', fam='120', case=570, nose=990)
@@ -604,7 +763,7 @@ def _():   # 「金属射流弹」（游戏里的串联破甲弹）：M830 式�
     lathe([(800, 15), (900, 14.5)], M.steel_dk, name='probe')
     lathe([(900, 20), (904, 24), (944, 24), (950, 20), (952, 12)], M.black_paint, name='pre')   # 前级装药
     lathe([(950, 12), (972, 11), (972, 15), (980, 15), (985, 9), (990, 0)], M.steel, name='fz')
-    stencil('120MM\nHEAT-T', 640, 58.5, 9, M.yellow)
+    stencil('HEAT-T', 640, 58.5, 16, M.yellow)
 
 
 @item('dm53', fam='120', case=570, nose=990)
@@ -623,7 +782,7 @@ def _():   # 豹 2A4：钨合金杆比 DM53 短粗（△）
 def _():   # DM12：M830 就是照它造的，外形相同；黑色系（没找到德军实物彩照，△）
     case_us120()
     heat_spike(570, 58.5, 700, 790, 11.5, 952, 982, M.black_paint, 120)
-    stencil('DM12', 640, 58.5, 9, M.yellow)
+    stencil('DM12', 640, 58.5, 16, M.yellow)
 
 
 # ======== 北约 105 毫米（M68 / L7）：整装弹，美军 M148 钢药筒（灰橄榄磷化），德军黄铜药筒（△）
@@ -631,14 +790,14 @@ def _():   # DM12：M830 就是照它造的，外形相同；黑色系（没找�
 def _():   # bulletpicker：「round is black with white markings」；三瓣铝弹托、钢定心环三道剪切槽、尼龙闭气带、贫铀杆钢尖
     case_105(M.us_case)
     apfsds_105(M.du, 1003)
-    stencil('M900', 660, 52, 8, M.white)
+    stencil('M900', 660, 52, 15, M.white)
 
 
 @item('m833', fam='105', case=617, nose=955)
 def _():   # M60A3：贫铀杆，比 M900 短（按同族，△）
     case_105(M.us_case)
     apfsds_105(M.du, 955, ring_x=690)
-    stencil('M833', 655, 52, 8, M.white)
+    stencil('M833', 655, 52, 15, M.white)
 
 
 @item('m392', fam='105', case=617, nose=862)
@@ -652,7 +811,7 @@ def _():   # GD-OTS M456A2：全长 1005.8；近全口径黑弹体、细长探�
     case_105(M.us_case)
     band(622, 636, 52.4, M.seal, lift=0.3)
     heat_spike(617, 52.4, 690, 788, 10.5, 975, 1006, M.black_paint, 105)
-    stencil('105MM HEAT-T\nM456A2', 662, 52.4, 8.5, M.yellow)
+    stencil('M456A2', 662, 52.4, 15, M.yellow)
 
 
 @item('jet105', fam='105', case=617, nose=1010)
@@ -664,7 +823,7 @@ def _():   # 「金属射流弹」105：M456 式 + 带前级装药的粗探针�
     lathe([(788, 14), (900, 13.5)], M.steel_dk, name='probe')
     lathe([(900, 18), (904, 21), (946, 21), (952, 16), (954, 11)], M.black_paint, name='pre')
     lathe([(952, 11), (990, 10), (990, 14), (998, 14), (1004, 8), (1010, 0)], M.steel, name='fz')
-    stencil('105MM\nHEAT-T', 662, 52.4, 8.5, M.yellow)
+    stencil('HEAT-T', 662, 52.4, 15, M.yellow)
 
 
 @item('dm13', fam='105', case=617, nose=870)
@@ -677,7 +836,7 @@ def _():   # 豹 1：DM13 脱壳穿甲弹（L52 那一族），黄铜药筒（�
 def _():   # 豹 1A5：DM33（105）尾翼稳定脱壳穿甲弹，钨合金杆，黄铜药筒（△）
     case_105(M.brass)
     apfsds_105(M.wha, 995, ring_x=698, rod_r=12)
-    stencil('DM33', 660, 52, 8, M.white)
+    stencil('DM33', 660, 52, 15, M.white)
 
 
 @item('dm12h', fam='105', case=617, nose=1006)
@@ -685,30 +844,117 @@ def _():   # 豹 1：DM12（105）破甲弹 = M456 的许可生产型，外形�
     case_105(M.brass)
     band(622, 636, 52.4, M.seal, lift=0.3)
     heat_spike(617, 52.4, 690, 788, 10.5, 975, 1006, M.black_paint, 105)
-    stencil('DM12', 662, 52.4, 8.5, M.yellow)
+    stencil('DM12', 662, 52.4, 15, M.yellow)
 
 
-# ======== 苏 / 俄 / 中 125 毫米（分装：只画弹丸；穿甲弹画装在棕色可燃筒里的样子）
-@item('bm42', fam='125', full=621)
+# ======== 苏 / 俄 / 中 125 毫米（分装：只画弹丸）
+#   穿甲弹画裸弹丸（11-27 美术审查第二轮：装填形态「棕色可燃筒里只露出弹托前缘和长杆」缩到 16 × 70 像素正好是注射器的轮廓，
+#   浅灰弹托就是注射器的接头——规范本来就留了「认不出就退回画裸弹丸」）：长杆 + 弹托 + 尾翼，一眼就是尾翼稳定脱壳穿甲弹，
+#   和旁边的 M829A3 读成同一类。装填形态那几张留着（*_lf，extra：平时不渲、不打包），以后配弹界面的大图用
+def fins_swept(x_le, x_tip0, x_tip1, r_root, r_tip, t, m, n=5, rot0=0.0):
+    """后掠尾翼（翼平面里 x 沿弹轴、r 径向）：根弦 0～x_le 贴着杆，前缘从 (x_le, 根) 斜到 (x_tip1, 翼尖)，翼尖弦 x_tip0～x_tip1，后缘竖回根部"""
+    return fins(n, [(0, r_root), (x_le, r_root), (x_tip1, r_tip), (x_tip0, r_tip)], t, m, rot0=rot0)
+
+
+@item('bm42', fam='125', full=570)
+def _():   # 3BM42「芒果」裸弹丸（美军手册照片：全长 569.62、弹托 Ø129.06、弹尖到弹托前端 193.42；2022 军队展 BM44：杆是石板蓝灰漆）：
+    #   钢套长杆 + 暗钢风帽；环形铝弹托——前段银灰（三瓣、三道缝），中间一道黑闭气带，后面收细一段黑的、再接一个乳白塑料锥；
+    #   五片全口径后掠尾翼（同族 3BM15 图纸：72° 间隔、翼展 Ø125），同杆一个颜色
+    lathe([(0, 12.6), (218, 14.6), (374, 15.0), (512, 14.2)], M.ru_slate, name='rod')
+    lathe([(374, 18.2), (396, 16.4), (424, 14.6)], M.ru_slate, name='collar')   # 弹托前面杆略粗的一段（照片上看得出）
+    lathe([(510, 14.2), (520, 13.4), (546, 8.0), (563, 3.0), (568, 1.1), (570, 0)], M.steel_dk, name='cap')
+    prof = [(311, 63.6), (366, 63.6), (370, 63.0), (373, 61.4), (374, 58.5), (374, 18)]
+    lathe(prof, M.alu_matte, name='sabot')
+    seams(prof[:4], (35.0, 155.0, 275.0), M.band_black, w=1.4)
+    lathe([(283, 64.3), (311, 64.3)], M.obt_blk, name='obt')               # 闭气带 Ø128.6
+    lathe([(248, 36.5), (283, 42.5), (283, 64.0)], M.obt_blk, name='rear')  # 收细的一段（黑）
+    lathe([(216, 15.5), (220, 24), (248, 35)], M.cream, name='cone')         # 乳白塑料锥
+    fins_swept(102, 4, 38, 12.0, 62.0, 3.5, M.ru_slate)
+
+
+@item('bm60', fam='125', full=735, noscale=True)
+def _():   # 3BM60「铅-2」（3VBM23）裸弹丸（△：只有文字资料——钨合金长杆、铝合金多瓣弹托）：弹托照 2022 军队展同代的 BM66
+    #   （浅灰漆，前端一圈宽「杯口」、中间细腰、后面喇叭口 + 闭气带，四瓣），杆近尖处几道环槽；六片小翼展的尾翼（△）。
+    #   比 9M119（695）还长：按口径比例放不下，它自己缩一点塞进框（尾翼不能切，见 render）
+    lathe([(0, 10.2), (700, 11.2)], M.ru_slate, name='rod')
+    for x in (682, 690):   # 环槽
+        band(x, x + 3, 11.2, M.band_black, lift=0.1)
+    tip(700, 735, 11.2, M.steel_dk)
+    prof = [(292, 14), (298, 34), (308, 54), (318, 61.5), (330, 62.6), (348, 62.6), (356, 58), (372, 50), (400, 45.5), (430, 44.5),
+            (452, 46.5), (468, 52), (476, 58), (482, 60.5), (500, 61), (503, 59.5), (505, 52), (508, 36), (511, 20), (513, 13)]
+    lathe(prof, M.ru_sabot2, name='sabot')   # 细腰不要掐太狠（掐深了像一根狗骨头）
+    seams(prof[1:-3], (45.0, 135.0, 225.0, 315.0), M.band_black, w=1.6)
+    lathe([(332, 64.0), (344, 64.0)], M.obt_blk, name='obt')
+    fins_swept(88, 2, 30, 9.5, 46.0, 3.0, M.ru_slate, n=6)
+
+
+@item('bm22', fam='125', full=560)
+def _():   # 3BM22「别针」裸弹丸（△：同 3BM15 一族——钢弹体 + 碳化钨芯、短铝弹托、细长尾杆、五片全口径尾翼；弹托前面一段灰绿锥面
+    #   （乌克兰识别手册照片：装填形态露出的就是这段锥面 + 弹头），弹体比 3BM15 细长；灰绿漆、黑字）
+    body = M.ru_gg
+    lathe([(0, 12.2), (8, 13.4), (100, 13.8), (318, 17.0)], body, name='boom')
+    lathe([(318, 62.6), (352, 62.6), (353, 60)], M.alu_matte, name='sabot')
+    seams([(318, 62.6), (352, 62.6)], (20.0, 140.0, 260.0), M.band_black, w=1.4)
+    lathe([(328, 64.1), (338, 64.1)], M.obt_blk, name='obt')
+    lathe([(352, 61), (360, 58), (404, 26), (410, 19.5)], body, name='ramp')   # 弹托前端的锥面
+    lathe([(408, 19), (462, 18.4), (470, 17.6)], body, name='body')
+    band(450, 454, 18.5, M.band_black, lift=0.1)
+    lathe([(470, 17.6), (500, 12.8), (502, 12.2)], body, name='nose')
+    lathe([(502, 12), (540, 5.2), (556, 1.6), (560, 0)], M.steel_dk, name='cap')
+    stencil('БМ22', 428, 18.6, 20, M.band_black)
+    fins_swept(100, 0, 24, 12.0, 62.6, 3.5, body)
+
+
+@item('bm15', fam='125', full=547)
+def _():   # 3BM15 裸弹丸（БМ-15 图纸：全长 547.38，弹托 Ø125.18、闭气带 Ø128.15，尾翼翼展 Ø125.18、五片 72°、前缘后掠 37°）：
+    #   钢弹体（前部内有碳化钨芯）+ 长锥形头、风帽（Ø27.45 处一道接缝）；短的三瓣铝弹托，前端一圈齿；弹体根部 43° 喇叭口；
+    #   细长尾杆（Ø35.65 → 27.94）；灰漆（乌克兰识别手册照片：露出的弹头浅灰）、黑字「БМ-15」
+    body = M.ru_grey
+    lathe([(0, 12.2), (8, 13.6), (98, 14.0), (325, 17.8)], body, name='boom')
+    prof = [(325, 62.6), (358, 62.6), (359, 61.0), (359, 50.0)]
+    lathe(prof, M.alu_matte, name='sabot')
+    lathe([(335, 64.1), (344, 64.1)], M.obt_blk, name='obt')
+    for i in range(9):     # 前端一圈齿（三瓣、每瓣三个）
+        a = i * 40.0 + 8
+        sleeve(358.5, 378, 50, 62.0, a, a + 24, M.alu_matte, name='tooth')
+    seams(prof[:2], (20.0, 140.0, 260.0), M.band_black, w=1.4)
+    lathe([(358, 34), (379, 31.5), (392, 21.2)], body, name='flare')
+    lathe([(392, 21.2), (444, 20.9), (478, 13.9)], body, name='body')
+    lathe([(478, 13.7), (482, 12.4), (541, 3.8), (544.5, 2.6), (547, 0)], M.steel_dk, name='cap')
+    stencil('БМ15', 418, 21.0, 20, M.band_black)
+    fins_swept(98, 0, 21, 12.0, 62.6, 3.5, body)
+
+
+@item('dtc10', fam='125', full=640)
+def _():   # DTC10-125（99A）裸弹丸（△：外形、颜色都没查到实物——按同代长杆穿甲弹画）：钨合金长杆 + 钢尖、前后两段锥面的三瓣铝弹托
+    #   （中间一道黑闭气带）、六片小翼展的后掠尾翼
+    lathe([(0, 11.6), (606, 12.5)], M.wha, name='rod')
+    tip(606, 640, 12.5, M.steel)
+    prof = [(250, 15), (262, 30), (290, 56), (300, 62.6), (392, 62.6), (402, 58), (450, 24), (462, 15)]
+    lathe(prof, M.alu_matte, name='sabot')
+    seams(prof[1:-1], (20.0, 140.0, 260.0), M.band_black, w=1.4)
+    lathe([(330, 64.0), (346, 64.0)], M.obt_blk, name='obt')
+    fins_swept(96, 2, 30, 11.0, 48.0, 3.0, M.steel_dk, n=6)
+
+
+# ---- 装填形态（extra：平时不渲、不打包；only=bm42_lf 这样点名才渲）——棕色可燃筒里露出弹托前缘和长杆，留给配弹界面的大图
+@item('bm42_lf', fam='125', full=621, extra=True)
 def _():   # 3BM42「芒果」（BM44 装填组件，621）：棕色可燃筒（白、绿色环，黑字「БМ44 125-Д-81」），露出灰色弹托前缘和钢套长杆
     lathe([(0, 0), (0, 58), (3, 62.5), (390, 62.5), (390, 40)], M.ru_brown, name='case')
     band(52, 80, 62.5, M.band_green)
-    band(96, 108, 62.5, M.white)
-    stencil('БМ44\n125-Д-81', 250, 62.5, 12, M.band_black, spacing=1.2)
+    band(96, 108, 62.5, M.band_white)
+    stencil('БМ44', 250, 62.5, 20, M.band_black)   # 实物还有一行「125-Д-81」：图标版只留型号
     lathe([(390, 62.9), (399, 62.9), (399, 45)], M.band_black, name='obt')
     lathe([(399, 63.6), (438, 63.6), (440, 61), (444, 46), (450, 27), (455, 17)], M.ru_sabot, name='sabot')
     seams([(399, 63.6), (438, 63.6), (440, 61), (444, 46)], (35.0, 155.0, 275.0), M.band_black, w=1.4)
     lathe([(454, 13.5), (588, 13.5)], M.ru_rod, name='rod')
     tip(588, 621, 13.5, M.ru_rod)
-    stencil('125', 530, 13.5, 8, M.band_black)
 
 
-@item('bm60', fam='125', full=735)
-def _():   # 3BM60「铅-2」（3VBM23，735）：按同代展品画（△）——棕色可燃筒（紫环），露出大号多瓣浅灰弹托、细长弹头，弹头上黑字「125」
+@item('bm60_lf', fam='125', full=735, noscale=True, extra=True)
+def _():   # 3BM60「铅-2」（3VBM23，735）装填形态（△）：棕色可燃筒（素筒：筒上的色环、字查不到实物照片），露出大号多瓣浅灰弹托、细长弹头
     lathe([(0, 0), (0, 58), (3, 62.5), (378, 62.5), (378, 40)], M.ru_brown, name='case')
-    band(60, 90, 62.5, M.band_purple)
-    stencil('125-2А46М', 225, 62.5, 11, M.band_black)
-    lathe([(378, 62.9), (394, 62.9), (394, 45)], M.white, name='wb')
+    lathe([(378, 62.9), (394, 62.9), (394, 45)], M.band_white, name='wb')
     lathe([(394, 62.9), (410, 62.9), (410, 45)], M.band_black, name='bb')
     prof = [(410, 63.5), (448, 63.5), (454, 52), (468, 39), (520, 36), (545, 40), (565, 48), (580, 54), (588, 54.5), (590, 48), (593, 30), (596, 17)]
     lathe(prof, M.ru_sabot, name='sabot')
@@ -716,33 +962,32 @@ def _():   # 3BM60「铅-2」（3VBM23，735）：按同代展品画（△）—
     lathe([(595, 16), (603, 15), (603, 12)], M.ru_sabot, name='collar')
     lathe([(602, 11.8), (712, 11.2)], M.ru_sabot, name='rod')
     tip(712, 735, 11.2, M.ru_sabot)
-    stencil('125', 655, 11.8, 8, M.band_black)
 
 
-@item('bm22', fam='125', full=610)
+@item('bm22_lf', fam='125', full=610, extra=True)
 def _():   # 3BM22「别针」（BM23 装填组件，610）：浅褐可燃筒、红环、黑字「БМ23 125-Д-81」；灰绿锥形弹托前缘 + 弹头（乌克兰识别手册照片）
     lathe([(0, 0), (0, 58), (3, 62.5), (440, 62.5), (440, 40)], M.ru_tan, name='case')
     band(18, 62, 62.5, M.band_red)
-    stencil('БМ23\n125-Д-81', 270, 62.5, 12, M.band_black, spacing=1.2)
+    stencil('БМ23', 270, 62.5, 20, M.band_black)
     lathe([(440, 61), (448, 59), (500, 24), (506, 20)], M.ru_gg, name='sabot')
     lathe([(505, 17), (556, 16.2)], M.ru_gg, name='body')
     lathe([(556, 16.2), (580, 12.5), (600, 5), (610, 0)], M.ru_gg, name='nose')
 
 
-@item('bm15', fam='125', full=600)
-def _():   # 3BM15（BM18 装填组件）：钢弹体 + 碳化钨芯；褐色可燃筒、红色标记（乌克兰识别手册照片），灰色弹头
+@item('bm15_lf', fam='125', full=600, extra=True)
+def _():   # 3BM15（BM18 装填组件）：褐色可燃筒、红色标记（乌克兰识别手册照片），灰色弹头
     lathe([(0, 0), (0, 58), (3, 62.5), (430, 62.5), (430, 40)], M.ru_brown, name='case')
     band(20, 58, 62.5, M.band_red)
-    stencil('БМ18\n125-Д-81', 265, 62.5, 12, M.band_black, spacing=1.2)
+    stencil('БМ18', 265, 62.5, 20, M.band_black)
     lathe([(430, 61), (438, 58), (478, 30), (486, 22)], M.ru_grey, name='sabot')
     lathe([(485, 19), (552, 18)], M.ru_grey, name='body')
     lathe([(552, 18), (575, 13), (592, 5), (600, 0)], M.ru_grey, name='nose')
 
 
-@item('dtc10', fam='125', full=640)
-def _():   # DTC10-125（99A）：外形照苏式 125 穿甲弹的装填形态，颜色没查到（△）——浅褐可燃筒、白环，灰弹托前缘、深灰钨合金杆
+@item('dtc10_lf', fam='125', full=640, extra=True)
+def _():   # DTC10-125 装填形态（△）：浅褐可燃筒、白环，灰弹托前缘、深灰钨合金杆
     lathe([(0, 0), (0, 58), (3, 62.5), (402, 62.5), (402, 40)], M.ru_tan, name='case')
-    band(70, 86, 62.5, M.white)
+    band(70, 86, 62.5, M.band_white)
     lathe([(402, 62.9), (411, 62.9), (411, 45)], M.band_black, name='obt')
     lathe([(411, 63.6), (446, 63.6), (448, 61), (452, 46), (458, 27), (463, 16)], M.ru_sabot, name='sabot')
     seams([(411, 63.6), (446, 63.6), (448, 61), (452, 46)], (35.0, 155.0, 275.0), M.band_black, w=1.4)
@@ -753,9 +998,9 @@ def _():   # DTC10-125（99A）：外形照苏式 125 穿甲弹的装填形态�
 def heatfs125(body_m, L=660, tandem=False, txt=None, txt2=None, fin_m=None):
     """125 尾翼稳定破甲弹（3BK18M，乌克兰识别手册照片）：钢尾管 + 折叠尾翼、后环，弹体两道凸起定心带，
        前锥接 V-15 细长引信（小金属尖）；tandem：前锥接细探针、前级装药（3BK31 / 射流弹）"""
-    fin_m = fin_m or M.steel_dk
-    lathe([(0, 0), (0, 26), (160, 26)], M.steel_dk, name='boom')
-    lathe([(0, 30), (0, 56), (1, 58), (12, 58), (13, 55), (13, 30)], M.redbrown, name='ring')
+    fin_m = fin_m or M.tail   # 尾管、尾翼单独一种缎面暗钢（原来共用探针的亮钢：黑白条纹的镜面线轴）
+    lathe([(0, 0), (0, 26), (160, 26)], M.tail, name='boom')
+    lathe([(0, 30), (0, 55), (1, 57), (10, 57), (11, 54), (11, 30)], M.redbrown, name='ring')   # 后环：哑光红棕（原来亮橙，像一枚铜币）
     for i in range(6):   # 折叠尾翼：顺着尾管贴着的六片（中间露出尾管）
         a = i * 60.0 + 12
         sleeve(15, 142, 40, 46, a, a + 38, fin_m, name='fin')
@@ -771,20 +1016,18 @@ def heatfs125(body_m, L=660, tandem=False, txt=None, txt2=None, fin_m=None):
         lathe([(479, 13), (L - 92, 12.5)], M.steel_dk, name='probe')
         lathe([(L - 92, 16), (L - 88, 23), (L - 52, 23), (L - 46, 16), (L - 44, 11)], body_m, name='pre')   # 前级装药
         lathe([(L - 45, 10), (L - 14, 9.5), (L - 14, 12), (L - 8, 12), (L - 4, 6), (L, 0)], M.steel, name='fz')
-    if txt:
-        stencil(txt, 320, 61, 12, M.band_black, spacing=1.2)
-    if txt2:
-        stencil(txt2, 375, 61, 10, M.band_black)
+    if txt:   # 图标版只写一行型号（实物还有引信、炸药代号）
+        stencil(txt, 320, 61, 20, M.band_black)
 
 
 @item('bk18m', fam='125', full=660)
 def _():   # 3BK18M：带引信 660；灰绿弹体，黑字「БК18М В-15」、炸药代号
-    heatfs125(M.ru_gg, 660, txt='БК18М\nВ-15', txt2='ОКФОЛ')
+    heatfs125(M.ru_gg, 660, txt='БК18М')
 
 
 @item('bk31', fam='125', full=690)
 def _():   # 3BK31 串联破甲弹：长探针上一节前级装药（按同族画，△）
-    heatfs125(M.ru_grey, 690, tandem=True, txt='БК31', txt2='ОКФОЛ')
+    heatfs125(M.ru_grey, 690, tandem=True, txt='БК31')
 
 
 @item('heat125', fam='125', full=660)
@@ -802,21 +1045,21 @@ def hefrag125(body_m, txt=None):
        长卵形头、V-429E 引信"""
     lathe([(0, 0), (0, 56), (2, 61), (28, 61), (30, 56), (30, 0)], M.obtur, name='obt')
     lathe([(30, 56.5), (232, 56.5), (236, 60), (245, 61)], M.anod, name='tail')
-    for i in range(6):   # 折叠尾翼的缝
+    for i in range(6):   # 折叠尾翼的缝（±3.5°：看得出是六片翼）
         a = i * 60.0 + 20
-        lathe([(46, 56.5), (214, 56.5)], M.band_black, a0=a - 2.2, a1=a + 2.2, dr=0.2, name='slot')
+        lathe([(46, 56.5), (214, 56.5)], M.band_black, a0=a - 3.5, a1=a + 3.5, dr=0.2, name='slot')
     lathe([(245, 61), (440, 61), (480, 59.5), (520, 54), (560, 45), (590, 35), (612, 24), (618, 20)], body_m, name='body')
     band(252, 264, 61, body_m, lift=1.4)
     band(276, 288, 61, body_m, lift=1.4)
     lathe([(618, 20), (622, 19), (645, 15), (660, 10.5), (664, 9)], M.steel_dk, name='fuze')
     lathe([(664, 9), (668, 6.5), (671, 0)], M.black_paint, name='fz_tip')
     if txt:
-        stencil(txt, 370, 61, 12, M.band_black, spacing=1.2)
+        stencil(txt, 370, 61, 20, M.band_black)
 
 
 @item('of26', fam='125', full=671)
-def _():   # 3OF26：带引信 671；浅灰弹体，黑字「А-IX-2」「ОФ26」
-    hefrag125(M.ru_grey, 'А-IX-2\nОФ26')
+def _():   # 3OF26：带引信 671；浅灰弹体，黑字「А-IX-2」「ОФ26」（图标版只写「ОФ26」）
+    hefrag125(M.ru_grey, 'ОФ26')
 
 
 @item('he125', fam='125', full=671)
@@ -834,31 +1077,37 @@ def _():   # 9M119「反射」：橄榄卡其弹体、黑色环带，前部黑�
     band(250, 262, 62.5, M.band_black)
     band(330, 338, 62.5, M.band_black)
     lathe([(455, 62.5), (500, 61), (545, 56), (590, 46), (630, 32), (665, 17), (688, 6), (695, 0)], M.missile_nose, name='nose')
-    for i in range(4):
-        a = i * 90.0 + 35
-        sleeve(462, 500, 61.2, 63.2, a, a + 20, M.plastic_blk, name='canard')
-    stencil('9М119', 395, 62.5, 10, M.band_black)
+    for i in range(4):   # 鸭翼（收拢）：长一点、厚一点（原来 1 倍下只剩两个点）
+        a = i * 90.0 + 30
+        sleeve(458, 520, 60.4, 64.6, a, a + 30, M.plastic_blk, name='canard')
+    stencil('9М119', 395, 62.5, 20, M.band_black)
 
 
 # ======== 100 毫米（D-10T：59 式 / 69-II 式）：整装弹，灰绿漆钢药筒
 @item('br412d', fam='100', case=695, nose=1000)
-def _():   # BR-412D 被帽穿甲弹：灰绿弹体、被帽外再套尖风帽（风帽和弹体的接缝），黑字，不加色环（没找到彩照，按苏式通则，△）
+def _():   # BR-412D 被帽穿甲弹：灰绿弹体、被帽外再套风帽（风帽和被帽、被帽和弹体两道接缝），黑字，不加色环（没找到彩照，按苏式通则，△）
+    #   D-10T 是线膛炮：药筒口前面露出一道铜弹带；风帽短一点、圆一点（原来又长又素，缩小后读成一根锥子）
     case_100(M.ru_case)
-    lathe([(688, 49.6), (790, 49.6), (800, 49)], M.ru_gg, name='body')
-    lathe([(800, 49), (838, 45), (840, 44.2)], M.ru_gg, name='cap')
-    band(837, 842, 44.4, M.band_black, lift=0.1)
-    lathe([(840, 44), (842, 43.2), (885, 35.5), (930, 24), (962, 13), (985, 5.5), (996, 2), (1000, 0)], M.ru_gg, name='ws')
-    stencil('БР-412Д', 750, 49.6, 9, M.band_black)
+    lathe([(688, 49.6), (698, 49.6)], M.ru_gg, name='b0')
+    lathe([(698, 50.2), (712, 50.2)], M.copper, name='dband')
+    lathe([(712, 49.6), (800, 49.6), (812, 48.8)], M.ru_gg, name='body')
+    band(810, 814, 48.9, M.band_black, lift=0.1)
+    lathe([(812, 48.8), (850, 46), (872, 42.5), (874, 41.6)], M.ru_gg, name='cap')
+    band(871, 875, 41.8, M.band_black, lift=0.1)
+    lathe([(874, 41.4), (900, 38), (930, 31), (955, 22.5), (975, 13.5), (990, 5.5), (997, 1.5), (1000, 0)], M.ru_gg, name='ws')
+    stencil('БР-412Д', 750, 49.6, 16, M.band_black)
 
 
 @item('of412', fam='100', case=695, nose=1035)
-def _():   # OF-412 杀爆弹（NGIC）：灰绿钢弹体、定心部涂清漆（露钢）、卵形头、RGM 引信，黑字
+def _():   # OF-412 杀爆弹（NGIC）：灰绿钢弹体、药筒口前面一道铜弹带（原来画成深灰钢带）、定心部涂清漆（露钢）、卵形头、RGM 引信，黑字
     case_100(M.ru_case)
-    lathe([(688, 49.6), (700, 49.6)], M.ru_gg, name='b0')
-    lathe([(700, 50.2), (722, 50.2)], M.steel_dk, name='bourrelet')
-    lathe([(722, 49.6), (765, 49.6), (805, 47), (850, 40), (895, 29), (922, 21)], M.ru_gg, name='body')
+    lathe([(688, 49.6), (698, 49.6)], M.ru_gg, name='b0')
+    lathe([(698, 50.2), (712, 50.2)], M.copper, name='dband')
+    lathe([(712, 49.6), (748, 49.6)], M.ru_gg, name='b1')
+    lathe([(748, 49.9), (762, 49.9)], M.steel_dk, name='bourrelet')
+    lathe([(762, 49.6), (772, 49.6), (805, 47), (850, 40), (895, 29), (922, 21)], M.ru_gg, name='body')
     lathe([(922, 20.5), (926, 20), (960, 17), (1000, 12.5), (1028, 9.5), (1033, 8), (1035, 0)], M.alu, name='fuze')
-    stencil('ОФ-412\n100', 770, 49.6, 9, M.band_black, spacing=1.2)
+    stencil('ОФ-412', 730, 49.6, 16, M.band_black)
 
 
 @item('bk5m', fam='100', case=695, nose=1090)
@@ -867,7 +1116,7 @@ def _():   # BK-5M 破甲弹：灰绿弹体、前锥接细长的引信头，黑�
     lathe([(688, 49), (830, 49), (870, 37), (903, 21)], M.ru_gg, name='body')
     lathe([(902, 18.5), (1050, 12.5)], M.ru_gg, name='nose')
     lathe([(1050, 12.5), (1068, 12.5), (1082, 8.5), (1090, 0)], M.alu, name='fz')
-    stencil('БК-5М', 760, 49, 9, M.band_black)
+    stencil('БК-5М', 760, 49, 16, M.band_black)
 
 
 @item('apfsds69', fam='100', case=695, nose=1140)
@@ -888,12 +1137,31 @@ def _():   # M409：土黄可燃药筒 + 钢底座，黑弹体（黄字）、前
     lathe([(16, 80), (380, 78), (392, 77), (400, 76.5), (400, 40)], M.tan_comb, name='comb')
     lathe([(392, 76.6), (400, 76.6), (400, 70)], M.seal, name='seal')
     heat_spike(400, 75.5, 515, 628, 12.5, 708, 733, M.black_paint, 152)
-    stencil('152MM HEAT-MP-T\nM409', 455, 75.5, 10, M.yellow)
+    stencil('M409', 455, 75.5, 16, M.yellow)
 
 
 ################################################################ 机枪、机炮
-def cartridge(spec, case_m, bullet_m, tip_m=None, tip_len=0, band_m=None, fuze=None, proj=None):
-    """枪弹 / 炮弹（无底缘瓶形药筒）：spec = (药筒长, 底缘半径, 筒身半径, 肩 x, 肩半径, 颈 x, 颈半径, 弹头半径, 全长)"""
+def prof_r(prof, x):
+    """回转体轮廓（[(x, r), …]，x 递增）在 x 处的半径（同 lathe 一样按折线连）"""
+    if x <= prof[0][0]:
+        return prof[0][1]
+    for (xa, ra), (xb, rb) in zip(prof, prof[1:]):
+        if xa <= x <= xb:
+            return ra if xb - xa < 1e-9 else ra + (rb - ra) * (x - xa) / (xb - xa)
+    return prof[-1][1]
+
+
+def coat(prof, x0, x1, m, dr, name='coat', n=10):
+    """贴着回转体外形的一层漆（弹尖识别色、色环）：沿同一条轮廓取样，半径 + dr（11-27 美术审查：原来涂层外形自己写，比弹头还细，整个埋在弹头里）"""
+    pts = [(x0 + (x1 - x0) * i / (n - 1), prof_r(prof, x0 + (x1 - x0) * i / (n - 1)) + dr) for i in range(n)]
+    if x1 >= prof[-1][0] - 1e-6:   # 涂到弹尖：盖住尖
+        pts[-1] = (x1 + dr, 0.0)
+    lathe(pts, m, name=name)
+
+
+def cartridge(spec, case_m, bullet_m, tip=None, proj=None):
+    """枪弹 / 炮弹（无底缘瓶形药筒）：spec = (药筒长, 底缘半径, 筒身半径, 肩 x, 肩半径, 颈 x, 颈半径, 弹头半径, 全长)；
+       tip = (弹尖色, 涂多长, [色环, 离尖多远起, 到多远]) ——曳光、穿甲燃烧弹的识别色"""
     cl, rim, body, sx, sr, nx, nr, br, oal = spec
     lathe([(0, 0), (0, rim - 0.3), (0.4, rim), (cl * 0.025, rim), (cl * 0.03, rim * 0.86), (cl * 0.065, rim * 0.86),
            (cl * 0.085, body), (sx, sr), (nx, nr), (cl, nr), (cl, br * 0.8)], case_m, name='case')
@@ -901,47 +1169,53 @@ def cartridge(spec, case_m, bullet_m, tip_m=None, tip_len=0, band_m=None, fuze=N
     if proj:
         proj(cl, br, oal)
         return
-    lathe([(cl - 2, br), (cl + L * 0.35, br), (cl + L * 0.55, br * 0.9), (cl + L * 0.75, br * 0.66), (cl + L * 0.92, br * 0.3), (oal, 0)], bullet_m, name='bullet')
-    if tip_m:   # 弹尖涂色（曳光、穿甲燃烧）
-        lathe([(oal - tip_len, br * 0.62), (oal - tip_len * 0.5, br * 0.36), (oal, 0)], tip_m, name='tipc', dr=0.15)
+    bp = [(cl - 2, br), (cl + L * 0.35, br), (cl + L * 0.55, br * 0.9), (cl + L * 0.75, br * 0.66), (cl + L * 0.92, br * 0.3), (oal, 0)]
+    lathe(bp, bullet_m, name='bullet')
+    if tip:
+        coat(bp, oal - tip[1], oal, tip[0], 0.15, name='tipc')   # 弹头半径 + 0.15 毫米
+        if len(tip) > 2:
+            coat(bp, oal - tip[4], oal - tip[3], tip[2], 0.2, name='ring', n=4)   # 色环：弹头半径 + 0.2 毫米
 
 
-def belt(n, pitch, tilt, build, link_spec=None):
-    """弹链：n 发一排（沿 −Z 排开），整排绕弹轴倒 tilt 度（像平放在桌上从斜前方看：一发压一发）"""
+def belt(n, pitch, tilt, build, loops=None):
+    """弹链：n 发并排（沿 −Z 排开、一发挨一发不重叠：pitch = 药筒直径 × 1.08），整排绕弹轴倒 tilt 度（平放在桌上从斜前方看）；
+       loops = (单数发的卡位 x 们, 双数发的卡位 x 们, 链节宽, 药筒半径)：窄的冲压薄钢链节，相邻两发错开卡位
+       （一发卡前后两圈、下一发卡中间一圈，同 M13 / M9 那种可散弹链），两发之间一片窄连接片"""
     i0 = mark()
     for i in range(n):
         j = mark()
         build(i)
-        if link_spec:
-            x0, x1, r, w = link_spec   # 链节：卡在药筒上的钢圈 + 两发之间的连接片
-            for xa in (x0, x1):
-                lathe([(xa, r), (xa + w, r)], M.steel_dk, name='link')
-            box(((x0 + x1 + w) / 2, 0, -pitch / 2), (x1 - x0 + w, 1.2, pitch - 2 * r + 1.0), M.steel_dk, name='linkbar')
+        if loops:
+            xa, xb, w, r = loops
+            for x in (xa if i % 2 == 0 else xb):
+                lathe([(x - w / 2, r + 0.1), (x - w / 2 + 0.3, r + 0.5), (x + w / 2 - 0.3, r + 0.5), (x + w / 2, r + 0.1)], M.link, name='link')
+            if i < n - 1:   # 连接片：两发之间的谷里一片窄薄钢片（不是实心方块）
+                xm = xb[0]
+                gap = pitch - 2 * r
+                box((xm, -r * 0.72, -pitch / 2), (w * 0.7, 0.6, gap + r * 0.9), M.link, name='linkbar')
         xform(j, T(0, 0, -i * pitch))
     xform(i0, R(tilt, 'X'))
 
 
-@item('coax', vis=None)
-def _():   # 7.62×51 NATO：M13 链节、黄铜药筒、铜被甲弹头，每 5 发一发曳光（橙红尖）
+@item('coax', hmax=26)
+def _():   # 7.62×51 NATO：M13 链节（3.5 毫米宽）、黄铜药筒、铜被甲弹头；四发 M80 普通弹配一发 M62 曳光弹（橙尖）——画中间一段三发
     spec = (51.2, 6.0, 5.97, 39.5, 5.75, 43.5, 4.4, 3.91, 71.1)
-    belt(5, 12.0, 58, lambda i: cartridge(spec, M.brass, M.gilding, M.red_tip if i == 2 else None, 7), (10, 31, 6.4, 6))
+    tips = [None, (M.orange_tip, 7.0), None]
+    belt(3, 5.97 * 2 * 1.08, 20, lambda i: cartridge(spec, M.brass, M.gilding, tips[i]), ((9.0, 31.0), (20.0,), 3.5, 5.97))
 
 
-@item('hmg')
-def _():   # 12.7×99（M2）：M9 链节；M33 普通弹、M8 穿甲燃烧（银尖）、M20 穿甲燃烧曳光（红尖）
+@item('hmg', hmax=26)
+def _():   # 12.7×99（M2）：M9 链节（4 毫米宽）；四发 M8 穿甲燃烧弹（银尖）配一发 M20 穿甲燃烧曳光弹（红尖、银环）——画三发
     spec = (99.0, 10.2, 10.2, 76.0, 9.1, 82.0, 7.1, 6.5, 138.0)
-    tips = [None, M.alu, M.red_tip, None]
-    belt(4, 21.0, 58, lambda i: cartridge(spec, M.brass, M.gilding, tips[i], 13), (18, 58, 10.9, 9))
+    tips = [(M.alu, 13.0), (M.red_tip, 13.0, M.alu, 13.0, 18.0), (M.alu, 13.0)]
+    belt(3, 10.2 * 2 * 1.08, 20, lambda i: cartridge(spec, M.brass, M.gilding, tips[i]), ((18.0, 60.0), (39.0,), 4.0, 10.2))
 
 
-@item('kpvt')
-def _():   # 14.5×114（KPVT）：灰绿漆钢药筒；B-32 穿甲燃烧弹（黑尖、红环）
+@item('kpvt', hmax=26)
+def _():   # 14.5×114（KPVT）：灰绿漆钢药筒；四发 Б-32 穿甲燃烧弹（黑尖、红环）配一发 БЗТ-44 穿甲燃烧曳光弹（紫尖、红环）——画三发
     spec = (114.0, 13.4, 13.4, 88.0, 12.6, 98.0, 8.2, 7.45, 156.0)
-
-    def one(i):
-        cartridge(spec, M.ru_case, M.gilding, M.band_black, 16)
-        lathe([(156 - 22, 7.45 * 0.86), (156 - 16, 7.45 * 0.7)], M.red_tip, dr=0.2, name='ring')
-    belt(4, 26.0, 58, one, (20, 70, 13.9, 10))
+    tips = [(M.band_black, 16.0, M.red_tip, 16.0, 22.0), (M.violet_tip, 16.0, M.red_tip, 16.0, 22.0), (M.band_black, 16.0, M.red_tip, 16.0, 22.0)]
+    belt(3, 13.4 * 2 * 1.08, 20, lambda i: cartridge(spec, M.ru_case, M.gilding, tips[i]), ((20.0, 70.0), (45.0,), 4.0, 13.4))
 
 
 def proj_he(m_body, m_fuze, band_m=None, ring_m=None):
@@ -975,52 +1249,53 @@ def proj_apds(m_sabot, m_core):
     return f
 
 
-def ac_pair(spec, case_m, projs, pitch, tilt=40):
-    belt(len(projs), pitch, tilt, lambda i: cartridge(spec, case_m, None, proj=projs[i]))
+def ac_pair(spec, case_m, projs):
+    """机炮弹：两发并排、不重叠（原来两三发上下叠三分之一，缩小后像一发很粗的弹）——同弹链一样 pitch = 药筒直径 × 1.08、倒 20°"""
+    belt(len(projs), spec[1] * 2 * 1.08, 20, lambda i: cartridge(spec, case_m, None, proj=projs[i]))
 
 
-@item('ac25')
+@item('ac25', hmax=24)
 def _():   # 25×137（87 式的 KBA）：钢药筒；脱壳穿甲曳光（黑弹托）+ 榴弹（黄弹体）
     spec = (137.0, 21.6, 21.6, 105.0, 18.9, 112.0, 13.4, 12.5, 223.0)
-    ac_pair(spec, M.us_case, [proj_apds(M.black_sabot, M.wha), proj_he(M.yellow_body, M.steel_dk)], 30.0)
+    ac_pair(spec, M.us_case, [proj_apds(M.black_sabot, M.wha), proj_he(M.yellow_body, M.steel_dk)])
 
 
-@item('ac30')
+@item('ac30', hmax=24)
 def _():   # 30×165（2A42 / 2A38）：灰绿漆钢药筒；3UOF8 杀爆燃烧（引信 + 灰绿弹体）、3UBR6 穿甲曳光（黑尖）
     spec = (165.0, 21.8, 21.8, 128.0, 19.5, 140.0, 15.3, 15.0, 285.0)
-    ac_pair(spec, M.ru_case, [proj_he(M.ru_gg, M.steel_dk, ring_m=M.band_red), proj_ap(M.ru_gg, M.black_paint)], 34.0)
+    ac_pair(spec, M.ru_case, [proj_he(M.ru_gg, M.steel_dk, ring_m=M.band_red), proj_ap(M.ru_gg, M.black_paint)])
 
 
-@item('ac35')
+@item('ac35', hmax=24)
 def _():   # 35×228（猎豹的厄利空）：黄铜药筒；榴弹（黄弹体、引信）
     spec = (228.0, 30.5, 30.5, 175.0, 28.0, 190.0, 19.0, 17.5, 387.0)
-    ac_pair(spec, M.brass, [proj_he(M.yellow_body, M.steel_dk), proj_he(M.yellow_body, M.steel_dk)], 46.0)
+    ac_pair(spec, M.brass, [proj_he(M.yellow_body, M.steel_dk), proj_he(M.yellow_body, M.steel_dk)])
 
 
-@item('vulcan')
-def _():   # 20×102（M61）：黄铜药筒；M56 杀爆燃烧（黄弹体、红尖）
+@item('vulcan', hmax=24)
+def _():   # 20×102（M61）：黄铜药筒；M56 杀爆燃烧（黄弹体、红尖）——两发
     spec = (102.0, 14.8, 14.8, 76.0, 13.4, 86.0, 10.5, 10.0, 168.0)
-    ac_pair(spec, M.brass, [proj_he(M.yellow_body, M.red_tip)] * 3, 24.0, tilt=50)
+    ac_pair(spec, M.brass, [proj_he(M.yellow_body, M.red_tip)] * 2)
 
 
-@item('gau8')
-def _():   # 30×173（GAU-8）：铝药筒；PGU-14 贫铀穿甲燃烧（黑弹体红尖）、PGU-13 杀爆燃烧（黄弹体）
+@item('gau8', hmax=24)
+def _():   # 30×173（GAU-8）：铝合金药筒（平整的哑光银灰，原来像生锈的镀锌铁皮）；PGU-14 贫铀穿甲燃烧（黑弹体红尖）、PGU-13 杀爆燃烧（黄弹体）
     spec = (173.0, 22.5, 22.5, 150.0, 20.5, 160.0, 15.8, 15.0, 290.0)
-    ac_pair(spec, M.alu, [proj_ap(M.black_paint, M.red_tip), proj_he(M.yellow_body, M.steel_dk)], 34.0)
+    ac_pair(spec, M.alu_matte, [proj_ap(M.black_paint, M.red_tip), proj_he(M.yellow_body, M.steel_dk)])
 
 
 ################################################################ 低压炮、导弹、火箭、榴弹
 @item('gun100')
-def _():   # BMP-3 的 2A70：3UOF17（3OF32 杀爆弹 + 短钢药筒，带药筒约 530，乌克兰识别手册照片）
+def _():   # BMP-3 的 2A70：3UOF17（3OF32 杀爆弹 + 短钢药筒，带药筒约 530，乌克兰识别手册照片）；灰漆带一点光泽（原来灰白像瓷器）
     lathe([(0, 0), (0, 54), (1.5, 56), (9, 56), (10, 52), (150, 51), (158, 50.5), (158, 40)], M.ru_case, name='case')
-    lathe([(150, 50), (330, 50), (360, 48), (400, 38), (430, 24), (440, 18)], M.ru_grey, name='body')
+    lathe([(150, 50), (330, 50), (360, 48), (400, 38), (430, 24), (440, 18)], M.ru_grey2, name='body')
     band(160, 172, 50, M.copper, lift=0.6)
     lathe([(440, 18), (446, 17), (500, 11), (522, 8), (530, 0)], M.steel_dk, name='fuze')
-    stencil('ОФ32', 270, 50, 9, M.band_black)
+    stencil('ОФ32', 270, 50, 16, M.band_black)
 
 
-@item('gun73', vis=760)
-def _():   # BMP-1 的 2A28：PG-15V 火箭增程破甲弹——尖头压电引信、73 毫米战斗部、细一些的火箭发动机、折叠尾翼、后面的发射药
+@item('gun73', vis=460)
+def _():   # BMP-1 的 2A28：PG-15V 火箭增程破甲弹——尖头压电引信、73 毫米战斗部、细一些的火箭发动机、折叠尾翼、后面的发射药；只画前段（460）
     lathe([(0, 0), (0, 34), (2, 36), (150, 36), (158, 30)], M.missile, name='charge')
     lathe([(150, 18), (240, 18)], M.steel_dk, name='nozzle')
     for i in range(6):
@@ -1029,41 +1304,44 @@ def _():   # BMP-1 的 2A28：PG-15V 火箭增程破甲弹——尖头压电引�
     lathe([(238, 24), (250, 30), (480, 30), (500, 35)], M.mgreen, name='motor')
     lathe([(500, 36.5), (650, 36.5), (690, 32), (730, 22), (760, 11)], M.mgreen, name='war')
     lathe([(758, 11), (800, 6), (820, 0)], M.steel_dk, name='fz')
-    stencil('ПГ-15В', 590, 36.5, 7, M.band_black)
+    stencil('ПГ-15В', 590, 36.5, 14, M.band_black)
 
 
 @item('malyutka')
-def _():   # 9M14「婴儿」：橄榄绿弹体、尖锥战斗部、尾部四片大后掠翼（BMP-1 炮上导轨装着的样子：翼张开）
+def _():   # 9M14「婴儿」：橄榄绿弹体、尖锥战斗部、尾部四片大后掠翼（BMP-1 炮上导轨装着的样子：翼张开）；分段处的接缝线（原来通体平涂像塑料模型）
     lathe([(0, 0), (0, 48), (10, 60), (40, 62), (520, 62)], M.mgreen, name='body')
     lathe([(520, 62), (560, 60), (700, 40), (820, 15), (860, 0)], M.mgreen, name='war')
     lathe([(0, 0), (0, 20), (-12, 16), (-12, 0)], M.steel_dk, name='tracer')
+    for x in (236, 330, 519):   # 发动机 / 控制舱 / 战斗部的接缝
+        band(x, x + 2.5, 62, M.band_black, lift=0.15)
+    band(640, 642.5, 48.5, M.band_black, lift=0.15)
     fins(4, [(40, 60), (230, 60), (185, 196), (110, 196)], 3, M.mgreen, rot0=45)
-    stencil('9М14', 400, 62, 10, M.band_black)
+    stencil('9М14', 420, 62, 28, M.band_black)
 
 
-@item('konkurs', vis=1100)
-def _():   # 9M113「竞技」：橄榄绿弹体（135 毫米），尾部折叠翼，前面钝圆头（发射筒里的样子）
-    lathe([(0, 0), (0, 58), (12, 67.5), (900, 67.5), (960, 60), (1040, 46), (1110, 28), (1150, 12), (1165, 0)], M.mgreen, name='body')
+@item('konkurs', vis=700)
+def _():   # 9M113「竞技」：橄榄绿弹体（135 毫米），尾部折叠翼，前面钝圆头（原来尖头，像防空导弹）；只画前段（700）
+    lathe([(0, 0), (0, 58), (12, 67.5), (900, 67.5), (990, 64), (1060, 55), (1110, 42), (1140, 28), (1157, 14), (1165, 0)], M.mgreen, name='body')
     for i in range(4):
         a = i * 90.0 + 15
         sleeve(30, 260, 67.5, 70.5, a, a + 55, M.mgreen, name='wing')
     band(700, 712, 67.5, M.band_black)
-    stencil('9М113', 980, 50, 8, M.band_black)
+    stencil('9М113', 820, 67.5, 21, M.band_black)
 
 
-@item('kornet', vis=900)
-def _():   # 9M133「短号」：152 毫米，前面串联战斗部的细探针，折叠翼
+@item('kornet', vis=650)
+def _():   # 9M133「短号」：152 毫米，前面串联战斗部的细探针，折叠翼；只画前段（650）
     lathe([(0, 0), (0, 70), (12, 76), (860, 76), (900, 70), (960, 50), (980, 30)], M.mgreen, name='body')
     lathe([(978, 16), (1120, 14)], M.steel_dk, name='probe')
     lathe([(1120, 22), (1126, 26), (1170, 26), (1190, 16), (1210, 0)], M.mgreen, name='pre')
     for i in range(4):
         a = i * 90.0 + 15
         sleeve(30, 300, 76, 79, a, a + 55, M.mgreen, name='wing')
-    stencil('9М133', 700, 76, 9, M.band_black)
+    stencil('9М133', 720, 76, 20, M.band_black)
 
 
-@item('tow2', vis=1000)
-def _():   # BGM-71 陶式 2：152 毫米橄榄绿弹体、伸出的长探针，中段折叠翼，黄环（含高爆）
+@item('tow2', vis=700)
+def _():   # BGM-71 陶式 2：152 毫米橄榄绿弹体、伸出的长探针，中段折叠翼，黄环（含高爆）；只画前段（700：字在渐隐里，不写）
     lathe([(0, 0), (0, 70), (10, 76), (980, 76), (1010, 70), (1040, 56), (1060, 30)], M.od, name='body')
     band(900, 925, 76, M.yellow)
     lathe([(1058, 22), (1480, 20)], M.od, name='probe')
@@ -1071,21 +1349,20 @@ def _():   # BGM-71 陶式 2：152 毫米橄榄绿弹体、伸出的长探针，
     for i in range(4):
         a = i * 90.0 + 15
         sleeve(520, 760, 76, 79, a, a + 50, M.od, name='wing')
-    stencil('TOW 2', 800, 76, 12, M.band_black)
 
 
-@item('s57e6', vis=1000)
-def _():   # 57E6（铠甲）：两级——粗的助推器 + 细长的飞行级（「标枪」），飞行级前面四片小鸭翼，只画前段
+@item('s57e6', vis=650)
+def _():   # 57E6（铠甲）：两级——粗的助推器 + 细长的飞行级（「标枪」），飞行级前面四片小鸭翼，只画前段（650）
     lathe([(0, 0), (0, 45), (1400, 45), (1440, 38)], M.mgreen, name='boost')
     lathe([(1430, 38), (2900, 38), (3000, 34), (3100, 20), (3160, 0)], M.mgreen, name='dart')
     fins(4, [(2560, 37), (2640, 37), (2660, 70), (2620, 70)], 2.5, M.mgreen, rot0=45)
-    band(2400, 2420, 38, M.band_black)
+    band(2580, 2584, 38, M.band_black, lift=0.15)   # 舵机舱的接缝
 
 
-@item('s9m31', vis=1000)
-def _():   # 9M31「箭-1」：120 毫米，头部红外导引头的玻璃头罩、前面四片鸭翼，只画前段
+@item('s9m31', vis=650)
+def _():   # 9M31「箭-1」：120 毫米，头部红外导引头的玻璃头罩、前面四片鸭翼，只画前段（650）
     lathe([(0, 0), (0, 60), (1650, 60), (1720, 52), (1770, 38), (1790, 26)], M.mgreen, name='body')
-    lathe([(1789, 26), (1796, 20), (1801, 10), (1803, 0)], M.glass, name='dome')
+    lathe([(1789, 26), (1796, 20), (1801, 10), (1803, 0)], M.coated, name='dome')
     fins(4, [(1480, 59), (1600, 59), (1620, 120), (1560, 120)], 3, M.mgreen, rot0=45)
     band(1300, 1320, 60, M.band_black)
 
@@ -1096,7 +1373,7 @@ def _():   # 155 毫米 M795 榴弹：橄榄绿弹体黄字（含高爆）、铜
     lathe([(80, 78.3), (110, 78.3)], M.copper, name='band')
     lathe([(110, 77.5), (480, 77.5), (560, 72), (640, 58), (700, 42), (728, 33)], M.od, name='body')
     lathe([(728, 33), (732, 32), (800, 22), (850, 12), (870, 6), (872, 0)], M.alu, name='fuze')
-    stencil('155MM\nM795 HE', 360, 77.5, 13, M.yellow, spacing=1.2)
+    stencil('M795', 360, 77.5, 26, M.yellow)
 
 
 @item('mlrs', vis=1000)
@@ -1104,82 +1381,83 @@ def _():   # M26 火箭弹（227 毫米）：橄榄绿，前面锥形头、引�
     lathe([(0, 0), (0, 113.5), (3400, 113.5), (3600, 100), (3800, 60), (3900, 22)], M.od, name='body')
     lathe([(3898, 22), (3930, 12), (3937, 0)], M.alu, name='fz')
     band(3200, 3240, 113.5, M.yellow)
-    stencil('M26', 3320, 113.5, 20, M.yellow)
+    stencil('M26', 3320, 113.5, 30, M.yellow)
 
 
 ################################################################ 工具格（烟幕、维修、灭火、望远镜、火炮支援、侦察）
+#   六件一个机位（render：偏航 30°、俯 20°，正交），都按自然的样子摆、不斜放（11-27 美术审查：原来有正侧面、有俯视斜放、有 3/4，像剪贴画）
 @item('smoke', kind='tool')
 def _():   # 车载发烟榴弹（照 76 毫米 M76 这一类）：橄榄绿弹体、浅绿环（发烟）、黑色塑料底座、圆顶头
     lathe([(0, 0), (0, 30), (2, 33), (18, 33), (20, 31)], M.plastic_blk, name='base')
     lathe([(20, 32.5), (150, 32.5), (160, 31), (172, 26), (182, 17), (188, 7), (190, 0)], M.od, name='body')
     band(40, 64, 32.5, M.lt_green)
-    stencil('SMOKE', 110, 32.5, 7, M.white)
 
 
 @item('fix', kind='tool')
-def _():   # 维修：一把开口 + 梅花两用扳手（镀铬），斜着放（开口那头朝右上）
+def _():   # 维修：一把开口 + 梅花两用扳手——哑光锻钢、柄中间一段橄榄绿浸塑（原来亮镀铬、斜放）；扳手面对着镜头，
+    #   在自己的平面里转 −28°（开口朝右上：第二轮复审——横放的 720p 下是一根两头带疙瘩的细杆，像哑铃）；柄高 19 → 24、两头大两成
     i0 = mark()
-    sleeve(-4.5, 4.5, 11, 24, 42, 318, M.satin, name='head')       # 开口头：C 形，口朝右
+    sleeve(-4.5, 4.5, 13.2, 28.8, 42, 318, M.forged, name='head')   # 开口头：C 形，口朝右
     xform(i0, T(92, 0, 0) @ R(90, 'Z'))
     i0 = mark()
-    sleeve(-4.75, 4.75, 11.5, 21, 0, 360, M.satin, name='ring')    # 梅花头：一圈
+    sleeve(-4.75, 4.75, 13.8, 25.2, 0, 360, M.forged, name='ring')  # 梅花头：一圈
     xform(i0, T(-92, 0, 0) @ R(90, 'Z'))
-    box((0, 0, 0), (152, 8, 19), M.satin, bevel=2.6, name='handle')
-    box((0, -4.2, 0), (100, 0.8, 9), M.steel_dk, bevel=0.3, name='groove')
-    xform(0, R(-24, 'Y'))
+    box((0, 0, 0), (152, 8, 24), M.forged, bevel=2.6, name='handle')
+    box((0, 0, 0), (92, 10.4, 26.4), M.grip_od, bevel=4.0, name='grip')
+    xform(0, R(of('fixrot', -28), 'Y'))
 
 
 @item('ext', kind='tool')
-def _():   # 灭火器：红色钢瓶、黑色阀头和压把、黑软管、白标签；斜着放（阀头朝右上）
+def _():   # 灭火器：暗红钢瓶（原来正红）、黑色阀头和压把、黑软管、白标签上黑字；平放（阀头朝右）
     lathe([(0, 0), (0, 40), (6, 48), (20, 50), (280, 50), (300, 46), (315, 36), (322, 24), (325, 18)], M.red_paint, name='body')
     lathe([(325, 16), (345, 16)], M.chrome, name='neck')
     box((368, 0, 4), (46, 30, 34), M.plastic_blk, bevel=4, name='valve')
     box((360, 0, 30), (90, 10, 6), M.chrome, rot=(0, 8, 0), bevel=1.5, name='lever')
     box((370, 0, -18), (60, 10, 6), M.chrome, rot=(0, -4, 0), bevel=1.5, name='grip')
-    lathe([(110, 50.3), (230, 50.3)], M.label, a0=-55, a1=55, name='label')
+    lathe([(110, 50.3), (230, 50.3)], M.label, a0=-35, a1=75, name='label')   # 标签对着镜头（俯 20°）
+    stencil('CO2', 170, 50.4, 30, M.band_black)
     tube([(392, 0, 4), (420, -4, -6), (420, -30, -48), (300, -56, -46), (200, -56, -40)], 7, M.rubber, name='hose')
-    xform(0, R(-20, 'Y'))
 
 
 @item('bino', kind='tool')
-def _():   # 车长望远镜（照军用 7×50 双筒）：橄榄色橡胶包覆、物镜深色镀膜镜片、目镜罩、中间铰链；从右前上方看（看得见两块物镜）
-    for z in (-37, 37):
+def _():   # 车长望远镜（照军用 7×50 双筒）：橄榄色橡胶包覆、带一点紫色镀膜反光的物镜、目镜罩、中间铰链；平放（两筒左右并排、物镜朝右）
+    for y in (-37, 37):
         i0 = mark()
         lathe([(-74, 0), (-74, 15), (-70, 18.5), (-52, 18.5), (-50, 15), (-40, 15)], M.rubber, name='eye')
-        box((-6, 0, 0), (70, 44, 56), M.rubber_od, bevel=10, name='prism')
+        box((-6, 0, 0), (70, 50, 46), M.rubber_od, bevel=10, name='prism')
         lathe([(26, 27), (30, 29.5), (100, 29.5), (106, 31), (112, 31), (112, 26)], M.rubber_od, name='obj')
-        lens(112, 26.5)
-        xform(i0, T(0, 0, z))
-    cyl((-4, 0, 0), 10, 64, M.plastic_blk, axis='Z', name='hinge')
-    box((-46, 0, 0), (12, 14, 50), M.plastic_blk, bevel=2, name='bridge')
-    xform(0, R(28, 'X'))
-    xform(0, R(-32, 'Z'))
+        lathe([(110, 0), (110, 26.5), (112.3, 26.5), (113, 18), (113.4, 0)], M.coated, name='lens')
+        xform(i0, T(0, y, 0))
+    cyl((-10, 0, 0), 9, 96, M.plastic_blk, axis='X', name='hinge')
+    box((-46, 0, 0), (12, 50, 14), M.plastic_blk, bevel=2, name='bridge')
 
 
 @item('arty', kind='tool')
-def _():   # 火炮支援：野战电台话筒（照 H-250 这一类）——弯手柄、两头朝下的听筒 / 话筒、背上的按讲键、卷线
-    tube([(-92, 0, -6), (-50, 0, 8), (0, 0, 12), (50, 0, 8), (92, 0, -6)], 15, M.plastic_blk, name='handle')
+def _():   # 火炮支援：野战电台话筒（照 H-250 这一类）——弯手柄、两头朝下的听筒 / 话筒、背上的按讲键、卷线（细一点、螺距大一点）；
+    #   经典的侧面轮廓（第二轮复审：原来侧躺、口朝镜头，720p 下是「黑圆片 + 弯管」，像烟斗、吹风机）；黑塑料比别处亮一档（Handset）
+    tube([(-92, 0, -6), (-50, 0, 8), (0, 0, 12), (50, 0, 8), (92, 0, -6)], 15, M.handset, name='handle')
     for (x, r0, r1, ang) in ((-96, 24, 33, -18), (96, 20, 27, 18)):   # 听筒（大）、话筒（小）：口朝下
         i0 = mark()
-        lathe([(0, 0), (0, r0), (24, r1), (28, r1 - 1), (28, 0)], M.plastic_blk, name='cup')
+        lathe([(0, 0), (0, r0), (24, r1), (28, r1 - 1), (28, 0)], M.handset, name='cup')
         lathe([(28.2, 0), (28.2, r1 - 6)], M.rubber, name='grille')
         xform(i0, T(x, 0, -6) @ R(ang, 'Y') @ R(90, 'Y'))
     box((0, 0, 24), (64, 16, 8), M.rubber, bevel=3, name='ptt')
     pts = []
-    for i in range(80):   # 卷线：从听筒那头往下盘
+    for i in range(80):   # 卷线：从听筒那头往下盘（4 圈，原来 6 圈像一叠硬币）
         t = i / 79.0
-        a = t * 2 * math.pi * 6
-        pts.append((-118 - t * 36, 7 * math.cos(a), -20 - t * 54 + 7 * math.sin(a)))
-    tube([(-104, 0, -12), (-116, 0, -18)] + pts, 2.2, M.rubber, name='cord')
-    xform(0, R(24, 'X'))
+        a = t * 2 * math.pi * 4
+        pts.append((-118 - t * 36, 6.5 * math.cos(a), -20 - t * 54 + 6.5 * math.sin(a)))
+    tube([(-104, 0, -12), (-116, 0, -18)] + pts, 1.4, M.rubber, name='cord')
+    if of('artyrot', 0) != 0:
+        xform(0, R(of('artyrot', 0), 'X'))
 
 
 @item('scout', kind='tool')
-def _():   # 侦察：手持激光测距仪（单筒）——橄榄色机身、物镜和激光发射窗、目镜橡胶罩、按键；从右前方看（看得见镜头）
+def _():   # 侦察：手持激光测距仪（单筒）——橄榄色机身、物镜和激光发射窗、目镜橡胶罩、按键；平放（镜头朝右）
     box((0, 0, 0), (150, 58, 62), M.rubber_od, bevel=12, name='body')
     i0 = mark()
     lathe([(70, 0), (70, 24), (92, 24), (94, 22)], M.plastic_blk, name='objring')
-    lens(94, 21)
+    lathe([(92, 0), (92, 21), (94.3, 21), (95, 14), (95.4, 0)], M.coated, name='lens')
     xform(i0, T(0, 0, -6))
     i0 = mark()
     lathe([(70, 0), (70, 10), (84, 10), (85, 9)], M.plastic_blk, name='laser')
@@ -1188,92 +1466,128 @@ def _():   # 侦察：手持激光测距仪（单筒）——橄榄色机身、�
     lathe([(-110, 0), (-110, 17), (-106, 20), (-88, 20), (-86, 16), (-74, 16)], M.rubber, name='eye')
     for x in (-30, 0):
         cyl((x, 0, 33), 6, 6, M.plastic_blk, axis='Z', bevel=1, name='btn')
-    xform(0, R(-34, 'Z'))
-    xform(0, R(12, 'X'))
 
 
 ################################################################ 摆相机、渲染
-def bbox_world():
-    lo = Vector((1e9, 1e9, 1e9))
-    hi = Vector((-1e9, -1e9, -1e9))
+def cam_basis():
+    """相机的右、上、前（看的方向）：从 −Y 看向 +Y，绕 Z 偏 yaw（往 +X 那边绕：弹头 / 镜头那头朝镜头）、往下俯 elev"""
+    e, y = CAM['elev'], CAM['yaw']
+    fwd = Vector((-math.sin(y) * math.cos(e), math.cos(y) * math.cos(e), -math.sin(e)))
+    right = Vector((math.cos(y), math.sin(y), 0.0))
+    up = right.cross(fwd)
+    return right, up, fwd
+
+
+def verts_world():
     for ob in bpy.context.scene.objects:
         if ob.type != 'MESH':
             continue
         mw = ob.matrix_world
         for v in ob.data.vertices:
-            p = mw @ v.co
-            lo = Vector((min(lo.x, p.x), min(lo.y, p.y), min(lo.z, p.z)))
-            hi = Vector((max(hi.x, p.x), max(hi.y, p.y), max(hi.z, p.z)))
-    return lo, hi
+            yield mw @ v.co
 
 
-def screen_extent():
-    """竖直方向在画面上的范围（相机略俯：z·cos − y·sin）"""
-    zs = []
-    c, s = math.cos(ELEV), math.sin(ELEV)
+def screen_box():
+    """画面上的范围（毫米）：u 横（往右）、v 竖（往上）"""
+    right, up, _ = cam_basis()
+    us, vs = [], []
+    for p in verts_world():
+        us.append(p.dot(right) / MM)
+        vs.append(p.dot(up) / MM)
+    return min(us), max(us), min(vs), max(vs)
+
+
+def metal_objects():
+    """金属件（材质 Metallic ≥ 0.5）：金属补光只照它们（Light Linking）"""
+    out = []
     for ob in bpy.context.scene.objects:
-        if ob.type != 'MESH':
+        if ob.type != 'MESH' or not ob.data.materials:
             continue
-        mw = ob.matrix_world
-        for v in ob.data.vertices:
-            p = mw @ v.co
-            zs.append(p.z * c + p.y * s)
-    return min(zs), max(zs)
+        m = ob.data.materials[0]
+        p = m.node_tree.nodes.get('Principled BSDF') if (m and m.use_nodes) else None
+        if p is not None and p.inputs['Metallic'].default_value >= 0.5:
+            out.append(ob)
+    return out
 
 
-def lights(cx, cz, span):
-    """主光：大柔光箱左上 45°（镜头这一侧）；补光：右前三成；轮廓光：后上方（黑件靠它分出来）"""
-    def area(name, loc, energy, size):
+def lights(center, span, metals=()):
+    """主光：大柔光箱左上（镜头这一侧）；补光：右前三成；轮廓光：后上方，主光的六成（强了金属上全是火花点、黑件上沿一道亮线）——都跟着相机转。
+       原来还有一盏下后方的轮廓光（轮廓光的 35%）：第二轮复审——它和环境的下光条在每发弹的下沿掠射出一道亮边，
+       缩小后整排读成「每发弹被一圈浅色细线包住」（描边）；去掉（rimlow= 还能试）。
+       金属补光：前下方一大块柔光（主光的 15%），Light Linking 只照金属件——黄铜、钢药筒、铝的下半截有东西可反射，
+       不再是「顶上白、下半截黑」；灯在镜头这一侧，亮的是下半截的正面，轮廓边不亮"""
+    right, up, fwd = cam_basis()
+
+    def area(name, off, energy, size):
         l = bpy.data.lights.new(name, 'AREA')
         l.energy = energy
         l.shape = 'RECTANGLE'
         l.size = size
         l.size_y = size * 0.6
         ob = bpy.data.objects.new(name, l)
+        loc = center + (right * off[0] + up * off[1] + fwd * off[2]) * s
         ob.location = loc
         bpy.context.scene.collection.objects.link(ob)
-        d = Vector((cx, 0, cz)) - Vector(loc)
+        d = center - loc
         ob.rotation_euler = d.to_track_quat('-Z', 'Y').to_euler()
         return ob
     s = max(span, 0.3)
     k = s * s
-    E = float(opt.get('exp', 1.0))
-    area('Key', (cx - 0.9 * s, -1.1 * s, cz + 1.0 * s), 62 * k * E, 1.1 * s)
-    area('Fill', (cx + 1.2 * s, -1.0 * s, cz - 0.1 * s), 17 * k * E, 1.0 * s)
-    area('Rim', (cx + 0.2 * s, 0.9 * s, cz + 0.9 * s), 75 * k * E, 0.9 * s)
+    E = of('exp', 1.0)
+    key = of('key', 48)
+    rim = of('rim', 29)   # 主光的六成（规范 60～80%；原来 45 ≈ 94%：黑件、钢药筒上沿一道亮线，第二轮复审要 ≤ +70）
+    area('Key', (-0.9, 1.0, -1.1), key * k * E, 1.1 * s)
+    area('Fill', (1.2, -0.1, -1.0), 17 * k * E, 1.0 * s)
+    area('Rim', (0.2, 0.9, 0.9), rim * k * E, 0.9 * s)
+    if of('rimlow', 0.0) > 0:
+        area('RimLow', (0.2, -0.9, 0.9), rim * of('rimlow', 0.0) * k * E, 0.9 * s)
+    mf = of('mfill', 0.15)
+    if mf > 0 and metals:
+        coll = bpy.data.collections.new('Metals')
+        for ob in metals:
+            coll.objects.link(ob)
+        lf = area('MetalFill', (of('mfx', 0.1), of('mfy', -1.0), of('mfz', -1.2)), key * mf * k * E, 1.4 * s)
+        lf.light_linking.receiver_collection = coll
 
 
 def render(name, it, fam_k):
-    s = reset()
+    CAM.clear()
+    CAM.update(CAM_TOOL if it['kind'] == 'tool' else CAM_AMMO)
+    CUR['k'] = fam_k.get(it['fam']) if it['fam'] else None
+    s = reset(it['kind'])
     init_mats()
     it['fn']()
-    lo, hi = bbox_world()
-    zlo, zhi = screen_extent()
     W, H = IMG[it['kind']]
-    meta = dict(name=name, kind=it['kind'], w=W, h=H, ss=SS, fam=it['fam'])
-    if it['fam'] and it['fam'] in fam_k:
-        k = fam_k[it['fam']]   # 1 倍像素每毫米
-        nose = it['nose'] if it['nose'] is not None else hi.x / MM
-        x_left = nose - NOSE_PX / k
-        cx = (x_left + W / 2 / k) * MM
-        cz = 0.0
-        meta['cut'] = (lo.x / MM) < (x_left - 0.5 / k)
-    elif it['vis']:   # 太长的：只画前面 vis 毫米（同药筒那样往左伸出去、渐隐）
-        k = min((NOSE_PX - LEFT_PX) / it['vis'], (H - 6) / ((zhi - zlo) / MM))
-        nose = hi.x / MM
-        x_left = nose - NOSE_PX / k
-        cx = (x_left + W / 2 / k) * MM
-        cz = (zlo + zhi) / 2
-        meta['cut'] = (lo.x / MM) < (x_left - 0.5 / k)
-    else:   # 按框塞满：居中
-        bw = (hi.x - lo.x) / MM
-        bh = (zhi - zlo) / MM
-        fw, fh = (W - 10, H - 5) if it['kind'] == 'ammo' else (W - 6, H - 4)
-        k = min(fw / max(bw, 1), fh / max(bh, 1))
-        cx = (lo.x + hi.x) / 2
-        cz = (zlo + zhi) / 2
+    right, up, fwd = cam_basis()
+    u0, u1, v0, v1 = screen_box()
+    meta = dict(name=name, kind=it['kind'], w=W, h=H, ss=SS, fam=it['fam'], extra=it['extra'])
+    if it['fam'] and it['fam'] in fam_k:   # 同一口径一个比例：最靠右的那一点压在 x = 90、弹轴压在图的竖直正中
+        k = fam_k[it['fam']]   # 1 倍像素每毫米（画面上的）
+        if it['noscale']:      # 比定比例的那发还长（3BM60）：按口径比例放不下就自己缩一点，整发塞进框（裸弹丸的尾翼不能切）
+            k = min(k, (NOSE_PX - LEFT_PX_FULL) / max(u1 - u0, 1))
+        # 右边对齐按画面上最靠右的那一点：尖头就是弹尖；平头（M1028 的霰弹罐）偏了 10° 以后圆盘远侧那一圈还要往右 r·sin10°
+        #   （原来按弹轴上的弹尖算，M1028 的右边到了 x = 91.7，别的都是 90）
+        uc = u1 - (NOSE_PX - W / 2) / k
+        vc = 0.0
+        meta['cut'] = u0 < uc - W / 2 / k + 0.5 / k
+    elif it['vis']:   # 太长的：只画前面 vis 毫米（同药筒那样往左伸出去、渐隐），弹尖压在 x = 90
+        k = min((NOSE_PX - LEFT_PX) / (it['vis'] * math.cos(CAM['yaw'])), (H - 6) / max(v1 - v0, 1))
+        uc = u1 - (NOSE_PX - W / 2) / k
+        vc = (v0 + v1) / 2
+        meta['cut'] = u0 < uc - W / 2 / k + 0.5 / k
+    elif it['kind'] == 'ammo':   # 弹链、机炮弹、低压炮弹……按框塞满：右边也压在 x = 90（整排右边一条线）；弹链、机炮弹最高 hmax
+        k = min((NOSE_PX - LEFT_PX) / max(u1 - u0, 1), min(H - 6, it['hmax'] or 99) / max(v1 - v0, 1))
+        uc = u1 - (NOSE_PX - W / 2) / k
+        vc = (v0 + v1) / 2
+        meta['cut'] = False
+    else:   # 工具：居中，高不超过 TOOL_H（比弹种图小一号）
+        k = min((W - 6) / max(u1 - u0, 1), TOOL_H / max(v1 - v0, 1))
+        uc = (u0 + u1) / 2
+        vc = (v0 + v1) / 2
         meta['cut'] = False
     meta['k'] = round(k, 5)
+    meta['px_w'] = round((u1 - u0) * k, 1)
+    meta['px_h'] = round((v1 - v0) * k, 1)
     span = (W / k) * MM
     cam = bpy.data.cameras.new('Cam')
     cam.type = 'ORTHO'
@@ -1284,36 +1598,53 @@ def render(name, it, fam_k):
     bpy.context.scene.collection.objects.link(co)
     s.camera = co
     D = 5.0
-    # 相机略俯 ELEV：画面中心对着 (cx, ?, cz)——cz 是画面上竖直方向的中心（z·cos − y·sin 的坐标）
-    up = Vector((0, math.sin(ELEV), math.cos(ELEV)))     # 相机的上方向
-    fwd = Vector((0, math.cos(ELEV), -math.sin(ELEV)))   # 相机看的方向
-    center = Vector((cx, 0, 0)) + up * cz
+    center = right * (uc * MM) + up * (vc * MM)
     co.location = center - fwd * D
-    co.rotation_euler = (math.pi / 2 - ELEV, 0, 0)
-    lights(cx, cz, max((hi.x - lo.x), span))
+    rot = Matrix((right, up, -fwd)).transposed()   # 相机朝自己的 −Z 看、+Y 朝上
+    co.matrix_world = Matrix.Translation(co.location) @ rot.to_4x4()
+    lo_span = max((u1 - u0) * MM, span)
+    lights(center, lo_span, metal_objects())
     s.render.resolution_x = W * SS
     s.render.resolution_y = H * SS
     s.render.resolution_percentage = 100
     s.render.filepath = os.path.join(OUT, name + '.png')
     bpy.ops.render.render(write_still=True)
+    # 有模板字的再出一张不带字的（ss1 倍）：1 倍那套图用它——1 倍下字高只有 2.5 像素，缩成 1 像素的竖点（M900 上一个白点、竞技上一抹深色）
+    txt = [ob for ob in s.objects if ob.name.startswith('Txt')]
+    meta['nt'] = bool(txt) and SS1 > 0
+    if meta['nt']:
+        for ob in txt:
+            ob.hide_render = True
+        s.render.resolution_x = W * SS1
+        s.render.resolution_y = H * SS1
+        s.render.filepath = os.path.join(OUT, name + '_nt.png')
+        bpy.ops.render.render(write_still=True)
     return meta
 
 
 def fam_scales():
-    """每个口径：86 像素 ÷ 最长可见段（带药筒：露出的弹丸 + 0.25 倍药筒长；不带药筒：整发）"""
-    best, fat = {}, {}
+    """每个口径：86 像素 ÷ 最长可见段（带药筒：露出的弹丸 + 0.15 倍药筒长；不带药筒的 125 分装弹：整发，从 x = 1 画起 → 89 像素）
+       （11-27 美术审查：原来 0.25 倍药筒，120 的药筒白雾占了三成）；画面上的长度再乘 cos(偏航)"""
+    best, fat, full = {}, {}, {}
     for nm, it in ITEMS.items():
-        if not it['fam']:
+        if not it['fam'] or it['noscale'] or it['extra']:
             continue
         if it['case'] is not None:
-            vis = (it['nose'] - it['case']) + 0.25 * it['case']
+            vis = (it['nose'] - it['case']) + 0.15 * it['case']
         else:
             vis = it['full'] if it['full'] is not None else it['nose']
+            full[it['fam']] = True
         best[it['fam']] = max(best.get(it['fam'], 0), vis)
         if it.get('dia'):
             fat[it['fam']] = max(fat.get(it['fam'], 0), it['dia'])
-    # 竖着也要放得下：最粗的地方不超过 26 像素（1 倍）
-    return {f: min((NOSE_PX - LEFT_PX) / v, 26.0 / fat[f] if f in fat else 1e9) for f, v in best.items()}
+    cy, sy = math.cos(CAM_AMMO['yaw']), math.sin(CAM_AMMO['yaw'])
+    out = {}
+    for f, v in best.items():
+        px = NOSE_PX - (LEFT_PX_FULL if full.get(f) else LEFT_PX)
+        # 整发画的（125）：偏航以后尾端那圈（半径约 63）也往左多出 r·sin(偏航)，算进去（不然最长那发尾巴压出图外、被当成要渐隐）
+        u = v * cy + (63.0 * sy if full.get(f) else 0.0)
+        out[f] = min(px / u, 30.0 / fat[f] if f in fat else 1e9)   # 竖着也要放得下：最粗的地方不超过 30 像素（1 倍）
+    return out
 
 
 def main():
@@ -1321,7 +1652,7 @@ def main():
     metaf = os.path.join(OUT, 'meta.json')
     meta = json.load(open(metaf)) if os.path.exists(metaf) else {}
     for nm, it in ITEMS.items():
-        if ONLY and nm not in ONLY:
+        if (ONLY and nm not in ONLY) or (it['extra'] and not ONLY):   # 装填形态那几张：点名才渲
             continue
         meta[nm] = render(nm, it, fk)
         print('AMMOPIC', nm, json.dumps(meta[nm]))

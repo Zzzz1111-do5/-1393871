@@ -4,7 +4,7 @@ return function(T, me, out, quiet)
 local R, V3, Enum = T.R, T.V3, T.Enum
 local print = quiet and function() end or print
 local VW, VH, INSET = 1280, 720, 36
-do   -- 画面多大照镜头的 ViewportSize（测试可以改：R.viewSize，手机横屏的截图）；hud_render.py 用 WH=宽x高 画同样大
+do   -- 画面多大照镜头的 ViewportSize（测试可以改：R.viewSize 手机横屏的截图、R.vpW / R.vpH hudshot 的 vp=1920x1080）；hud_render.py 用 WH=宽x高 画同样大
   local cam0 = R.services.Workspace and R.services.Workspace.CurrentCamera
   local vs0 = cam0 and cam0.ViewportSize
   if vs0 then VW, VH = vs0.X, vs0.Y end
@@ -100,6 +100,7 @@ local function walk(o, ax, ay, uw, uh, s, guiName, depth, clip, ga, rootU)
       rec.icon = c:GetAttribute("Icon")   -- HudArt 装上的图标（HudIcons 里的名字）
       rec.pic = c:GetAttribute("PicName")   -- 写实车图（VehPics 里的名字；模拟器解不出 EditableImage，渲染时照游戏的解法还原）
       rec.apic = c:GetAttribute("AmmoPic")   -- 写实弹种图（AmmoPics 里的名字，「#g」结尾的是去色的）
+      rec.apicK = c:GetAttribute("AmmoPicK")   -- 用的哪一套（1 倍 / 2 倍）
       rec.fit = (c.ScaleType == Enum.ScaleType.Fit) or nil
     end
     rec.clip, rec.ga = clip, ga

@@ -1,6 +1,6 @@
 # 把 tools/mock/hudshot.lua 写出的界面元素（JSON）画成 1280×720 的图，看开车时屏幕上到底有什么、叠没叠
-#   python3 -I tools/mock/hud_render.py <hud.json> <输出.png> [背景图]
-#   WH=1280x640（环境变量）：画面不是 1280 × 720 时（手机横屏的截图，uidump 按镜头的 ViewportSize 排的）
+#   python3 -I tools/mock/hud_render.py <hud.json> <输出.png> [背景图] [size=1920x1080]（hudshot 用 vp=1920x1080 排的版）
+#   WH=1280x640（环境变量）：画面不是 1280 × 720 时（手机横屏的截图，uidump 按镜头的 ViewportSize 排的）；和 size= 一样，给了 WH 以它为准
 #   近似：方框（转角度）、圆角、描边、透明度渐变（UIGradient）、裁剪（ClipsDescendants、CanvasGroup 的圆角）、
 #   CanvasGroup 的整体透明、字（文泉驿正黑，不转角度）；图片只画个框（写实车图 PicName、弹种图 AmmoPic、HudIcons 的图标照游戏的解法还原）
 import json, math, sys
@@ -253,21 +253,27 @@ def pic_img(name):
 _apics = None
 
 
-def apic_img(name):
-    """照 HudArt.lua picDecode 还原 src/ReplicatedStorage/AmmoPics.lua 的写实弹种图（每张自己的宽高；「#g」= 去色）"""
+def apic_img(name, k=2):
+    """照 HudArt.lua picPixels 还原 src/ReplicatedStorage/AmmoPics.lua 的写实弹种图（每张自己的宽高；「#g」= 去色；k = 1 用 1 倍那套 pics1）：
+       调色板 RGBA（透明度 0 的颜色是透明边外扩的边缘色）+ 透明游程（0, 个数）+ 同色游程（f = "r"：255, 个数 = 上一个像素再重复几个）"""
     global _apics
     import base64, re, os
     if _apics is None:
-        _apics = {}
+        _apics = {1: {}, 2: {}}
         p = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'ReplicatedStorage', 'AmmoPics.lua')
         if os.path.exists(p):
-            for k, w, h, pal, d in re.findall(r'(\w+) = \{ w = (\d+), h = (\d+), p = "([^"]*)", d = "([^"]*)" \}', open(p, encoding='utf-8').read()):
-                _apics[k] = (int(w), int(h), pal, d)
+            txt = open(p, encoding='utf-8').read()
+            pat = r'(\w+) = \{ w = (\d+), h = (\d+), (?:f = "(\w+)", )?p = "([^"]*)", d = "([^"]*)" \}'
+            i1 = txt.find('\n  pics1 = {')
+            for kk, part in ((2, txt[:i1] if i1 >= 0 else txt), (1, txt[i1:] if i1 >= 0 else '')):
+                for nm, w, h, f, pal, d in re.findall(pat, part):
+                    _apics[kk][nm] = (int(w), int(h), f, pal, d)
     gray = name.endswith('#g')
     key = name[:-2] if gray else name
-    if key not in _apics:
+    tb = _apics[1] if (k == 1 and key in _apics[1]) else _apics[2]
+    if key not in tb:
         return None
-    w, h, pal, d = _apics[key]
+    w, h, f, pal, d = tb[key]
     pal, raw = bytearray(base64.b64decode(pal)), base64.b64decode(d)
     if gray:
         for q in range(0, len(pal), 4):
@@ -279,6 +285,13 @@ def apic_img(name):
         b = raw[i]
         if b == 0:
             o += raw[i + 1]; i += 2
+        elif f == 'r' and b == 255:
+            n = raw[i + 1]
+            last = px[(o - 1) * 4:o * 4]
+            for _ in range(n):
+                px[o * 4:o * 4 + 4] = last
+                o += 1
+            i += 2
         else:
             q = (b - 1) * 4
             px[o * 4:o * 4 + 4] = pal[q:q + 4]
@@ -309,14 +322,16 @@ def quad_layer(it):
 
 
 def main():
+    global W, H
     for a in sys.argv[4:]:
         if a.startswith('vp:') and '=' in a:
             k, v = a[3:].split('=', 1)
             VPIMG[k] = v
+        elif a.startswith('size='):   # size=1920x1080：hudshot 用 vp=1920x1080 排的版
+            W, H = (int(v) for v in a[5:].split('x'))
     items = json.load(open(sys.argv[1], encoding='utf-8'))
     # SS=2（环境变量）：按 2 倍大画再缩回来，圆、描边有抗锯齿（Roblox 画的界面本来就是抗锯齿的；不然一圈挨一圈的描边之间露出漏缝）
-    global W, H
-    wh = __import__('os').environ.get('WH')
+    wh = __import__('os').environ.get('WH')   # 环境变量 WH=宽x高（手机横屏的截图）
     if wh and 'x' in wh:
         W, H = (int(v) for v in wh.split('x', 1))
     ss = int(__import__('os').environ.get('SS', '1'))
@@ -391,7 +406,7 @@ def main():
             ov.alpha_composite(src, (int(round(x)), int(round(y))))
         pic_done = False
         if (it.get('pic') or it.get('apic')) and (it.get('iT') or 0) < 0.99 and int(w) > 0 and int(h) > 0:   # 写实车图（ScaleType Fit 按比例塞进框里）/ 弹种图（铺满）
-            src = apic_img(it['apic']) if it.get('apic') else pic_img(it['pic'])
+            src = apic_img(it['apic'], it.get('apicK') or 2) if it.get('apic') else pic_img(it['pic'])
             if src is not None:
                 sw, sh = src.size
                 k = min(w / sw, h / sh) if it.get('fit') else None
@@ -405,8 +420,11 @@ def main():
                                                    b_.point(lambda v, c=tint[2]: v * c // 255), a_])
                     a_ = im2.split()[3].point(lambda v: int(v * (1 - (it.get('iT') or 0)) * ga))
                     g = it.get('grad')
-                    if g and g.get('en', True):   # 图上的 UIGradient（同 Roblox：渐变的透明度也乘在图上；弹种图左边渐隐）
+                    if g and g.get('en', True):   # 图上的 UIGradient（同 Roblox：渐变的颜色乘在图上、透明度也乘；弹种图左边「先压暗、后透明」）
                         a_ = ImageChops.multiply(a_, grad_mask(tw, th, g))
+                        if g.get('ck'):
+                            cm = grad_fill((tw, th), (255, 255, 255), g).convert('RGB')
+                            im2 = Image.merge('RGBA', list(ImageChops.multiply(im2.convert('RGB'), cm).split()) + [a_])
                     im2.putalpha(a_)
                     ov.alpha_composite(im2, (int(round(x + (w - tw) / 2)), int(round(y + (h - th) / 2))))
                     pic_done = True

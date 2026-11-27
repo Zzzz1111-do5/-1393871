@@ -1464,8 +1464,8 @@ R.services = {}
 local camera = make("Camera")
 def("Camera", "Instance", {
   CFrame = { T.CFrame, CFrame.new(0, 20, 20) }, CameraType = { E("CameraType"), Enum.CameraType.Custom }, CameraSubject = { T.Instance, nil }, FieldOfView = { T.number, 70 },
-}, { ro = { ViewportSize = function() return R.viewSize or newV2(1280, 720) end }, methods = {   -- 能新建（挂载编辑器给 ViewportFrame 一个自己的镜头）；
-  --   画面多大：默认 1280 × 720，测试可以设 R.viewSize（手机横屏的截图：tools/mock/loadshots.lua mobile=1 用 1280 × 640）
+}, { ro = { ViewportSize = function() return R.viewSize or newV2(R.vpW or 1280, R.vpH or 720) end }, methods = {   -- 能新建（挂载编辑器给 ViewportFrame 一个自己的镜头）；
+  --   画面多大：默认 1280 × 720，测试可以设 R.viewSize（手机横屏的截图：tools/mock/loadshots.lua mobile=1 用 1280 × 640）或 R.vpW / R.vpH（hudshot vp=1920x1080、wttank 切 1080p）
   ScreenPointToRay = function(o, x, y)
     if type(x) ~= "number" or type(y) ~= "number" then error("ScreenPointToRay 要两个数字", 2) end
     return R.pixelRay(o, x, y + 58)
@@ -1474,10 +1474,10 @@ def("Camera", "Instance", {
     if type(x) ~= "number" or type(y) ~= "number" then error("ViewportPointToRay 要两个数字", 2) end
     return R.pixelRay(o, x, y)
   end,
-  -- 透视投影到画面（默认 1280 × 720，R.viewSize 改）：返回（像素 x, 像素 y, 深度）、在不在画面里
+  -- 透视投影到画面（默认 1280 × 720，R.viewSize 或 R.vpW / R.vpH 改）：返回（像素 x, 像素 y, 深度）、在不在画面里
   WorldToViewportPoint = function(o, p)
     if typeof(p) ~= "Vector3" then error("WorldToViewportPoint 要 Vector3", 2) end
-    local vw, vh = R.viewSize and R.viewSize.X or 1280, R.viewSize and R.viewSize.Y or 720
+    local vw, vh = (R.viewSize and R.viewSize.X) or R.vpW or 1280, (R.viewSize and R.viewSize.Y) or R.vpH or 720
     local rel = o.CFrame:Inverse() * p
     local depth = -rel.Z
     local f = 1 / math.tan(math.rad(o.FieldOfView) / 2)
@@ -1492,7 +1492,7 @@ def("Camera", "Instance", {
 function R.pixelRay(o, x, y)
   local f = 1 / math.tan(math.rad(o.FieldOfView) / 2)
   local cf = o.CFrame
-  local cx, cy = (R.viewSize and R.viewSize.X or 1280) / 2, (R.viewSize and R.viewSize.Y or 720) / 2
+  local cx, cy = ((R.viewSize and R.viewSize.X) or R.vpW or 1280) / 2, ((R.viewSize and R.viewSize.Y) or R.vpH or 720) / 2
   local d = cf.RightVector * ((x - cx) / (f * cy)) + cf.UpVector * (-(y - cy) / (f * cy)) + cf.LookVector
   return setmetatable({ Origin = cf.Position, Direction = d.Unit }, { __type = "Ray" })
 end

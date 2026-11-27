@@ -4,7 +4,8 @@
 --   ② 数字键：2 选第二种弹（M830）、1 回到 M829A3，5 选同轴机枪
 --   ③ 正前方放一辆敌方 T-90M：准星对着它不是白的（穿深指示）；M829A3 打车体正面、榴弹打正面颜色不一样
 --   ④ 开一炮：服务器走战雷伤害（G.wtHits 加一），客户端命中提示出来；损伤图里那辆车的状态跟着变
---   弹药栏每格一张写实弹种图（AmmoPics，用户 11-27「完全按照战雷的风格……更拟真」）；[noedit=1]：当成用不了 EditableImage，每格退回单色剪影
+--   弹药栏每格一张写实弹种图（AmmoPics，用户 11-27「完全按照战雷的风格……更拟真」）；[noedit=1]：当成用不了 EditableImage，每格退回单色剪影；
+--   屏幕从 1280 × 720 切到 1920 × 1080（1 倍那套 → 2 倍那套）时图一直显示着、新的一套解好了一起换
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
@@ -98,6 +99,35 @@ if NOEDIT then
   check(nSlot == #slots and nPic == 0 and nIcon == nSlot, "用不了 EditableImage：每格退回单色剪影（" .. nIcon .. " / " .. nSlot .. "）")
 else
   check(nSlot == #slots and nPic == nSlot, "每格一张写实弹种图（" .. nPic .. " / " .. nSlot .. "）")
+  -- 换分辨率（11-27 美术审查第二轮：窗口跨过逻辑高 850 时整排先清掉、约 18 帧后才淡入回来）：720p 用的是 1 倍那套，
+  --   切到 1920 × 1080 以后旧图一直显示着，新的一套（2 倍）在后台解好了一起换上；再切回 1280 × 720
+  local function picState()
+    local vis, k2 = 0, 0
+    for i = 1, #slots do
+      local sf = bar and bar:FindFirstChild("Slot" .. i)
+      local pic = sf and sf:FindFirstChild("Pic")
+      if pic and T.visible(pic) and pic:GetAttribute("AmmoPic") then
+        vis = vis + 1
+        if pic:GetAttribute("AmmoPicK") == 2 then k2 = k2 + 1 end
+      end
+    end
+    return vis, k2
+  end
+  local _, k2a = picState()
+  R.vpW, R.vpH = 1920, 1080
+  local minVis, steps, k2 = #slots, 0, 0
+  for _ = 1, 150 do
+    R.run(1 / 30)
+    steps = steps + 1
+    local v
+    v, k2 = picState()
+    minVis = math.min(minVis, v)
+    if k2 == #slots then break end
+  end
+  check(k2a == 0 and minVis == #slots and k2 == #slots, "切到 1920 × 1080：图一直显示着（最少 " .. minVis .. " / " .. #slots
+    .. " 格），" .. string.format("%.1f", steps / 30) .. " 秒后整排换成 2 倍那套（" .. k2 .. " 格）")
+  R.vpW, R.vpH = nil, nil
+  R.run(0.5)
 end
 local an = find("AmmoName")
 print("  名牌：" .. tostring(an and an.Text))
