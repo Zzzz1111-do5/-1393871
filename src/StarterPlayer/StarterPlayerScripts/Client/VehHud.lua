@@ -953,24 +953,33 @@ function VehHud.init(G)
   local function stepTank(st)
     local d = st.d
     local vs = G.S and G.S.veh
+    -- 老的坦克读数面板（TK）电脑、触屏都不显示（下面每帧设成隐藏：电脑是 MWT 那套、触屏是紧凑面板）——
+    --   只留给它们读的几样（车名、车体 / 炮塔转角、车速、档位、航向、选中那一行），其余（血条十格、装填环 24 颗点、弹药行……）
+    --   看不见就不写（11-27 M3 丝滑：开坦克每帧少写一百来个界面属性、少拼六七个字符串）
+    local tkOn = TK.car.Visible or TK.arm.Visible
+    local rowsOn = tkOn or MS.box.Visible   -- 紧凑面板读选中那一行的名字、弹数
     TK.name.Text = T("veh." .. d.id)
     TK.hp.lab.Text = T("vh.hull")
     local k, col = hpColor(st.em)
-    TK.hullStroke.Color = col
-    setHp(TK.hp, k, col)
-    TK.hp.pct.Text = string.format("%d / %d", math.floor(st.em:GetAttribute("Hp") or 0), math.floor(st.em:GetAttribute("MaxHp") or 0))
+    if tkOn then
+      TK.hullStroke.Color = col
+      setHp(TK.hp, k, col)
+      TK.hp.pct.Text = string.format("%d / %d", math.floor(st.em:GetAttribute("Hp") or 0), math.floor(st.em:GetAttribute("MaxHp") or 0))
+    end
     local camY = math.deg(st.camYaw or 0)
     local hullY = math.deg(st.yaw or 0)
     TK.hull.Rotation = -(hullY - camY)
     TK.tur.Rotation = -(hullY - (st.ty or 0) - camY)
-    TK.tur.Visible = d.turret ~= nil
+    if tkOn then TK.tur.Visible = d.turret ~= nil end
     TK.spd.Text = string.format("%d", math.floor(math.abs(st.speed or 0) / 2.8 * 3.6 + 0.5))
     local back = (st.speed or 0) < -0.4
     local gn = st.gearN or 0   -- Drive 的变速箱：1～5 档、R、N（战雷那样显示档位数字）
     TK.gear.Text = st.locked and "-" or ((gn >= 1) and tostring(gn) or ((gn <= -1 or back) and ((st.gb and st.gb.nr > 1 and gn <= -1) and ("R" .. tostring(-gn)) or "R") or "N"))   -- 倒挡两档：R1 / R2
-    TK.gear.TextColor3 = back and AMBER or TXT
     TK.hdg.Text = string.format("%03d°  HDG", math.floor(hdgOf(st.yaw) + 0.5) % 360)
-    TK.thr.Size = UD2(math.clamp(math.abs(st.speed or 0) / math.max(d.speed or 1, 1), 0, 1), 0, 1, 0)
+    if tkOn then
+      TK.gear.TextColor3 = back and AMBER or TXT
+      TK.thr.Size = UD2(math.clamp(math.abs(st.speed or 0) / math.max(d.speed or 1, 1), 0, 1), 0, 1, 0)
+    end
     local relK, ready, left = 1, true, 0
     local selAmmo = nil
     for i, r in ipairs(TK.rows) do
@@ -978,7 +987,7 @@ function VehHud.init(G)
       if wid then
         local w = VD.W[wid]
         local ammo = vs and vs.ammo and vs.ammo[wid]
-        setRow(r, tostring(i), T("vw." .. wid), ammo and string.format("%d / %d", ammo[1], ammo[2]) or "∞", i == st.wi, ammo and ammo[1] + ammo[2] == 0)
+        if rowsOn then setRow(r, tostring(i), T("vw." .. wid), ammo and string.format("%d / %d", ammo[1], ammo[2]) or "∞", i == st.wi, ammo and ammo[1] + ammo[2] == 0) end
         if i == st.wi and w then
           selAmmo = ammo and tostring(ammo[1] + ammo[2]) or "∞"
           local l = (st.next[wid] or 0) - os.clock()
@@ -988,12 +997,14 @@ function VehHud.init(G)
           if lastNext[wid] and (st.next[wid] or 0) > lastNext[wid] + 0.05 and (w.dmg or 0) > 150 then kickT = os.clock() end
         end
         lastNext[wid] = st.next[wid] or 0
-      else
+      elseif rowsOn then
         setRow(r, nil, nil)
       end
     end
-    TK.smoke.Text = string.format("X   %s ×%d", T("vh.smoke"), vs and vs.smoke or 0)
-    setRing(TK.ring, relK, ready, left)
+    if tkOn then
+      TK.smoke.Text = string.format("X   %s ×%d", T("vh.smoke"), vs and vs.smoke or 0)
+      setRing(TK.ring, relK, ready, left)
+    end
     if mwtOn then
       -- MWT 右下：车名、剪影（挨打闪红、血少变色）、血量「当前/满」；六边形弹种按钮靠右排；烟幕弹图标
       MW.name.Text = string.match(TK.name.Text, "^(%S+)") or TK.name.Text   -- 只写型号（「ZTZ-96 主战坦克」→「ZTZ-96」，MWT 那样）

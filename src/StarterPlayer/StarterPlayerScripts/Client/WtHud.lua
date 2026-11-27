@@ -835,6 +835,7 @@ function WtHud.init(G)
     vcam.CFrame = CFrame.lookAt(eye, tgt)
   end
 
+  local GHOST_N = 120   -- 回放里车的半透明影子最多几块
   local function showXray(m)
     local d = VD.get and VD.get(m.veh) or VD[m.veh]
     local x = m.xr
@@ -853,17 +854,26 @@ function WtHud.init(G)
     local n = 0
     if v and v.model and v.hullF then
       local inv = (v.hullF):Inverse()
+      -- 只复制最大的 GHOST_N 块（11-27 M3 丝滑：原来最多复制 400 块，命中那一下卡一顿；零件拼的车小零件上百块，
+      --   88% 透明的影子里看不出来；原模型的车本来就没几块，照旧整辆）
+      local cand = {}
       for _, p in ipairs(v.model:GetDescendants()) do
-        if p:IsA("BasePart") and p.Transparency < 0.9 and n < 400 then
-          n += 1
-          local c = p:Clone()
-          for _, ch in ipairs(c:GetChildren()) do if not ch:IsA("SpecialMesh") then ch:Destroy() end end
-          pcall(function() c.TextureID = "" end)
-          c.Anchored, c.CanCollide, c.CastShadow = true, false, false
-          c.Material, c.Color, c.Transparency = Enum.Material.SmoothPlastic, RGB(150, 190, 220), 0.88
-          c.CFrame = inv * p.CFrame
-          c.Parent = world
+        if p:IsA("BasePart") and p.Transparency < 0.9 then
+          local sz = p.Size
+          cand[#cand + 1] = { p, sz.X * sz.Y * sz.Z }
         end
+      end
+      if #cand > GHOST_N then table.sort(cand, function(a, b) return a[2] > b[2] end) end
+      for i = 1, math.min(#cand, GHOST_N) do
+        local p = cand[i][1]
+        n += 1
+        local c = p:Clone()
+        for _, ch in ipairs(c:GetChildren()) do if not ch:IsA("SpecialMesh") then ch:Destroy() end end
+        pcall(function() c.TextureID = "" end)
+        c.Anchored, c.CanCollide, c.CastShadow = true, false, false
+        c.Material, c.Color, c.Transparency = Enum.Material.SmoothPlastic, RGB(150, 190, 220), 0.88
+        c.CFrame = inv * p.CFrame
+        c.Parent = world
       end
     end
     if n == 0 then

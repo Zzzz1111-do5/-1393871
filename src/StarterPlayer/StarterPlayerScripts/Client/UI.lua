@@ -978,8 +978,11 @@ function UI.init(G)
     cols[t] = { head = h, list = list }
   end
   local boardData = {}
+  local drawnData, drawnLang = nil, nil   -- 上次画的是哪一份数据、哪种语言：按 Tab 打开时数据没变就不再整张重建（几十行、上百个字）
   function G.onBoard(d) boardData = d or {} if board.Visible then G.drawBoard() end end
   function G.drawBoard()
+    if drawnData == boardData and drawnLang == G.lang then return end
+    drawnData, drawnLang = boardData, G.lang
     boardTitle.Text = T("ui.scoreboard")
     for t, c in pairs(cols) do
       for _, k in ipairs(c.list:GetChildren()) do if k:IsA("Frame") then k:Destroy() end end

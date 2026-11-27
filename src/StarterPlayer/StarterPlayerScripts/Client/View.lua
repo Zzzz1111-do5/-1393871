@@ -735,6 +735,13 @@ function View.init(G)
     if not still and (not far or own or v.farN % 3 == 0) then
       v.putH, v.putT, v.putG, v.putR, v.putRG, v.putSteer = hullF, tF, gF, rF, rgF, v.steer
       local plist, clist = v.plist, v.clist
+      -- 一个轮子（履带段）由好几块零件拼成：轮子的变换这一帧只算一次，同一个轮子的零件共用（原来每块零件各算一遍，
+      --   stepView 里最热的就是这几行；乘法的先后和原来一样，摆出来的位置一模一样）
+      local wcs, scs = v.wcC, v.scC
+      if not wcs then wcs, scs = {}, {} v.wcC, v.scC = wcs, scs end
+      table.clear(wcs)
+      table.clear(scs)
+      local kitF, plowF = nil, nil
       for i, it in ipairs(M.parts) do
         local grp, off = it[2], it[3]
         local cf
@@ -745,16 +752,31 @@ function View.init(G)
         elseif grp == "gun" then cf = gF * off
         elseif grp == "rws" then cf = (rF or tF) * off
         elseif grp == "rwg" then cf = (rgF or rF or tF) * off
-        elseif grp == "kit" then cf = (M.kpiv and (tF * CF(M.kpiv) * CFrame.Angles(math.rad(v.gp), 0, 0)) or tF) * off   -- 车顶加特林：跟着炮俯仰
-        elseif grp == "plow" then cf = hullF * CF(M.plowPiv) * CFrame.Angles(v.plowA or 0, 0, 0) * off   -- 扫雷犁：绕车头下沿的转轴抬起 / 放下
+        elseif grp == "kit" then   -- 车顶加特林：跟着炮俯仰
+          if not kitF then kitF = M.kpiv and (tF * CF(M.kpiv) * CFrame.Angles(math.rad(v.gp), 0, 0)) or tF end
+          cf = kitF * off
+        elseif grp == "plow" then   -- 扫雷犁：绕车头下沿的转轴抬起 / 放下
+          if not plowF then plowF = hullF * CF(M.plowPiv) * CFrame.Angles(v.plowA or 0, 0, 0) end
+          cf = plowF * off
         elseif grp == "wheel" then
-          local w = W[it[4]]
-          local wcf = base * CF(w.x, w.r + w.dy, w.z)
-          if w.steer then wcf = wcf * CFrame.Angles(0, -steerA, 0) end
-          cf = wcf * CFrame.Angles(w.spin, 0, 0) * off
+          local j = it[4]
+          local wcf = wcs[j]
+          if not wcf then
+            local w = W[j]
+            wcf = base * CF(w.x, w.r + w.dy, w.z)
+            if w.steer then wcf = wcf * CFrame.Angles(0, -steerA, 0) end
+            wcf = wcf * CFrame.Angles(w.spin, 0, 0)
+            wcs[j] = wcf
+          end
+          cf = wcf * off
         elseif grp == "seg" then
-          local w = W[it[4]]
-          cf = base * CF(0, w.dy, 0) * off
+          local j = it[4]
+          local scf = scs[j]
+          if not scf then
+            scf = base * CF(0, W[j].dy, 0)
+            scs[j] = scf
+          end
+          cf = scf * off
         else cf = hullF * off end
         clist[i] = cf
       end

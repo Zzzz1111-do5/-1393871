@@ -136,12 +136,13 @@ function WtBattle.init(G)
   end
   local stripTitle = label(gui, "", UD2(0.62, 0, 0, 18), UD2(0.5, 0, 1, -182), 13, GOLD, BOLD, V2(0.5, 1), LEFT)
   stripTitle.Visible = false
-  local cards, cardKey = {}, nil
+  local cards, cardKey, cardGen = {}, nil, 0
   local function buildCards(S)
     local team = S.team or "atk"
     local key = team .. ":" .. tostring(#(S.wt and S.wt.order or {}))
     if key == cardKey and #cards > 0 then return end
     cardKey = key
+    cardGen += 1
     for _, c in ipairs(cards) do c.b:Destroy() end
     cards = {}
     local ids = {}
@@ -171,6 +172,7 @@ function WtBattle.init(G)
       table.insert(cards, { b = b, tag = tag, id = it.id, cat = it.cat, st = st })
     end
   end
+  local stripS, stripLang, stripGen = nil, nil, -1   -- 上次写卡片时的战况表、语言、第几批卡
   local function stepStrip(S)
     local dying = G.deathFxOn ~= nil and G.deathFxOn() == true
     -- 机库开着（D 的 TechUI：Config.Wt.noInfantry，玩家不当步兵）就是它管出击——这条出击栏只在还能当步兵的时候出来
@@ -178,8 +180,11 @@ function WtBattle.init(G)
     local show = S.wt ~= nil and S.alive == false and (S.phase == "battle" or S.phase == "prep") and not dying and not hangar
       and not (G.menuShown and G.menuShown()) and not G.factionOpen and S.picked ~= false
     strip.Visible, stripTitle.Visible = show, show
-    if not show then return end
+    if not show then stripS = nil return end
     buildCards(S)
+    -- 卡上的字、描边只跟服务器推的战况（G.S，一秒两次）有关：没来新的就不每帧重写几十张卡（11-27 M3 丝滑）
+    if S == stripS and G.lang == stripLang and cardGen == stripGen then return end
+    stripS, stripLang, stripGen = S, G.lang, cardGen
     stripTitle.Text = T("wtm.lineupTitle") .. "   ·   " .. (G.wtSpLine() or "")
     for _, c in ipairs(cards) do
       local txt, col = tagOf(c.id, c.cat, S.wt, S)
@@ -327,17 +332,20 @@ function WtBattle.init(G)
     if not m.k then return who(m.v, m.vt, m.vv, m.vk) .. "  " .. verb end
     return who(m.k, m.kt, m.kv, m.kk) .. "  " .. verb .. "  " .. who(m.v, m.vt, m.vv, m.vk)
   end
+  -- 每帧只写变了的（11-27 M3 丝滑：原来每帧每行重设字、透明度——字一样也重排一遍）
   local function redrawFeed()
     local t = os.clock()
     for i = #feedList, 1, -1 do if t - feedList[i].t > 9 then table.remove(feedList, i) end end
     for i, R in ipairs(feedRows) do
       local e = feedList[i]
-      R.f.Visible = e ~= nil
+      local vis = e ~= nil
+      if R.vis ~= vis then R.vis = vis R.f.Visible = vis end
       if e then
-        R.l.Text = e.txt
+        if R.txt ~= e.txt then R.txt = e.txt R.l.Text = e.txt end
         local a = math.clamp((t - e.t - 7.5) / 1.5, 0, 1)
-        R.l.TextTransparency = a
-        R.f.BackgroundTransparency = (e.mine and 0.35 or 0.6) + a * 0.4
+        if R.a ~= a then R.a = a R.l.TextTransparency = a end
+        local bt = (e.mine and 0.35 or 0.6) + a * 0.4
+        if R.bt ~= bt then R.bt = bt R.f.BackgroundTransparency = bt end
       end
     end
   end
@@ -404,6 +412,7 @@ function WtBattle.init(G)
   G.wtFeedRows = function() return feedList end   -- 测试用
 
   ---------------------------------------------------------------- 每帧
+  local chipTxt, chipY, chipW = nil, nil, nil
   G.frameConn("WtBattle", function()
     if #feedList > 0 then G.try_(redrawFeed) end
     for i = #artyMarks, 1, -1 do
@@ -430,14 +439,20 @@ function WtBattle.init(G)
     end
     if show then
       local y = ((G.hudLayout and G.hudLayout.scoreBottom) or 64) + 8
-      chip.Position = UD2(0.5, 0, 0, y)
       local free = w.free and S.phase == "battle"
-      chipT.Text = string.format('<font color="%s">%s</font>   ·   %s%s', hex(GOLD), T("wtm.sp", w.sp or 0), T("wtm.lineup", #(w.order or {}), w.max or 5),
+      local txt = string.format('<font color="%s">%s</font>   ·   %s%s', hex(GOLD), T("wtm.sp", w.sp or 0), T("wtm.lineup", #(w.order or {}), w.max or 5),
         free and ("   ·   " .. T("wtm.firstFree")) or "")
+      -- 字、位置、宽度没变就不重设（11-27：原来每帧重设一遍字，界面每帧重排）；字宽照旧每帧量（字体刚载好时宽度会变）
+      if txt ~= chipTxt then chipTxt = txt chipT.Text = txt end
+      if y ~= chipY then
+        chipY = y
+        chip.Position = UD2(0.5, 0, 0, y)
+        gainT.Position = UD2(0.5, 0, 0, y + 30)
+      end
       local okB, tw = pcall(function() return chipT.TextBounds.X end)   -- 测试用的模拟器里没有 TextBounds：按字数估
       if not okB then tw = (utf8.len((string.gsub(chipT.Text, "<[^>]+>", ""))) or 30) * 8 end
-      chip.Size = UD2(0, math.clamp(tw + 24, 200, 460), 0, 26)
-      gainT.Position = UD2(0.5, 0, 0, y + 30)
+      local cw = math.clamp(tw + 24, 200, 460)
+      if cw ~= chipW then chipW = cw chip.Size = UD2(0, cw, 0, 26) end
     end
     gainT.Visible = show and t < gainUntil
     if gainT.Visible then
