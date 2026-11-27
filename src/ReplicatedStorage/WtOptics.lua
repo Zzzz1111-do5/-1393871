@@ -55,7 +55,7 @@ O.VEH_NV = {
   t80bvm = "th2", m2a3 = "th2", leo2a7v = "th3", type10 = "th3", t90m = "th3", leclerc = "th2",
   brdm2 = "none", strela1 = "none", type87rcv = "ii",
   -- 11-27 拆开重叠的版本：同族的老 / 新型号各自的夜视（同 TREE_NV）
-  m1 = "th1", m1ip = "th1", m1a1hc = "th1", m1a2base = "th1", m1a2sep = "th2", m1a2sep3 = "th3",
+  m1 = "th1", m1ip = "th1", m1a1base = "th1", m1a1hc = "th1", m1a2base = "th1", m1a2sep = "th2", m1a2sep3 = "th3",
   m60 = "ir", m60a1rise = "ii", leo1a1a1 = "ir", leo2a0 = "ii", leo2a5 = "th1",
   ztz96base = "ii", ztz96a = "th2", ztz99base = "th1", type86 = "ir", t90a = "th2", m2a0 = "th1", m2a2 = "th1",
 }

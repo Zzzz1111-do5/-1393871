@@ -110,6 +110,7 @@
   "changes": "Blender 从原文件直接转（tools/models/blveh.py）：转半圈朝 −Z、去掉重合的面、炮管和炮盾从车体里拆出来、炮塔内饰归炮塔、贴图缩到 1024、按部件和材质切块",
   "alias": [
    "m1a1",
+   "m1a1base",
    "m1",
    "m1ip",
    "m1a1hc"

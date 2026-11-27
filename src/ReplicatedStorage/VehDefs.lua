@@ -44,6 +44,8 @@ VehDefs.W = {
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },   -- M1 的 M68A1 105 毫米：M774
   gun105ip = { kind = "shell", dmg = 480, speed = 4183, drop = 0.14, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 55, range = 2800,
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },   -- IPM1 的 M68A1：M833
+  gun120a1 = { kind = "shell", dmg = 640, speed = 4676, drop = 0.14, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 40, range = 3000,
+    vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },   -- 科技树 M1A1（1985）的 M256 120 毫米：M829（11-27 审查第 1 条）
   gun120hc = { kind = "shell", dmg = 640, speed = 4410, drop = 0.14, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 40, range = 3000,
     vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },   -- M1A1 HC 的 M256 120 毫米：M829A1
   gun120a2 = { kind = "shell", dmg = 640, speed = 4410, drop = 0.14, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 42, range = 3000,
@@ -86,10 +88,14 @@ VehDefs.W = {
   --   双路供弹，最高射速约 600 发 / 分；脱壳穿甲曳光弹初速 1335 米 / 秒（1 公里约 50 毫米）——速度按真弹换算成格（ac30 还是旧的游戏值）
   ac25 = { kind = "shell", dmg = 52, speed = 3738, drop = 0.15, splash = 3.5, rate = 0.1, mag = 100, reload = 6, reserve = 300, range = 2400,
     vs = { inf = 1, light = 1, armor = 0.2, air = 1.3, ship = 0.3, fort = 0.55 }, fx = "ac", cal = 0.18 },
-  -- M2 / M2A2 布雷德利的 M242「大毒蛇」25 毫米链式炮（11-27 拆开重叠的版本；M2A3 照旧是 ac30）：双路供弹、常用 200 发 / 分（还有 100、500 发 / 分档）；
+  -- M2 / M2A2 布雷德利的 M242「大毒蛇」25 毫米链式炮（11-27 拆开重叠的版本）：双路供弹、常用 200 发 / 分（还有 100、500 发 / 分档）；
   --   M791 脱壳穿甲曳光弹 1345 米 / 秒（1 公里约 60 毫米，M919 贫铀是 1990 年代的）；炮塔里 300 发待发、车里 600 发备弹
   m242 = { kind = "shell", dmg = 52, speed = 3766, drop = 0.15, splash = 3.5, rate = 0.3, mag = 300, reload = 6, reserve = 600, range = 2400,
     vs = { inf = 1, light = 1, armor = 0.2, air = 1.3, ship = 0.3, fort = 0.55 }, fx = "ac", cal = 0.18 },
+  -- M2A3 的 M242（11-27：原来写 30 毫米 ac30）：同一门炮、同样的射速和载弹，穿甲弹换成 M919 贫铀尾翼稳定脱壳穿甲曳光弹——
+  --   初速 1385 米 / 秒（公开资料只有一份表格写 4544 英尺 / 秒，估）、穿深见 WtDamage.WPN.m242m919（估）；dmg / 打装甲倍数比 M791 高一点（估）
+  m242m919 = { kind = "shell", dmg = 56, speed = 3878, drop = 0.15, splash = 3.5, rate = 0.3, mag = 300, reload = 6, reserve = 600, range = 2400,
+    vs = { inf = 1, light = 1, armor = 0.24, air = 1.3, ship = 0.3, fort = 0.55 }, fx = "ac", cal = 0.18 },
   -- BRDM-2 的 KPVT 14.5 毫米重机枪（BPU-1 单人炮塔，一节弹链 50 发、车里一共 500 发，约 600 发 / 分；B-32 穿甲燃烧弹 500 米约 32 毫米）
   kpvt = { kind = "gun", dmg = 62, rate = 0.1, mag = 50, reload = 6, reserve = 450, range = 1600, spread = 0.4,
     vs = { inf = 1, light = 0.8, armor = 0.08, air = 0.6, ship = 0.1, fort = 0.25 }, fx = "lmg" },
@@ -152,11 +158,13 @@ end
 -- 同族的另一型（用户 11-25：科技树里一族车共用一个真模型，各自按真车给炮、弹、装甲、机动）：深拷一份再改，
 --   嵌套的表（炮塔、炮、武器表）各自一份，后面按原模型改转轴、换机枪时不会互相改到
 --   11-27（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」「各维度还原一致」）：变型的 over 里写明
---     like = 同族那一型（借谁的模型）：按型号登记的表查不到这一型时退到它——驾驶界面的剪影（VehHud）、坦克改装页（TankMods.FOR / ERADEF / PRESETS）；
+--     like = 同族那一型（借谁的模型）：按型号登记的表查不到这一型时退到它——驾驶界面的剪影（VehHud）、召唤卡片（Depot）、
+--       坦克改装页（TankMods.FOR / ERADEF / PRESETS）、第一人称白名单（Config.FirstPerson.only）和车内（Interior.lua 的 ALIAS）；
 --     noEra = true：借来的模型上有后来才加的爆反 / ARAT / TUSK 块（模型网格里自带的、默认贴的），这一型真车没有——
 --       TankMods.eraOf 返回 nil：服务器 Era.lua 不装、客户端 VehModels 不另画、驾驶界面不画、改装页没有爆反格
 --       （网格里烘焙着的那几块看得见、不起作用；另画的默认格都不画了）；
---     noStab = true：没有炮控稳定器（M60：瞄准线跟着车体颠，Drive.lua 的 st.stab 开局就是关的）
+--     noStab = true：没有炮控稳定器（M60、59 式、豹 1 头一批：瞄准线跟着车体颠，Drive.lua 的 st.stab 开局就是关的）——
+--       从没有稳定器的那一型拷出来、真车有稳定器的变型要写 noStab = false（深拷会把 true 一起拷过去）
 local function dcopy(t)
   -- Vector3 这类值不拷（Roblox 里是 userdata；测试台里是带元表的表，拷了会丢元表）
   if type(t) ~= "table" or getmetatable(t) ~= nil then return t end
@@ -188,9 +196,10 @@ D.ztz99a = tracked({ cat = "tank", L = 22, W = 10.2, H = 7.4, hullH = 4.2, clear
 D.ztz99base = variant(D.ztz99a, { like = "ztz99a", speed = 54.4, accel = 6.2, weapons = { "gun125c99", "coax" }, sightZoom = { day = { 5, 11.4 }, th = { 5, 11.4 } } })
 -- 59 式中型坦克（用户 11-26「给各系各阶段缺少的载具都从 sketchfeb 上搞出来」：中国地面树一、二级原来空着；原模型 MMD_SonicNewYear，
 --   tools/models/blveh.json type59）：T-54A 的国产型，36 吨、12150L 柴油机 520 马力（14.4 马力 / 吨）、公路 50 公里 / 时，倒车只有 6 公里 / 时上下；
---   59 式 100 毫米线膛炮（D-10T），手动装填；没有稳定器（行进间打不准）、没有夜视以外的观瞄；四人车组（装填手在右、舱口上一挺 12.7 高射机枪）。
+--   59 式 100 毫米线膛炮（D-10T），手动装填；没有稳定器（行进间打不准：noStab，11-27 补上——原来只写在注释里，开出来照样带稳定器）、
+--   没有夜视以外的观瞄；四人车组（装填手在右、舱口上一挺 12.7 高射机枪）。
 --   尺寸、负重轮（五对，前后大间隔）、炮塔转轴、炮耳轴照模型量的（ImportedMeta type59）
-D.type59 = tracked({ cat = "tank", L = 17.0, W = 9.2, H = 6.9, hullH = 3.9, clear = 1.2, speed = 38.9, accel = 3.2, rev = 4.7, turn = 30,
+D.type59 = tracked({ cat = "tank", L = 17.0, W = 9.2, H = 6.9, hullH = 3.9, clear = 1.2, speed = 38.9, accel = 3.2, rev = 4.7, turn = 30, noStab = true,
   rw = { n = 5, r = 1.15, x = 3.69, z0 = -5.9, z1 = 3.55 }, skirt = false,
   turret = { pivot = V(0.04, 3.87, -1.58), size = V(7.1, 2.3, 8.1), style = "round", trav = 16, elev = { -5, 17 }, bustle = 0 },
   gun = { pivot = V(0.1, 1.56, -1.71), len = 12.7, cal = 0.34, fume = true }, coax = V(0.9, 1.5, -2.2),
@@ -199,7 +208,8 @@ D.type59 = tracked({ cat = "tank", L = 17.0, W = 9.2, H = 6.9, hullH = 3.9, clea
   sightZoom = { day = { 3.5, 7 }, th = { 3.5 } },   -- TSh-2B-32 炮长瞄准镜 3.5 / 7 倍；夜里主动红外
   weapons = { "gun100d", "coax" } })
 -- 69-II 式（1982 出口型）：同一个车体、580 马力，炮控稳定器、激光测距、尾翼稳定脱壳穿甲弹；同一个模型（ImportedMeta 的 alias）
-D.type69 = variant(D.type59, { accel = 3.5, speed = 38.9, weapons = { "gun100d69", "coax" }, sightZoom = { day = { 3.5, 7 }, th = { 4 } } })
+--   11-27：like = 59 式（HudIcons 只拍了 59 式：驾驶界面的剪影退到它）；有稳定器（noStab = false：59 式那一型是 true，深拷会拷过来）
+D.type69 = variant(D.type59, { like = "type59", noStab = false, accel = 3.5, speed = 38.9, weapons = { "gun100d69", "coax" }, sightZoom = { day = { 3.5, 7 }, th = { 4 } } })
 D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear = 1.3, speed = 50.6, accel = 5.2, rev = 14.0, turn = 36,
   rw = { n = 6, r = 1.1, x = 3.85, z0 = -7.0, z1 = 6.7 }, era = true, skirt = true,
   turret = { pivot = V(0, 4.0, 0.4), size = V(6.8, 2.2, 7.0), style = "round", trav = 38, elev = { -6, 16 }, bustle = 1.2 },
@@ -209,10 +219,10 @@ D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear
   weapons = { "gun125", "coax" } })
 -- 11-27 拆开重叠的版本：科技树 96 式、96A 原来写 base（借 ztz96：它其实是 96B——43 吨、1000 马力、DTC10、三代热像、FY 爆反）
 -- 96 式（1997）：41 吨、12150ZLA 730 马力、公路 57 公里 / 时（估）；ZPT-98 125 毫米、DTW-125 I 型、40 发（估）；激光测距 + 计算机、微光夜视；
---   没有爆反（模型上 96B 的 FY 块不起作用：noEra）
-D.ztz96base = variant(D.ztz96, { like = "ztz96", noEra = true, speed = 44.3, accel = 3.9, weapons = { "gun125c96", "coax" } })
+--   没有爆反（模型上 96B 的 FY 块不起作用：noEra；era = false：没导入原模型、零件拼的时候也不画首上、炮塔的爆反块，同 T-80B）
+D.ztz96base = variant(D.ztz96, { like = "ztz96", noEra = true, era = false, speed = 44.3, accel = 3.9, weapons = { "gun125c96", "coax" } })
 -- 96A（2006）：42.8 吨、800 马力（另说 865，估）、公路 65 公里 / 时；DTW-125 II 型、41 发；数字火控（猎歼）、第二代热像；
---   炮塔正面箭形 FY-4 爆反 + 首上（改装页默认 FY-4，TankMods.FOR.ztz96a）
+--   箭形 FY-4 爆反（改装页默认 FY-4，TankMods.FOR.ztz96a；96B 同样默认 FY-4，见 TankMods）
 D.ztz96a = variant(D.ztz96, { like = "ztz96", speed = 50.6, accel = 4.1, weapons = { "gun125c99", "coax" } })
 -- T-90M「突破-3」（用户 11-24「没事干了就去找俄系」）：46.5 吨、V-92S2F 1130 马力、公路 60 公里 / 时；2A46M-5 125 毫米滑膛炮、转盘式自动装弹机（22 发）；
 --   三人车组：炮长左、车长右（同 99A）；炮塔正面、侧面、首上、侧裙板都是「化石」（Relikt）重型爆反；原模型 mansoorsajidp（带车内）
@@ -314,14 +324,16 @@ D.leo2a7v = variant(D.leo2a6, { L = 22.0, W = 10.3, H = 8.6, hullH = 4.5, speed 
 -- 豹 2A4（1985）：55 吨、同一台 1500 马力；Rh-120 L/44 炮、DM33；炮塔是直立的复合装甲（模型是 2A6 的楔形，科技树上写「暂用」）
 D.leo2a4 = variant(D.leo2a6, { speed = 56.0, accel = 6.0, rev = 24.1, weapons = { "gun120l44", "coax" } })
 -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开」「各维度还原一致」）：科技树豹 2A0、豹 2A5 原来写 base（借 2A4 / 2A6 的模型和性能）
--- 豹 2A0（1979）：55.2 吨（估）、MB 873 1500 马力、公路 68 公里 / 时（估）；Rh-120 L/44、DM13（120 毫米第一代尾翼稳定脱壳）/ DM12；
+-- 豹 2A0（1979）：55.2 吨（估）、MB 873 1500 马力、公路 72 公里 / 时（同 2A4：早期豹 2 是 55.15 吨、72 公里 / 时；68 只见于加拿大的变型页，
+--   11-27 审查改的）；Rh-120 L/44、DM13（120 毫米第一代尾翼稳定脱壳）/ DM12；
 --   第一代复合装甲（直立炮塔，模型是 2A6 的楔形）；EMES 15 激光测距 + 计算机；夜里是 PZB 200 微光（WBG-X 热像是后几批才装的）
-D.leo2a0 = variant(D.leo2a6, { like = "leo2a6", speed = 52.9, accel = 6.0, rev = 24.1, weapons = { "gun120l44a0", "coax" } })
+D.leo2a0 = variant(D.leo2a6, { like = "leo2a6", speed = 56.0, accel = 6.0, rev = 24.1, weapons = { "gun120l44a0", "coax" } })
 -- 豹 2A5（1995）：59.5 吨（估）、1500 马力、72 公里 / 时；炮塔楔形附加装甲（同 2A6），炮还是 L/44（L/55 是 2A6 才换的）、DM33；车长 PERI-R17A2 热像（猎歼）
 D.leo2a5 = variant(D.leo2a6, { like = "leo2a6", speed = 56.0, accel = 5.5, rev = 24.1, weapons = { "gun120l44", "coax" } })
 -- 豹 1（用户 11-25「需要模型自己找」：原来借 M10）：40 吨、MTU MB 838 830 马力、公路 65 公里 / 时；L7A3 105 毫米线膛炮、DM13 脱壳穿甲弹；
 --   装甲薄（首上 70 毫米斜置）、跑得快；四人车组：炮长、车长在右；原模型 FlashPoin（原贴图是没上漆的灰，按联邦国防军黄橄榄色调过）
-D.leo1 = tracked({ cat = "tank", L = 19.5, W = 9.3, H = 7.0, hullH = 4.3, clear = 1.2, speed = 50.6, accel = 4.6, rev = 19.4, turn = 40,
+--   11-27：这一型是科技树 de_leo1（1965 年头一批）——头一批的炮没有稳定器（noStab），凯迪拉克 - 盖奇双向稳定器是 1A1 才加的
+D.leo1 = tracked({ cat = "tank", L = 19.5, W = 9.3, H = 7.0, hullH = 4.3, clear = 1.2, speed = 50.6, accel = 4.6, rev = 19.4, turn = 40, noStab = true,
   rw = { n = 7, r = 0.91, x = 3.78, z0 = -6.5, z1 = 5.3 }, skirt = true,
   turret = { pivot = V(0, 4.33, -1.73), size = V(7.2, 2.4, 7.6), style = "round", trav = 40, elev = { -9, 20 }, bustle = 1.6 },
   gun = { pivot = V(0, 1.09, -2.84), len = 12.4, cal = 0.36, fume = true }, coax = V(-0.9, 1.0, -3.0),
@@ -330,10 +342,10 @@ D.leo1 = tracked({ cat = "tank", L = 19.5, W = 9.3, H = 7.0, hullH = 4.3, clear 
   sightZoom = { day = { 8 }, th = { 8 } },   -- TZF 1A 炮长瞄准镜 8 倍（没有热像，夜里照红外探照灯）
   weapons = { "gun105l7", "coax" } })
 -- 豹 1A1A1（1975，11-27 拆开重叠的版本：原来写 base 借豹 1）：42.4 吨、MB 838 CaM-500 830 马力、65 公里 / 时；炮塔加了 Blohm + Voss 的间隙装甲（约 +760 千克）；
---   L7A3、DM13 脱壳穿甲弹（DM23 尾翼稳定脱壳 1979 年以后才有）；TEM 2A 体视测距仪（没有激光）、稳定器；夜里主动红外（PZB 200 微光是 1A1A2 才有）
-D.leo1a1a1 = variant(D.leo1, { like = "leo1", speed = 50.6, accel = 4.3, rev = 19.4 })
--- 豹 1A5（1987）：42.4 吨；EMES 18 火控、WBG-X 热像，打 DM33（105）尾翼稳定脱壳穿甲弹；炮塔加了间隙装甲
-D.leo1a5 = variant(D.leo1, { speed = 50.6, accel = 4.3, rev = 19.4, weapons = { "gun105a5", "coax" }, sightZoom = { day = { 3, 12 }, th = { 3, 12 } } })
+--   L7A3、DM13 脱壳穿甲弹（DM23 尾翼稳定脱壳 1979 年以后才有）；TEM 2A 体视测距仪（没有激光）、稳定器（1A1 起：noStab = false）；夜里主动红外（PZB 200 微光是 1A1A2 才有）
+D.leo1a1a1 = variant(D.leo1, { like = "leo1", noStab = false, speed = 50.6, accel = 4.3, rev = 19.4 })
+-- 豹 1A5（1987）：42.4 吨；EMES 18 火控、WBG-X 热像，打 DM33（105）尾翼稳定脱壳穿甲弹；炮塔加了间隙装甲；有稳定器
+D.leo1a5 = variant(D.leo1, { noStab = false, speed = 50.6, accel = 4.3, rev = 19.4, weapons = { "gun105a5", "coax" }, sightZoom = { day = { 3, 12 }, th = { 3, 12 } } })
 -- M60A3 TTS（用户 11-25「需要模型自己找」：原来借 M10）：52.6 吨、AVDS-1790-2C 750 马力柴油机、公路 48 公里 / 时（慢）；M68E1 105 毫米线膛炮、
 --   M833 贫铀脱壳穿甲弹，激光测距、弹道计算机、AN/VSG-2 坦克热像瞄准镜（TTS）；四人车组：炮长、车长在右；原模型 jonathanto99（按美军森林绿改色）
 D.m60a3 = tracked({ cat = "tank", L = 19.8, W = 10.1, H = 8.2, hullH = 4.5, clear = 1.3, speed = 37.3, accel = 3.1, rev = 13.2, turn = 34,
@@ -398,7 +410,12 @@ D.m1a1 = tracked({ cat = "tank", turbine = true, L = 22.5, W = 10.2, H = 7.4, hu
 D.m1 = variant(D.m1a1, { like = "m1a1", noEra = true, speed = 56.0, accel = 6.1, weapons = { "gun105m1", "coax" } })
 -- IPM1（1984）：55.7 吨（61.4 短吨）；炮塔正面加厚、M833 贫铀脱壳穿甲弹；其余同 M1
 D.m1ip = variant(D.m1a1, { like = "m1a1", noEra = true, speed = 56.0, accel = 5.9, weapons = { "gun105ip", "coax" } })
--- M1A1 HC（1988）：约 61 吨（估）、公路限速 67 公里 / 时；M256 120 毫米滑膛炮（M829A1「银弹」、M829、M830）、40 发；炮塔正面加贫铀装甲
+-- 科技树的 M1A1（1985，11-27 审查第 1 条：原来科技树直接开 D.m1a1——打 2003 年的 M829A3、带 ARAT 侧裙和 TUSK / Trophy 改装页，
+--   比后面的 M1A1 HC、M1A2、SEP 都强）：57.2 吨（63 短吨）、AGT1500 1500 马力、公路限速 67 公里 / 时（极速、加速同 D.m1a1）；
+--   M256 120 毫米滑膛炮：M829 贫铀长杆（1985）/ M830 破甲 / M829A1（研究的第三种）、40 发；炮塔同 IPM1（贫铀装甲是 1988 年 M1A1 HA 才加的）；
+--   没有 ARAT / TUSK（2006 年以后）：noEra。老的 D.m1a1（老模式、老 AI 名单、试驾靶车在用）不动
+D.m1a1base = variant(D.m1a1, { like = "m1a1", noEra = true, weapons = { "gun120a1", "coax" } })
+-- M1A1 HC（1988）：约 61 吨（估）、公路限速 67 公里 / 时；M256 120 毫米滑膛炮（M829A1「银弹」、M830、M829）、40 发；炮塔正面加贫铀装甲
 D.m1a1hc = variant(D.m1a1, { like = "m1a1", noEra = true, speed = 52.1, accel = 5.4, weapons = { "gun120hc", "coax" } })
 -- M1A2（1992）：约 62.5 吨（估）；车长独立热像仪（CITV）——猎歼式，IVIS 车际信息、定位导航；炮长镜第一代热像 3 / 10 倍；M829A1 / M830 / M830A1、42 发
 D.m1a2base = variant(D.m1a2, { like = "m1a2", noEra = true, accel = 5.3, weapons = { "gun120a2", "coax" }, sightZoom = { day = { 3, 10 }, th = { 3, 10 } } })
@@ -458,7 +475,8 @@ D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1
   sight = V(-1.5, 1.7, -1.8),
   sightZoom = { day = { 4, 12 }, th = { 4, 12, 24 } },   -- M2A3 炮长的综合瞄准具（IBAS）：昼光 4 / 12 倍，热像 4 / 12 倍 + 电子放大 24 倍
   smoke = { banks = { { at = V(2.4, 1.0, -2.2), yaw = 30 }, { at = V(-2.4, 1.0, -2.2), yaw = -30 } }, n = 4 },
-  weapons = { "ac30", "tow2", "coax" }, seats = 6 })
+  -- 11-27：炮照真车换成 M242 25 毫米 + M919 贫铀尾翼稳定脱壳穿甲弹（原来是 30 毫米 ac30——游戏里的旧值，布雷德利从没装过 30 毫米炮）
+  weapons = { "m242m919", "tow2", "coax" }, seats = 6 })
 -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开」「各维度还原一致」）：科技树 M2、M2A2 原来写 base（借 M2A3：30 毫米炮、IBAS 二代热像、激光测距）
 -- M2（1981；型号叫 m2a0，免得和 ImportedMeta 里表示 M2 机枪的 mg = "m2" 搞混）：22.6 吨、Cummins VTA-903T 500 马力、66 公里 / 时；
 --   M242 25 毫米（M791）+ BGM-71C 改进型陶式 + 并列机枪；铝合金车体；ISU 综合瞄准具 4 / 12 倍（第一代热像，没有激光测距）

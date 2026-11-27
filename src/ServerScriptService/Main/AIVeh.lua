@@ -114,6 +114,7 @@ function AIVeh.init(G)
     local d = VD.get(id)
     return d and not d.needsAir and d.weapons and #d.weapons > 0 and (d.cat == "tank" or d.cat == "apc")
   end
+  G.aiVehUsable = usable   -- 测试用（wtreal.lua：电脑车按科技树挑得到拆出来的型号——G.treePickAi 就是拿它筛的）
   local pickTree = nil   -- 这次挑中的科技树那一项（setup 记到车上）
   local function pickModel(team)
     local a = levelAi(team)

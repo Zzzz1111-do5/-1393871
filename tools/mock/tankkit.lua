@@ -92,5 +92,41 @@ for _ = 1, 20 do
 end
 check(fd == 0, "从正面打：栅栏不管（" .. fd .. "）")
 check(G.sigK(e) < 1, "伪装网：被发现的距离 × " .. G.sigK(e))
+
+print("④ 爆反挡导弹按装药（11-27 审查：Era.lua 原来对导弹一律按串联算——车上的反坦克导弹其实整个绕过了爆反）")
+do
+  local E = e.era
+  local K, L = E and E.kind, E and E.L
+  local base = e.root.CFrame * CF(0, -e.def.H / 2, 0)
+  -- 挑一格还在的侧裙块（自带的 sk + 贴的 sr），从块外面顺着它的法线往里打：一发炸一格
+  local function cellCF()
+    for i, b in ipairs(L.b) do
+      if not E.dead[i] and not (E.off and E.off[i]) and (b[17] == "sk" or b[17] == "sr") then return (TM.blockCF(L, b, base, e.ty or 0, 1)) end
+    end
+    return nil
+  end
+  local function hit(w)
+    local cf = cellCF()
+    if not cf then return "没有剩下的格" end
+    local left0 = E.left
+    local m = G.eraBlast(cf.Position + cf.ZVector * 3, w, -cf.ZVector * 200)
+    return m and m[e], left0 - E.left
+  end
+  local refl = G.tankWeaponOf("gun125r", VD.W.gun125r, "refleks")   -- 炮射导弹「反射」：开火时的武器表（炮的那份 + ammo）
+  local cases = {
+    { "陶式 1（tow1，单装药）", VD.W.tow1, "k" }, { "红箭-73（单装药）", VD.W.hj73, "k" }, { "「婴儿」（单装药）", VD.W.malyutka, "k" },
+    { "陶式 2（串联）", VD.W.tow2, "kt" }, { "「短号」（串联）", VD.W.kornet, "kt" }, { "「反射」炮射导弹（串联）", refl, "kt" },
+    { "火箭弹", { kind = "rkt", dmg = 110, splash = 4 }, "k" },
+  }
+  check(K == TM.ERA.arat2 and K.k < K.kt, string.format("这辆 M1A2 挂 ARAT-2（单装药剩 %.2f、串联剩 %.2f）", K and K.k or -1, K and K.kt or -1))
+  local gc = G.eraClass and G.eraClass(VD.W.gun120)
+  check(G.eraClass and G.eraClass(VD.W.tow1) == "msl" and G.eraClass(refl) == "msl" and gc ~= "msl" and gc ~= "rkt",
+    "车上的反坦克导弹、炮射导弹按导弹挡（原来 boomKind 认不出 kind = atgm），坦克炮弹不走这里（" .. tostring(gc) .. "：G.eraShell 管）")
+  for _, c in ipairs(cases) do
+    local k, n = hit(c[2])
+    check(k == K[c[3]] and n == 1, string.format("%s：剩 %s 成（应为 %s = %.2f），炸了 %s 格", c[1], tostring(k), c[3], K[c[3]], tostring(n)))
+  end
+  check(G.eraBlast(e.root.Position + V3(0, 0, -30), VD.W.gun120, V3(0, 0, 1)) == nil, "坦克炮弹（动能弹）不走火箭弹 / 导弹这条（eraBlast 不管）")
+end
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "))
 T.summary()

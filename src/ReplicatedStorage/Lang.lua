@@ -1816,6 +1816,10 @@ add("vw.gun125m2", "125 毫米炮（2A46M-2）", "125 mm 2A46M-2")
 add("vw.m242", "25 毫米链式炮（M242）", "25 mm M242 Bushmaster")
 add("vw.tow1", "改进型陶式反坦克导弹（BGM-71C）", "I-TOW ATGM (BGM-71C)")
 add("vw.hj73", "红箭-73 反坦克导弹", "HJ-73 ATGM")
+-- 11-27 审查改的：科技树的 M1A1（1985 年的弹、没有 ARAT：m1a1base）、M2A3 的 M242 + M919
+add("veh.m1a1base", "M1A1 艾布拉姆斯", "M1A1 Abrams")
+add("vw.gun120a1", "120 毫米炮（M256）", "120 mm M256")
+add("vw.m242m919", "25 毫米链式炮（M242，M919 贫铀弹）", "25 mm M242 Bushmaster (M919 DU)")
 
 -- 科技树每一辆的名字（TechTree.lua）：tree.<键>——名牌、击毁提示、驾驶界面写科技树里的名字（借来的型号也写自己的名字）
 do

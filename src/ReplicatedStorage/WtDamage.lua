@@ -26,6 +26,10 @@ W.PROF = {
     tur = { f = { 380, 700 }, sf = { 200, 260 }, s = { 90, 110 }, r = { 60, 60 }, t = { 40, 40 } }, blowout = true },
   m1ip = { lay = "w4", hull = { f = { 380, 650 }, s = { 60, 75 }, r = { 30, 30 }, t = { 30, 30 } },
     tur = { f = { 450, 800 }, sf = { 230, 280 }, s = { 90, 110 }, r = { 60, 60 }, t = { 40, 40 } }, blowout = true },
+  -- 科技树的 M1A1（1985，11-27 审查第 1 条）：炮塔、车体同 IPM1（战雷的开发日志也写 M1A1 用的是 IPM1 的炮塔；贫铀装甲是 1988 年 M1A1 HA 才加的，估）；
+  --   老的 m1a1（上面那行 650 / 1100，老模式在用）不动
+  m1a1base = { lay = "w4", hull = { f = { 380, 650 }, s = { 60, 75 }, r = { 30, 30 }, t = { 30, 30 } },
+    tur = { f = { 450, 800 }, sf = { 230, 280 }, s = { 90, 110 }, r = { 60, 60 }, t = { 40, 40 } }, blowout = true },
   m1a1hc = { lay = "w4", hull = { f = { 540, 800 }, s = { 65, 80 }, r = { 30, 30 }, t = { 30, 30 } },
     tur = { f = { 720, 1200 }, sf = { 280, 320 }, s = { 95, 115 }, r = { 60, 60 }, t = { 40, 40 } }, blowout = true },
   m1a2base = { lay = "w4", hull = { f = { 560, 850 }, s = { 70, 90 }, r = { 30, 30 }, t = { 30, 30 } },
@@ -231,6 +235,7 @@ W.WPN = {
   tow1 = { p0 = 600, t = "ce", spall = 20, n = 12, core = 2.2 },                  -- 11-27：M2 的 BGM-71C 改进型陶式（单装药，估）
   hj73 = { p0 = 425, t = "ce", spall = 20, n = 10, core = 1.8 },                  -- 11-27：86 式的红箭-73（仿 9M14，估）
   m242 = { p0 = 76, fall = 16, t = "ke", spall = 18, n = 4, core = 1.1 },        -- 11-27：M2 / M2A2 的 M242 25 毫米 M791 脱壳穿甲曳光弹（1 公里约 60 毫米）
+  m242m919 = { p0 = 100, fall = 14, t = "ke", spall = 18, n = 5, core = 1.2 },   -- 11-27：M2A3 的 M242 打 M919 贫铀长杆（估：同战雷，炮口约 100、2 公里约 74 毫米）
   malyutka = { p0 = 400, t = "ce", spall = 20, n = 10, core = 1.8 },
   konkurs = { p0 = 600, t = "ce", spall = 20, n = 12, core = 2.2 },               -- 9M113「竞技」
   kornet = { p0 = 1100, t = "ce", spall = 22, n = 14, core = 2.8, tandem = true },   -- 9M133「短号」串联破甲              -- 9M14「婴儿」             -- BMP-1 的 73 毫米 PG-15V 破甲弹
@@ -277,6 +282,17 @@ function W.pen(w, distM)
   local p = a.p0
   if a.fall and distM then p = math.max(a.p0 * 0.4, a.p0 - a.fall * distM / 1000) end
   return p, a
+end
+-- 单装药的聚能装药（爆反照挡火箭弹那样挡：TankMods.ERA 的 k，不是串联的 kt）：这一发自己登记的表项（W.AMMO / W.WPN）是破甲、又没写 tandem——
+--   陶式 1（tow1）、红箭-73（hj73）、「婴儿」（malyutka）、「竞技」（konkurs）；串联的（陶式 2、「短号」、「反射」）、
+--   只有按种类给的通用表项（飞机的空地导弹，不知道是哪种）都不算（11-27：原来 Era.lua 对导弹一律按串联算）
+function W.singleCharge(w)
+  local a = W.ammoOf(w)
+  if a.t ~= "ce" or a.tandem then return false end
+  for _, g in pairs(W.KIND) do
+    if g == a then return false end
+  end
+  return true
 end
 
 ---------------------------------------------------------------- 车里的乘员和模块（按型号的尺寸摆，缓存）

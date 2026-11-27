@@ -35,7 +35,8 @@ local MODEL = { t80u = "t80u", t80b = "t80u", t80bvm = "t80u", bmp1 = "bmp1", le
   -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」）：科技树原来写 base 的地面车有了自己的型号，模型借同族的
   m1 = "m1a1i", m1ip = "m1a1i", m1a1hc = "m1a1i", m1a2base = "m1a2dc", m1a2sep = "m1a2dc", m1a2sep3 = "m1a2dc",
   m60 = "m60a3", m60a1rise = "m60a3", leo1a1a1 = "leo1", leo2a0 = "leo2a6", leo2a5 = "leo2a6",
-  ztz96base = "ztz96", ztz96a = "ztz96", ztz99base = "ztz99a2", type86 = "bmp1", t90a = "t90m", m2a0 = "m2a3", m2a2 = "m2a3" }
+  ztz96base = "ztz96", ztz96a = "ztz96", ztz99base = "ztz99a2", type86 = "bmp1", t90a = "t90m", m2a0 = "m2a3", m2a2 = "m2a3",
+  m1a1base = "m1a1i", m2a3 = "m2a3" }   -- 11-27 审查：科技树的 M1A1 开 m1a1base；M2A3 换了 M242 + M919（穿深表 WtDamage.WPN.m242m919）
 local bad = {}
 local function near(a, b) return a and b and (a - b).Magnitude < 0.02 end
 for id, key in pairs(MODEL) do
@@ -86,6 +87,7 @@ local want = {
   de_leo2a0 = { "leo2a0", "leo2a6" }, de_leo2a5 = { "leo2a5", "leo2a6" },
   cn_96 = { "ztz96base", "ztz96" }, cn_96a = { "ztz96a", "ztz96" }, cn_99 = { "ztz99base", "ztz99a" }, cn_86 = { "type86", "bmp1" },
   ru_t90a = { "t90a", "t90m" }, us_m2 = { "m2a0", "m2a3" }, us_m2a2 = { "m2a2", "m2a3" },
+  us_m1a1 = { "m1a1base", "m1a1" },   -- 11-27 审查第 1 条：原来开老的 m1a1（M829A3、ARAT）
 }
 local tb = {}
 for k, w in pairs(want) do
@@ -105,6 +107,26 @@ check(#st == 0 and TT.get("cn_86").play == "type86" and TT.get("us_m60").play ==
   "地面树没有暂用车了（86 式、M60、M1……开自己的型号）；59 式开自己的型号" .. (#st > 0 and ("：" .. table.concat(st, " ")) or ""))
 check(VD.get("t64a").weapons[1] == "gun125a" and B.GUN.gun125a[1] == "bm15" and WD.AMMO.bm15 ~= nil and not VD.get("t64a").lrf and VD.get("t64b").lrf,
   "T-64A 打 3BM15、没有激光测距；T-64B 有")
+-- 电脑车（11-27 审查第 9 条：variants.lua 原来只比了数据，没真调）：Tech.lua 的 G.treePickAi 拿 AIVeh 的 usable 筛科技树——
+--   这一局的战斗等级定在每一项自己的等级上，看它挑不挑得到这一型（还没有人进服：按两队默认的国家挑）
+do
+  local TEAM = { cn = "atk", ru = "atk", us = "def", de = "def", jp = "def" }
+  local br0 = G.treeRoundBr
+  local miss, n = {}, 0
+  for k in pairs(want) do
+    local it = TT.get(k)
+    local d = it and VD.get(it.play)
+    if d and (d.cat == "tank" or d.cat == "apc") then
+      n = n + 1
+      G.treeRoundBr = function() return it.br end
+      local ok, got = pcall(G.treePickAi, TEAM[it.nat], d.cat, function(id) return G.aiVehUsable(id) and id == it.play end)
+      if not (ok and got == it) then table.insert(miss, k .. "（" .. tostring(ok and (got and got.key) or got) .. "）") end
+    end
+  end
+  G.treeRoundBr = br0
+  check(G.treePickAi ~= nil and G.aiVehUsable ~= nil and n >= 25 and #miss == 0,
+    string.format("电脑车按科技树挑得到拆出来的型号（%d 项，真调 G.treePickAi + AIVeh 的 usable）", n) .. (#miss > 0 and ("：挑不到 " .. table.concat(miss, " ")) or ""))
+end
 
 print("③ 试驾每一型")
 local me = T.join("P1", 9601, true)

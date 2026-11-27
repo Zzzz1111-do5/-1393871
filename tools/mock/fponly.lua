@@ -1,8 +1,10 @@
 -- 第一人称只留 M1A1、M1A2（模拟器）：python3 tools/mock/run.py tools/mock/fponly.lua
 --   用户 11-25：「除了m1a1和a2 其他载具不要做第一人称模式」——Config.FirstPerson.only 白名单（Interior.lua 的 fpAllowed）
 --   ① 白名单：m1a1 / m1a2 有，99A、T-90M、歼-20、阿帕奇没有
---   ② 坐进 99A 按 C：不进车里（还是车外）；坐进 M1A2 按 C：进车里
+--   ② 坐进 99A 按 F2：不进车里（还是车外）；坐进 M1A2 按 F2：进车里（11-27 起车外的 C 归车长望远镜，进车内用 F2～F5 / T；车里的 C 照旧换乘员位、最后回车外）
 --   ③ 开歼-20 按 V：不进座舱
+--   ④ 11-27 审查第 2 条：拆出来的同族变型（VehDefs 的 like：M1、IPM1、科技树的 M1A1、M1A1 HC → m1a1，M1A2、SEP、SEPv3 → m1a2）
+--      白名单、车内都退到 like 那一型（原来拆开以后这 7 项进不了车里）；坐进 SEPv3、M1 按 F2 进的是 M1A2 / M1A1 那套车内
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
@@ -36,6 +38,11 @@ check(ok ~= nil, "有 G.interiorAllowed")
 if ok then
   check(ok("m1a1") and ok("m1a2"), "M1A1、M1A2 有第一人称")
   check(not ok("ztz99a") and not ok("t90m") and not ok("j20") and not ok("ah64e"), "99A、T-90M、歼-20、阿帕奇没有")
+  -- ④ 同族变型退到 like（M1 一族 7 项）；like 不在白名单的照旧没有（96 式 → 96B、T-90A → T-90M、M2 → M2A3）
+  local fam, bad = { "m1", "m1ip", "m1a1base", "m1a1hc", "m1a2base", "m1a2sep", "m1a2sep3" }, {}
+  for _, id in ipairs(fam) do if not ok(id) then table.insert(bad, id) end end
+  check(#bad == 0, "M1 一族 7 项（like 是 m1a1 / m1a2）有第一人称" .. (#bad > 0 and ("：没有 " .. table.concat(bad, " ")) or ""))
+  check(not ok("ztz96base") and not ok("t90a") and not ok("m2a0") and not ok("leo2a5"), "like 不在白名单的（96 式、T-90A、M2、豹 2A5）照旧没有")
 end
 
 local function ride(id)
@@ -60,18 +67,18 @@ local function leave()
   R.run(1)
 end
 
-print("② 坦克按 C")
+print("② 坦克按 F2（进驾驶员位）")
 local e99 = ride("ztz99a")
 check(C.drive ~= nil, "坐进 99A")
-T.tap(Enum.KeyCode.C)
+T.tap(Enum.KeyCode.F2)
 R.run(1)
-check(not (C.interiorOn and C.interiorOn()), "99A 按 C：不进车里")
+check(not (C.interiorOn and C.interiorOn()), "99A 按 F2：不进车里")
 leave()
 local eM = ride("m1a2")
 check(C.drive ~= nil, "坐进 M1A2")
-T.tap(Enum.KeyCode.C)
+T.tap(Enum.KeyCode.F2)
 T.runUntil(function() return C.interiorOn and C.interiorOn() end, 6)
-check(C.interiorOn and C.interiorOn(), "M1A2 按 C：进车里")
+check(C.interiorOn and C.interiorOn(), "M1A2 按 F2：进车里")
 T.tap(Enum.KeyCode.C)
 for _ = 1, 6 do
   if not (C.interiorOn and C.interiorOn()) then break end
@@ -79,6 +86,24 @@ for _ = 1, 6 do
   R.run(0.3)
 end
 leave()
+
+print("④ 同族变型按 F2：进的是 like 那一型的车内")
+for _, c in ipairs({ { "m1a2sep3", "m1a2", "M1A2 SEPv3" }, { "m1", "m1a1", "M1" } }) do
+  local ev = ride(c[1])
+  check(C.drive ~= nil and C.drive.d and C.drive.d.id == c[1], "坐进 " .. c[3] .. "（" .. tostring(C.drive and C.drive.d and C.drive.d.id) .. "）")
+  T.tap(Enum.KeyCode.F2)
+  T.runUntil(function() return C.interiorOn and C.interiorOn() end, 6)
+  local s = C.interiorState and C.interiorState()
+  local key = s and s.cur and s.cur.key
+  check(C.interiorOn and C.interiorOn() and key == c[2], c[3] .. " 按 F2：进车里，用的是 " .. tostring(key) .. " 的车内（应为 " .. c[2] .. "）")
+  for _ = 1, 6 do
+    if not (C.interiorOn and C.interiorOn()) then break end
+    T.tap(Enum.KeyCode.C)
+    R.run(0.3)
+  end
+  leave()
+  if ev and ev.alive and G.removeEnt then G.removeEnt(ev) end
+end
 
 print("③ 飞机按 V")
 local p0 = me.Character.HumanoidRootPart.Position

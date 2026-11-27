@@ -38,7 +38,7 @@ TM.SPEC = {
 
 -- k 挨单装药破甲弹（火箭弹）时剩几成伤害、kt 挨串联装药（反坦克导弹：前级先把爆反引爆）时剩几成、ke 挨尾翼稳定脱壳穿甲弹时剩几成，
 --   kg 每格（一个盒子）加多重、th 盒子厚度倍数（重型爆反钢板厚、盒子更厚）
---   FY-2：第二代、轻型（对破甲弹）；FY-4：重型（对穿甲弹也有用，相当于接触-5：官方说能削掉约两成穿深）；
+--   FY-2：第二代、轻型（对破甲弹）；FY-4：重型（对穿甲弹也有用，相当于接触-5：官方说能削掉约两成穿深；96A / 96B / 99A 出厂都是它）；
 --   ARAT-1（M19 块）：每块 65 磅（美国陆军 2020 年报道）≈ 29.5 千克，对单装药火箭弹；ARAT-2（M32 块）叠在 M19 外面成双层，专门对付串联装药
 TM.ERA = {
   fy2 = { k = 0.30, kt = 0.85, ke = 1.00, kg = 22, th = 1.0 },   -- 重量估
@@ -124,11 +124,13 @@ if TANK_MG then table.insert(TM.SLOTS, "roof") end
 TM.FOR = {
   ztz99a = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "none", "jd3" }, slat = { "none", "slat" }, belly = { "none", "belly" },
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
-  ztz96 = { era = { "fy2", "fy4" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
+  -- 96B（ztz96）：11-27 审查第 5 条——原来出厂 FY-2，比 2006 年的 96A（FY-4）还轻；公开资料（维基百科 Type 96：96A 车体正面 FY-4、96B 的装甲布局同 96A；
+  --   globalmilitary.net：96A、96B 炮塔、首上、储物筐都是箭形 FY-4）两型都是 FY-4，出厂改成 FY-4（FY-2 留着能换）
+  ztz96 = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
   t90m = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
-  -- 11-27 拆开重叠的版本：96A 出厂就是炮塔正面箭形 FY-4 + 首上（模型是 96B 的，上面的块按 FY-4 算）；别的照 96B
+  -- 11-27 拆开重叠的版本：96A 出厂就是箭形 FY-4（模型是 96B 的，上面的块按 FY-4 算）；别的照 96B（96B 也改成出厂 FY-4 以后，两套一样）
   ztz96a = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
   m1a2 = { era = { "arat", "arat2" }, aps = { "none", "trophy" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
@@ -152,8 +154,8 @@ TM.PRESETS = {
     { id = "urban", z = { "tf", "ts", "tb", "gl", "sk", "sr" }, set = { era = "fy4", aps = "gl5", ew = "jd3", slat = "slat", belly = "belly" } },
     { id = "breach", z = { "tf", "ts", "gl", "sk" }, set = { era = "fy4", eng = "plow", belly = "belly" } },
   },
-  ztz96 = {
-    { id = "factory", z = { "tf", "ts", "gl", "sk" }, set = { era = "fy2", aps = "none", ew = "none", slat = "none", belly = "none", eng = "none", cam = "none" } },
+  ztz96 = {   -- 11-27：96B 出厂 FY-4（同 96A）
+    { id = "factory", z = { "tf", "ts", "gl", "sk" }, set = { era = "fy4", aps = "none", ew = "none", slat = "none", belly = "none", eng = "none", cam = "none" } },
     { id = "front", z = { "tf", "ts", "gl", "lf", "sk" }, set = { era = "fy4", aps = "gl5" } },
     { id = "urban", z = { "tf", "ts", "tb", "gl", "sk", "sr" }, set = { era = "fy4", aps = "gl5", ew = "lws", slat = "slat", belly = "belly" } },
     { id = "breach", z = { "tf", "ts", "gl", "sk" }, set = { eng = "plow", belly = "belly" } },

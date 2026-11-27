@@ -189,17 +189,21 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   end
 
   -- 第一人称只给白名单里的型号（Config.FirstPerson.only：用户 11-25 只留 M1A1、M1A2；nil = 全开）
+  --   11-27：拆出来的同族变型（VehDefs 的 like：M1、IPM1、科技树的 M1A1、M1A1 HC → m1a1，M1A2、SEP、SEPv3 → m1a2）同一个模型、同一套车内，
+  --   白名单查不到自己的就看 like 那一型（拆之前它们借的就是 m1a1 / m1a2，能按 F2～F5 进车里、按 T 进车长镜；拆开以后这 7 项的车内整个没了）
   local function fpAllowed(id)
     local FP = G.Config.FirstPerson
     local only = FP and FP.only
     if not only then return true end
-    return only[id] == true
+    if only[id] == true then return true end
+    local d = VD.get(id or "")
+    return d ~= nil and d.like ~= nil and only[d.like] == true
   end
   G.interiorAllowed = fpAllowed
 
   local function build(st, v)
     if not fpAllowed(v.def.id) then return nil end
-    local key = ALIAS[v.def.id] or v.def.id
+    local key = ALIAS[v.def.id] or ALIAS[v.def.like or ""] or v.def.id   -- 同族变型退到 like 那一型的车内（同上）
     local fn = Defs[key]
     if not fn then return nil end
     local m = Instance.new("Model")

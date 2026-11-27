@@ -115,7 +115,9 @@ local LIST = {
       --   现在各开各的型号（VehDefs：炮、弹、装甲、机动、观瞄照年代），模型借同族的（科技树上写「同族模型」）
       { "us_m1", "M1 艾布拉姆斯", "M1 Abrams", 1980, 3, 2, 9.3, veh = "m1", model = "m1a1" },
       { "us_m1ip", "M1IP", "IPM1", 1984, 4, 2, 9.7, veh = "m1ip", model = "m1a1" },
-      { "us_m1a1", "M1A1", "M1A1", 1985, 4, 2, 10.3, veh = "m1a1" },
+      -- 11-27 审查第 1 条：M1A1 原来开老的 m1a1（2003 年的 M829A3、ARAT / TUSK 改装页：比后面的 HC、M1A2、SEP 都强）——
+      --   开自己的 m1a1base（1985 年的 M829 / M830 / M829A1、没有 ARAT），模型照旧是 M1A1 的；老的 m1a1 留给老模式、老 AI 名单
+      { "us_m1a1", "M1A1", "M1A1", 1985, 4, 2, 10.3, veh = "m1a1base", model = "m1a1" },
       { "us_m1a1hc", "M1A1 HC", "M1A1 HC", 1988, 4, 2, 10.7, veh = "m1a1hc", model = "m1a1" },
       { "us_m1a2", "M1A2", "M1A2", 1992, 5, 2, 11.0, veh = "m1a2base", model = "m1a2" },
       { "us_m1a2sep", "M1A2 SEP", "M1A2 SEP", 2000, 5, 2, 11.3, veh = "m1a2sep", model = "m1a2" },
@@ -289,6 +291,9 @@ for _, nat in ipairs(TT.NATIONS) do
     end
   end
 end
+-- 老的 m1a1（老模式、老 AI 名单还在开）11-27 起不是哪一项的 veh 了（科技树的 M1A1 开 m1a1base）：沙盒、电脑车按型号找年代、国家时照旧认 us_m1a1
+--   （同一年、同一国：观瞄、火控代跟原来一样）
+TT.byVeh.m1a1 = TT.byVeh.m1a1 or TT.byKey.us_m1a1
 
 function TT.get(key) return TT.byKey[key] end
 -- 这一系这棵树的起步车（白送的那一辆；树空着返回 nil）

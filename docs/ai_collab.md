@@ -562,6 +562,19 @@
       射流一点点钻进去（熔化金属珠、杵体）→ 破片一根根长出 → 打到的乘员 / 模块红白闪 → 殉爆火球 / 起火；别的弹种还是原来那张静态图
     · 直接出击（c1c89df）：部署界面下面一条出击栏（WtBattle），点车 = G.ACT.wtDeployVeh（出生、出车、坐进去）
 
+## 同族变型（11-27 拆重叠版本 e94bb69…60a97e9 + 审查返修；加新型号前先看这里）
+
+- **VehDefs 的 variant 三个字段**（写在 over 里）：
+  · `like = <同族那一型>`（借谁的模型）：按型号登记的表查不到这一型时退到它——驾驶界面剪影（VehHud）、召唤卡片（Depot）、TankMods 的 FOR / ERADEF / PRESETS / SPEC（noEra 的不退）、
+    **第一人称白名单 Config.FirstPerson.only 和车内 Interior.lua 的 ALIAS**（`only[id] or only[d.like]`、`ALIAS[id] or ALIAS[d.like]`：M1 一族 7 项靠它进 M1A1 / M1A2 那套车内）。
+  · `noEra = true`：借来的模型上后来才有的爆反 / ARAT / TUSK 不起作用（TankMods.eraOf 一处挡：服务器、驾驶界面、改装页一起没有）；没导入原模型时也别画，再写 `era = false`。
+  · `noStab = true`：没有炮控稳定器（M60、59 式、豹 1 头一批）。**variant 是深拷**：从 noStab 的那一型拷出来、真车有稳定器的（69-II、豹 1A1A1、豹 1A5）要写 `noStab = false`。
+- **加 / 改 alias 要改两处**：源头（blveh.py 管的模型改 tools/models/blveh.json 那一项的 alias 数组，网页版 / Sketchfab 的改 tools/models/mdl2glb.py 的 ALIAS）
+  + 生成好的 src/ReplicatedStorage/ImportedMeta.lua 的 alias / old 两行（照 mdl2glb 的 lua() 写法：键排序、`old` 跟 blveh.json 的 old）。
+  另外按型号查的：Lang veh.* / vw.*、VehPics（vehicons.mjs 的 GLB 加一行，`vehpics.py <空目录> --merge`）、WtOptics.VEH_NV、WtDamage.PROF / CAROUSEL；科技树改 veh + model。
+- 老型号被科技树换掉的（科技树 M1A1 11-27 起开 m1a1base，老的 m1a1 留给老模式、老 AI 名单）：TechTree 末尾把 TT.byVeh 指回原来那一项，沙盒的观瞄、火控不变。
+- 炮的弹种表照全工程的顺序：{ 原厂穿甲, 破甲 / 多用途, 榴弹 / MPAT / 霰弹, 旧穿甲…, 射流 }——WtMods 只研究得到第二、第三种（第四、五种研究不到，老问题）。
+
 ## 工具链的先后（别互相覆盖）
 
 - **M1A1（m1a1i）**：`blveh.py`（Blender 从原文件转）→ `blveh_meta.py`（写 ImportedMeta 那一行）→ `intsplit.py m1a1i write`（B 的：
