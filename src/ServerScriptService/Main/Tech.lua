@@ -729,6 +729,9 @@ function Tech.init(G)
   local SKY = { { 1300, -400, 900, 420, 170 }, { 1800, 500, 1300, 650, 210 }, { 900, 250, 450, 70, 32, true } }
   -- 飞机试驾的地面靶：离靶机中心多少米（往前、往右）
   local AIRGROUND = { { 0, -150 }, { 40, -50 }, { -30, 60 }, { 60, 160 }, { 500, 0 }, { 520, 120 } }
+  -- 飞机试驾在空中出生（跑道上滑不起来的大飞机、摆不到跑道上的兜底）：固定翼退到离靶区中心几秒航程的地方、朝北进场（最多退 12000 格，还在训练场的地形里）——
+  --   炸弹从 1200 格高平飞投下去往前飞 9.7 秒：轰-6K / B-2 出来九秒多才到投弹点，有时间开轰炸瞄准镜对准；MQ-9 慢，按秒算只退 4900 格
+  local RUNIN = 18
   local M = 2.8   -- 一米多少格
   local function flatOk(x, z)
     local Map = G.Map
@@ -837,6 +840,9 @@ function Tech.init(G)
   G.ACT.testDrive = function(P, key)
     local it = type(key) == "string" and TT.byKey[key]
     if not it or P.alive or G.pve or not G.ACT.deploy then return end
+    -- 局内（这一局算他的、准备 / 战斗阶段：机库是局内选车页，Round.lua G.inMatch）不能试驾，同战雷的出击页：TechUI 在局内选车页藏了「试驾」、
+    --   科技树也不开，服务器这里也拦——原来只藏了按钮，客户端直接发 testDrive 照样能半路去训练场（试驾不看兵力、出生点：Round.lua deploy 的 P.testDeploy）
+    if G.inMatch and G.inMatch(P) then return end
     if now() < (P.canDeployAt or 0) then G.msg(P.pl, "info", "tree.waitDeploy", math.ceil((P.canDeployAt or 0) - now())) return end
     local air = it.branch == "air" or it.branch == "heli"
     local heli = it.branch == "heli"
@@ -853,7 +859,7 @@ function Tech.init(G)
     -- 跑道上滑不起来的固定翼直接在空中出生（用户 11-27「飞机试驾不了」：满油满弹的轰-6K、B-2 推满油门照样冲出训练场 3600 格的跑道，
     --   B-2 冲到训练场铺的地形外面才离地）。不按型号列名单：按飞行物理静态估一下离地要滑多远（AirDefs.takeoffRun，照客户端 Fly.lua 地上那段
     --   推满油门、到抬头速度拉杆；满油、默认挂载、改装全装的推力），比起飞位往西剩下的跑道（RangeMap.runwayLeft）的九成五还长
-    --   （留一点：拉杆晚一两秒也不冲出去）就不摆在跑道上，同下面「摆不到跑道上」那条在靶区上空出来。估不出来的（没有飞行物理）照旧在跑道上
+    --   （留一点：拉杆晚一两秒也不冲出去）就不摆在跑道上，同下面「摆不到跑道上」那条在空中出来。估不出来的（没有飞行物理）照旧在跑道上
     local sky = false
     if air and not heli then
       local okR, run, lifted = pcall(AD.takeoffRun, AD.get(it.play), { treeKey = it.key, thrK = fx.thr, h = spawnAt.Y })
@@ -863,23 +869,34 @@ function Tech.init(G)
       if not P.alive or not P.char then return end
       testClean(P)
       local s = { P = P, idx = idx, dummies = {}, drones = {}, foe = (P.team == "atk") and "def" or "atk", air = air }
-      -- 流式加载：先请服务器把训练场那一片送过去（人在战场那边出生的，十万格外的地形、零件这时还没到客户端）
-      if G.streamAround then G.streamAround(P.pl, spawnAt, 8) end
-      if not P.alive or not P.char then return end
-      local e
+      local d = air and AD.get(it.play)
+      local skyAt, skyV   -- 空中出生的位置、速度
       if air then
         -- 飞机、直升机：靶区在挡弹墙北面（空中靶区，MapRange.AIRTGT），朝北摆靶
         s.base, s.dir = RangeMap.airTarget(), Vector3.new(0, 0, -1)
-        local d = AD.get(it.play)
+        -- 空中出生（上面估的跑道上滑不起来 sky、下面摆不到跑道 / 直升机坪上的兜底）：朝北、带 0.8 倍军推最大速度（客户端 Fly.lua 空中出发也按这个）；
+        --   固定翼往南退到离靶区中心 RUNIN 秒航程的地方、朝北进场——原来在靶区中心正上方出来：地面靶在正前方 0～1460 格，1200 格高、
+        --   600 格 / 秒平飞投炸弹要提前 5000 多格松手，一出来就已经飞过了靶子，轰炸机掉头半径又有好几公里；现在轰-6K 出来九秒多才到投弹点。
+        --   直升机照旧在靶区上方 140 格悬停出来
+        skyV = heli and 0 or (((d and d.vMil) or 200) * 0.8)
+        local b0 = s.base - s.dir * math.min(skyV * RUNIN, 12000)
+        skyAt = Vector3.new(b0.X, G.Map.height(b0.X, b0.Z) + (heli and 140 or (W.airSpawnH or 1200)), b0.Z)
+      end
+      -- 流式加载：先请服务器把出生那一片送过去（人在战场那边出生的，十万格外的地形、零件这时还没到客户端）——空中出生的送空中那一片
+      --   （原来一直送跑道东头，离空中出生的地方一万多格）；无人机也一样：画面是无人机那边，操作员被钉在原地（Air.lua seat），不会掉下去
+      if G.streamAround then G.streamAround(P.pl, sky and skyAt or spawnAt, 8) end
+      if not P.alive or not P.char then return end
+      local e
+      local aloft = false   -- 在空中出生的（sky、兜底）
+      if air then
         local pos = Vector3.new(spawnAt.X, G.Map.height(spawnAt.X, spawnAt.Z) + ((d and d.gearH) or 5), spawnAt.Z)
         if G.spawnAircraft and not sky then
           local okS, ee = pcall(G.spawnAircraft, P.team, it.play, CFrame.lookAt(pos, pos + spawnDir), nil, P, nil)
           if okS then e = ee end
         end
-        if not e and G.spawnAircraftAir then   -- 跑道上滑不起来（sky）、摆不到跑道上：在靶区上空出来，朝北、带 0.8 倍军推最大速度（客户端 Fly.lua 空中出发也按这个）
-          local p2 = Vector3.new(s.base.X, G.Map.height(s.base.X, s.base.Z) + (heli and 140 or (W.airSpawnH or 1200)), s.base.Z)
-          e = G.spawnAircraftAir(P.team, it.play, CFrame.lookAt(p2, p2 + s.dir), nil, P, nil, heli and 0 or (((d and d.vMil) or 200) * 0.8))
-          if e and not heli then sky = true end
+        if not e and G.spawnAircraftAir then   -- 跑道上滑不起来（sky）、摆不到跑道 / 直升机坪上：在空中出来
+          e = G.spawnAircraftAir(P.team, it.play, CFrame.lookAt(skyAt, skyAt + s.dir), nil, P, nil, skyV)
+          aloft = e ~= nil
         end
       else
         s.base, s.dir = spawnAt, spawnDir
@@ -913,9 +930,20 @@ function Tech.init(G)
       end
       P.char:PivotTo(e.root.CFrame * CFrame.new(0, 2, 0))
       if G.ACT.enterVeh then G.ACT.enterVeh(P, e.id) end
-      -- 无人机在空中出生：人拿着平板站在原地遥控（Air.lua seat 不挪人、把人钉住）——别把操作员留在天上（收起平板就掉下来），挪回跑道东头的地上
-      if sky and e.def and e.def.drone and P.remote == e and P.char then P.char:PivotTo(CFrame.new(spawnAt + Vector3.new(0, 3, 0))) end
-      G.msg(P.pl, "info", air and (sky and "tree.testOnSky" or "tree.testOnAir") or "tree.testOn", it.name)
+      -- 无人机：人拿着平板站着遥控（Air.lua seat 不挪人、把人钉住）——操作员挪到起飞位旁边、跑道南边的草地上（MapRange.runwaySide），面朝跑道：
+      --   空中出生的别留在天上（收起平板就掉下来）；在跑道上出生的也别站在起飞位上（上面 PivotTo 到了机身上：飞机滑走以后人还钉在跑道上，
+      --   前面几个起飞位的飞机滑跑正好从他身上穿过去）
+      if e.def and e.def.drone and P.remote == e and P.char then
+        local op = RangeMap.runwaySide(idx) + Vector3.new(0, 3, 0)
+        P.char:PivotTo(CFrame.lookAt(op, op + Vector3.new(0, 0, -1)))
+      end
+      -- 提示在哪出来：空中出生分两种原因——估出来跑道上滑不起来（sky：testOnSky）、摆不到跑道 / 直升机坪上的兜底（testInAir；原来兜底也说
+      --   「满油满弹滑不起来」）；直升机停在直升机坪上（testOnPad；原来和固定翼一样说「在跑道上，推油门起飞」）
+      local msg = "tree.testOn"
+      if aloft then msg = sky and "tree.testOnSky" or "tree.testInAir"
+      elseif heli then msg = "tree.testOnPad"
+      elseif air then msg = "tree.testOnAir" end
+      G.msg(P.pl, "info", msg, it.name)
     end
     P.testDeploy = true   -- Round.lua deploy：试驾不受出生点 / 准备阶段 / 兵力限制（用户 11-26「训练场目前没发试驾飞机了」）
     G.ACT.deploy(P, "crew", air and "baseAir" or "base", go)

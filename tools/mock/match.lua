@@ -1,7 +1,7 @@
 -- 匹配与补人机（用户 11-26：「点开战先匹配，匹配一分钟后人不够就补人机，两边的人机的车辆要符合我匹配时带的最高权重的载具，
 --   跟战雷一样，然后人机的分数也要出现在记分板」）：python3 tools/mock/run.py tools/mock/match.lua
 --   ① 开服是「匹配中」，没人点开战不开打；② 点开战排上，到点开准备阶段，记成这一局的人、机库变成局内选车页（主按钮「出击」、匹配时点的那一辆选中，
---      飞机卡禁选、没有「试驾」——同战雷的出击页），点出击坐进去
+--      飞机卡禁选、没有「试驾」，客户端直接发 testDrive 服务器也不理——同战雷的出击页），点出击坐进去
 --   ③ 开打后两队电脑车补满 teamSize（自己这队少一辆），车的战斗等级按我阵容里最高的那辆挑；④ 电脑车组进记分板，打掉车记击毁、得分、阵亡
 --   ⑤ 车没了回局内选车页（卡上写这一局的账）、「退出战斗」退出这一局；⑥ 一局打完回到匹配中；⑦ 每局开局拨回早上（一天 48 分钟）
 local T = dofile(MOCK_DIR .. "/common.lua")
@@ -87,6 +87,19 @@ if airKey then
 end
 -- 局内选车页没有「试驾」（同战雷的出击页；试驾审查 4：飞机卡禁选，原来右边「试驾」还在、点了开的是选中的坦克）
 check(T.findNamed("HangarTest") == nil and T.findNamed("ViewBtn") ~= nil, "局内选车：右边没有「试驾」（「只看车」还在）")
+-- 服务器也不让局内试驾（Tech.lua testDrive 按 Round.lua G.inMatch 拦；后续审查 6：原来只藏了按钮，客户端直接发 testDrive 照样能半路去训练场）——
+--   不回任何提示：回「训练场还在准备」「几秒后出击」的是被别的条件拦下的，不算
+T.runUntil(function() return G.rangeReady == true end, 30, 1 / 10)
+local nTest = #R.sent
+T.act("testDrive", key)
+R.run(2)
+local why = nil
+for i = nTest + 1, #R.sent do
+  local s = R.sent[i]
+  if s.name == "Msg" and type(s.args[2]) == "string" and s.args[2]:find("^tree%.") then why = s.args[2] end
+end
+check(G.inMatch ~= nil and G.inMatch(P) and not P.alive and not P.inTest and P.vehicle == nil and why == nil,
+  "局内选车：客户端直接发 testDrive，服务器也不让试驾（还在选车页；回的提示 " .. tostring(why) .. "）")
 check(not T.findNamed("MapVote") or not T.findNamed("MapVote").Active or #T.texts("▼") == 0, "局内不能选地图（没有 ▼）")
 -- shot=<目录>：拍一张局内选车（tools/mock/hud_render.py 画成图）
 local shotDir = TEST_ARGS and TEST_ARGS:match("shot=(%S+)")

@@ -181,6 +181,13 @@ function R.runwayStart(k)
 end
 -- 第 k 个起飞位朝西到跑道西头还剩多长（格；第 0 个 3440）：试驾按它挑在跑道上起飞还是空中出生（Tech.lua，AirDefs.takeoffRun 估的滑跑距离）
 function R.runwayLeft(k) return startU(k or 0) - R.RWY.u0 end
+-- 第 k 个起飞位旁边、跑道南边离跑道边 60 格的草地上：试驾无人机的操作员站这儿拿平板遥控（Tech.lua）——
+--   站在起飞位上挡着前面几个起飞位的滑跑线；跑道北边是停机坪、机库、塔台。并排的两个起飞位（k、k + 1 同一个 startU）左右错开 16 格
+function R.runwaySide(k)
+  k = k or 0
+  local x, z = R.toWorld(startU(k) + ((k % 2 == 0) and -8 or 8), R.RWY.w + R.RWY.wid / 2 + 60)
+  return Vector3.new(x, R.ground(x, z), z)
+end
 function R.heliPad(k)
   local x, z = R.toWorld(R.HELI.u + ((k or 0) % 3 - 1) * 70, R.HELI.w + floor((k or 0) / 3) * 70)
   return Vector3.new(x, R.ground(x, z), z), Vector3.new(0, 0, -1)
