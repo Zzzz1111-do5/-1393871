@@ -1446,7 +1446,7 @@ R.services = {}
 local camera = make("Camera")
 def("Camera", "Instance", {
   CFrame = { T.CFrame, CFrame.new(0, 20, 20) }, CameraType = { E("CameraType"), Enum.CameraType.Custom }, CameraSubject = { T.Instance, nil }, FieldOfView = { T.number, 70 },
-}, { ro = { ViewportSize = newV2(1280, 720) }, methods = {   -- 能新建（挂载编辑器给 ViewportFrame 一个自己的镜头）
+}, { ro = { ViewportSize = function() return newV2(R.vpW or 1280, R.vpH or 720) end }, methods = {   -- 能新建（挂载编辑器给 ViewportFrame 一个自己的镜头）；屏幕大小默认 1280 × 720，测试可改 R.vpW / R.vpH
   ScreenPointToRay = function(o, x, y)
     if type(x) ~= "number" or type(y) ~= "number" then error("ScreenPointToRay 要两个数字", 2) end
     return R.pixelRay(o, x, y + 58)
@@ -1455,16 +1455,17 @@ def("Camera", "Instance", {
     if type(x) ~= "number" or type(y) ~= "number" then error("ViewportPointToRay 要两个数字", 2) end
     return R.pixelRay(o, x, y)
   end,
-  -- 透视投影到 1280 × 720 的画面：返回（像素 x, 像素 y, 深度）、在不在画面里
+  -- 透视投影到 1280 × 720（或 R.vpW × R.vpH）的画面：返回（像素 x, 像素 y, 深度）、在不在画面里
   WorldToViewportPoint = function(o, p)
     if typeof(p) ~= "Vector3" then error("WorldToViewportPoint 要 Vector3", 2) end
     local rel = o.CFrame:Inverse() * p
     local depth = -rel.Z
     local f = 1 / math.tan(math.rad(o.FieldOfView) / 2)
     local d = (math.abs(depth) < 1e-6) and 1e-6 or depth
-    local x = 640 + rel.X / d * f * 360
-    local y = 360 - rel.Y / d * f * 360
-    return v3(x, y, depth), depth > 0 and x >= 0 and x <= 1280 and y >= 0 and y <= 720
+    local vw, vh = R.vpW or 1280, R.vpH or 720
+    local x = vw / 2 + rel.X / d * f * vh / 2
+    local y = vh / 2 - rel.Y / d * f * vh / 2
+    return v3(x, y, depth), depth > 0 and x >= 0 and x <= vw and y >= 0 and y <= vh
   end,
 } })
 
@@ -1472,7 +1473,8 @@ def("Camera", "Instance", {
 function R.pixelRay(o, x, y)
   local f = 1 / math.tan(math.rad(o.FieldOfView) / 2)
   local cf = o.CFrame
-  local d = cf.RightVector * ((x - 640) / (f * 360)) + cf.UpVector * (-(y - 360) / (f * 360)) + cf.LookVector
+  local hw, hh = (R.vpW or 1280) / 2, (R.vpH or 720) / 2
+  local d = cf.RightVector * ((x - hw) / (f * hh)) + cf.UpVector * (-(y - hh) / (f * hh)) + cf.LookVector
   return setmetatable({ Origin = cf.Position, Direction = d.Unit }, { __type = "Ray" })
 end
 def("WorldModel", "Model", {}, { methods = {

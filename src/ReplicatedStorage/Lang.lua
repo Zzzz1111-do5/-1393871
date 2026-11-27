@@ -479,9 +479,10 @@ add("wtt.space", "空格", "SPC")   -- 弹药栏机枪那格的键位（11-27 �
 add("wtt.load", "装填 {1} s", "Loading {1} s")
 add("wtt.noAmmo", "无弹", "No ammo")
 add("wtt.dmg", "损坏", "DMG")
-add("wtt.jet", "{1} 金属射流弹", "{1} metal jet")
-add("wtt.jetType", "串联破甲", "Tandem HEAT")
-add("wtt.tagJet", "射流", "JET")
+add("wtt.jet", "{1} 金属射流弹", "{1} metal jet")   -- 游戏自己的弹（没有真型号可写）：名字照叫
+-- 类型短标签、名牌上的类型都用代号（11-27 美术审查：「射流」夹在 APFSDS / HEAT-MP / MPAT 中间，中英混排）
+add("wtt.jetType", "HEAT-TDM", "HEAT-TDM")
+add("wtt.tagJet", "HEAT-TDM", "HEAT-TDM")
 -- 炮长瞄准镜、车长望远镜（GunSight.lua，用户 11-27 照战雷）
 add("gs.sightSet", "表尺 {1} 米", "Sight {1} m")
 add("gs.estR", "≈{1} 米", "≈{1} m")

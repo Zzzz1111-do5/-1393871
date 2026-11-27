@@ -4,12 +4,16 @@
 --   kind=jet / heli：开飞机（空中出发，前方一架敌机、地上一辆敌车）[id=j20] [alt=700]——看开飞机的界面（AirHud，用户 11-19 照 MWT 截图改）
 --     [lock=0.5]：锁定画到一半（菱形顺时针画了一半）；[outcone=1]：锁上以后把敌机挪到导弹离轴角外（菱形变黄）；[ir=1]：开热成像；
 --     [roll=25]：带坡度；[clean=1]：截图前收起新手卡、作战简报；[bs=1]：开轰炸瞄准镜（F7）；[poi=1.5]：落点前方 1.5 秒处标目标点
+--   [states=1]：弹药栏的打空 / 冷却（<out>_s1.json）、主炮损坏（<out>）各截一张，平时的截在 <out>_base.json；[vp=1920x1080] 按这个屏幕大小排版
 --   用户：开坦克要是 MWT 那套驾驶界面（截图），不要叠着旧界面。坐进一辆车、前方放一辆敌车开一会，
 --   把所有显示着的界面元素按 Roblox 的排版算出屏幕上的方框（1280×720，UDim2 + AnchorPoint + UIListLayout + UIScale 的近似），
 --   写成 JSON；tools/mock/hud_render.py 画成图看。也按 ScreenGui 列出各有多少个显示着的元素（找没关掉的旧界面）
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
+-- vp=1920x1080：按这个屏幕大小排版、截图（默认 1280 × 720；hud_render.py 加 size=1920x1080）
+local vpW, vpH = TEST_ARGS:match("vp=(%d+)x(%d+)")
+if vpW then R.vpW, R.vpH = tonumber(vpW), tonumber(vpH) end
 if TEST_ARGS:find("noedit=1", 1, true) then R.noEditable = true end   -- [noedit=1]：当成用不了 EditableImage（看界面退回方块拼的样子）
 local out = TEST_ARGS:match("out=(%S+)")
 local kind = TEST_ARGS:match("kind=(%a+)") or "tank"
@@ -284,6 +288,34 @@ elseif kind ~= "inf" and kind ~= "jet" and kind ~= "heli" and kind ~= "ads" then
     end
     check(stF.fireT ~= f0, "开了一炮（截图时在装填）")
     R.run(tonumber(TEST_ARGS:match("after=([%d%.]+)") or "") or 2)
+  end
+  -- states=1：弹药栏的几种状态（11-27 美术审查：打空、损坏、冷却没截过图）——先截平时（<out>_base.json），
+  --   再把第二种弹打空、叫一次火炮（冷却）截 <out>_s1.json，最后把炮闩打坏（主炮损坏：WtGun = false）截 <out>
+  if TEST_ARGS:find("states=1", 1, true) and e and e.alive and out then
+    local dump = dofile(MOCK_DIR .. "/uidump.lua")
+    R.run(0.5)
+    dump(T, me, (out:gsub("%.json$", "") .. "_base.json"), true)
+    local BALx = R.require(R.services.ReplicatedStorage:FindFirstChild("Ballistics"))
+    local wid = d.weapons and d.weapons[1]
+    local list = wid and BALx.GUN[wid]
+    local L = list and e.amL and e.amL[wid]
+    if L and list[2] then
+      L[list[2]] = 0
+      G.wtAmmoRefill(e, wid, 0)   -- 补 0 发：只为了把 AmL 推给客户端
+    end
+    local aim = e.model and e.model:FindFirstChild("Root") and (e.model.Root.CFrame * CF(0, 0, -400)).Position
+    if aim and G.ACT.wtArty then G.ACT.wtArty(P, aim) end
+    R.run(1)
+    check(L ~= nil and list[2] ~= nil and L[list[2]] == 0, "第二种弹打空了（" .. tostring(list and list[2]) .. "）")
+    check(me:GetAttribute("WtArtyCd") ~= nil, "叫了一次火炮：冷却中")
+    dump(T, me, (out:gsub("%.json$", "") .. "_s1.json"), true)
+    local br = e.wt and e.wt.byK and e.wt.byK.breech
+    if br then
+      br.hp = 0
+      G.wtPush(e)
+    end
+    R.run(1)
+    check(e.model:GetAttribute("WtGun") == false, "炮闩打坏了：主炮损坏")
   end
 end
 

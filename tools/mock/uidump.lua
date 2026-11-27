@@ -3,7 +3,7 @@
 return function(T, me, out, quiet)
 local R, V3, Enum = T.R, T.V3, T.Enum
 local print = quiet and function() end or print
-local VW, VH, INSET = 1280, 720, 36
+local VW, VH, INSET = R.vpW or 1280, R.vpH or 720, 36   -- 屏幕大小：默认 1280 × 720（hudshot 的 vp=1920x1080 可改）
 local items, perGui = {}, {}
 local function c3(c) return c and { math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5) } or nil end
 local function isGui(o) return R.base.IsA(o, "GuiObject") end
@@ -82,6 +82,7 @@ local function walk(o, ax, ay, uw, uh, s, guiName, depth, clip, ga, rootU)
       rec.icon = c:GetAttribute("Icon")   -- HudArt 装上的图标（HudIcons 里的名字）
       rec.pic = c:GetAttribute("PicName")   -- 写实车图（VehPics 里的名字；模拟器解不出 EditableImage，渲染时照游戏的解法还原）
       rec.apic = c:GetAttribute("AmmoPic")   -- 写实弹种图（AmmoPics 里的名字，「#g」结尾的是去色的）
+      rec.apicK = c:GetAttribute("AmmoPicK")   -- 用的哪一套（1 倍 / 2 倍）
       rec.fit = (c.ScaleType == Enum.ScaleType.Fit) or nil
     end
     rec.clip, rec.ga = clip, ga
