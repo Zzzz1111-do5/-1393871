@@ -2078,7 +2078,13 @@ function Drive.init(G)
       local res = G.rayFar(mz.Position, dir * (w.range or 900), aimParams)
       G.gunFx(wid, mz.Position, res and res.Position or (mz.Position + dir * (w.range or 900)), true)
     end
-    if w.kind == "shell" or w.kind == "arty" then
+    -- 连发的机炮（射击间隔 < 0.5 秒：M2A3 25 毫米、BMP 30 毫米、防空炮……）开火不晃镜头、不后坐、不推车身
+    --   （用户 11-27「机炮开打的时候屏幕不要往前拉 就正常就行 也别搞后坐力」）；单发的主炮照旧（11-25 要的战雷手感）
+    local autoGun = (w.rate or 1) < 0.5
+    if (w.kind == "shell" or w.kind == "arty") and autoGun then
+      if G.vehRecoil then G.vehRecoil(st.id) end   -- 炮管往后一缩（模型上的，不动镜头）
+      st.fireT = t
+    elseif w.kind == "shell" or w.kind == "arty" then
       if G.vehRecoil then G.vehRecoil(st.id) end
       if G.shake then G.shake((w.dmg > 300) and 0.35 or 0.06) end
       -- 整车被后坐力推一下（用户 11-25 晚「那你做战雷手感吧」）：炮朝前时车头一扬、车身往后一坐，朝侧面时炮那一侧抬起来；

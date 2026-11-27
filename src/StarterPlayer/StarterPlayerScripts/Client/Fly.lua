@@ -2572,11 +2572,7 @@ function Fly.init(G)
     local gunOn = st.pilot and st.trig and (st.gunAmmo or 0) > 0 and not st.crashed
     st.recoil = approach(st.recoil or 0, gunOn and 1 or 0, dt * (gunOn and 14 or 6))
     st.hitKick = math.max(0, (st.hitKick or 0) - dt * 5)
-    if st.recoil > 0.02 and st.pilot then
-      local t = os.clock()
-      local a = math.rad(0.05) * st.recoil
-      st.cf = st.cf * CFrame.Angles(math.noise(t * 37, 2.1) * a, math.noise(t * 33, 5.3) * a, math.noise(t * 29, 8.7) * a)
-    end
+    -- 航炮开火不再抖机身（用户 11-27「机炮开打的时候屏幕不要往前拉 就正常就行 也别搞后坐力」）：st.recoil 只留给界面用
     -- 镜头
     local pos = st.cf.Position
     if st.eo then
@@ -2718,13 +2714,8 @@ function Fly.init(G)
     if st.bsight and st.bsFov then fovT = st.bsFov end
     st.fov = st.fov or cam.FieldOfView
     st.fov += (fovT - st.fov) * math.min(1, dt * ((st.uav and 10) or 4))
-    local kick = ((st.eo or st.bsight) and 0) or ((st.recoil or 0) * 0.8 + (st.hitKick or 0))
-    if kick > 0.01 then
-      local t = os.clock()
-      local a = math.rad(0.32) * kick
-      cam.CFrame = cam.CFrame * CFrame.Angles(math.noise(t * 31, 1.3) * a, math.noise(t * 27, 7.1) * a, math.noise(t * 23, 4.7) * a * 0.5)
-    end
-    cam.FieldOfView = st.fov - ((st.eo or st.bsight) and 0 or (1.6 * (st.recoil or 0) + 1.2 * (st.hitKick or 0)))
+    -- 开火、打中都不再晃镜头、收视场角（用户 11-27「机炮开打的时候屏幕不要往前拉 就正常就行 也别搞后坐力」）
+    cam.FieldOfView = st.fov
     -- 瞄准点：镜头中间（固定翼：鼠标瞄准方向）打出去碰到的地方
     local ex = { G.viewFolder }
     if me.Character then table.insert(ex, me.Character) end

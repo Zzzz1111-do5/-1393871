@@ -150,7 +150,7 @@ function Gunner.init(G)
       if t < gs.nextAt then return end
       gs.nextAt = t + gs.w.rate
       G.R.Drive:FireServer({ op = "fire", aim = gs.aimPt })
-      if G.shake then G.shake(0.25) end
+      if G.shake and (gs.w.rate or 1) >= 0.5 then G.shake(0.25) end   -- 连发的（机枪、机炮）不晃镜头（11-27）
       if G.vehRecoil then G.vehRecoil(gs.id) end
     end
   end
