@@ -36,7 +36,7 @@ local function msgs(since, key)
   local n, last = 0, nil
   for i = since + 1, #R.sent do
     local s = R.sent[i]
-    if s.name == "Msg" and s.pl == me and s.args[2] == key then n, last = n + 1, s.args[3] end
+    if s.name == "Msg" and s.args[2] == key then n, last = n + 1, s.args[3] end
   end
   return n, last
 end

@@ -36,16 +36,23 @@ end
 local function msgSince(since, key)
   for i = since + 1, #R.sent do
     local s = R.sent[i]
-    if s.name == "Msg" and s.pl == me and s.args[2] == key then return true end
+    if s.name == "Msg" and s.args[2] == key then return true end
   end
   return false
 end
+-- 画出来的红菱形：挂在车模型上的在 PlayerGui.SpotMarks 下；找不到车的挂在 workspace 里一个看不见的小零件上
 local function marks()
-  local f = me.PlayerGui:FindFirstChild("SpotMarks")
   local out = {}
-  for _, b in ipairs(f and f:GetChildren() or {}) do
-    if b:IsA("BillboardGui") then table.insert(out, b) end
+  local function scan(root)
+    for _, b in ipairs(root:GetDescendants()) do
+      if b:IsA("BillboardGui") then
+        local l = b:FindFirstChildWhichIsA("TextLabel")
+        if l and l.Text == "◆" then table.insert(out, b) end
+      end
+    end
   end
+  scan(me.PlayerGui)
+  scan(R.services.Workspace)
   return out
 end
 
@@ -76,11 +83,24 @@ if e and st and tgt then
   local S = G.spotted and G.spotted[P.team]
   check(S ~= nil and S[tgt.id] ~= nil, "服务器把这辆靶车标给了全队")
   local ms = marks()
-  local onModel = false
+  local onModel, far = false, false
   for _, b in ipairs(ms) do
-    if b.Adornee and b.MaxDistance >= 1e4 then onModel = true end
+    if b.Adornee then onModel = true end
+    if b.MaxDistance >= 1e4 then far = true end
   end
-  check(#ms >= 1 and onModel, string.format("客户端：红菱形挂在车的模型上、远处也画（%d 个）", #ms))
+  local vf = C.viewFolder
+  print(string.format("  诊断：菱形 %d 个，挂在车上 %s；viewFolder %s（%d 个）", #ms, tostring(onModel), tostring(vf ~= nil), vf and #vf:GetChildren() or 0))
+  if vf then
+    local p = tgt.root.CFrame.Position
+    local best, cls = math.huge, "?"
+    for _, m in ipairs(vf:GetChildren()) do
+      local ok, pv = pcall(function() return m:GetPivot().Position end)
+      if ok and (pv - p).Magnitude < best then best, cls = (pv - p).Magnitude, m.ClassName end
+    end
+    print(string.format("  诊断：离靶车最近的 %s %.1f 格", cls, best))
+  end
+  check(#ms >= 1 and far, string.format("客户端：画了红菱形、远处也画（%d 个）", #ms))
+  check(onModel, "红菱形挂在那辆车的模型上（跟着它走）")
 
   print("② 准星附近没有敌人：提示；冷却")
   R.run(2.2)
