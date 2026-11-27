@@ -263,6 +263,10 @@ for _ = 1, 8 do if C.snowCloudTick then C.snowCloudTick(V3(0, 900, 2000)) end en
 local cs = C.snowCloudStats and C.snowCloudStats()
 check(cs and cs.imported and cs.puffs > 400 and cs.live > 20, string.format("天上的云：%s 朵，镜头附近摆了 %s 朵（建了 %s 次、%s 拍、摆过 %s 朵，镜头 %s）", tostring(cs and cs.puffs), tostring(cs and cs.live),
   tostring(cs and cs.builds), tostring(cs and cs.ticks), tostring(cs and cs.spawned), tostring(cs and cs.cam)))
+-- 有了体积云就不再摆 Warfx 那几百个半透明球拼的积云（11-27 M3 丝滑：两套云叠着，透明的一层层排序最贵）
+local banks = C.cloudBanks
+check(cs and cs.imported and C.snowCloudsOn == true and banks ~= nil and #banks:GetChildren() == 0,
+  "体积云开着：球拼的积云收掉了（还剩 " .. tostring(banks and #banks:GetChildren()) .. " 块）")
 -- 树：冬季树包的树、灌木，谷里也有（交战区里撞得倒的）
 local inValley, shrubs = 0, 0
 for _, t in ipairs(Map.TREES) do
