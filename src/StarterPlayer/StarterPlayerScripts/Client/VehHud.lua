@@ -1002,8 +1002,13 @@ function VehHud.init(G)
       local silCol = (k > 0.6) and HOLO or ((k > 0.3) and RGB(255, 214, 64) or RGB(255, 64, 52))
       if MW.iconId ~= d.id then   -- 换了车：换全息图（这辆车拍过的侧面图）；没有就用方块拼的剪影
         MW.iconId = d.id
-        local ok = art(MW.icon, "veh_" .. d.id)
-        local ic = ok and G.hudIcon("veh_" .. d.id)
+        -- 拆出来的同族变型（11-27：M1、IPM1、M1A2 SEP……HudIcons 是拍图生成的，没拍过它们）：查不到自己的就用 like 那一型的（同一个模型）
+        local icName = nil
+        for _, k in ipairs({ d.id, d.like }) do
+          if icName == nil and k and art(MW.icon, "veh_" .. k) then icName = "veh_" .. k end
+        end
+        local ok = icName ~= nil
+        local ic = ok and G.hudIcon(icName)
         if ic then MW.icon.Size = UD2(0, math.floor(ic.w * 0.62 + 0.5), 0, math.floor(ic.h * 0.62 + 0.5)) end
         MW.icon.Visible = ok
         MW.sil.Visible = not ok

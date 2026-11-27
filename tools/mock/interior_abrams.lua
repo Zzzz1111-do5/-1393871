@@ -33,7 +33,9 @@ G.pushOne(P)
 R.run(1)
 local C = T.C
 if C.menuShown and C.menuShown() then C.menuEnter() end
-T.actAs(me, "deploy", "rifle", "camp")
+-- 11-27 二审：原来出生在 camp，基线上 ① 就坐不上车（「坐上了 m1a2」不对）；照 fponly / gunsight 出生在 base、等出生了再往下走
+T.actAs(me, "deploy", "rifle", "base")
+T.runUntil(function() return P.alive and P.char ~= nil end, 15)
 R.run(1.5)
 local RS = R.services.ReplicatedStorage
 local VD = R.require(RS:FindFirstChild("VehDefs"))
@@ -88,7 +90,8 @@ T.act("enterVeh", e.id)
 R.run(1)
 check(P.vehicle == e and C.drive ~= nil, "坐上了 " .. VEH)
 T.runUntil(function() return G.round.phase == "battle" end, 60)
-T.tap(Enum.KeyCode.C)
+T.tap(Enum.KeyCode.F3)   -- 11-27 起车外的 C 归车长望远镜：进车里用 F2～F5（F3 炮长位）
+T.runUntil(function() return C.interiorOn and C.interiorOn() end, 6)
 R.run(0.8)
 local I = C.interiorState()
 local cur = I.cur
@@ -239,6 +242,18 @@ if SEP then
   key("CCP 3")
   local bs = f.bsR[f.am]
   check(bs ~= nil and bs > 0, "调整页 3：这种弹的战斗瞄准距离加 50 米（" .. tostring(bs) .. "）")
+  -- 11-27 二审：调整页改的是火控现在装定的那发——原来按面板写死的 SEPv2 那发（BAL.PANEL[符号]）：M1 一族别的型号、M829A1 系的炮改到 M829A3 那一项，
+  --   射流弹的符号查不到、键是 nil 还报错。SEPv2 的炮只有射流弹不在面板上：装定它再按 3 / 5
+  local am0 = f.am
+  f.am = "jet120"
+  R.run(0.4)
+  key("CCP 3")
+  local bsJ = f.bsR.jet120
+  key("CCP 5")
+  check(bsJ == 950 and f.bsR.jet120 == nil and f.bsR[am0] == bs, string.format("调整页装定射流弹：3 改的是它自己的战斗瞄准距离（900 → %s 米）、5 恢复默认（%s），刚才那发的不动",
+    tostring(bsJ), tostring(f.bsR.jet120)))
+  f.am = am0
+  R.run(0.3)
   key("CCP CLR")
   key("LRF")
   check(f.lrf == "FIRST", "LRF 键：首回波")

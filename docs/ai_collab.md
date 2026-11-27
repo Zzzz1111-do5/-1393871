@@ -590,6 +590,27 @@
       射流一点点钻进去（熔化金属珠、杵体）→ 破片一根根长出 → 打到的乘员 / 模块红白闪 → 殉爆火球 / 起火；别的弹种还是原来那张静态图
     · 直接出击（c1c89df）：部署界面下面一条出击栏（WtBattle），点车 = G.ACT.wtDeployVeh（出生、出车、坐进去）
 
+## 同族变型（11-27 拆重叠版本 e94bb69…60a97e9 + 审查返修；加新型号前先看这里）
+
+- **VehDefs 的 variant 三个字段**（写在 over 里）：
+  · `like = <同族那一型>`（借谁的模型）：按型号登记的表查不到这一型时退到它——驾驶界面剪影（VehHud）、召唤卡片（Depot）、TankMods 的 FOR / ERADEF / PRESETS / SPEC（noEra 的不退）、
+    **第一人称白名单 Config.FirstPerson.only 和车内 Interior.lua 的 ALIAS**（`only[id] or only[d.like]`、`ALIAS[id] or ALIAS[d.like]`：M1 一族 7 项靠它进 M1A1 / M1A2 那套车内）。
+  · `noEra = true`：借来的模型上后来才有的爆反 / ARAT / TUSK 不起作用（TankMods.eraOf 一处挡：服务器、驾驶界面、改装页一起没有）；没导入原模型时也别画，再写 `era = false`。
+  · `noStab = true`：没有炮控稳定器（M60、59 式、豹 1 头一批）。**variant 是深拷**：从 noStab 的那一型拷出来、真车有稳定器的（69-II、豹 1A1A1、豹 1A5）要写 `noStab = false`。
+- **加 / 改 alias 要改两处**：源头（blveh.py 管的模型改 tools/models/blveh.json 那一项的 alias 数组，网页版 / Sketchfab 的改 tools/models/mdl2glb.py 的 ALIAS）
+  + 生成好的 src/ReplicatedStorage/ImportedMeta.lua 的 alias / old 两行（照 mdl2glb 的 lua() 写法：键排序、`old` 跟 blveh.json 的 old）。
+  另外按型号查的：Lang veh.* / vw.*、VehPics（vehicons.mjs 的 GLB 加一行，`vehpics.py <空目录> --merge`）、WtOptics.VEH_NV、WtDamage.PROF / CAROUSEL；科技树改 veh + model。
+- 老型号被科技树换掉的（科技树 M1A1 11-27 起开 m1a1base，老的 m1a1 留给老模式、老 AI 名单）：TechTree 末尾把 TT.byVeh 指回原来那一项，沙盒的观瞄、火控不变。
+- 炮的弹种表照全工程的顺序：{ 原厂穿甲, 破甲 / 多用途, 榴弹 / MPAT / 霰弹, 旧穿甲…, 射流 }——WtMods 只研究得到第二、第三种（第四、五种研究不到，老问题）。
+  **射流弹研究不研究得到，看这门炮有几种弹**：三种弹的炮（M60 / M60A1 / M60A1 RISE / M60A3、豹 1、豹 2、74 式、10 式）第三种就是射流，研究满拿得到；
+  四种以上的（M1 一族、125 毫米各炮）拿不到。同一族要么都拿得到、要么都拿不到——variants.lua ④ 查「研究满（前三种里最强的）穿深」同一族、科技树同一列按年代不往回掉
+  （11-27 二审：RISE 原来第三种放 M392、射流排第四，研究满是 M60 一族唯一拿不到射流的）。**射流在科技树里该不该研究得到还没定（要问用户）**：
+  现在研究满的 M60A3（战斗等级 8.0）760 毫米，压过 M1～M1A2 SEP（9.3～11.3：430～700）。
+- 科技树写 `model` 只给借同族模型的；模型就是这一型自己的（科技树 M1A1 开 m1a1base，用的就是 M1A1 的原模型）不写——写了 TechUI 会标「同族模型」「模型暂用同族的…」。
+- 车里炮长面板的弹种键（SABOT / HEAT / MPAT / CAN；99A 的穿甲 / 破甲 / 榴弹 / 炮射导弹）写死的是 SEPv2 / 99A 那几发：按键走 Ballistics.panelAmmo，
+  在这门炮现在能打的弹（Drive 的 G.driveAmmoList：研究过的前 ModAmmo 种、带了的）里挑同一类（cls）的，一种都没有就不换（AMMO 键、弹种旋钮跳过）；
+  已经是这一类再按换这一类的下一发（科技树 M1A1 的 M829 / M829A1）。调整页的战斗瞄准距离改火控现在装定的那发，不按面板写死的。
+
 ## 工具链的先后（别互相覆盖）
 
 - **M1A1（m1a1i）**：`blveh.py`（Blender 从原文件转）→ `blveh_meta.py`（写 ImportedMeta 那一行）→ `intsplit.py m1a1i write`（B 的：

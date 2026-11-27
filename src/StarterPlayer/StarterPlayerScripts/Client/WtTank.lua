@@ -182,9 +182,16 @@ function WtTank.init(G)
       end
       if onBlock then
         local L = TM.eraOf(d.id)
-        local kind = (L and TM.ERA[L.kind]) or TM.ERA.fy2
+        -- 爆反型号：这辆车挂的（模型属性 Mods 的 era，同服务器 Era.lua G.eraSetup；11-27 起 96B 出厂也是 FY-4），没有才按模型自带的
+        local mm = TM.decode(em:GetAttribute("Mods") or "")
+        local kind = TM.ERA[mm.era or ""] or (L and TM.ERA[L.kind]) or TM.ERA.fy2
         local amA = BAL.AMMO[wq.ammo or ""]
-        local mult = (amA and amA.ce) and kind.k or kind.ke
+        local mult
+        if (I.w and I.w.kind == "atgm") or (amA and amA.cls == "atgm") then
+          mult = W.singleCharge(wq) and kind.k or (kind.kt or kind.k)   -- 反坦克导弹、炮射导弹：单装药按 k、串联按 kt（同服务器 Era.lua G.eraBlast）
+        else
+          mult = (amA and amA.ce) and kind.k or kind.ke
+        end
         if mult and mult < 1 then pen = pen * ((a.t == "ce" and a.tandem) and math.max(mult, 0.85) or mult) end
       end
     end
