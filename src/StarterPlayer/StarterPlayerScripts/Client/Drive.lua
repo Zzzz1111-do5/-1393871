@@ -871,10 +871,6 @@ function Drive.init(G)
       return
     end
     local want = not st.sight
-    -- 全真模式（战雷）：不能退回第三人称——有车内就坐进车里再退镜，没有就留在瞄准镜里
-    if not want and workspace:GetAttribute("WtMode") == "sb" and not (G.interiorOn and G.interiorOn()) and not (G.inTestDrive and G.inTestDrive()) then   -- 试驾不强制第一人称
-      if not (G.interiorEnterSeat and G.interiorEnterSeat()) then return end
-    end
     if G.interiorScope and G.interiorScope(want, function() setSight(want) end) then return end
     if not want and st.sight then camCutFade(0.12) end
     setSight(want)
@@ -882,22 +878,15 @@ function Drive.init(G)
   G.driveToggleSight = function() toggleSight() end   -- 测试用：同按 Shift（曲射武器进炮兵视角）
   -- 透视自己的车（XrayOwn.lua）：按住显示、松开恢复（用户 11-26「x应该是摁住显示3d 松手就恢复原样」）——
   --   开着瞄准镜 / 车长望远镜：先退到车外看自己的车，松手再回镜里（镜里按 X 零件就在镜头底下，高亮糊满屏）；
-  --   车内视角（Interior）不响应（几百个零件围着镜头；全真模式本来就只能在车里）；退不出瞄准镜的（全真模式没有车内）也不开
+  --   车内视角（Interior）不响应（几百个零件围着镜头）
   -- 退出 / 回到炮长瞄准镜（同 toggleSight，但不管当前武器是不是曲射的：toggleSight 碰到曲射武器是进出炮兵视角）
   local function sightTo(want)
-    if not want and workspace:GetAttribute("WtMode") == "sb" and not (G.interiorOn and G.interiorOn()) and not (G.inTestDrive and G.inTestDrive()) then
-      if not (G.interiorEnterSeat and G.interiorEnterSeat()) then return end   -- 全真模式：不能退回第三人称
-    end
     if G.interiorScope and G.interiorScope(want, function() setSight(want) end) then return end
     if not want and st.sight then camCutFade(0.12) end
     setSight(want)
   end
   local function xrayDown()
     if not st or not G.ownXrayHold or st.xrHeld then return end
-    if workspace:GetAttribute("WtMode") == "sb" and not (G.inTestDrive and G.inTestDrive()) then   -- 全真模式（战雷）：没有第三人称，也就没有透视（不去动镜子、车内）
-      if G.toast then G.toast(T("drv.xraySb"), "info") end
-      return
-    end
     if G.interiorOn and G.interiorOn() then
       if G.toast then G.toast(T("drv.xrayInside"), "info") end
       return

@@ -1207,7 +1207,7 @@ function WtTank.init(G)
       -- 测距（用户 11-25「全部都做」⑤）：街机照旧一直写到瞄准点多远；历史 / 全真按 R 才有——有激光测距的马上准，
       --   没有的（豹 1、M60A1、BMP-1）车长估两秒、报个整 50 米的数（≈）；10 秒后作废
       local wm = workspace:GetAttribute("WtMode")
-      if wm == "rb" or wm == "sb" then
+      if wm == "rb" then
         local f = st.fcs
         if f and f.estimating then AIM.rng.Text = T("wtt.est")
         elseif f and f.R and (f.man or (f.laseT and t - f.laseT < 10)) then AIM.rng.Text = (f.est and "≈" or "") .. T("vh.m", f.R)

@@ -685,7 +685,7 @@ function Hud.init(G)
         for mdl in pairs(seenT) do if not mdl.Parent then seenT[mdl] = nil end end
         for mdl in pairs(losT) do if not mdl.Parent then losT[mdl] = nil end end
       end
-      local strictM = workspace:GetAttribute("WtMode") == "rb" or workspace:GetAttribute("WtMode") == "sb"
+      local strictM = workspace:GetAttribute("WtMode") == "rb"
       for _, c in ipairs(contacts) do
         if c.team ~= mine and (c.kind == "inf" or strictM) and c.model and now >= (losT[c.model] or 0) then   -- 历史 / 全真：车、飞机也要自己看得见
           losT[c.model] = now + 0.3
@@ -701,7 +701,7 @@ function Hud.init(G)
     end
     local pulse = 0.08 + 0.14 * (0.5 + 0.5 * math.sin(now * 5))   -- 敌人的亮点轻轻地一明一暗（不靠扫描线也一眼看得到）
     local wm = workspace:GetAttribute("WtMode")
-    local strict = wm == "rb" or wm == "sb"
+    local strict = wm == "rb"
     for _, c in ipairs(contacts) do
       local enemy = c.team ~= mine
       local seenMe = c.model and now - (seenT[c.model] or -99) < 2

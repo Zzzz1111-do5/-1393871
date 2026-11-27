@@ -560,7 +560,7 @@ function Tech.init(G)
   -- 这一局按得分算的研究点（击毁、占点都在得分里），赢了多三成、按模式乘；Economy.lua 结算金币也按它（金币 = 研究点 × treeK）
   local function roundRp(P, won)
     local base = math.floor((P.score or 0) * 8 + (P.kills or 0) * 250 + 300 + (P.wtKillRp or 0) / (((W.modeK or {})[G.wtModeNow and G.wtModeNow() or "rb"]) or 1))   -- wtKillRp：击毁加成（WtMatch.lua）
-    local mk = ((W.modeK or {})[G.wtModeNow and G.wtModeNow() or "rb"]) or 1   -- 历史 ×1.3、全真 ×1.6（战雷：越真实奖励越多）
+    local mk = ((W.modeK or {})[G.wtModeNow and G.wtModeNow() or "rb"]) or 1   -- 历史 ×1.3（战雷：越真实奖励越多）
     return math.floor(base * (won and 1.3 or 1) * mk), mk
   end
   G.treeRoundRp = roundRp
@@ -657,14 +657,14 @@ function Tech.init(G)
     if R and R.phase == "battle" and best > 0 then lockN = n end
     return v
   end
-  -- 三种模式（街机 ab / 历史 rb / 全真 sb）：准备阶段按在线的人投的票（票一样多按 W.mode0），开战以后定住；写给客户端 workspace 属性 WtMode
-  local MODES = { ab = true, rb = true, sb = true }
+  -- 两种模式（街机 ab / 历史 rb；全真 sb 用户 11-27「把全真模式去掉」删了）：准备阶段按在线的人投的票（票一样多按 W.mode0），开战以后定住；写给客户端 workspace 属性 WtMode
+  local MODES = { ab = true, rb = true }
   local modeNow, modeLock = nil, -1
   function G.wtModeNow()
     local R = G.round
     local n = R and R.n or 0
     if modeNow and modeLock == n then return modeNow end
-    local cnt, real = { ab = 0, rb = 0, sb = 0 }, 0
+    local cnt, real = { ab = 0, rb = 0 }, 0
     for _, P in pairs(G.P) do
       if P.pl then
         real += 1
@@ -672,7 +672,7 @@ function Tech.init(G)
       end
     end
     local best, bn = W.mode0 or "rb", 0
-    for _, m in ipairs({ "ab", "rb", "sb" }) do
+    for _, m in ipairs({ "ab", "rb" }) do
       if cnt[m] > bn then best, bn = m, cnt[m] end
     end
     if best ~= modeNow then pcall(function() workspace:SetAttribute("WtMode", best) end) end

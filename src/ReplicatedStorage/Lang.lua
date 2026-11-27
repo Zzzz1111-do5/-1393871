@@ -500,7 +500,6 @@ add("drv.optic", "光电", "OPT")
 add("drv.smoke", "烟幕", "SMK")
 add("drv.xray", "透视", "X-RAY")   -- 手机上按住透视自己的车（电脑上按住 X）
 add("drv.xrayInside", "车内视角看不了透视：先回到车外", "X-ray isn't available from inside the vehicle: go outside first")
-add("drv.xraySb", "全真模式没有透视", "No X-ray in simulator mode")
 add("ui.enterVeh", "按 F 上车", "Press F to enter")
 
 -- 舰艇

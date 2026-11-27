@@ -1,8 +1,7 @@
--- 三种模式（用户 11-25「都要做」：街机 / 历史 / 全真）：python3 tools/mock/run.py tools/mock/wtmode.lua
+-- 两种模式（用户 11-25「都要做」：街机 / 历史；全真 11-27「把全真模式去掉」删了）：python3 tools/mock/run.py tools/mock/wtmode.lua
 --   ① 默认历史；准备阶段投街机 → 这一局街机（workspace 属性 WtMode）；开战以后定住（再投全真也不变）；机库上的模式按钮
 --   ② 飞机从自己机场的跑道出发（用户 11-25「召唤飞机就从机场跑道开始 然后自己起飞 包括回跑道降落补给也做出来」）：
 --      停在跑道上、起落架放着、没有初速；地图上没有召唤柱；停在跑道上补给：加油、挂弹、修部件（发动机、机翼……）
---   ③ 全真：开地面车自动进第一人称（瞄准镜 / 车内），退瞄准镜退不回第三人称
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, Enum = T.R, T.Enum
 local check = T.check
@@ -52,9 +51,12 @@ check(me:GetAttribute("ModeVote") == "ab" and G.wtModeNow() == "ab" and ws:GetAt
 T.runUntil(function() return G.round.phase == "battle" end, 200, 1 / 10)
 R.run(1)
 G.wtModeNow()
-T.act("wtModeVote", "sb")
+T.act("wtModeVote", "rb")
 R.run(1)
-check(G.wtModeNow() == "ab", "开战以后定住：再投全真也还是街机")
+check(G.wtModeNow() == "ab", "开战以后定住：再投历史也还是街机")
+T.act("wtModeVote", "sb")
+R.run(0.5)
+check(me:GetAttribute("ModeVote") ~= "sb", "全真模式删了（用户 11-27「把全真模式去掉」）：投全真不认")
 
 print("② 飞机从跑道出发、落地补给")
 local padsF = ws:FindFirstChild("Map") and ws.Map:FindFirstChild("Pads")
@@ -124,27 +126,5 @@ if airKey then
   end
 end
 
-print("③ 全真：只能第一人称")
--- 换成全真（测试直接改；真游戏是下一局投票）
-ws:SetAttribute("WtMode", "sb")
-if P.vehicle then T.remoteAs(me, "Drive", { op = "exit", hangar = true }) end
-T.runUntil(function() return not P.alive end, 15)
-local gKey
-for _, k in ipairs(G.treeLineup(P)) do
-  local it = TT.get(k)
-  if it and it.branch == "ground" then gKey = k break end
-end
-if G.wtState then G.wtState(P).sp = 5000 end
-T.act("deployVeh", gKey)
-T.runUntil(function() return P.alive and P.vehicle ~= nil end, 20)
-R.run(1.5)
-local d = C.drive
-local fp = d and (d.sight or (C.interiorOn and C.interiorOn()))
-check(fp == true, "开车自动进第一人称（瞄准镜 " .. tostring(d and d.sight) .. "、车内 " .. tostring(C.interiorOn and C.interiorOn()) .. "）")
-if d and d.sight and not (C.interiorOn and C.interiorOn()) then
-  T.tap(Enum.KeyCode.LeftShift)   -- 退镜：全真退不回第三人称
-  R.run(1)
-  check(d.sight or (C.interiorOn and C.interiorOn()), "按 Shift 退镜：还是第一人称")
-end
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "):sub(1, 600))
 T.summary()

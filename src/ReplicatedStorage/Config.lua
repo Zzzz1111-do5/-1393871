@@ -375,7 +375,7 @@ function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用
 --   off = true 关掉；voiceId 文字转语音的嗓音；键：pen 击穿、ric 跳弹、np 未击穿、kill 击毁、killAmmo 殉爆、hurtPen 我们被击穿、fire 着火、
 --   gnr / drv / ldr / cmd 谁阵亡、loaded 装填完毕、engine / track / barrel / breech 模块坏了、swap 换位、fireOut 灭火、fixed 修好、resupply 补给
 Config.WtVoice = { off = false, voiceId = "1", volume = 1.4 }
--- 第一人称（坐进车里、飞机座舱：Interior.lua 的 C / T / F2～F5 / V、全真模式自动坐进去）只有这几型有
+-- 第一人称（坐进车里、飞机座舱：Interior.lua 的 C / T / F2～F5 / V）只有这几型有
 --   （用户 11-25：「除了m1a1和a2 其他载具不要做第一人称模式」）；only = nil 就全开（测试内饰的老测试用）
 --   11-27：同族变型（VehDefs 的 like：M1、IPM1、科技树的 M1A1、M1A1 HC 退到 m1a1，M1A2、SEP、SEPv3 退到 m1a2——同一个模型、同一套车内）
 --   查不到自己的就看 like 那一型（Interior.lua 的 fpAllowed）；原来拆开以后这 7 项的车内整个没了
@@ -383,8 +383,8 @@ Config.FirstPerson = { only = { m1a1 = true, m1a2 = true } }
 Config.Wt = { on = true, noInfantry = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, lineupAir = 2, backup = 1, rise = 0.25,   -- lineupAir：阵容里飞行单位最多几个（用户 11-25）
   br0 = 4.0, brUp = 1.0, teamSize = 8, aiMax = 8,   -- aiMax 原来 5：用户 11-26「人不够就补人机」——每队补满 teamSize（AIVeh.lua）
   -- 三种模式（机库里投票，准备阶段按票数，开战定住；Tech.lua）：ab 街机（敌人都标、飞机空中出生）、rb 历史（只标近处看得见的）、
-  --   sb 全真（不标、只能第一人称）；研究点、乘员经验按 modeK 乘
-  mode0 = "rb", modeK = { ab = 1, rb = 1.3, sb = 1.6 }, airSpawnH = 1200,
+  --   （全真 sb 用户 11-27「把全真模式去掉」删了）；研究点、乘员经验按 modeK 乘
+  mode0 = "rb", modeK = { ab = 1, rb = 1.3 }, airSpawnH = 1200,
   -- 击毁奖励（用户 11-26「你自己设计一个击杀效果和音效以及奖励」）：每打掉一辆当场发金币 coin0 + 对方等级 × coinRank，按模式 modeK 乘；
   --   研究点照旧结算时发（一局按击毁数 × rpKill 算，Tech.lua roundRp）——击毁那一下先报这一辆算多少；
   --   加成：弹药殉爆、一发击毁（这一辆只挨了我一发）、越级击毁（对方战斗等级比我高 brUp 以上）各乘一下

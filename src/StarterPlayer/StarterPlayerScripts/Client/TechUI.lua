@@ -437,7 +437,7 @@ function TechUI.init(G)
   H.mid = mid
 
   -- 三种模式（服务器 Tech.lua：准备阶段按票数，开战定住，workspace 属性 WtMode；每人投的票是玩家属性 ModeVote）
-  local MODE_NAME = { ab = L("街机", "Arcade"), rb = L("历史", "Realistic"), sb = L("全真", "Simulator") }
+  local MODE_NAME = { ab = L("街机", "Arcade"), rb = L("历史", "Realistic") }   -- 全真 11-27 删了
   local selSlot = 1   -- 出击阵容里选中的第几位（厂房里停的、右下「战斗」出的都是这一辆）
   -- 选中的那一辆：键、科技树里的项
   local function selIt()
@@ -1038,20 +1038,6 @@ function TechUI.init(G)
     local fm = f and f.em
     return fm ~= nil and fm:GetAttribute("TestDrive") == true
   end
-  -- 全真模式：只能第一人称——车外的时候坐进车里（这辆车没有内饰就开瞄准镜）；飞机有座舱的坐进座舱
-  --   试驾不管（用户 11-25「试驾的时候不要强制开镜」）：试驾场随便看，自己按 Shift 开镜
-  task.spawn(function()
-    while true do
-      task.wait(0.5)
-      if workspace:GetAttribute("WtMode") == "sb" and not G.inTestDrive() then
-        local d = G.drive
-        if d and G.myVeh and not d.sight and not (G.interiorOn and G.interiorOn()) then
-          if not (G.interiorEnterSeat and G.interiorEnterSeat()) and G.driveSetSight then pcall(G.driveSetSight, true) end
-        end
-        if G.fly and not (G.interiorOn and G.interiorOn()) and G.interiorEnterSeat then pcall(G.interiorEnterSeat) end
-      end
-    end
-  end)
 
   local openTree, closeTree   -- 下面定义
   -- 这一辆这一局出车要什么（照服务器 WtMatch 推的 S.wt：准备阶段、第一辆免费；出过一次的是备用；备用用完、阵容满了不能出）

@@ -119,7 +119,7 @@ function WtMap.init(G)
     for _, c in ipairs(objList:GetChildren()) do c:Destroy() end
     for _, c in ipairs(vehList:GetChildren()) do c:Destroy() end
     local mode = workspace:GetAttribute("WtMode")
-    local modeName = (mode == "sb" and L("全真", "Simulator")) or (mode == "rb" and L("历史", "Realistic")) or L("街机", "Arcade")
+    local modeName = (mode == "rb" and L("历史", "Realistic")) or L("街机", "Arcade")
     local left = S.left and string.format("%d:%02d", math.floor(S.left / 60), math.floor(S.left % 60)) or "--:--"
     local w = S.wt
     info.Text = string.format(L("陆战 · %s · %s\n剩余 %s · 我的 SP %d", "Ground · %s · %s\n%s left · SP %d"), modeName,

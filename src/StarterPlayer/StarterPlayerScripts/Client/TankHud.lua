@@ -376,7 +376,7 @@ function TankHud.init(G)
     --   用户 11-25「全部都做」①：历史 rb 也不标了（战雷历史模式屏幕上没有敌人名牌，只有侦察标记的红菱形——Fx.lua 的 spots）
     local wtMode = workspace:GetAttribute("WtMode")
     local gR = (wtMode == "ab") and 2500 or 1100
-    local tagsOn = wtMode ~= "sb" and wtMode ~= "rb"
+    local tagsOn = wtMode ~= "rb"
     if t - lastScan > 0.25 then
       lastScan = t
       cands = {}
