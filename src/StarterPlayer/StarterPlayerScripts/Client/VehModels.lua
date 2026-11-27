@@ -560,9 +560,10 @@ function VehModels.build(d, team, mods, paint)
   end
 
   -- 排气（用户 11-20：载具照 UE5 的水平升级）：车尾两侧两个排气口——柴油机加油门、换挡那一下喷一股浓黑烟，怠速淡淡一缕；
-  --   燃气轮机（M1 系列）是淡灰的热气。浓淡在 View.lua 按油门 / 加速度调
+  --   燃气轮机（M1 系列、T-80 系列：VehDefs 的 turbine）是淡灰的热气。浓淡在 View.lua 按油门 / 加速度调
+  --   （原来写死 m1a1 / m1a2：拆出来的 M1、IPM1、M1A1 HC、M1A2 / SEP / SEPv3 照样是燃气轮机，同 Drive.lua 的发动机声）
   local exhaust = {}
-  local turbine = d.id == "m1a1" or d.id == "m1a2"
+  local turbine = d.turbine == true
   for _, s2 in ipairs({ -1, 1 }) do
     local p = hull(V(0.2, 0.2, 0.2), CF(s2 * W * 0.3, hh * 0.92, L * 0.44), C.base)
     p.Transparency = 1

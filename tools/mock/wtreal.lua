@@ -31,7 +31,11 @@ local MODEL = { t80u = "t80u", t80b = "t80u", t80bvm = "t80u", bmp1 = "bmp1", le
   m551 = "m551", t72ural = "t72b3", t72a = "t72b3", t72b = "t72b3", leo2a7v = "leo2a7v", type10 = "type10",
   -- D 第二批（用户 11-25「还有很多没有建模」）：T-64A / T-64B、74 式 / 74 式改
   t64a = "t64", t64b = "t64", type74 = "type74", type74g = "type74",
-  gepard1a1 = "gepard", gepard1a2 = "gepard", bmp2 = "bmp2", bmp2m = "bmp2" }
+  gepard1a1 = "gepard", gepard1a2 = "gepard", bmp2 = "bmp2", bmp2m = "bmp2",
+  -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」）：科技树原来写 base 的地面车有了自己的型号，模型借同族的
+  m1 = "m1a1i", m1ip = "m1a1i", m1a1hc = "m1a1i", m1a2base = "m1a2dc", m1a2sep = "m1a2dc", m1a2sep3 = "m1a2dc",
+  m60 = "m60a3", m60a1rise = "m60a3", leo1a1a1 = "leo1", leo2a0 = "leo2a6", leo2a5 = "leo2a6",
+  ztz96base = "ztz96", ztz96a = "ztz96", ztz99base = "ztz99a2", type86 = "bmp1", t90a = "t90m", m2a0 = "m2a3", m2a2 = "m2a3" }
 local bad = {}
 local function near(a, b) return a and b and (a - b).Magnitude < 0.02 end
 for id, key in pairs(MODEL) do
@@ -76,6 +80,12 @@ local want = {
   ru_t80b = { "t80b", "t80u" }, ru_t80bvm = { "t80bvm", "t80u" }, de_leo2a4 = { "leo2a4", "leo2a6" }, de_leo1a5 = { "leo1a5", "leo1" }, us_m60a1 = { "m60a1", "m60a3" },
   ru_t64a = { "t64a" }, ru_t64b = { "t64b" }, jp_type74 = { "type74" }, jp_type74g = { "type74g" }, de_leo2a7v = { "leo2a7v" },
   de_gepard = { "gepard1a1" }, de_gepard1a2 = { "gepard1a2" }, ru_bmp2 = { "bmp2" }, ru_bmp2m = { "bmp2m", "bmp2" },
+  us_m1 = { "m1", "m1a1" }, us_m1ip = { "m1ip", "m1a1" }, us_m1a1hc = { "m1a1hc", "m1a1" },
+  us_m1a2 = { "m1a2base", "m1a2" }, us_m1a2sep = { "m1a2sep", "m1a2" }, us_m1a2sep3 = { "m1a2sep3", "m1a2" },
+  us_m60 = { "m60", "m60a3" }, us_m60a1rise = { "m60a1rise", "m60a3" }, de_leo1a1a1 = { "leo1a1a1", "leo1" },
+  de_leo2a0 = { "leo2a0", "leo2a6" }, de_leo2a5 = { "leo2a5", "leo2a6" },
+  cn_96 = { "ztz96base", "ztz96" }, cn_96a = { "ztz96a", "ztz96" }, cn_99 = { "ztz99base", "ztz99a" }, cn_86 = { "type86", "bmp1" },
+  ru_t90a = { "t90a", "t90m" }, us_m2 = { "m2a0", "m2a3" }, us_m2a2 = { "m2a2", "m2a3" },
 }
 local tb = {}
 for k, w in pairs(want) do
@@ -83,13 +93,16 @@ for k, w in pairs(want) do
   if not it or it.play ~= w[1] or it.stand or it.model ~= w[2] then table.insert(tb, k .. "→" .. tostring(it and it.play) .. "/" .. tostring(it and it.model)) end
 end
 check(#tb == 0, "这几族开的是自己的型号（同族老型号借同族的模型）" .. (#tb > 0 and ("：" .. table.concat(tb, " ")) or ""))
+-- 11-27（用户「把重叠的版本拆开」）：原来写 base 的地面车（86 式借 BMP-1、M60 借 M60A1、M1 借 M1A1……）都拆开了（上面 want 里），
+--   地面树一项「暂用」都没有了；59 式 11-26 有了自己的原模型（原来这一条写「59 式借 M60、删了」，11-26 以后就过不了）
 local st = {}
-for _, k in ipairs({ "cn_86", "us_m60", "us_m1" }) do
-  local it = TT.get(k)
-  if not (it and it.stand) then table.insert(st, k) end
+for _, nat in ipairs(TT.NATIONS) do
+  for _, it in ipairs(TT.list[nat].ground) do
+    if it.stand or it.base then table.insert(st, it.key) end
+  end
 end
-check(#st == 0 and TT.get("cn_86").play == "bmp1" and TT.get("us_m60").play == "m60a1" and TT.get("us_m1").play == "m1a1" and TT.get("cn_59") == nil,
-  "同族的照样借（86 式借 BMP-1、M60 借 M60A1、M1 借 M1A1）；没有原模型的（59 式借 M60）删了" .. (#st > 0 and ("：" .. table.concat(st, " ")) or ""))
+check(#st == 0 and TT.get("cn_86").play == "type86" and TT.get("us_m60").play == "m60" and TT.get("us_m1").play == "m1" and TT.get("cn_59") ~= nil and TT.get("cn_59").play == "type59",
+  "地面树没有暂用车了（86 式、M60、M1……开自己的型号）；59 式开自己的型号" .. (#st > 0 and ("：" .. table.concat(st, " ")) or ""))
 check(VD.get("t64a").weapons[1] == "gun125a" and B.GUN.gun125a[1] == "bm15" and WD.AMMO.bm15 ~= nil and not VD.get("t64a").lrf and VD.get("t64b").lrf,
   "T-64A 打 3BM15、没有激光测距；T-64B 有")
 
@@ -152,8 +165,9 @@ local function fireAt(e)
   R.run(0.5)
   return (G.wtHits or 0) > h0, G.wtLast
 end
-local KEYS = { "ru_bmp1", "ru_t80u", "ru_t80b", "de_leo2a6", "de_leo2a4", "de_leo1", "us_m60a3", "ru_t64a", "jp_type74" }   -- BMP-1 放最前：后面几型打过靶车以后靶车位置会变
-local FIRE = { ru_t80u = true, ru_bmp1 = true, us_m60a3 = true, ru_t64a = true }
+local KEYS = { "ru_bmp1", "ru_t80u", "ru_t80b", "de_leo2a6", "de_leo2a4", "de_leo1", "us_m60a3", "ru_t64a", "jp_type74",   -- BMP-1 放最前：后面几型打过靶车以后靶车位置会变
+  "us_m1", "ru_t90a" }   -- 11-27 拆出来的：M1 打 105 毫米 M774；T-90A 坐进去是自己的型号
+local FIRE = { ru_t80u = true, ru_bmp1 = true, us_m60a3 = true, ru_t64a = true, us_m1 = true }
 -- 只跑一型（排查用）：python3 tools/mock/run.py tools/mock/wtreal.lua only=ru_bmp1
 local ONLY = TEST_ARGS:match("only=([%w_]+)")
 if ONLY then KEYS, FIRE = { ONLY }, { [ONLY] = true } end
@@ -171,6 +185,10 @@ for _, key in ipairs(KEYS) do
   check(ok, it.name .. "：坐进去的是 " .. tostring(e and e.def and e.def.id) .. "（应为 " .. it.play .. "）")
   if e and key == "ru_t80u" then
     check(e.era ~= nil and (e.era.n or 0) >= 10, "T-80U 车上的爆反块起作用（" .. tostring(e.era and e.era.n) .. " 块）")
+  end
+  -- 11-27：借来的模型上后来才有的块不起作用（VehDefs 的 noEra；原来 T-80B 带 22 格接触-5、M1 带 ARAT）
+  if e and (key == "ru_t80b" or key == "us_m1") then
+    check(e.era == nil and (e.model:GetAttribute("Era") or 0) == 0, it.name .. "：车上没有起作用的爆反块（" .. tostring(e.era and e.era.n) .. "）")
   end
   if e and FIRE[key] then
     local hit, last = fireAt(e)

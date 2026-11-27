@@ -18,6 +18,14 @@ local TM = R.require(R.services.ReplicatedStorage:FindFirstChild("TankMods"))
 local VD = R.require(R.services.ReplicatedStorage:FindFirstChild("VehDefs"))
 
 print("① 数据")
+-- 11-27 拆开重叠的版本：借同族模型、真车没有爆反的（noEra）一格都不贴、没有改装页；有爆反的同族变型改装页照同族
+do
+  local n = 0
+  for _ in pairs(TM.cellsOn("m1")) do n = n + 1 end
+  check(TM.eraOf("m1") == nil and n == 0 and not TM.has("m1"), "M1（借 M1A1 的模型）：ARAT 块不起作用、没有改装页（" .. n .. " 格）")
+  check(TM.has("m1a2sep3") and TM.FOR.m1a2sep3 == TM.FOR.m1a2 and TM.SPEC.m1a2sep3 ~= nil and TM.SPEC.m1a2sep3.t > TM.SPEC.m1a2.t,
+    "M1A2 SEPv3 的改装页照 SEPv2（ARAT / Trophy），车重按自己的 66.8 吨")
+end
 for _, id in ipairs({ "ztz99a", "ztz96", "m1a2", "m1a1" }) do
   local L = TM.eraOf(id)
   check(L and L.b and #L.b > 0, id .. " 有爆反格（" .. (L and #L.b or 0) .. "）")
