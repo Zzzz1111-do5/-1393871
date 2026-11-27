@@ -548,7 +548,12 @@ function Scenery.init(G)
       HK0, HK1 = math.floor((Rg.Z + C0.w0) / OS), math.floor((Rg.Z + C0.w1) / OS) - 1
     elseif zoneNow == "lobby" then
       far, desert = { color = RGB(70, 82, 54), mat = "Grass" }, false
-      SEA_Y = 899.5   -- 大厅场景的地面都在 900 格高（Zones.HANGAR / HANGAR_AIR / MENU）
+      -- 大厅场景的地面都在 900 格高（Zones.HANGAR / HANGAR_AIR / MENU）；这圈平地沉到它底下 15 格（顶面 885）。
+      --   原来 899.5（块厚 1，顶面正好 900）：和厂房水泥地、停机坪、主菜单地面的顶面重合，整片地面抢深度、一闪一闪
+      --   （用户 11-27「开始游戏的那个仓库有些频闪」），还把厂房的检修地沟口盖住了。885 在地沟底板（底 892）、
+      --   停机坪外圈那块地（底 897.9）底下；停机坪远处那道山（底 880）照旧插在地里
+      local ly = (Map.Zones and Map.Zones.HANGAR and Map.Zones.HANGAR.Position.Y) or 900
+      SEA_Y = ly - 15.5
       HI0, HI1, HK0, HK1 = 0, -1, 0, -1
     end
     local sand = (Map.DESERT and Map.COLORS and Map.COLORS.Sand) or RGB(176, 142, 100)

@@ -197,7 +197,8 @@ end
 T.runUntil(function() return camZone() == "lobby" end, 10)
 R.run(0.3)
 local y3 = tilesAt()
-check(y3 and math.abs(y3 - 899.5) < 0.01, string.format("回机库（大厅）：远处平地托在场景脚下（%s 格高）", tostring(y3)))
+-- 大厅那圈平地沉在场景地面（900）底下 15 格（Scenery.lua；原来顶面正好 900，和厂房地面抢深度，tools/mock/hangarzfight.lua）
+check(y3 and math.abs(y3 - (Zones.HANGAR.Position.Y - 15.5)) < 0.01, string.format("回机库（大厅）：远处平地沉在场景地面底下（%s 格高）", tostring(y3)))
 -- 回战场：当步兵在自己基地出生（战雷模式默认不让步行：这里放开）
 R.run(9)
 G.allowInfantry = true
