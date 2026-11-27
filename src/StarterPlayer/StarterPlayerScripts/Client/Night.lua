@@ -306,13 +306,28 @@ function Night.init(G)
     h.Parent = workspace.CurrentCamera
     return h
   end
+  -- 新出来的车（View 往 G.viewFolder 里放了新模型）：Highlight 照理会跟着把新零件罩上，但 M3 上还没核实过（11-27 审查）——
+  --   保险起见记一笔，下一次半秒挑人时把罩车的那一个重建（只这一个；最多 3 秒一次，几辆车一起出来也只重建一回）
+  local vfConn, vfSeen, vfDirty, vfKick = nil, nil, false, -99
   local function virHlClear()
     if virHlView then virHlView:Destroy() virHlView = nil end
     for _, h in pairs(virHlPl) do h:Destroy() end
     virHlPl = {}
+    if vfConn then vfConn:Disconnect() vfConn = nil end
+    vfSeen, vfDirty = nil, false
   end
   local function virHlRefresh()
     local vf = G.viewFolder
+    if vf ~= vfSeen then
+      if vfConn then vfConn:Disconnect() vfConn = nil end
+      vfSeen, vfDirty = vf, false
+      if vf then vfConn = vf.ChildAdded:Connect(function() vfDirty = true end) end
+    end
+    if vfDirty and virHlView and os.clock() - vfKick >= 3 then
+      vfDirty, vfKick = false, os.clock()
+      virHlView:Destroy()
+      virHlView = nil
+    end
     if vf and not (virHlView and virHlView.Parent and virHlView.Adornee == vf) then
       if virHlView then virHlView:Destroy() end
       virHlView = newHl(vf)

@@ -98,22 +98,38 @@ function View.init(G)
   --   原来各处每帧算两帧的位置差，算出来是「0、0、一大截、0……」，平滑系数又是按帧给的——锁定圈、提前量跟着一跳一跳，帧率不同手感也不同。
   --   现在只在位置真的变了才算（这次变和上次变之间挪了多少 / 隔了多久），再按时间常数 0.15 秒平滑（1 − e^(−Δt/0.15)）；
   --   0.6 秒没挪过就当停了（同 G.follow）。rec：调用方自己留的一张表（第一次给空表）；maxV：一次挪得比这还快当成传送、不算。返回平滑后的速度
+  --   传送 / 服务器纠正位置（11-27 审查）：按「两次挪之间」的平均速度判 maxV 比原来按帧判松（15 Hz 时一拍挪 maxV / 15 以内都算真的）——
+  --   · 隔了 0.6 秒以上才又挪（停了很久、刚出现）：这一下只记位置、不算速度（原来停 5 秒后一下挪 300 格，速度估成 60、0.6 秒才归零）
+  --   · 估计已经稳了（连着量了 2 个时间常数以上），一拍算出来的速度跟它差得离谱（差 1.5 倍且超过 150 格 / 秒）：当成一跳、这一拍不算
+  --     （行进中一拍挪 80 格原来速度跳到 430）；连着两拍都这样才认（真的换了速度：直接用新的）。服务器拍子的抖动（±三成）在这个门槛里面
   local VEL_TAU = 0.15
   function G.velTrack(rec, p, now, maxV)
     local lp = rec.p
     if not lp then
-      rec.p, rec.t, rec.v = p, now, Vector3.zero
+      rec.p, rec.t, rec.v, rec.age, rec.odd = p, now, Vector3.zero, 0, 0
       return rec.v
     end
     if p ~= lp then
       local g = now - rec.t
-      if g > 1e-3 then
+      if g > 0.6 then
+        rec.v, rec.age, rec.odd = Vector3.zero, 0, 0
+      elseif g > 1e-3 then
         local raw = (p - lp) / g
-        if raw.Magnitude < (maxV or 2000) then rec.v = rec.v:Lerp(raw, 1 - math.exp(-g / VEL_TAU)) end
+        local v = rec.v
+        if raw.Magnitude < (maxV or 2000) then
+          local dv = (raw - v).Magnitude
+          if (rec.age or 0) >= 2 * VEL_TAU and dv > 150 and dv > 1.5 * v.Magnitude then
+            rec.odd = (rec.odd or 0) + 1
+            if rec.odd >= 2 then rec.v, rec.odd = raw, 0 end
+          else
+            rec.v = v:Lerp(raw, 1 - math.exp(-g / VEL_TAU))
+            rec.age, rec.odd = (rec.age or 0) + g, 0
+          end
+        end
       end
       rec.p, rec.t = p, now
     elseif now - rec.t > 0.6 then
-      rec.v = Vector3.zero
+      rec.v, rec.age = Vector3.zero, 0
     end
     return rec.v
   end
@@ -212,15 +228,19 @@ function View.init(G)
       local cm = (type(camo) == "string") and SK.CAMO[camo] or nil
       if cm and not cm.base then cm = nil end
       local M = VM.build(d, team, em:GetAttribute("Mods"), cm or (tit and TT.paint(tit)) or nil)   -- 坦克改装：发射器、雷达板、加特林、补贴的爆反块（TankMods）
-      -- 影子（11-27 M3 丝滑）：三边都不到 2 格的小零件（螺栓、灯座、把手、工具、天线座……）不投影子——在阴影图里只有几个像素看不出来，
-      --   车多的时候阴影那一遍少画几百个小物体（太阳一挪整张阴影图重画时也少画）；机库、车库里的车（Garage、TechUI 自己 build）不动
+      -- 影子（11-27 M3 丝滑）：三边都不到 2 格的小零件（螺栓、灯座、把手、工具、天线座……）远处的车不投影子——在阴影图里只有几个像素看不出来，
+      --   车多的时候阴影那一遍少画几百个小物体（太阳一挪整张阴影图重画时也少画）；机库、车库里的车（Garage、TechUI 自己 build）不动。
+      --   自己开的车、离镜头 120 格以内的车照旧投（第三人称自己的车就在镜头前 15～25 格：车顶机枪、舱盖、潜望镜的影子看得见），
+      --   超过 160 格才关（回差）：这里只记下是哪几块，stepVeh 按距离成批开关
+      local small = {}
       for _, it in ipairs(M.parts) do
         local bp = it[1]
         if bp:IsA("BasePart") and bp.CastShadow then
           local sz = bp.Size
-          if sz.X < 2 and sz.Y < 2 and sz.Z < 2 then bp.CastShadow = false end
+          if sz.X < 2 and sz.Y < 2 and sz.Z < 2 then small[#small + 1] = bp end
         end
       end
+      v.smallSh, v.smallShOn = (#small > 0) and small or nil, true
       M.model.Parent = VF
       v.modsAttr = em:GetAttribute("Mods")
       v.treeKey = tk
@@ -593,6 +613,8 @@ function View.init(G)
     return x, vel
   end
 
+  -- 镜头这一帧朝哪、放大了多少（stepView 每帧先填）：远处的车三帧一摆按「看上去多远」判（见 stepVeh 里的 farPut）
+  local viewLook, viewK, viewCos = nil, 1, -1
   local function stepVeh(v, dt, camPos)
     local em, d, M = v.em, v.def, v.M
     -- 车灯：有人开、没被打爆才亮
@@ -661,7 +683,22 @@ function View.init(G)
         v.mp = (v.mp or 0) + (mp - (v.mp or 0)) * math.min(1, dt * 10)
       end
     end
-    local far = (pos - camPos).Magnitude > 420
+    local camD = (pos - camPos).Magnitude
+    local far = camD > 420
+    -- 摆零件、负重轮按「看上去多远」（11-27 审查：8 倍镜看 1 公里外时速 30 公里的车，三帧才摆一次，60 帧时每 50 毫秒跳 2～3 个点，
+    --   准星是顺的、目标一顿一顿）：在视野里、开着镜放大了的车按 距离 × min(1, 视场 / 70) 算（同特效 VfxLib.lod 的口径），
+    --   开镜时只多摆镜子里那几辆；视野外、没放大的照旧按距离。扬尘、排气、真地形照旧按距离（far）
+    local farPut = far
+    if far and viewK < 1 and viewLook and (pos - camPos):Dot(viewLook) > camD * viewCos then farPut = camD * viewK > 420 end
+    v.farPut = farPut   -- 测试看
+    -- 小零件的影子（见 add）：自己的车、120 格以内投，160 格外不投；变了才成批改
+    if v.smallSh then
+      local want = own and true or camD < (v.smallShOn and 160 or 120)
+      if want ~= v.smallShOn then
+        v.smallShOn = want
+        for _, bp in ipairs(v.smallSh) do bp.CastShadow = want end
+      end
+    end
     -- 轮子：每个一个弹簧阻尼；远了不算（省事）
     local W = M.wheels
     local rough = 1
@@ -682,7 +719,7 @@ function View.init(G)
       if math.abs(lift) > 1e-3 then base = base + V(0, lift, 0) end
     end
     local sF, nF, sB, nB, sL, nL, sR, nR, sum = 0, 0, 0, 0, 0, 0, 0, 0, 0
-    if not far then
+    if not farPut then
       for _, w in ipairs(W) do
         local wp = (base * CF(w.x, 0, w.z)).Position
         local gy = Map.height(wp.X, wp.Z) + lift
@@ -765,7 +802,7 @@ function View.init(G)
       for _, w in ipairs(W) do if math.abs(w.vy) > 0.003 then still = false break end end
     end
     v.farN = (v.farN or 0) + 1
-    if not still and (not far or own or v.farN % 3 == 0) then
+    if not still and (not farPut or own or v.farN % 3 == 0) then
       v.putH, v.putT, v.putG, v.putR, v.putRG, v.putSteer = hullF, tF, gF, rF, rgF, v.steer
       local plist, clist = v.plist, v.clist
       -- 一个轮子（履带段）由好几块零件拼成：轮子的变换这一帧只算一次，同一个轮子的零件共用（原来每块零件各算一遍，
@@ -1118,6 +1155,18 @@ function View.init(G)
     G.try_(checkImports, dt)
     local myTeam = me:GetAttribute("Side")
     local camPos = cam.CFrame.Position
+    do   -- 视野（stepVeh 的 farPut）：放大倍数 min(1, 视场 / 70)；视野的锥按画面对角线的一半再放宽 15%（快进画面的也算）
+      local fov = cam.FieldOfView
+      viewK = math.min(1, fov / 70)
+      if viewK < 1 then
+        local vp = cam.ViewportSize
+        local asp = (vp.Y > 0) and vp.X / vp.Y or 16 / 9
+        viewLook = cam.CFrame.LookVector
+        viewCos = math.cos(math.min(math.pi / 2, math.atan(math.tan(math.rad(fov) / 2) * math.sqrt(1 + asp * asp)) * 1.15))
+      else
+        viewLook = nil
+      end
+    end
     local ch = me.Character
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
     local here = hrp and hrp.Position or nil

@@ -263,7 +263,44 @@ for _ = 1, 8 do if C.snowCloudTick then C.snowCloudTick(V3(0, 900, 2000)) end en
 local cs = C.snowCloudStats and C.snowCloudStats()
 check(cs and cs.imported and cs.puffs > 400 and cs.live > 20, string.format("天上的云：%s 朵，镜头附近摆了 %s 朵（建了 %s 次、%s 拍、摆过 %s 朵，镜头 %s）", tostring(cs and cs.puffs), tostring(cs and cs.live),
   tostring(cs and cs.builds), tostring(cs and cs.ticks), tostring(cs and cs.spawned), tostring(cs and cs.cam)))
+-- 11-27 审查：最远摆到 14000 格（M3 丝滑那次改成 12000「公里」，其实是格、约 4.3 公里，开飞机看得见「云泡」的边）；
+--   机器跟不上（G.perfK 降档）摆的范围慢慢收（一拍 5%），不一拍一跳；拍子之间近处的每帧按距离调透明度（穿云不一顿一顿）
+check(cs and cs.viewMax == 14000 and math.abs((cs.view or 0) - 14000) < 1, string.format("体积云最远摆到 14000 格（现在 %s）", tostring(cs and cs.view)))
+do
+  local k0 = C.perfK
+  C.perfK = 0.6
+  C.snowCloudTick(V3(0, 900, 2000))
+  local v1 = C.snowCloudStats().view
+  for _ = 1, 80 do C.snowCloudTick(V3(0, 900, 2000)) end
+  local v2 = C.snowCloudStats().view
+  check(v1 > 13600 and v1 < 13800 and math.abs(v2 - 8400) < 200, string.format("降档到 0.6：一拍收到 %.0f（不是一下到 8400），80 拍以后 %.0f", v1, v2))
+  C.perfK = k0
+  for _ = 1, 120 do C.snowCloudTick(V3(0, 900, 2000)) end
+  check(math.abs(C.snowCloudStats().view - 14000) < 50, string.format("画质回来：又慢慢放回 14000（%.0f）", C.snowCloudStats().view))
+end
+do
+  local s0 = C.snowCloudStats()
+  local P = nil
+  for _, q in ipairs(s0.nearList or {}) do if q.parts and q.rel then P = q break end end
+  check(P ~= nil, "镜头附近有每帧照看的云（" .. tostring(s0.near) .. " 朵）")
+  if P then
+    C.snowCloudFrame(V3(0, 900, 2000))   -- 先挪到这一刻的风里
+    local center = (P.parts[1].CFrame * P.rel[1]:Inverse()).Position
+    local f0 = C.snowCloudStats().frameTr
+    C.snowCloudFrame(center + V3(P.r * 1.6, 0, 0))
+    local tr1 = P.parts[1].Transparency
+    C.snowCloudFrame(center + V3(P.r * 1.2, 0, 0))
+    local tr2 = P.parts[1].Transparency
+    local want1, want2 = 1 - (0.7 / 1.3), 1 - (0.3 / 1.3)
+    check(math.abs(tr1 - want1) < 0.02 and math.abs(tr2 - want2) < 0.02 and C.snowCloudStats().frameTr >= f0 + 2,
+      string.format("拍子之间往云里飞：每帧淡（离中心 1.6 倍半径透明 %.2f、1.2 倍 %.2f；算的 %.2f、%.2f）", tr1, tr2, want1, want2))
+    C.snowCloudFrame(center)
+    check(P.parts[1].Transparency == 1, "钻进去：全透明")
+    C.snowCloudTick(V3(0, 900, 2000))
+  end
+end
 -- 有了体积云就不再摆 Warfx 那几百个半透明球拼的积云（11-27 M3 丝滑：两套云叠着，透明的一层层排序最贵）
+--   已经摆了一会儿的（clouds.glb 晚到）1 秒淡掉再删（tools/mock/smooth.lua ⑤ 测）
 local banks = C.cloudBanks
 check(cs and cs.imported and C.snowCloudsOn == true and banks ~= nil and #banks:GetChildren() == 0,
   "体积云开着：球拼的积云收掉了（还剩 " .. tostring(banks and #banks:GetChildren()) .. " 块）")

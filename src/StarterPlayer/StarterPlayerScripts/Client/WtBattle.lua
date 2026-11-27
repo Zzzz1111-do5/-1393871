@@ -350,16 +350,22 @@ function WtBattle.init(G)
     end
   end
   -- 新的一条（11-27「把各种动画效果做出丝滑感」）：原来一下子冒出来、下面几行一下子跳一格——
-  --   现在旧的几行往下滑一格、新的那行从左上滑进第一行（0.15 秒，Quad Out）
+  --   现在旧的几行往下滑一格、新的那行从左上滑进第一行（Theme.T.ui 0.22 秒、Quart Out，docs/style.md「动效」）。
+  --   第 i 行现在显示的是原来第 i - 1 行的那条：从「那一行现在在哪」接着滑——上一条还没滑完又来一条（打得热闹时）
+  --   不会往回跳半格；都停稳了的时候就是往上一格，跟原来一样
   local TweenService = game:GetService("TweenService")
-  local SLIDE = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+  local SLIDE = TweenInfo.new((TH.T and TH.T.ui) or 0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+  local feedNow, feedStart = {}, {}
   local function slideFeed()
     if G.reducedMotion and G.reducedMotion() then return end
+    for i, R in ipairs(feedRows) do feedNow[i] = R.f.Position end
     for i, R in ipairs(feedRows) do
-      R.f.Position = (i == 1) and UD2(0, -18, 0, -22) or UD2(0, 0, 0, (i - 2) * 22)
+      feedStart[i] = (i == 1) and UD2(0, -18, 0, -22) or feedNow[i - 1]
+      R.f.Position = feedStart[i]
       TweenService:Create(R.f, SLIDE, { Position = UD2(0, 0, 0, (i - 1) * 22) }):Play()
     end
   end
+  G.wtFeedSlide = function() return feedStart, feedRows, UD2 end   -- 测试用：上一次各行从哪开始滑、各行（UD2：测试拿来摆位置）
   -- 火炮支援的落点：地上一圈红（本队看得见；敌人只看得见炮弹落下来）
   local artyMarks = {}
   local function artyMark(e)

@@ -72,10 +72,12 @@ function Settings.init(G)
     blur.Enabled = false
     blur.Parent = Lighting
   end)
-  -- 模糊淡进淡出（11-27「动画做出丝滑感」：原来一下子 0 → 14）：开 0.2 秒、关 0.12 秒；关完了把效果关掉。系统开了「减少动态效果」就直接开关
+  -- 模糊淡进淡出（11-27「动画做出丝滑感」：原来一下子 0 → 14）：开 0.22 秒、关 0.18 秒（Theme.T.ui / out、Quart Out，docs/style.md「动效」）；
+  --   关完了把效果关掉。系统开了「减少动态效果」就直接开关
   local TweenService = game:GetService("TweenService")
-  local BLUR_IN = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
-  local BLUR_OUT = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+  local MT = (TH and type(TH.T) == "table") and TH.T or {}
+  local BLUR_IN = TweenInfo.new(MT.ui or 0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+  local BLUR_OUT = TweenInfo.new(MT.out or 0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
   local blurTok = 0
   local function blurTo(on)
     if not blur then return end

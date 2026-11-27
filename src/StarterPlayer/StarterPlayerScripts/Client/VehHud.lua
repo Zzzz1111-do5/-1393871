@@ -601,12 +601,14 @@ function VehHud.init(G)
   local DIR = { [0] = "N", [45] = "NE", [90] = "E", [135] = "SE", [180] = "S", [225] = "SW", [270] = "W", [315] = "NW" }
   local function deg360(r) return (math.deg(r) % 360 + 360) % 360 end
   local function hdgOf(yaw) return (360 - deg360(yaw or 0)) % 360 end   -- 偏航（逆时针、从 −Z 起）→ 航向（顺时针从北）
-  -- 11-27 M3 丝滑：镜头没转就不重摆；转了只挪刻度的位置，刻度长短、字只在换了一格（5°）时重写（原来每帧 40 格 × 5 个属性）
-  local cmpCam, cmpMark, cmpFirst = nil, nil, nil
+  -- 11-27 M3 丝滑：镜头没转就不重摆；转了只挪刻度的位置，刻度长短、字只在换了一格（5°）时重写（原来每帧 40 格 × 5 个属性）。
+  --   罗盘宽 CW 也算在里面（layoutPanels 跟着窗口宽度改它：舵回正直行、鼠标不动时切全屏，刻度和 ▲ 原来还按旧宽度摆，跟居中的 ▼ 对不上）
+  local cmpCam, cmpMark, cmpFirst, cmpW = nil, nil, nil, nil
   local function stepCompass(camHdg, markHdg)
     if not compGroup.Visible then cmpCam = nil return end
-    if camHdg == cmpCam and markHdg == cmpMark then return end
-    cmpCam, cmpMark = camHdg, markHdg
+    if camHdg == cmpCam and markHdg == cmpMark and CW == cmpW then return end
+    if CW ~= cmpW then cmpFirst = nil end
+    cmpCam, cmpMark, cmpW = camHdg, markHdg, CW
     local first = math.floor((camHdg - CW / 2 / PX) / 5) * 5
     local relabel = first ~= cmpFirst
     cmpFirst = first
@@ -627,6 +629,10 @@ function VehHud.init(G)
     local dg = (markHdg - camHdg + 540) % 360 - 180
     compMark.Position = UD2(0, CW / 2 + math.clamp(dg, -CW / 2 / PX, CW / 2 / PX) * PX, 0, 24)
   end
+  -- 测试用：直接走一拍罗盘、看罗盘宽和刻度、▲ 摆在哪；setCW 照 layoutPanels 换罗盘宽（模拟器的窗口大小改不了）
+  G.vehCompass = { group = compGroup, step = function(h, m) stepCompass(h, m) end,
+    setCW = function(w) CW = w compGroup.Size = UD2(0, CW, 0, 51) end,
+    state = function() return { cw = CW, px = PX, ticks = ticks, mark = compMark.Position.X.Offset } end }
 
   ---------------------------------------------------------------- 中间：准星——坦克照 MWT（现代战争坦克）、舰艇照《现代战舰》，两套样子
   --   用户 11-19：「船、坦克的准心可以不一样，参考 MWT 和现代战舰」
@@ -1466,6 +1472,7 @@ function VehHud.init(G)
       SG.info.Position, SG.info.Size = UD2(0.5, 206, 0.5, -26), UD2(0, 184, 0, 43)
     end
   end
+  G.vehCompass.layout = function() layoutPanels() end   -- 测试用
 
   local function stepSight(st)
     local d = st.d

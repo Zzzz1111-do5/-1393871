@@ -107,9 +107,12 @@ function UI.init(G)
   ---------------------------------------------------------------- 界面出现的短缓动（各模块共用）
   -- 用户 11-27「把各种动画效果做出丝滑感」：面板原来是 Visible 一下子开、一下子关。
   --   G.uiShow(界面, true)：马上显示，同时自己挂的 UIScale 从 0.96 弹到 1（0.18 秒，Quart Out）——只动比例、不动位置和透明度，
-  --     别的代码照旧摆位置、改颜色，不打架；界面自己已经有 UIScale（手机缩放……）就不加，只显示
-  --   G.uiShow(界面, false)：马上藏（按住看的、关窗口这些不拖泥带水）；opt.out = true 时先缩到 0.97（0.1 秒）再藏
-  --   G.uiPop(界面, 从多大, 慢)：已经显示着的（命中结果、新的一行）从 1.15 之类缩回 1（0.12 秒）；慢 = true 时按打开面板的 0.18 秒 Quart Out
+  --     别的代码照旧摆位置、改颜色，不打架；界面自己已经有 UIScale（手机缩放……）就不加，只显示。正在关（opt.out 缩到半路）又打开：从现在的大小回到 1
+  --   G.uiShow(界面, false)：马上藏（按住看的、关窗口这些不拖泥带水）；opt.out = true 时先缩到 0.97（0.18 秒）再藏
+  --   G.uiPop(界面, 从多大, 慢)：已经显示着的（命中结果、新的一行）从 1.07 之类缩回 1（0.12 秒）；慢 = true 时按打开面板的 0.18 秒 Quart Out。
+  --     界面上有别人的 UIScale（WtTank 的 barScale 这种每帧写的）弹不了：返回 false、Studio 里提醒一次——这种改动 Position，或者外面包一层没有 UIScale 的框
+  --   时长、缓动照 docs/style.md「动效」（workshop 的 Theme.T / Theme.EASE：界面上一律 Out、不用 In，退场 out 0.18、悬停 hover 0.12）：
+  --     Theme.T 进了主分支就直接用它的数；按住 Tab 看的战况表比面板（panel 0.28）快，0.18
   --   系统打开「减少动态效果」（GuiService.ReducedMotionEnabled）就都不动。准星、命中标记、报错红字不用这个
   do
     local TweenService = game:GetService("TweenService")
@@ -119,14 +122,27 @@ function UI.init(G)
       return ok and v == true
     end
     G.reducedMotion = reduced
+    local TT = (TH and type(TH.T) == "table") and TH.T or {}
     local IN_T = TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
-    local OUT_T = TweenInfo.new(0.1, Enum.EasingStyle.Quad, Enum.EasingDirection.In)
-    local POP_T = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local OUT_T = TweenInfo.new(TT.out or 0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    local POP_T = TweenInfo.new(TT.hover or 0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
     local own = setmetatable({}, { __mode = "k" })   -- [界面] = { sc = 自己挂的 UIScale, tok = 第几次（关的动画结束时还是这一次才藏）}
+    -- 界面上有没有别人的 UIScale（mine 是自己挂的那个）：每次都查——以后别的模块再给它加一个，两个 UIScale 会乘在一起
+    local function foreign(obj, mine)
+      for _, c in ipairs(obj:GetChildren()) do
+        if c ~= mine and c:IsA("UIScale") then return true end
+      end
+      return false
+    end
     local function scaleOf(obj)
       local e = own[obj]
-      if e and e.sc and e.sc.Parent == obj then return e end
-      if obj:FindFirstChildOfClass("UIScale") then return nil end   -- 界面自己有 UIScale：不叠第二个
+      if e and e.sc and e.sc.Parent == obj then
+        if not foreign(obj, e.sc) then return e end
+        e.sc:Destroy()   -- 别人后来也挂了一个：让给它
+        own[obj] = nil
+        return nil
+      end
+      if foreign(obj, nil) then return nil end   -- 界面自己有 UIScale：不叠第二个
       local sc = Instance.new("UIScale")
       sc.Name = "EaseScale"
       sc.Parent = obj
@@ -134,20 +150,32 @@ function UI.init(G)
       own[obj] = e
       return e
     end
+    local warned = setmetatable({}, { __mode = "k" })
+    local function cantScale(obj)
+      if warned[obj] then return end
+      warned[obj] = true
+      local okS, studio = pcall(function() return game:GetService("RunService"):IsStudio() end)
+      if okS and studio then warn("G.uiPop / uiShow：" .. obj:GetFullName() .. " 上有别的 UIScale，没法弹（改动 Position，或者外面包一层没有 UIScale 的框）") end
+    end
     function G.uiShow(obj, on, opt)
       if not obj then return end
       local e = own[obj]
-      if e then e.tok += 1 end
+      if e then e.tok += 1 end   -- 关到一半的那次作废（不藏了）
       if on then
         local was = obj.Visible
         obj.Visible = true
-        if was and not (opt and opt.again) then return end   -- 本来就开着：不重弹
+        if was and not (opt and opt.again) then   -- 本来就开着：不重弹；关到一半（缩到 0.97 的路上）又打开：回到 1
+          if e and e.sc.Parent == obj and e.sc.Scale ~= 1 then
+            if reduced() then e.sc.Scale = 1 else TweenService:Create(e.sc, IN_T, { Scale = 1 }):Play() end
+          end
+          return
+        end
         if reduced() then
           if e and e.sc.Parent then e.sc.Scale = 1 end
           return
         end
         e = scaleOf(obj)
-        if not e then return end
+        if not e then cantScale(obj) return end
         e.sc.Scale = (opt and opt.from) or 0.96
         TweenService:Create(e.sc, IN_T, { Scale = 1 }):Play()
       else
@@ -167,15 +195,22 @@ function UI.init(G)
       end
     end
     function G.uiPop(obj, from, slow)
-      if not obj or reduced() then return end
+      if not obj or reduced() then return false end
       local e = scaleOf(obj)
-      if not e then return end
+      if not e then cantScale(obj) return false end
       e.tok += 1
-      e.sc.Scale = from or 1.15
+      e.sc.Scale = from or 1.07
       TweenService:Create(e.sc, slow and IN_T or POP_T, { Scale = 1 }):Play()
+      return true
     end
-    -- 镜头硬切的地方（机库出击进战场……）盖一下黑：先全黑 hold 秒（把加载、阴影重画那一顿藏在黑里），再 fade 秒淡开（Quad Out）。
-    --   盖在界面上面、不挡鼠标；「减少动态效果」时不盖。别的模块也能用：G.sceneFade(0, 0.12) 就是一下淡开
+    -- 镜头硬切的地方（机库出击进战场、退瞄准镜、收望远镜）盖一下黑再淡开：G.sceneFade(hold, fade, opt)
+    --   · hold 秒全黑（把加载、阴影重画那一顿藏在黑里）。hold > 0 的到点以后还要等连着两帧顺（dt < 1/22，出生那一帧卡 200 毫秒别把黑和淡开的头几帧一起吃掉）、
+    --     opt.ready() 给了也要它成立（比如出击：镜头真到了车上 G.drive / G.fly / G.sail），最多再等 opt.maxWait（默认 0.8）秒
+    --   · 再 fade 秒淡开（Quad Out）；opt.from：从多黑开始（默认 0 全黑；来回切的退镜、收望远镜从半黑淡一下，不闪全黑）
+    --   · 又来一次：上一次的补间停掉、从这一次接着（原来第二次只把黑设回去，上一次没跑完的补间下一帧又把它写回去）；
+    --     上一次还盖着黑在等（出击等镜头到车上）：两边的条件都要满足、淡开取长的（半路一下退镜不把出击的黑冲掉）
+    --   · 「减少动态效果」照样淡（淡入淡出就是它推荐用来替代运动的，DeathFx 也是这样），只是淡开不超过 0.15 秒
+    --   盖在界面上面、不挡鼠标
     local fadeGui = Instance.new("ScreenGui")
     fadeGui.Name = "SceneFade"
     fadeGui.ResetOnSpawn = false
@@ -191,24 +226,61 @@ function UI.init(G)
     fadeF.BorderSizePixel = 0
     fadeF.Active = false
     fadeF.Parent = fadeGui
-    local fadeTok = 0
-    function G.sceneFade(hold, fade)
-      if reduced() then return end
-      fadeTok += 1
-      local tok = fadeTok
-      hold, fade = math.max(0, hold or 0.12), math.max(0.05, fade or 0.25)
-      fadeF.BackgroundTransparency = 0
-      fadeGui.Enabled = true
-      task.delay(hold, function()
-        if fadeTok ~= tok then return end
-        TweenService:Create(fadeF, TweenInfo.new(fade, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 }):Play()
-        task.delay(fade, function()
-          if fadeTok ~= tok then return end
-          fadeGui.Enabled = false
-          fadeF.BackgroundTransparency = 1
-        end)
+    local fadeTok, fadeTw, pend = 0, nil, nil   -- pend：盖着黑、还没开始淡开的这一次
+    local function startFade(p)
+      pend = nil
+      if fadeTw then fadeTw:Cancel() end
+      fadeTw = TweenService:Create(fadeF, TweenInfo.new(p.fade, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 })
+      fadeTw:Play()
+      task.delay(p.fade, function()
+        if fadeTok ~= p.tok then return end
+        fadeTw = nil
+        fadeGui.Enabled = false
+        fadeF.BackgroundTransparency = 1
       end)
     end
+    G.frameConn("SceneFade", function(dt)
+      local p = pend
+      if not p then return end
+      local now = os.clock()
+      if now < p.holdEnd then return end
+      local ok = true
+      if p.settle then
+        if (dt or 0) < 1 / 22 then p.smooth += 1 else p.smooth = 0 end   -- 锁 30 帧的手机一帧 33 毫秒也算顺；出生卡的那一下几百毫秒
+        ok = p.smooth >= 2
+      end
+      if ok and p.ready then
+        local okR, r = pcall(p.ready)
+        ok = (not okR) or r == true   -- ready 自己出错就不等了
+      end
+      if ok or now >= p.deadline then startFade(p) end
+    end)
+    function G.sceneFade(hold, fade, opt)
+      fadeTok += 1
+      if fadeTw then fadeTw:Cancel() fadeTw = nil end
+      hold, fade = math.max(0, hold or 0.12), math.max(0.05, fade or 0.25)
+      if reduced() then fade = math.min(fade, 0.15) end
+      local from = math.clamp((opt and opt.from) or 0, 0, 0.95)
+      if fadeGui.Enabled and fadeF.BackgroundTransparency < from then from = fadeF.BackgroundTransparency end   -- 还盖着更黑的（出击的黑没淡开）：别一下子变亮
+      fadeF.BackgroundTransparency = from
+      fadeGui.Enabled = true
+      local settle = hold > 0
+      if opt and opt.settle ~= nil then settle = opt.settle == true end
+      local now = os.clock()
+      local p = { tok = fadeTok, holdEnd = now + hold, fade = fade, settle = settle, smooth = 0, ready = opt and opt.ready }
+      p.deadline = p.holdEnd + ((opt and opt.maxWait) or 0.8)
+      local old = pend
+      if old then
+        p.holdEnd, p.deadline, p.fade = math.max(p.holdEnd, old.holdEnd), math.max(p.deadline, old.deadline), math.max(p.fade, old.fade)
+        p.settle = p.settle or old.settle
+        if old.ready then
+          local r1, r2 = old.ready, p.ready
+          p.ready = r2 and function() return r1() == true and r2() == true end or r1
+        end
+      end
+      pend = p
+    end
+    G.sceneFadeState = function() return { on = fadeGui.Enabled, tr = fadeF.BackgroundTransparency, waiting = pend ~= nil } end   -- 测试用
   end
 
   local function teamColor(t)   -- 征服模式的中立据点（owner = "none"）：灰
