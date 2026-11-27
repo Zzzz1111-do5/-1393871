@@ -685,6 +685,17 @@ function Fly.init(G)
 
   ---------------------------------------------------------------- 手机：杆、油门 / 升降、开火、换武器、热诱弹、起落架、下飞机
 
+  -- 解除 / 恢复迎角限制（过失速机动：眼镜蛇、有推力矢量的能翻库尔比特；只在直接操纵时生效）——键盘 T、手机右下「T」
+  local function toggleOvr()
+    if not st or st.d.kind ~= "jet" or st.uav or not st.fmD then return end
+    if st.fmD.fcs == "mech" then
+      if G.toast then G.toast(T("air.ovrMech"), "info") end
+      return
+    end
+    st.ovr = not st.ovr
+    if G.toast then G.toast(T(st.ovr and (st.fmD.tvc and "air.ovrOnTvc" or "air.ovrOn") or "air.ovrOff"), st.ovr and "warn" or "info") end
+  end
+
   local touch = nil
   local touchUI = nil
   if UIS.TouchEnabled then
@@ -714,6 +725,7 @@ function Fly.init(G)
     tap(rb, "R", UDim2.fromOffset(10, 150), function() G.flyNextTarget() end)
     tap(rb, "F", UDim2.fromOffset(10, 80), function() G.R.Drive:FireServer({ op = "exit" }) end)
     tap(rb, "J", UDim2.fromOffset(80, 10), function() G.R.Drive:FireServer({ op = "jettison" }) end)
+    tap(rb, "T", UDim2.fromOffset(10, 10), toggleOvr)
     touchUI = { lb, rb }
     for _, f in ipairs(touchUI) do f.Visible = false end
   end
@@ -1758,6 +1770,7 @@ function Fly.init(G)
         inp.mode, inp.sx, inp.sy, inp.sz = "stick", rollIn, -pitchIn, yawIn   -- W 推杆（低头）、S 拉杆
         inp.level = rollIn == 0
         inp.levelHard = landAid ~= nil and rollIn == 0   -- 贴着跑道 / 甲板：机翼自动摆平
+        inp.ovr = st.ovr and not landAid   -- T 解除迎角限制（过失速机动）；进近着陆时照常限制
       else
         inp.mode, inp.n, inp.p, inp.r = "cmd", st.nCmd, rc, st.yawCmd
       end
@@ -2092,6 +2105,8 @@ function Fly.init(G)
         G.R.Drive:FireServer({ op = "flare" })
         if G.airAudioEvent then G.airAudioEvent("flare") end
       end
+    elseif k == Enum.KeyCode.T and st.d.kind == "jet" then   -- 解除 / 恢复迎角限制
+      toggleOvr()
     elseif k == Enum.KeyCode.M and st.d.kind == "jet" and not st.uav and not G.mobile then   -- 战雷式鼠标瞄准 ↔ 纯键盘驾驶
       mouseAim = not mouseAim
       setAim((not st.ground and st.vdir) or st.cf.LookVector)   -- 从现在的航向接着飞，不猛地一转
@@ -2919,6 +2934,7 @@ function Fly.init(G)
       info.thr = thrText.Text
       info.vs = T("air.vs", vsText.Text)
       info.gear = (d.kind == "jet" and st.gearWant > 0.5) and T("air.gearState.down") or nil
+      if d.kind == "jet" and st.ovr then info.gear = (info.gear and (info.gear .. " · ") or "") .. T("air.ovrTag") end
       local bp, bon = project(pos + st.cf.LookVector * 400)
       bore.Position, bore.Visible = bp, bon and not st.eo and not G.wtFlightOn   -- 战雷式界面（WtFlight.lua）有自己的机头 ⊕
       G.try_(dcsHud, pos, kmh)

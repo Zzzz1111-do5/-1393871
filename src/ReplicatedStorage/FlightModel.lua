@@ -53,7 +53,7 @@ end
 --   sb 减速板的阻力系数增量、gearCD 起落架、flapCL 襟翼的升力增量、up / dn 发动机慢车 → 军推 / 军推 → 慢车的秒数、ab 加力点火的秒数、
 --   vne 海平面最大允许速度 m/s（超了撕翼，WtAir）、Kq Kr 机械操纵的俯仰 / 偏航阻尼器（舵偏 rad / 角速度 rad/s）、
 --   qmax 教官拉杆的最大俯仰角速度 rad/s、pu 失速前上仰（后掠翼的翼尖先失速）、tvc 推力矢量 { p 俯仰°, y 偏航°, r 速率°/s }、
---   prop 涡桨 { P 功率 W, Tst 静推力 N, eta 螺旋桨效率 }
+--   prop 涡桨 { P 功率 W, Tst 静推力 N, eta 螺旋桨效率 }、cmS 失速后的低头力矩系数（苏-27 系小：真机不靠推力矢量也能拉眼镜蛇）
 local BASE = {
   ne = 2, lap = { 0.15, 0.1 }, CLa = 3.5, aS = 30, CLm = 1.6, CD0 = 0.02, e = 0.8, Mcr = 0.88, CDw = 0.03,
   nz = { -3, 9 }, pmax = 200, fcs = "fbw", bw = 1, sm = -0.03,
@@ -61,7 +61,7 @@ local BASE = {
   Cmde = -0.8, Cndr = -0.065, CYdr = 0.15, Cnda = -0.005, Cldr = 0.01,
   de = 25, da = 21, dr = 30, rde = 60, rda = 100, rdr = 120,
   kx = 0.115, ky = 0.18, kz = 0.23, sb = 0.05, gearCD = 0.02, flapCL = 0.35, up = 3.5, dn = 2.5, ab = 0.4,
-  Kq = 0, Kr = 0, qmax = 0.5, pu = 0,
+  Kq = 0, Kr = 0, qmax = 0.5, pu = 0, cmS = 0.25,
 }
 
 FM.AC = {
@@ -212,6 +212,8 @@ FM.AC = {
 }
 -- T-50（苏-57 的原型机）：同样的发动机，原型机更重（测试设备），飞控软件限制保守一些
 FM.AC.t50 = setmetatable({ m0 = 19000, aL = 30, pmax = 260, bw = 0.95 }, { __index = FM.AC.su57 })
+-- 苏-27 系（边条 + 放宽静稳定）：失速后低头力矩小——真机不靠推力矢量也能拉眼镜蛇（苏-27，1989 年巴黎航展），解除迎角限制后能仰到 90° 以上
+for _, k in ipairs({ "j11", "j15t", "j16", "su27", "su35", "su57" }) do FM.AC[k].cmS = 0.1 end
 
 -- 同型号不同版本（科技树的键：用户 11-26「同型号不同版本分开……自己的性能」）：照 base 那一型，改写不一样的量
 FM.VAR = {
@@ -248,7 +250,7 @@ function FM.get(id, treeKey)
   for k, v in pairs(BASE) do D[k] = v end
   local fields = { "m0", "fi", "S", "b", "c", "L", "Tm", "Ta", "ne", "lap", "CLa", "aS", "CLm", "CD0", "e", "K", "Mcr", "CDw", "nz", "aL", "pmax", "fcs", "bw", "tn", "tp", "sm",
     "Cm0", "Cmq", "Clp", "Cnr", "Cnb", "Clb", "CYb", "Clr", "Cnp", "Cmde", "Clda", "Cndr", "CYdr", "Cnda", "Cldr", "de", "da", "dr", "rde", "rda", "rdr",
-    "kx", "ky", "kz", "sb", "gearCD", "flapCL", "up", "dn", "ab", "vne", "Kq", "Kr", "qmax", "pu", "tvc", "prop", "swp" }
+    "kx", "ky", "kz", "sb", "gearCD", "flapCL", "up", "dn", "ab", "vne", "Kq", "Kr", "qmax", "pu", "tvc", "prop", "swp", "cmS" }
   for _, f in ipairs(fields) do
     local v = src[f]
     if v ~= nil then D[f] = v end
@@ -345,7 +347,9 @@ local function CLof(D, a, flap)
     cl = CLm - (CLm - CL1) * t * t
   else
     local s = smooth(aS, aS + 0.35, aa)
-    local plate = 1.05 * abs(sin(2 * math.min(aa, math.pi / 2)))
+    -- 失速以后按平板（1.05·sin 2α）；过了 90°（倒着来流：尾冲、库尔比特翻过去那一下）升力反过来，翼型倒着吹效率低（× 0.8）
+    local plate = 1.05 * sin(2 * aa)
+    if aa > math.pi / 2 then plate = plate * 0.8 end
     cl = lerp(CLm, plate, s)
   end
   local fl = (flap or 0) * D.flapCL * (1 - smooth(aS, aS + 0.3, aa))
@@ -438,7 +442,7 @@ end
 function FM.reset(F, rot, vx, vy, vz, q)
   F.p, F.q, F.r = 0, q or 0, 0
   F.vx, F.vy, F.vz = vx or 0, vy or 0, vz or 0
-  F.de, F.da, F.dr, F.tvp, F.tvy = 0, 0, 0, 0, 0
+  F.de, F.da, F.dr, F.tvp, F.tvy, F.tvr = 0, 0, 0, 0, 0, 0
   F.trim, F.qf, F.nf, F.pf, F.drop, F.stallK = nil, nil, 1, 0, 0, 0
   F.al, F.be, F.nz, F.M, F.Va, F.T = 0, 0, 1, 0, 0, F.T or 0
   F.qw, F.qx, F.qy, F.qz = FM.quat(rot[1], rot[2], rot[3], rot[4], rot[5], rot[6], rot[7], rot[8], rot[9])
@@ -510,6 +514,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
   local Va = math.max(sqrt(u * u + v * v + wd * wd), 1)
   local al = atan2(wd, u)
   local be = asin(clamp(v / Va, -1, 1))
+  local sbe = v / Va   -- sin β：侧滑力矩、侧力按它（小侧滑同 β；大侧滑——失速偏离、尾冲侧着飞——不再线性往上长）
   local qb = 0.5 * rho * Va * Va
   local M = Va / sos
   local p, q, r = F.p, F.q, F.r
@@ -530,9 +535,13 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     F.drop = 0
   end
   F.stallK = stallK
-  local Clp = D.Clp * (1 - 1.7 * stallK)   -- 失速后滚转阻尼变正：自转（尾旋的起因）
+  -- 失速后滚转阻尼变正：自转（尾旋的起因）——只在滚得慢时；滚快了阻尼回来（自转的转速有个头，约每秒五六十度，原来无上限，过失速时越滚越快发散）
+  local fwdK = 1 - smooth(1.6, 2.2, aa)   -- 掉翼、自转只在正着来流的失速里（倒着来流——尾冲——没有）
+  local Clp = D.Clp * (1 - 1.7 * stallK * fwdK * exp(-(ph / 0.15) ^ 2))
+  -- 掉翼的滚转力矩随侧滑变大：对称进入（眼镜蛇、库尔比特）时小，带着侧滑失速一边机翼猛地掉下去
+  local dropK = stallK * fwdK * (0.025 + 0.075 * math.min(1, abs(be) / 0.09))
   local Cnb = D.Cnb * (1 - 1.5 * smooth(D.aSr * 0.8, D.aSr * 1.3, aa))   -- 大迎角航向静稳定往下掉、变负（偏离）
-  local CmSt = -0.25 * stallK * ((al >= 0) and 1 or -1)   -- 失速后机头往下沉
+  local CmSt = -D.cmS * stallK * ((al >= 0) and 1 or -1)   -- 失速后机头往下沉（倒着来流时是把机头从 180° 推开：尾冲后甩过去）
   if D.pu > 0 then CmSt = CmSt + D.pu * smooth(D.aSr * 0.75, D.aSr, aa) * (1 - stallK) * ((al >= 0) and 1 or -1) end   -- 后掠翼失速前上仰
   -- 推力（推力矢量的偏转在下面舵机那里一起动）
   local T = thrustOf(D, F.N, F.abf, M, rho, Va) * (env.thrK or 1)
@@ -547,14 +556,18 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
   local mode = inp.mode or "stick"
   local fcs = D.fcs
   local cmdLaw = mode == "cmd" or fcs ~= "mech"
-  local de_c, da_c, dr_c, tvp_c, tvy_c = 0, 0, 0, 0, 0
+  local de_c, da_c, dr_c, tvp_c, tvy_c, tvr_c = 0, 0, 0, 0, 0, 0
   local cph, sph, cth = cos(phi), sin(phi), cos(th)
   local nzP = D.nzP * (env.nzK or 1)
   local nzN = D.nzN
-  local Me = qSc * D.Cmde * ctl * (env.pitchK or 1) * (1 - 0.5 * smooth(D.aSr * 0.9, D.aSr * 1.5, aa))   -- 大迎角平尾效率掉
-  local daK = 1 - 0.6 * stallK   -- 失速以后副翼在分离的气流里，效率掉六成
+  -- 舵面效率按来流：90° 以内照常（大迎角平尾在分离气流里掉一半、副翼掉六成），过了 90°（倒着来流：尾冲、翻过去）效果反过来
+  local rev = clamp(cos(aa) * 1.6, -1, 1)
+  local Me = qSc * D.Cmde * ctl * (env.pitchK or 1) * (1 - 0.5 * smooth(D.aSr * 0.9, D.aSr * 1.5, aa)) * rev
+  local daK = (1 - 0.6 * stallK) * rev
   local La = qSb * D.Clda * ctl * daK
-  local Nr = qSb * D.Cndr * ctl
+  local Nr = qSb * D.Cndr * ctl * rev
+  -- 飞控按舵效求舵偏：舵效太小（快没速度了）或者反过来时别除出无穷大、别打反
+  local function safeDiv(need, k, sgn) if k * sgn < 1 then k = sgn end return need / k end
   local tvc = D.tvc
   local tvP = tvc and tvc.p * RAD or 0
   local tvY = tvc and tvc.y * RAD or 0
@@ -587,10 +600,23 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     local qk = smooth(4000, 16000, qb)
     local ka = lerp(1.4, 3.6, qk) * bw
     local qc = clamp(ka * (ac - al) + G0 / Vn * (nAch - uY), -1.5, 1.5)
+    -- 过失速机动（T 解除迎角限制；用户待办「飞控放开机动：大迎角、失速后、推力矢量、尾冲」）：杆直接要俯仰角速度，
+    --   飞控不再管迎角、过载——拉满杆机头仰过 90° 再推回来是眼镜蛇，有推力矢量的低速一直拉着能翻一整圈（库尔比特）；
+    --   松杆：飞控把迎角拉回到配平（在限制以内），不会一直挂在大迎角上；能拉多快看真的力矩（平尾在分离气流里没劲，推力矢量顶上）
+    local ovr = inp.ovr and mode == "stick"
+    if ovr then
+      local s = shape(clamp(inp.sy or 0, -1, 1))
+      local qmx = tvc and 1.6 or 1.0
+      if abs(s) > 0.05 then
+        qc = s * qmx
+      else
+        qc = clamp(-2 * (al - ac), -qmx, qmx)
+      end
+    end
     -- 迎角限制的预见（电传、教官）：迎角变化率 = 俯仰角速度 − 航迹转动角速度。离限制还剩 dA，按平尾推满（加推力矢量）能打出的低头角加速度，
     --   只许以「刹得住」的速度往限制靠；太慢了托不住（航迹往下掉）时机头跟着航迹往下压——原来低速满杆照样一头冲过限制（歼-11 拉到 38°）
-    if fcs == "fbw" or mode == "cmd" then
-      local Mdn = abs(Me) * D.der * 0.8 + Tl * sin(tvP) - qSc * (D.Cm0 + D.Cma * al)
+    if (fcs == "fbw" or mode == "cmd") and not ovr then
+      local Mdn = abs(Me) * D.der * 0.8 + Tl * sin(tvP) - qSc * (D.Cm0 + D.Cma * sin(al))
       local qdd = math.max(Mdn / Iyy, 0.05)
       local gd = G0 / Vn * ((CLof(D, al, fl) * liftK) * qS / (m * G0) - uY)   -- 航迹现在往上转多快（负的：托不住，往下掉）
       local qcap = gd + sqrt(2 * qdd * math.max(aMaxC - al, 0) * 0.6)
@@ -598,16 +624,16 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     end
     local kq = lerp(3.5, 7, qk) * bw
     local Mreq = Iyy * kq * (qc - q) - (Izz - Ixx) * p * r
-    local M0 = qSc * (D.Cm0 + D.Cma * al + D.Cmq * qh + CmSt + (env.Mext or 0))
+    local M0 = qSc * (D.Cm0 + D.Cma * sin(al) + D.Cmq * qh + CmSt + (env.Mext or 0))
     local need = Mreq - M0
     if tvP > 0 and T > 1000 then
       -- 推力矢量：分一部分力矩给喷口（舵面快饱和了全给它）——低速、大迎角平尾没劲时还拉得动
-      local deFull = need / math.min(Me, -1)
+      local deFull = safeDiv(need, Me, (rev >= 0) and -1 or 1)
       local share = 0.35 + 0.65 * smooth(0.5, 1, abs(deFull) / D.der)
       tvp_c = clamp(asin(clamp(need * share / Tl, -1, 1)), -tvP, tvP)
       need = need - Tl * sin(F.tvp)
     end
-    de_c = need / math.min(Me, -1)
+    de_c = safeDiv(need, Me, (rev >= 0) and -1 or 1)
     -- 滚转：角速度指令（松杆保持坡度，坡度 12° 以内慢慢改平）
     local pc
     if mode == "cmd" then
@@ -627,18 +653,38 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     local kp = lerp(7, 13, qk) * bw
     local Lreq = Ixx * kp * (F.pf - p) - (Iyy - Izz) * q * r
     -- 飞控不知道哪边翼尖先失速（掉翼是扰动，只靠角速度反馈去顶；失速时副翼也不灵了，顶不住）
-    local L0 = qSb * (D.Clb * be + Clp * ph + D.Clr * rh + (env.Lext or 0))
-    da_c = (Lreq - L0) / math.max(La, 1)
-    -- 偏航：协调转弯（偏航角速度跟着坡度）+ 侧滑归零 + 脚蹬
-    local rc = G0 / Vn * sph * cth + 3 * be + ((mode == "cmd") and (inp.r or 0) or shape(clamp(inp.sz or 0, -1, 1)) * 0.35)
+    local L0 = qSb * (D.Clb * sbe + Clp * ph + D.Clr * rh + (env.Lext or 0))
+    da_c = safeDiv(Lreq - L0, La, (rev >= 0) and 1 or -1)
+    -- 双发推力矢量：两个喷口差动偏转也出滚转力矩（苏-35、苏-57 真机这么管滚转）——副翼在失速气流里没劲时顶上
+    if tvP > 0 and (D.ne or 2) >= 2 and T > 1000 then
+      local ys = 0.06 * D.b   -- 喷口离中线约 0.85 米（翼展 14 米）
+      local short = (Lreq - L0) - La * clamp(da_c, -D.dar, D.dar)
+      tvr_c = clamp(asin(clamp(short / (T * ys), -1, 1)), -tvP, tvP)
+    end
+    -- 偏航：协调转弯（偏航角速度跟着坡度）+ 脚蹬要侧滑（用户待办「方向舵侧滑」：踩右舵机头偏右、飞机侧着往前滑；
+    --   满舵的侧滑角按动压收：低速约 12°、快了约 4°——垂尾、机身受不了大侧滑），没踩舵就是侧滑归零
+    --   过失速 + 推力矢量：脚蹬直接要偏航角速度（低速原地甩头）
+    local rc
+    if mode == "cmd" then
+      rc = G0 / Vn * sph * cth + 3 * be + (inp.r or 0)
+    else
+      local ped = shape(clamp(inp.sz or 0, -1, 1))
+      if ovr and tvY > 0 then
+        rc = G0 / Vn * sph * cth + ped * 0.9 + 3 * be * (1 - abs(ped))
+      else
+        local qvd = 0.5 * 1.225 * D.vne * D.vne
+        local bc = -ped * RAD * lerp(12, 4, smooth(0.25 * qvd, 0.8 * qvd, qb))
+        rc = G0 / Vn * sph * cth + 3 * (be - bc) + ped * 0.12
+      end
+    end
     local Nreq = Izz * 4.5 * bw * (rc - r) - (Ixx - Iyy) * p * q
-    local N0 = qSb * (Cnb * be + D.Cnr * rh + D.Cnp * ph + D.Cnda * F.da)
+    local N0 = qSb * (Cnb * sbe + D.Cnr * rh + D.Cnp * ph + D.Cnda * F.da)
     local needN = Nreq - N0
     if tvY > 0 and T > 1000 then
       tvy_c = clamp(asin(clamp(needN * 0.4 / Tl, -1, 1)), -tvY, tvY)
       needN = needN - Tl * sin(F.tvy)
     end
-    dr_c = needN / math.min(Nr, -1)
+    dr_c = safeDiv(needN, Nr, (rev >= 0) and -1 or 1)
   else
     -- 机械操纵：杆直接对舵面。传动比按动压排（满杆的稳态过载约是过载上限的 1.05 倍：高速时不会一把拉爆，慢了满杆照样拉进失速）；
     --   自动配平到 1 g（慢慢跟着速度改）；有阻尼器的加上
@@ -648,7 +694,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
       local cl = nn * m * G0 / (qS * liftK) - fl * D.flapCL
       local a = (cl >= D.CLm) and (D.aSr + 0.12) or CLinv(D, cl)
       local qs = G0 * (nn - uY) / Vn
-      return clamp(-(D.Cm0 + D.Cma * a + D.Cmq * qs * D.c / (2 * Vn)) / (D.Cmde * math.max(pk, 0.05)), -D.der, D.der * 0.8)
+      return clamp(-(D.Cm0 + D.Cma * sin(a) + D.Cmq * qs * D.c / (2 * Vn)) / (D.Cmde * math.max(pk, 0.05)), -D.der, D.der * 0.8)
     end
     local trimT = deFor(uY)
     F.trim = F.trim and (F.trim + (trimT - F.trim) * (1 - exp(-h / 1.2))) or trimT
@@ -673,22 +719,25 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     local tr = tvc.r * RAD * h
     F.tvp = moveTo(F.tvp, tvp_c, tr)
     F.tvy = moveTo(F.tvy, tvy_c, tr)
+    F.tvr = moveTo(F.tvr or 0, tvr_c, tr)
   end
 
   ---------------------------------------------------------------- 力
   local CL = CLof(D, al, fl) * liftK
-  local CD = D.CD0 + (env.dCD0 or 0) + D.CDw * waveK(D, M) + D.Kc * kInd * CL * CL + 1.2 * sin(al) ^ 2 * stallK
+  -- 大迎角（机腹迎风）按平板的阻力；倒着来流（机尾朝前）整架飞机的形阻另加
+  local CD = D.CD0 + (env.dCD0 or 0) + D.CDw * waveK(D, M) + D.Kc * kInd * CL * CL + 1.2 * sin(al) ^ 2 * stallK + 0.25 * smooth(1.7, 2.6, aa)
     + 0.03 * (abs(F.de) + abs(F.dr)) + D.gearCD * (inp.gear or 0) + 0.03 * fl + (inp.brake and D.sb or 0)
-  local CY = D.CYb * be + D.CYdr * F.dr
+  local CY = D.CYb * sbe + D.CYdr * F.dr
   local ca, sa = cos(al), sin(al)
   local cT = cos(F.tvp) * cos(F.tvy)
   local Fx = qS * (CL * sa - CD * ca) + T * cT
   local Fy = qS * CY - T * sin(F.tvy)
   local Fz = qS * (-CL * ca - CD * sa) + T * sin(F.tvp)
   ---------------------------------------------------------------- 力矩
-  local Lm = qSb * (D.Clb * be + Clp * ph + D.Clr * rh + D.Clda * ctl * daK * F.da + D.Cldr * F.dr + (env.Lext or 0) + F.drop * 0.1 * stallK)
-  local Mm = qSc * (D.Cm0 + D.Cma * al + D.Cmq * qh + CmSt + (env.Mext or 0)) + Me * F.de + Tl * sin(F.tvp)
-  local Nm = qSb * (Cnb * be + D.Cnr * rh + D.Cnp * ph + D.Cnda * F.da) + Nr * F.dr + Tl * sin(F.tvy)
+  local Lm = qSb * (D.Clb * sbe + Clp * ph + D.Clr * rh + D.Clda * ctl * daK * F.da + D.Cldr * F.dr + (env.Lext or 0) + F.drop * dropK)
+    + T * 0.06 * D.b * sin(F.tvr or 0)
+  local Mm = qSc * (D.Cm0 + D.Cma * sin(al) + D.Cmq * qh + CmSt + (env.Mext or 0)) + Me * F.de + Tl * sin(F.tvp)
+  local Nm = qSb * (Cnb * sbe + D.Cnr * rh + D.Cnp * ph + D.Cnda * F.da) + Nr * F.dr + Tl * sin(F.tvy)
   ---------------------------------------------------------------- 积分（半隐式欧拉）
   -- 机体力（前右下）→ 世界：右 × Fy + 上 × (−Fz) + 前 × Fx（前 = −后）
   local ax = (rX * Fy - uX * Fz - bX * Fx) / m
