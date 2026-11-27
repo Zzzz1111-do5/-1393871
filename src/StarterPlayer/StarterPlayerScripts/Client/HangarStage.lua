@@ -824,6 +824,15 @@ function Stage.put(m, dims, keep)
   view.tilt, view.shift = TILT0, 0
 end
 function Stage.model() return slot end   -- 停着的那辆（整备找挂点上的弹、做高亮）
+-- 把停着的这一架拿下来、不销毁（整备的挂载缓存：同一架搭过的几套先收着，换回来不重搭）；返回那个模型（没有返回 nil）
+function Stage.take()
+  local m = slot
+  if not m then return nil end
+  Stage.unhighlight()
+  slot = nil
+  m.Parent = nil
+  return m
+end
 
 function Stage.drag(dx, dy)
   view.fly = nil   -- 正在飞的镜头被拖动打断：从现在的位置接着跟手

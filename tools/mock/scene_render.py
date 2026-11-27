@@ -81,9 +81,69 @@ def lin2srgb(c):
     return np.clip(np.asarray(c, float), 0, 1) ** (1 / 2.2) * 255.0
 
 
+def render_vp(sc, out):
+    """视口里的小场景（整备资料卡里那枚弹：loadshots.lua 写的 <名>.vp.json）：透明底、照视口自己的灯（LightDirection、Ambient、LightColor），
+    不投影子、不起雾、不压暗四角；hud_render.py 用 vp:<视口名>=图 贴到视口那一块"""
+    ss = int(os.environ.get('SS', '1'))
+    AA = 3
+    W0, H0 = int(round(sc.get('vw', 276))), int(round(sc.get('vh', 72)))
+    W, H = max(2, W0 * ss * AA), max(2, H0 * ss * AA)
+    cam = sc['cam']
+    cpos = np.array(cam[0:3], float)
+    cR = rot(cam)
+    f = 1.0 / math.tan(math.radians(sc.get('fov', 20)) / 2)
+    L = -np.array(sc.get('light', [-1, -1, -0.5]), float)
+    L = L / max(1e-9, np.linalg.norm(L))
+    amb = np.array(sc.get('amb', [90, 90, 90]), float) / 255.0
+    lc = np.array(sc.get('lightC', [255, 250, 240]), float) / 255.0
+    img = Image.new('RGBA', (W, H), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img, 'RGBA')
+    polys = []
+    for p in sc['parts']:
+        tr = float(p.get('t', 0))
+        if tr >= 0.97:
+            continue
+        pos = np.array(p['f'][0:3], float)
+        R = rot(p['f'])
+        base = srgb2lin(p['c'])
+        for face in faces_of(p):
+            wv = [pos + R @ v for v in face]
+            nrm = np.cross(wv[1] - wv[0], wv[2] - wv[0])
+            ln = np.linalg.norm(nrm)
+            if ln < 1e-9 and len(wv) > 3:
+                nrm = np.cross(wv[2] - wv[0], wv[3] - wv[0])
+                ln = np.linalg.norm(nrm)
+            if ln < 1e-9:
+                continue
+            nrm = nrm / ln
+            cen = sum(wv) / len(wv)
+            if np.dot(nrm, cpos - cen) <= 0 and tr < 0.05:
+                continue
+            pc = [(v - cpos) @ cR for v in wv]
+            if any(-q[2] < 0.05 for q in pc):
+                continue
+            pts = [(W / 2 + q[0] / -q[2] * f * (H / 2), H / 2 - q[1] / -q[2] * f * (H / 2)) for q in pc]
+            depth = float(np.mean([-q[2] for q in pc]))
+            diff = max(0.0, float(np.dot(nrm, L)))
+            spec = max(0.0, float(np.dot(nrm, (L + (cpos - cen) / max(1e-9, np.linalg.norm(cpos - cen))) / 2))) ** 24 * (0.5 if p.get('m') in ('Metal', 'SmoothPlastic', 'Glass') else 0.15)
+            col = base * (amb * 0.9 + lc * diff * 0.95) + spec
+            c = lin2srgb(col)
+            a = int(255 * (1 - tr) * (0.7 if p.get('m') == 'Glass' else 1))
+            polys.append((depth, pts, (int(c[0]), int(c[1]), int(c[2]), a)))
+    polys.sort(key=lambda r: -r[0])
+    for _, pts, col in polys:
+        draw.polygon(pts, fill=col, outline=col)
+    img = img.resize((W // AA, H // AA), Image.LANCZOS)
+    img.save(out)
+    print('写到', out, '视口零件', len(sc['parts']), '面', len(polys))
+
+
 def main():
     sc = json.load(open(sys.argv[1], encoding='utf-8'))
     out = sys.argv[2]
+    if sc.get('vp'):
+        render_vp(sc, out)
+        return
     ss = int(os.environ.get('SS', '1'))
     AA = 2
     W0, H0 = int(sc.get('vw', 1280)), int(sc.get('vh', 720))

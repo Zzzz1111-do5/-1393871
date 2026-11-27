@@ -711,6 +711,8 @@ function TechUI.init(G)
       b.MouseLeave:Connect(function() b.BackgroundColor3 = INK tip.Visible = false end)
       b.MouseButton1Click:Connect(ic[4])
       if ic[1] == "AmmoBtn" then H.ammoBtn, H.ammoTip = b, tip end
+      H.icons = H.icons or {}
+      table.insert(H.icons, { name = ic[1], b = b, pos = b.Position })   -- 整备开着时收起和页签重复的那几个、剩下的往左并（G.hangarWsMode）
       x += IW + IG
     end
     -- 右上：金币（硬币 + 斜头的条），左边一格 SP（这一局的出击点）
@@ -912,16 +914,45 @@ function TechUI.init(G)
   --   airShown 现在摆着的 { M = AirModels 的模型表, d, cf 飞机的 CFrame, it, key, load }；每次（重新）搭好以后回调 G.onHangarAir(airShown)
   --   （整备把挂点上的零件分组、补高亮、做装上的动效）
   local airOver, airPose, airShown = nil, nil, nil
+  -- 整备里来回换挂载（悬停预览、装上、撤销）：同一架搭过的几套先收着（最多 6 套，留最近用过的），换回来只换模型、不重搭——
+  --   原模型几百个零件，扫一列武器卡时每次重搭会卡一下；点了装上的那一套就是刚才悬停预览搭好的那套，直接换上。整备关了、换了别的车全部清掉
+  local airCache = {}   -- [「键 | 挂载」] = { A = 当时的 airShown, t = 收进来的时间 }
+  local function airCacheClear()
+    for k, e in pairs(airCache) do
+      pcall(function() e.A.M.model:Destroy() end)
+      airCache[k] = nil
+    end
+  end
+  G.hangarAirCacheClear = airCacheClear
+  G.hangarAirCached = function() local n = 0 for _ in pairs(airCache) do n += 1 end return n end   -- 测试用
   local function showVehicle(it)
     if not (Stage and Stage.active()) then return end
     local key = it and it.key or ""
     local aload = it and it.branch ~= "ground" and ((airOver and airOver.key == key and airOver.load) or (airLoad(it))) or nil
     local sig = key .. "|" .. loadSig(aload)
     if shownKey == sig then return end
+    local prevSig, prevAir = shownKey, airShown
     shownKey = sig
     local keepCam = shownVeh == key and key ~= ""
+    if shownVeh ~= key then airCacheClear() end
     shownVeh = key
     airShown = nil
+    -- 整备开着、还是这一架：现在摆着的那套收进缓存（不销毁）
+    if H.wsOn and prevAir and prevAir.key == key and prevSig and Stage.take then
+      local m = Stage.take()
+      if m then
+        airCache[prevSig] = { A = prevAir, t = os.clock() }
+        local n, oldK, oldT = 0, nil, math.huge
+        for k, e in pairs(airCache) do
+          n += 1
+          if e.t < oldT then oldK, oldT = k, e.t end
+        end
+        if n > 6 and oldK then
+          pcall(function() airCache[oldK].A.M.model:Destroy() end)
+          airCache[oldK] = nil
+        end
+      end
+    end
     if not it then
       Stage.put(nil)
       return
@@ -951,7 +982,18 @@ function TechUI.init(G)
       local a = AD.get(it.play)
       local okA, AM = pcall(function() return require(script.Parent:WaitForChild("AirModels", 2)) end)
       if a and okA and AM then
-        local ok, M = pcall(AM.build, a, side, aload or AD.presetLoad(a))
+        local ce = H.wsOn and airCache[sig] or nil
+        local ok, M = false, nil
+        if ce and ce.A and ce.A.M and ce.A.M.model then   -- 搭过这一套：直接换上
+          airCache[sig] = nil
+          ok, M = true, ce.A.M
+        else
+          -- 真机上用 MicroProfiler 看一套原模型飞机搭多久（整备悬停预览的卡顿就看这一段）
+          local prof = debug and debug.profilebegin
+          if prof then pcall(debug.profilebegin, "hangarAirBuild") end
+          ok, M = pcall(AM.build, a, side, aload or AD.presetLoad(a))
+          if prof then pcall(debug.profileend) end
+        end
         if ok and M and M.model then
           local cf = base * CFrame.new(0, a.gearH or 6, 0)
           pcall(AM.pose, M, cf, airPose or { gear = 1, thr = 0 }, os.clock())
@@ -1372,6 +1414,18 @@ function TechUI.init(G)
     local S = G.S or {}
     local tok = {}
     H.wsTok = tok
+    -- 顶栏上和整备页签重复的扳手（改装）、弹药（挂载）、i（资料）收起，剩下的（帮助、设置）往左并，不留空位；关了照原样摆回去
+    local DUP = { ModsBtn = true, AmmoBtn = true, InfoBtn = true }
+    local k = 0
+    for _, e in ipairs(H.icons or {}) do
+      if on and DUP[e.name] then
+        e.b.Visible = false
+      else
+        k += 1
+        e.b.Visible = true
+        e.b.Position = on and (H.icons[k] and H.icons[k].pos or e.pos) or e.pos
+      end
+    end
     if on then
       if G.treeGui and G.treeGui.Visible and H.closeTree then H.closeTree() end   -- 科技树盖在机库上面：先收起
       H.mid.Visible = false
@@ -1388,6 +1442,7 @@ function TechUI.init(G)
         end
       end
     else
+      airCacheClear()
       H.mid.Visible = not H.treeOpen
       if H.match then H.match.Visible = true end
       if H.leaveBtn then H.leaveBtn.Visible = S.pick == true end

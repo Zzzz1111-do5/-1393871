@@ -10,8 +10,9 @@
 --   ⑤ 服务器校验：非法武器清成空、内油夹到 0.25～1、不认得的预设不记、地面车 / 不认得的键不收；读档也照这样清
 --   ⑥ FlightModel.loadout / perf：挂满比空挂重、阻力大、极速低、推重比小、转弯和爬升差；弹舱里的不算阻力；vTop / card 吃阻力增量
 --   第二段（整备外壳 + 挂载页，Workshop.lua / WsArms.lua）：① 改成走整备的挂载页（顶栏弹药键 → 预设 → 底部挂点卡 → 武器卡 → 内油，改动即时存，Esc 两下回机库）；
---   ⑦ 挂点卡数（对称 / 不对称、从左翼尖排到右翼尖）、选项 = 可挂的 + 「不挂」、左右一对一起换、性能数 = 飞行物理、外挂越多极速越低、悬停预览（右栏马上、3D 停一下、
---      不进存档）、我的方案、干扰弹没研究跳改装页、飞机的涂装页不开、截图（uidump）、Esc 回机库原样还原
+--   ⑦ 挂点卡数（对称 / 不对称、按全景画面从左到右排）、选项 = 可挂的 + 「不挂」、左右一对一起换、性能数 = 飞行物理、外挂越多极速越低、悬停预览（右栏马上、3D 停一下、
+--      不进存档、搭过的那套收着：装上 / 离开不重搭）、我的方案（右键菜单清空）、撤销（左栏「撤销」、Ctrl+Z）、保存状态「已保存」、
+--      返回（右键、3D 空白处点一下、Esc；Roblox 系统菜单开着时 Esc 不算）、顶栏和页签重复的键收起、干扰弹没研究跳改装页、飞机没有涂装页签、截图（uidump）、Esc 回机库原样还原
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, Enum = T.R, T.Enum
 local check = T.check
@@ -117,6 +118,12 @@ if opt then T.press(opt) R.run(0.8) end
 want[idx], want[mate] = NEW, NEW
 check(same(st.load, want), "左右一对一起换成霹雳-12：" .. sig(st.load))
 check(math.abs(S.viewState().sd - vsel.sd) < 1e-3 and S.viewState().at ~= nil, "换上以后同一架只换模型：镜头还在这个挂点")
+local srow = T.findNamed("BackToSchemes")
+local srowT = srow and srow:FindFirstChild("Label")
+check(srowT ~= nil and srowT.Text:find("已改 2") ~= nil, "选着挂点时方案收成一行：「" .. tostring(srowT and srowT.Text) .. "」")
+check(T.findNamed("Preset_ag") == nil, "选着挂点时预设那几块收起来（武器卡整张整张地放）")
+if srow then T.press(srow) R.run(0.8) end
+check(st.sel == nil and C.workshopOpen(), "点「‹ 方案」：回全景")
 local chip = T.findNamed("Preset_ag")
 local modTag = chip and chip:FindFirstChild("Mod")
 check(modTag ~= nil and modTag.Visible and modTag.Text:find("已改") ~= nil, "预设那一块写「已改」（" .. tostring(modTag and modTag.Text) .. "）")
@@ -134,6 +141,9 @@ local ct = C.treeState().load and C.treeState().load[KEY]
 check(ct ~= nil and same(ct.l, want) and ct.f == 0.75 and ct.p == "ag", "客户端的 Tree 跟着")
 check(#T.texts("挂载已保存") == 0, "即时存不弹「挂载已保存」")
 check(C.hangarShown() == KEY .. "|" .. sig(want), "机库里摆的飞机就是改过的这套（" .. tostring(C.hangarShown()) .. "）")
+local scard2 = T.findNamed("Station_" .. ci)
+if scard2 then T.press(scard2) R.run(1.0) end
+check(st.sel == ci, "再选中这一对")
 -- Esc：先退回全景，再按一次回机库（机库那几层滑回来）
 T.key(Enum.KeyCode.Escape, true)
 T.key(Enum.KeyCode.Escape, false)
@@ -387,17 +397,25 @@ local function visCards()
   return n
 end
 check(#st7.cards == nU and visCards() == nU, string.format("左右对称：%d 个挂点合成 %d 张卡（界面上 %d 张）", #d.st, nU, visCards()))
-local offB = T.findNamed("SymOff")
-if offB then T.press(offB) R.run(0.4) end
+local symB = T.findNamed("SymToggle")
+check(symB ~= nil, "卡组上面有「左右对称」勾选框")
+if symB then T.press(symB) R.run(0.4) end
 check(not st7.sym and #st7.cards == #d.st and visCards() == #d.st, string.format("不对称：一个挂点一张（%d 张）", visCards()))
+-- 顺序照全景画面从左到右（全景从左前方看：右翼在画面左边），和机身上的编号一一对得上
+local yaw0 = math.rad(-150)
+local function ovX(p) return p.X * math.cos(yaw0) - p.Z * math.sin(yaw0) end
 local ordered = true
-for k = 2, #st7.cards do if d.st[st7.cards[k].st[1]].pos.X < d.st[st7.cards[k - 1].st[1]].pos.X - 1e-6 then ordered = false end end
-check(ordered and d.st[st7.cards[1].st[1]].pos.X < 0 and d.st[st7.cards[#st7.cards].st[1]].pos.X > 0, "从左翼尖排到右翼尖")
-local num1 = T.findNamed("Station_1") and T.findNamed("Station_1"):FindFirstChild("Num")
-check(num1 ~= nil and num1.Text == "1", "左翼尖那个是 1 号（" .. tostring(num1 and num1.Text) .. "）")
-local onB = T.findNamed("SymOn")
-if onB then T.press(onB) R.run(0.4) end
-check(st7.sym and #st7.cards == nU, "再开对称：合回去")
+for k = 2, #st7.cards do if ovX(d.st[st7.cards[k].st[1]].pos) < ovX(d.st[st7.cards[k - 1].st[1]].pos) - 1e-6 then ordered = false end end
+check(ordered and d.st[st7.cards[1].st[1]].pos.X > 0 and d.st[st7.cards[#st7.cards].st[1]].pos.X < 0, "按全景画面从左到右排（右翼尖在最左、左翼尖在最右）")
+local tipL = 1
+for i, s0 in ipairs(d.st) do if s0.pos.X < d.st[tipL].pos.X then tipL = i end end
+local kTip = nil
+for k, g in ipairs(st7.cards) do if g.st[1] == tipL then kTip = k end end
+local num1 = kTip and T.findNamed("Station_" .. kTip) and T.findNamed("Station_" .. kTip):FindFirstChild("Num")
+check(num1 ~= nil and num1.Text == "1", "左翼尖那个是 1 号（" .. tostring(num1 and num1.Text) .. "，第 " .. tostring(kTip) .. " 张）")
+symB = T.findNamed("SymToggle")
+if symB then T.press(symB) R.run(0.4) end
+check(st7.sym and #st7.cards == nU, "再勾上对称：合回去")
 -- 每一张卡的选项 = 这个挂点能挂的 + 「不挂」
 local allOk, badT = true, ""
 for k, g in ipairs(st7.cards) do
@@ -516,7 +534,10 @@ check(detail ~= nil and detail.Visible, "旁边浮出这枚弹的资料卡")
 if hb then R.as("client", function() hb.MouseLeave:Fire(200, 300) end) end
 R.run(0.3)
 check(st7.hoverOpt == nil and C.hangarShown() == sig7 and detail ~= nil and not detail.Visible, "离开：3D 还原、资料卡收起")
--- 我的方案：空着的点一下存现在这一套；换成别的再点回来
+check(C.hangarAirCached and C.hangarAirCached() >= 1, "悬停预览搭过的那套收着：离开、装上都不重搭（缓存 " .. tostring(C.hangarAirCached and C.hangarAirCached()) .. " 套）")
+-- 我的方案（全景时才有）：空着的点一下存现在这一套；换成别的再点回来
+local bk7 = T.findNamed("BackToSchemes")
+if bk7 then T.press(bk7) R.run(0.6) end
 local mine1 = T.findNamed("Mine_1")
 if mine1 then T.press(mine1) R.run(0.8) end
 local set1 = P.data.tree.sets and P.data.tree.sets[KEY] and P.data.tree.sets[KEY]["1"]
@@ -529,6 +550,75 @@ check(st7.pk == "aa" and same(st7.load, AD.presetLoad(d, "aa")), "换成「空�
 mine1 = T.findNamed("Mine_1")
 if mine1 then T.press(mine1) R.run(0.8) end
 check(same(st7.load, saved1) and st7.mine == 1 and st7.pk == nil and same(P.data.tree.load[KEY].l, saved1), "点「我的 1」：换回存的那套（也存进挂载）")
+-- 有内容的一格右键：小菜单「覆盖成现在这套 / 清空」；点清空
+mine1 = T.findNamed("Mine_1")
+if mine1 then R.as("client", function() mine1.InputBegan:Fire({ UserInputType = Enum.UserInputType.MouseButton2 }) end) end
+R.run(0.2)
+local mclr = T.findNamed("Mine_Clear")
+check(mclr ~= nil and T.findNamed("Mine_Over") ~= nil, "右键「我的 1」：弹出「覆盖成现在这套 / 清空」")
+if mclr then T.press(mclr) R.run(0.8) end
+local set1c = P.data.tree.sets and P.data.tree.sets[KEY] and P.data.tree.sets[KEY]["1"]
+check(set1c == nil and st7.mine == nil and T.findNamed("Mine_Clear") == nil, "清空：存档里这一格没了、菜单收起")
+-- 撤销：换了一对以后左栏有「撤销」，点了回到上一套（也存进存档）；Ctrl+Z 一样
+local before7 = {}
+for i = 1, #d.st do before7[i] = st7.load[i] end
+local oc2 = nil
+for k, g in ipairs(st7.cards) do if g.name == "outer" then oc2 = k end end
+local cur2 = st7.load[st7.cards[oc2].st[1]]
+local pick2 = nil
+for _, w in ipairs(d.st[st7.cards[oc2].st[1]].opts) do if w ~= cur2 then pick2 = w end end
+choose(oc2, pick2)
+R.run(0.4)
+local ub = T.findNamed("Undo")
+check(not same(st7.load, before7) and ub ~= nil, "换了一对以后左栏有「撤销」")
+if ub then T.press(ub) R.run(0.8) end
+check(same(st7.load, before7) and same(P.data.tree.load[KEY].l, before7), "点「撤销」：回到上一套（也存进存档）")
+choose(oc2, pick2)
+R.run(0.4)
+T.key(Enum.KeyCode.LeftControl, true)
+T.key(Enum.KeyCode.Z, true)
+T.key(Enum.KeyCode.Z, false)
+T.key(Enum.KeyCode.LeftControl, false)
+R.run(0.6)
+check(same(st7.load, before7) and same(P.data.tree.load[KEY].l, before7), "Ctrl+Z 也能撤销")
+-- 保存状态：服务器回了以后车名右边写「已保存」
+local saveL = nil
+for _, x in ipairs(me.PlayerGui:GetDescendants()) do if x.Name == "WsSave" then saveL = x:FindFirstChild("Label") end end
+check(saveL ~= nil and saveL.Text == "已保存", "车名右边的保存状态：「" .. tostring(saveL and saveL.Text) .. "」（服务器回了才写）")
+-- 返回：右键 / 3D 空白处点一下退一层；全景时空白处点一下不退出整备；Roblox 系统菜单开着时 Esc 不算
+local function pickCard(k)
+  local b = T.findNamed("Station_" .. k)
+  if b then T.press(b) R.run(0.8) end
+end
+pickCard(1)
+check(st7.sel == 1, "选中第 1 张")
+T.mouse(true, 700, 300, Enum.UserInputType.MouseButton2)
+T.mouse(false, 700, 300, Enum.UserInputType.MouseButton2)
+R.run(0.6)
+check(st7.sel == nil and C.workshopOpen(), "右键：退回全景（还在整备里）")
+pickCard(1)
+T.mouse(true, 700, 300)
+T.mouse(false, 700, 300)
+R.run(0.6)
+check(st7.sel == nil and C.workshopOpen(), "3D 空白处点一下：退回全景")
+T.mouse(true, 700, 300)
+T.mouse(false, 700, 300)
+R.run(0.6)
+check(C.workshopOpen(), "全景时空白处点一下：不退出整备")
+pickCard(1)
+R.services.GuiService.MenuIsOpen = true
+T.key(Enum.KeyCode.Escape, true)
+T.key(Enum.KeyCode.Escape, false)
+R.run(0.4)
+check(st7.sel == 1, "Roblox 的系统菜单开着：Esc 让给系统菜单（不算返回）")
+R.services.GuiService.MenuIsOpen = false
+T.key(Enum.KeyCode.Escape, true)
+T.key(Enum.KeyCode.Escape, false)
+R.run(0.6)
+check(st7.sel == nil and C.workshopOpen(), "菜单关着：Esc 退回全景")
+-- 顶栏和页签重复的键（扳手、弹药、i）整备时收起，帮助、设置还在
+check(T.findNamed("AmmoBtn") == nil and T.findNamed("ModsBtn") == nil and T.findNamed("InfoBtn") == nil and T.findNamed("HelpBtn") ~= nil and T.findNamed("SettingsBtn") ~= nil,
+  "整备开着：顶栏的扳手、弹药、i 收起（和页签重复），帮助、设置还在")
 -- 干扰弹没研究：点了去改装页；涂装页飞机先不开
 local md7 = P.data.tree.mods and P.data.tree.mods[KEY]
 if not (md7 and md7.done and md7.done.flares) then
@@ -540,9 +630,7 @@ if not (md7 and md7.done and md7.done.flares) then
   R.run(0.4)
   check(not C.modsGui.Visible and W7.tab == "arms" and C.workshopOpen(), "Esc：先关改装页，回到挂载页")
 end
-local tsk = T.findNamed("Tab_skin")
-if tsk then T.press(tsk) R.run(0.3) end
-check(W7.tab == "arms" and tsk ~= nil and tsk:GetAttribute("Off") == true, "飞机的涂装页先不开（页签淡着）")
+check(T.findNamed("Tab_skin") == nil and T.findNamed("Tab_arms") ~= nil and T.findNamed("Tab_info") ~= nil, "飞机没有涂装页签（现在只有地面车会上色），挂载 / 改装 / 乘员 / 资料四个")
 -- WsKit 的拖动条（下一轮的弹药页用）：加减、每 5 一道刻度、别的弹占掉的那一截拖不进去
 local Kit = C.wsKit
 local holder = R.Instance.new("Frame")
@@ -559,7 +647,8 @@ local minus = sl and sl.f:FindFirstChild("Minus")
 if minus then T.press(minus) end
 check(got == 4 and afterLock == 5 and nTick == 9 and sl.f:FindFirstChild("Count").Text == "4",
   string.format("拖动条：10 → 加一 11 → 别的弹占掉 35 发只剩 5 → 减一 4（刻度 %d 道）", nTick))
--- 截图：uidump 写得出整备这一屏（tools/mock/loadshots.lua 用的同一个）
+-- 截图：uidump 写得出整备这一屏（tools/mock/loadshots.lua 用的同一个）；选着一个挂点（武器卡那时才有）
+pickCard(1)
 local dumpUI = dofile(MOCK_DIR .. "/uidump.lua")
 local tmp = os.tmpname()
 local items7 = dumpUI(T, me, tmp, true)
@@ -582,6 +671,8 @@ goB = T.findNamed("HangarGo")
 check(not C.workshopOpen() and H7.wsOn == nil and H7.row.Visible and H7.mid.Visible and goB ~= nil and goB.Parent.Name == goParent0,
   "Esc 回机库：阵容卡、乘员、主按钮都回到原来的地方（" .. tostring(goB and goB.Parent.Name) .. "）")
 check(C.hangarShown() == KEY .. "|" .. sig(P.data.tree.load[KEY].l) and C.hangarStage.highlightsUsed() == 0, "机库里摆的是存的那套，借的高亮都还了")
+check(T.findNamed("AmmoBtn") ~= nil and T.findNamed("ModsBtn") ~= nil and T.findNamed("InfoBtn") ~= nil and C.hangarAirCached() == 0,
+  "回机库：顶栏的键都回来了，收着的那几套模型清掉了")
 
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | ", 1, math.min(#R.errors, 3)))
 T.summary()

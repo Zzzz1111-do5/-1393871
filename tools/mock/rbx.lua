@@ -465,7 +465,7 @@ local ENUMS = {
   HighlightDepthMode = "AlwaysOnTop Occluded",
   UserInputType = "MouseButton1 MouseButton2 MouseButton3 MouseWheel MouseMovement Touch Keyboard Focus Accelerometer Gyro Gamepad1 TextInput InputMethod None",
   UserInputState = "Begin Change End Cancel None",
-  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl LeftAlt RightAlt One Two Three Four Five Six Seven Eight Nine Zero F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 PageUp PageDown Home End Insert Delete ButtonA ButtonB ButtonX ButtonY ButtonL1 ButtonR1 ButtonL2 ButtonR2",
+  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl LeftAlt RightAlt One Two Three Four Five Six Seven Eight Nine Zero F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 PageUp PageDown Home End Insert Delete ButtonA ButtonB ButtonX ButtonY ButtonL1 ButtonR1 ButtonL2 ButtonR2 LeftSuper RightSuper",
   MouseBehavior = "Default LockCenter LockCurrentPosition",
   CameraType = "Fixed Attach Watch Track Follow Custom Scriptable Orbital",
   RaycastFilterType = "Exclude Include Blacklist Whitelist",
@@ -1694,7 +1694,9 @@ R.services.StarterGui = service("StarterGui", {}, { methods = {
   end,
   SetCore = function() end,
 } })
-R.services.GuiService = service("GuiService", {}, { methods = { GetGuiInset = function() return newV2(0, 58), newV2(0, 0) end } })
+-- MenuIsOpen：Roblox 自己的系统菜单（按 Esc 开）开着没有——测试可以设 true，看整备的 Esc 是不是让给系统菜单
+R.services.GuiService = service("GuiService", { MenuIsOpen = { T.bool, false } }, { events = { MenuOpened = true, MenuClosed = true },
+  methods = { GetGuiInset = function() return newV2(0, 58), newV2(0, 0) end } })
 -- HttpService：只有 JSONEncode / JSONDecode（科技树存档写给客户端用，Tech.lua / TechUI.lua）；表里只认字符串 / 数字 / 布尔 / 表
 do
   local function enc(v, out)
