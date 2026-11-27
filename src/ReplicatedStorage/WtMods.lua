@@ -63,7 +63,8 @@ M.FCS = {
 --   没有激光测距机的（豹 1、M60A1、BMP-1、T-64A）最多第一代；步战车没有猎歼式；没有坦克炮的（防空车、导弹车）nil
 -- 按年份推错的：T-64B（1976）已经是 1G21 激光测距 + 1V517 弹道计算机（1A33 火控），74 式（1975）有红宝石激光测距 + 模拟弹道计算机——都是激光一代（2），
 --   按年份会落到光学（1）（11-27 梳理瞄准镜时查出来的）
-M.GEN_FIX = { ru_t64b = 2, jp_type74 = 2 }
+--   11-27 拆开重叠的版本：M1A2（1992）、M1A2 SEP（2000）有车长独立热像仪（CITV），是猎歼式（4），按年份会落到数字火控（3）
+M.GEN_FIX = { ru_t64b = 2, jp_type74 = 2, us_m1a2 = 4, us_m1a2sep = 4 }
 function M.fcsGen(it)
   if not it or it.branch ~= "ground" then return nil end
   local d = VD.get(it.play or "")

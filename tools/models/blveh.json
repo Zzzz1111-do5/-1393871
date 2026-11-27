@@ -109,7 +109,10 @@
   "creditEn": "This work is based on \"M1A1 Abrams Main Battle Tank\" (https://sketchfab.com/3d-models/m1a1-abrams-main-battle-tank-1529f5d842cb4f578aa8cb672524f044) by MirzaArrafiERV_45 licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
   "changes": "Blender 从原文件直接转（tools/models/blveh.py）：转半圈朝 −Z、去掉重合的面、炮管和炮盾从车体里拆出来、炮塔内饰归炮塔、贴图缩到 1024、按部件和材质切块",
   "alias": [
-   "m1a1"
+   "m1a1",
+   "m1",
+   "m1ip",
+   "m1a1hc"
   ],
   "old": "m1a1",
   "rotZ": 180,

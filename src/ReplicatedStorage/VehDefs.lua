@@ -38,6 +38,20 @@ VehDefs.W = {
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },   -- M60A3 的 M68E1：M833 贫铀尾翼稳定脱壳穿甲弹
   gun105m60 = { kind = "shell", dmg = 460, speed = 4138, drop = 0.14, splash = 6, rate = 6.5, mag = 1, reload = 0, reserve = 63, range = 2400,
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },   -- M60A1 的 M68：M392A2 脱壳穿甲弹
+  -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」）：M1 一族各自的炮——speed 是默认弹（Ballistics.GUN 的第一种）初速 × 2.8；
+  --   装填同 M1A1 / M1A2 的 gun120（装填手 6 秒一发）；reserve 真车载弹量（M1 / IPM1 55 发、M1A1 40 发、M1A2 系 42 发，估的标「估」）
+  gun105m1 = { kind = "shell", dmg = 480, speed = 4222, drop = 0.14, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 55, range = 2800,
+    vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },   -- M1 的 M68A1 105 毫米：M774
+  gun105ip = { kind = "shell", dmg = 480, speed = 4183, drop = 0.14, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 55, range = 2800,
+    vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },   -- IPM1 的 M68A1：M833
+  gun120hc = { kind = "shell", dmg = 640, speed = 4410, drop = 0.14, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 40, range = 3000,
+    vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },   -- M1A1 HC 的 M256 120 毫米：M829A1
+  gun120a2 = { kind = "shell", dmg = 640, speed = 4410, drop = 0.14, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 42, range = 3000,
+    vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },   -- M1A2 的 M256：M829A1
+  gun120sep = { kind = "shell", dmg = 640, speed = 4704, drop = 0.14, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 42, range = 3000,
+    vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },   -- M1A2 SEP 的 M256：M829A2
+  gun120sep3 = { kind = "shell", dmg = 640, speed = 4354, drop = 0.14, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 42, range = 3000,
+    vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },   -- M1A2 SEPv3 的 M256 + 弹药数据链：M829A4
   -- 59 式 / 69-II 式的 100 毫米线膛炮（用户 11-26「各系各阶段缺少的载具」：中国地面树一、二级）：59 式是 D-10T 的仿制（59 式 100 毫米坦克炮），
   --   手动装填 7～8 秒一发；69-II 式换了稳定器和激光测距、有尾翼稳定脱壳穿甲弹（Ballistics.GUN 里各自的弹）
   gun100d = { kind = "shell", dmg = 400, speed = 2484, drop = 0.18, splash = 6, rate = 7.5, mag = 1, reload = 0, reserve = 34, range = 2200,
@@ -325,6 +339,22 @@ D.m1a1 = tracked({ cat = "tank", turbine = true, L = 22.5, W = 10.2, H = 7.4, hu
   smoke = { banks = { { at = V(3.4, 1.5, -2.3), yaw = 35 }, { at = V(-3.4, 1.5, -2.3), yaw = -35 } }, n = 6 },
   sightZoom = { day = { 3, 10 }, th = { 3, 10 } },   -- M1A1 主瞄准镜：昼光 3 / 10 倍，热像（第一代）宽 3 倍、窄 10 倍
   weapons = { "gun120", "coax" } })
+-- 11-27 拆开重叠的版本（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」「各维度还原一致」）：科技树 M1 一族原来六项写 base（模型、性能都借 M1A1 / M1A2 SEPv2），
+--   现在各是各的型号：炮、弹、装甲（WtDamage.PROF）、车重 → 加速、观瞄照年代，模型照旧借同族的（ImportedMeta 的 alias）。车重、马力、公路速度是公开资料，拿不准的标「估」；
+--   燃气轮机、炮塔转轴、车长独立热像（CITV：M1A2 起）从同族继承；M1～M1A2 SEP 模型上的 ARAT 侧裙（TUSK，2006 年以后）不起作用（noEra）
+-- M1（1980）：54.4 吨（60 短吨）、AGT1500 1500 马力、公路限速 72 公里 / 时；M68A1 105 毫米线膛炮（M774 贫铀尾翼稳定脱壳）、55 发；
+--   第一代伯灵顿（乔巴姆）复合装甲；炮长 GPS 昼光 3 / 10 倍 + 第一代热像 3 / 10 倍、激光测距 + M21 弹道计算机；没有 CITV
+D.m1 = variant(D.m1a1, { like = "m1a1", noEra = true, speed = 56.0, accel = 6.1, weapons = { "gun105m1", "coax" } })
+-- IPM1（1984）：55.7 吨（61.4 短吨）；炮塔正面加厚、M833 贫铀脱壳穿甲弹；其余同 M1
+D.m1ip = variant(D.m1a1, { like = "m1a1", noEra = true, speed = 56.0, accel = 5.9, weapons = { "gun105ip", "coax" } })
+-- M1A1 HC（1988）：约 61 吨（估）、公路限速 67 公里 / 时；M256 120 毫米滑膛炮（M829A1「银弹」、M829、M830）、40 发；炮塔正面加贫铀装甲
+D.m1a1hc = variant(D.m1a1, { like = "m1a1", noEra = true, speed = 52.1, accel = 5.4, weapons = { "gun120hc", "coax" } })
+-- M1A2（1992）：约 62.5 吨（估）；车长独立热像仪（CITV）——猎歼式，IVIS 车际信息、定位导航；炮长镜第一代热像 3 / 10 倍；M829A1 / M830 / M830A1、42 发
+D.m1a2base = variant(D.m1a2, { like = "m1a2", noEra = true, accel = 5.3, weapons = { "gun120a2", "coax" }, sightZoom = { day = { 3, 10 }, th = { 3, 10 } } })
+-- M1A2 SEP（2000）：约 63 吨；第二代前视红外（炮长镜、CITV 都换了，倍率同 SEPv2）、数字地图、第三代贫铀装甲（同 SEPv2）；M829A2（M829A3 2003 年起）
+D.m1a2sep = variant(D.m1a2, { like = "m1a2", noEra = true, accel = 5.2, weapons = { "gun120sep", "coax" } })
+-- M1A2 SEPv3（2017）：66.8 吨（73.6 短吨）；弹药数据链（ADL）打 M829A4、车内辅助动力单元、加厚的炮塔前装甲；ARAT / TUSK / Trophy 照真车能装（改装页照 SEPv2）
+D.m1a2sep3 = variant(D.m1a2, { like = "m1a2", accel = 4.9, weapons = { "gun120sep3", "coax" } })
 
 -- 11-24 夜 C 从 Sketchfab 找的坦克（用户：「自己去 Sketchfab 找坦克加进来」「新弄的坦克不搞内饰了」——C 没有做车内，按 C 不进车里）：
 --   原模型见 tools/models/blveh.json（leo2a6 / leclerc / t72b3 / t80u）、署名见 models/veh/credits.txt；尺寸、炮塔座圈、炮耳轴照转换报告（格）

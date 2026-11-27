@@ -54,6 +54,8 @@ O.VEH_NV = {
   m60a3 = "th1", leo1a5 = "th1", leo2a4 = "th1", m1a1 = "th1", ztz99a = "th2", m1a2 = "th2", leo2a6 = "th2", t72b3 = "th2", bmp2m = "th2",
   t80bvm = "th2", m2a3 = "th2", leo2a7v = "th3", type10 = "th3", t90m = "th3", leclerc = "th2",
   brdm2 = "none", strela1 = "none", type87rcv = "ii",
+  -- 11-27 拆开重叠的版本：同族的老 / 新型号各自的夜视（同 TREE_NV）
+  m1 = "th1", m1ip = "th1", m1a1hc = "th1", m1a2base = "th1", m1a2sep = "th2", m1a2sep3 = "th3",
 }
 local EAST = { cn = true, ru = true }
 function O.nvByYear(year, nat)

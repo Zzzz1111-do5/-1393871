@@ -17,6 +17,7 @@ local VD, TM, TT, B, WD = req("VehDefs"), req("TankMods"), req("TechTree"), req(
 local IM, OPT, WM, Lang, VP = req("ImportedMeta"), req("WtOptics"), req("WtMods"), req("Lang"), req("VehPics")
 local function cnt(t) local n = 0 for _ in pairs(t or {}) do n = n + 1 end return n end
 local function near(a, b) return a ~= nil and b ~= nil and (a - b).Magnitude < 0.02 end
+local function has(list, v) for _, x in ipairs(list or {}) do if x == v then return true end end return false end
 -- HudIcons 有 1.5 MB：只看键在不在，不整个载入
 local hudKeys = {}
 do
@@ -27,10 +28,20 @@ do
 end
 
 -- 拆出来的每一项：{ 科技树的键, 新型号, 同族型号（VehDefs 的 like = 科技树的 model）, noEra, nv 夜视, fam 族（年代顺序检查用） }
+--   gen 原厂火控第几代（WtMods.fcsGen：2 激光 + 模拟计算机、3 数字、4 猎歼）
 local SPLIT = {
+  -- 第 1 批：美国 M1 一族（M1A1 / M1A2 SEPv2 原来就有）
+  { "us_m1", "m1", "m1a1", noEra = true, nv = "th1", gen = 2 },
+  { "us_m1ip", "m1ip", "m1a1", noEra = true, nv = "th1", gen = 2 },
+  { "us_m1a1hc", "m1a1hc", "m1a1", noEra = true, nv = "th1", gen = 2 },
+  { "us_m1a2", "m1a2base", "m1a2", noEra = true, nv = "th1", gen = 4 },
+  { "us_m1a2sep", "m1a2sep", "m1a2", noEra = true, nv = "th2", gen = 4 },
+  { "us_m1a2sep3", "m1a2sep3", "m1a2", nv = "th3", gen = 4 },
 }
 -- 一族里按年代排的型号（拆出来的 + 原来就有的）：默认弹的穿深、炮塔正面装甲（动能）不往回掉；skip 不比的（年代错位的老车，写进回报）
 local FAMILY = {
+  { name = "M1 一族", ids = { "m1", "m1ip", "m1a1", "m1a1hc", "m1a2base", "m1a2sep", "m1a2", "m1a2sep3" },
+    skip = { m1a1 = true } },   -- M1A1（1985）打的是 M829A3（2003 年的弹）：原来就有的年代错位，不在这次拆的范围
 }
 -- 借同族模型、真车没有爆反的老车（11-27 一起修的老 bug：原来 T-80B 22 格接触-5、T-72 乌拉尔 / A / B 各 37 格）
 local NOERA_OLD = { "t80b", "t72ural", "t72a", "t72b" }
@@ -151,7 +162,22 @@ for _, F in ipairs(FAMILY) do
   check(#back == 0, F.name .. "：按年代默认弹穿深、炮塔正面装甲不往回掉" .. (#back > 0 and ("：" .. table.concat(back, "；")) or ""))
 end
 
-print("⑤ 改装页、火控")
+print("⑤ 各族自己的")
+do
+  local m1, hc, a2, sep3 = VD.get("m1"), VD.get("m1a1hc"), VD.get("m1a2base"), VD.get("m1a2sep3")
+  if m1 and hc and a2 and sep3 then
+    check(m1.citv == nil and hc.citv == nil and a2.citv ~= nil and sep3.citv ~= nil, "车长独立热像仪（CITV，猎歼）M1A2 起才有")
+    check(B.GUN[m1.weapons[1]][1] == "m774" and B.GUN[hc.weapons[1]][1] == "m829a1" and B.GUN[sep3.weapons[1]][1] == "m829a4"
+      and table.concat(B.GUN[sep3.weapons[1]], ","):find("m829a3", 1, true) ~= nil,
+      "M1 打 105 毫米 M774、M1A1 HC 打 M829A1、SEPv3 打 M829A4（弹药数据链）也能打 M829A3")
+    local F = TM.FOR.m1a2sep3
+    check(F ~= nil and has(F.aps, "trophy") and has(F.era, "arat") and not TM.has("m1a2sep") and not TM.has("m1"),
+      "TUSK（ARAT）/ Trophy 只有 SEPv3 能装（M1～SEP 没有改装页）")
+    check(m1.turbine and sep3.turbine and m1.speed > hc.speed and m1.accel > sep3.accel, "燃气轮机；M1 / IPM1 限速 72、M1A1 起 67 公里 / 时；越重加速越慢")
+  end
+end
+
+print("⑥ 改装页、火控")
 for _, s in ipairs(SPLIT) do
   local d = VD.get(s[2])
   if d and not s.noEra and TM.FOR[s[3]] then

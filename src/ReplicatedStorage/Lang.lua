@@ -1756,6 +1756,21 @@ add("wt.radarRange", "雷达量程 {1} km", "Radar range {1} km")
 add("wt.mslAct", "导弹导引头已开机", "Missile seeker active")
 add("wt.dlLost", "数据链中断", "Datalink lost")
 
+-- 11-27 拆开重叠的版本（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」「各维度还原一致」）：科技树原来写 base（模型、性能都借）的地面车
+--   各有了自己的型号（VehDefs 的 variant，模型借同族的）——型号名、炮名（科技树里的名字 tree.<键> 照旧自动生成）
+add("veh.m1", "M1 艾布拉姆斯", "M1 Abrams")
+add("veh.m1ip", "IPM1 艾布拉姆斯", "IPM1 Abrams")
+add("veh.m1a1hc", "M1A1 HC 艾布拉姆斯", "M1A1 HC Abrams")
+add("veh.m1a2base", "M1A2 艾布拉姆斯", "M1A2 Abrams")
+add("veh.m1a2sep", "M1A2 SEP", "M1A2 SEP")
+add("veh.m1a2sep3", "M1A2 SEPv3", "M1A2 SEPv3")
+add("vw.gun105m1", "105 毫米炮（M68A1）", "105 mm M68A1")
+add("vw.gun105ip", "105 毫米炮（M68A1）", "105 mm M68A1")
+add("vw.gun120hc", "120 毫米炮（M256）", "120 mm M256")
+add("vw.gun120a2", "120 毫米炮（M256）", "120 mm M256")
+add("vw.gun120sep", "120 毫米炮（M256）", "120 mm M256")
+add("vw.gun120sep3", "120 毫米炮（M256，弹药数据链）", "120 mm M256 (ADL)")
+
 -- 科技树每一辆的名字（TechTree.lua）：tree.<键>——名牌、击毁提示、驾驶界面写科技树里的名字（借来的型号也写自己的名字）
 do
   local ok, TT = pcall(function() return require(script.Parent:WaitForChild("TechTree", 3)) end)

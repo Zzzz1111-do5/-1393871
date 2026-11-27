@@ -90,6 +90,20 @@ B.AMMO = {
     vs = { inf = 1.4, light = 1.0, armor = 0.5, fort = 1.6 }, splash = 1.5 },
   apfsds69 = { cls = "ap", name = "100mm APFSDS", sym = "穿甲", v0 = 1415, k = 4.4e-5, bs = 1200, tr = true,           -- 69-II 式：尾翼稳定脱壳穿甲弹
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」「各维度还原一致」）：M1 一族按年代各打各的弹
+  --   初速：M829 1670、M829A1 1575、M829A2 1680 米 / 秒（公开的弹药手册）；M774、M735、M829A4 没有公开的准数，按同类估；阻力系数照同类长杆
+  m774 = { cls = "ap", name = "M774", sym = "SABOT", v0 = 1508, k = 4.2e-5, bs = 1200, tr = true,          -- M1（1980）：105 毫米贫铀尾翼稳定脱壳穿甲弹（初速估）
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  m735 = { cls = "ap", name = "M735", sym = "SABOT", v0 = 1501, k = 4.2e-5, bs = 1200, tr = true,          -- 105 毫米钨合金尾翼稳定脱壳穿甲弹（1978：M1、M60A1 RISE；初速估）
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  m829 = { cls = "ap", name = "M829", sym = "SABOT", v0 = 1670, k = 3.8e-5, bs = 1200, tr = true,          -- 120 毫米第一代贫铀长杆（1985）
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  m829a1 = { cls = "ap", name = "M829A1", sym = "SABOT", v0 = 1575, k = 3.6e-5, bs = 1200, tr = true,      -- 「银弹」（1988 定型，海湾战争）
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  m829a2 = { cls = "ap", name = "M829A2", sym = "SABOT", v0 = 1680, k = 3.6e-5, bs = 1200, tr = true,      -- 1994 年起（复合材料弹托，杆更长）
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  m829a4 = { cls = "ap", name = "M829A4", sym = "SABOT", v0 = 1555, k = 3.5e-5, bs = 1200, tr = true,      -- 2015 年起，要弹药数据链（ADL：SEPv3）；初速没公开，估
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
 }
 -- 每门炮能打的弹（第一个是默认），以及车里炮长控制面板上的弹种键（InteriorScreens 的 gcdp 页）对到哪种弹
 B.GUN = {
@@ -109,6 +123,13 @@ B.GUN = {
   gun152 = { "m409" },                                 -- M551（MGM-51 导弹游戏里没有）
   gun100d = { "br412d", "bk5m", "of412" },            -- 59 式
   gun100d69 = { "apfsds69", "bk5m", "of412" },        -- 69-II 式
+  -- 11-27 拆开重叠的版本：M1 一族照年代（第一种是原厂弹、射流弹放最后）
+  gun105m1 = { "m774", "m735", "m456", "jet105" },             -- M1（1980，M68A1）：M833 是 IPM1 那年才有
+  gun105ip = { "m833", "m774", "m456", "jet105" },             -- IPM1（1984）：M833 贫铀
+  gun120hc = { "m829a1", "m829", "m830", "jet120" },           -- M1A1 HC（1988，M256）：M830A1 MPAT 1993 年起才有
+  gun120a2 = { "m829a1", "m830", "m830a1", "jet120" },         -- M1A2（1992）：M829A2 1994 年起
+  gun120sep = { "m829a2", "m830a1", "m830", "jet120" },        -- M1A2 SEP（2000）：M829A3 2003 年起
+  gun120sep3 = { "m829a4", "m829a3", "m830a1", "m1028", "jet120" },   -- M1A2 SEPv3：弹药数据链（ADL）打 M829A4（AMP XM1147 游戏里没有）
 }
 -- 面板上的键 → 弹种（这门炮没有这一种就挑它同一类 cls 的：T-90M 借 99A 的面板，「穿甲」键打 3BM60）
 function B.panelAmmo(kind, wid)
