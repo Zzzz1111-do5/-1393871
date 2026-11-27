@@ -910,8 +910,17 @@ function TechUI.init(G)
     if n == 0 and #(w.order or {}) >= (w.max or 5) then return L("这一局阵容满了", "Lineup full"), FAINT end
     local air = it.branch == "air" or it.branch == "heli"
     -- 飞机（同服务器 WtMatch：用户 11-25「第一辆必须是地面车，飞机要攒点数才能出」）：先出一辆地面车；一直要 SP，不免费
-    --   用户 11-26「不要写先出击地面车 你直接禁止选飞机就行」：不写字，第三个返回值说这张卡禁选（卡片压暗、点了不理）
-    if air and not w.ground then return nil, BAD, true end
+    --   用户 11-26「不要写先出击地面车 你直接禁止选飞机就行」：不写字，第三个返回值说这张卡禁选（卡片压暗、点了不理）——只在局内选车（S.pick）禁选。
+    --   用户 11-27「飞机试驾不了」：原来不管在不在局里都禁选——S.wt 一直有（WtMatch.wtPersonal 不在局里也发这一局的账，没出过车 ground 就是 false），
+    --   匹配中的机库里阵容的飞机、直升机点不动，右边「试驾」只能开地面车（乘员、改装、挂载也点不到）。
+    --   不在局里照样能选（试驾、看车、改装）；匹配中（还没进局，谁都出不了车）只淡淡写这一型要多少 SP，不压暗、不拦「开战」
+    if air and not w.ground then
+      if S.pick then return nil, BAD, true end
+      if S.phase == "queue" then
+        local ok, v = pcall(Config.WtCost, it.play, cat, 0)
+        return ok and v and ("SP " .. v) or nil, FAINT
+      end
+    end
     local c = 0
     if air or (S.phase == "battle" and not w.free) then
       local ok, v = pcall(Config.WtCost, it.play, cat, w.paid or 0)

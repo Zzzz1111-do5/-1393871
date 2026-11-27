@@ -696,7 +696,8 @@ function Air.init(G)
   local function fireStore(P, e, wid, tid, aim, n, rip)
     local w = AD.W[type(wid) == "string" and wid or ""]
     if not w or w.kind == "gun" or w.kind == "tank" then return end   -- 副油箱不是弹（抛油箱走 jettison）
-    if G.round.phase ~= "battle" then return end
+    -- 没开战不能打；试驾（训练场，Tech.lua e.testDrive）除外——真游戏开着匹配，机库里试驾时这一局还在「匹配中」，原来靶机、靶车一发都打不了
+    if G.round.phase ~= "battle" and not e.testDrive then return end
     local t = now()
     if t < (e.nextStore or 0) then return end
     local i = pickStation(e, wid)
@@ -748,7 +749,7 @@ function Air.init(G)
       local gap = (rip == true) and BOMB_GAP or 0
       for k = 2, cnt do
         local function nextOne()
-          if not e.alive or G.round.phase ~= "battle" then return end
+          if not e.alive or (G.round.phase ~= "battle" and not e.testDrive) then return end
           local j = pickStation(e, wid)   -- 剩得多的挂点先投：左右轮流
           if j then drop(j) end
         end
@@ -809,7 +810,7 @@ function Air.init(G)
   --   同一步里的几发沿弹道错开（射速间隔 × 弹速），不叠在一个点上
   local function stepGuns(dt)
     for _, e in ipairs(aircraft) do
-      if e.alive and e.trig and e.driver and e.gunAmmo > 0 and G.round.phase == "battle" then
+      if e.alive and e.trig and e.driver and e.gunAmmo > 0 and (G.round.phase == "battle" or e.testDrive) then   -- 试驾：匹配中也能打靶
         local w = AD.W[e.def.gun or ""]
         if w then
           e.gunT += dt

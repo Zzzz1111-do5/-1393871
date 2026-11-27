@@ -530,7 +530,8 @@ function Armor.init(G)
   end
 
   local function fire(P, e, wid, dir, aim, msg)
-    if G.round.phase ~= "battle" or e.locked then return end
+    -- 没开战不能打；试驾（训练场，Tech.lua e.testDrive）除外：真游戏开着匹配，机库里试驾时这一局还在「匹配中」，原来打不了靶车
+    if (G.round.phase ~= "battle" and not e.testDrive) or e.locked then return end
     local d = e.def
     if type(wid) ~= "string" or not table.find(d.weapons, wid) then return end
     if G.wtCanFire and not G.wtCanFire(e, wid) then return end   -- 战雷式伤害（Wt.lua）：炮长没了、炮闩 / 炮管坏了、正在修车

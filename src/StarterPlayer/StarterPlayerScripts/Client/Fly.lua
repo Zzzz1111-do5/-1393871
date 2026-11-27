@@ -1318,9 +1318,13 @@ function Fly.init(G)
     st.lock, st.lockT = c, 0
   end
 
+  -- 武器能不能用：开战以后；试驾（训练场，模型的 TestDrive 属性）什么时候都能打靶——真游戏开着匹配，机库里试驾时这一局还在「匹配中」
+  local function weaponsHot()
+    return not G.S or G.S.phase == "battle" or (st and st.em and st.em:GetAttribute("TestDrive") == true)
+  end
   local function setTrig(on)
     -- 航炮声：按住扳机就一直响（循环一小段起爆声，一圈一发），打光了就停
-    local loud = on and (st.gunAmmo or 0) > 0 and (not G.S or G.S.phase == "battle")
+    local loud = on and (st.gunAmmo or 0) > 0 and weaponsHot()
     if G.gunLoop and loud ~= (st.gunSnd == true) then
       st.gunSnd = loud
       G.gunLoop("me", st.d.gun, nil, loud)
@@ -1334,7 +1338,7 @@ function Fly.init(G)
   local function fireStore(wid, w, aimAt)
     local t = os.clock()
     if t < st.nextFire or left(wid) <= 0 then return false end
-    if G.S and G.S.phase ~= "battle" then G.toast(T("air.notYet"), "info") return false end
+    if not weaponsHot() then G.toast(T("air.notYet"), "info") return false end
     local locked = (not aimAt) and st.lock and st.lockT >= (w.lockTime or 1)
     if locked and st.lock.out and w.kind ~= "rkt" then G.toast(T("air.outCone"), "info") return false end   -- 出了发射角度：锁着也不能打（菱形是黄的）
     if w.kind == "aam" and not locked then G.toast(T("air.needLock"), "info") return false end
@@ -1369,6 +1373,9 @@ function Fly.init(G)
 
   -- 质量（kg）和外挂的阻力系数增量：空重 + 内油（st.fuel 几成）+ 副油箱里的油（st.fuelX，按内油的几成）+ 挂着的弹 / 副油箱（按外形估的重量）；
   --   弹舱里的不算阻力
+  --   火箭巢（kind rkt）：一个挂点挂一个巢，stores 记的是巢里还剩几发（AD.count = 管数 19 / 20），FM.storeMass / storeDrag 按外形算的是一整个装满的巢——
+  --   原来照「发数 × 一整个巢」算（用户 11-27「飞机试驾不了」时查到）：苏-25（四个 B-8 巢）凭空重了 27 吨、43 吨推不动，推满油门滑出跑道两三公里还离不了地；
+  --   A-10（两个火箭巢）重 11 吨、滑出跑道才离地。现在一个巢：空巢壳四成 + 剩下的火箭按发数折，阻力按一个巢（打空了巢还挂着）
   local function fmMass(D)
     local d = st.d
     local m = D.m0 + D.fi * clamp(st.fuel or 1, 0, 1) + D.fi * math.max(st.fuelX or 0, 0)
@@ -1377,7 +1384,11 @@ function Fly.init(G)
       local wid = st.load and st.load[i]
       local w = wid and AD.W[wid]
       local n = (st.stores and st.stores[i]) or 0
-      if w and n > 0 then
+      if w and w.kind == "rkt" then
+        local full = math.max(w.tubes or 1, 1)
+        m += FM.storeMass(w, AD.M) * (0.4 + 0.6 * clamp(n / full, 0, 1))
+        if not s.bay then dS += FM.storeDrag(w, AD.M) end
+      elseif w and n > 0 then
         m += FM.storeMass(w, AD.M) * n
         if not s.bay then dS += FM.storeDrag(w, AD.M) * n end
       end
