@@ -215,8 +215,13 @@ local panel = C.treeGui
 local nCard = 0
 for _, c in ipairs(panel and panel:GetDescendants() or {}) do if c.Name:match("^Card_") then nCard = nCard + 1 end end
 local tnat = C.treeState().nat
-check(panel and panel.Visible and nCard == #TT.list[tnat].ground,
-  string.format("科技树开着：%s 地面 %d 格（这一系地面 %d 项）", tostring(tnat), nCard, #TT.list[tnat].ground))
+if C.S and C.S.pick then
+  -- 用户 11-26「那个局内选车的界面别弄科技树了」：一局里的选车界面不开科技树（TechUI.lua 见到 S.pick 就关上）
+  check(panel and not panel.Visible, "局内选车时科技树不开（用户 11-26 要求）")
+else
+  check(panel and panel.Visible and nCard == #TT.list[tnat].ground,
+    string.format("科技树开着：%s 地面 %d 格（这一系地面 %d 项）", tostring(tnat), nCard, #TT.list[tnat].ground))
+end
 local nxt
 for _, it in ipairs(TT.list.cn.ground) do if TT.canResearch(t, it.key) then nxt = it break end end
 if nxt then
