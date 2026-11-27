@@ -1777,6 +1777,20 @@ add("veh.leo2a0", "豹 2A0 主战坦克", "Leopard 2A0 MBT")
 add("veh.leo2a5", "豹 2A5 主战坦克", "Leopard 2A5 MBT")
 add("vw.gun105m60r", "105 毫米炮（M68）", "105 mm M68")
 add("vw.gun120l44a0", "120 毫米炮（Rh-120 L/44）", "120 mm Rh-120 L/44")
+add("veh.ztz96base", "96 式主战坦克", "Type 96 MBT")
+add("veh.ztz96a", "96A 式主战坦克", "Type 96A MBT")
+add("veh.ztz96", "96B 式主战坦克", "Type 96B MBT")   -- 原来写「ZTZ-96 主战坦克」：这个型号就是 96B（TechTree cn_96b、TankMods.SPEC.ztz96 都是 96B），96 式拆成了 ztz96base
+add("veh.ztz99base", "99 式主战坦克", "Type 99 MBT")
+add("veh.type86", "86 式步兵战车", "Type 86 IFV")
+add("veh.t90a", "T-90A 主战坦克", "T-90A MBT")
+add("veh.m2a0", "M2 布雷德利", "M2 Bradley")
+add("veh.m2a2", "M2A2 布雷德利", "M2A2 Bradley")
+add("vw.gun125c96", "125 毫米炮（ZPT-98）", "125 mm ZPT-98")
+add("vw.gun125c99", "125 毫米炮（ZPT-98）", "125 mm ZPT-98")
+add("vw.gun125m2", "125 毫米炮（2A46M-2）", "125 mm 2A46M-2")
+add("vw.m242", "25 毫米链式炮（M242）", "25 mm M242 Bushmaster")
+add("vw.tow1", "改进型陶式反坦克导弹（BGM-71C）", "I-TOW ATGM (BGM-71C)")
+add("vw.hj73", "红箭-73 反坦克导弹", "HJ-73 ATGM")
 
 -- 科技树每一辆的名字（TechTree.lua）：tree.<键>——名牌、击毁提示、驾驶界面写科技树里的名字（借来的型号也写自己的名字）
 do

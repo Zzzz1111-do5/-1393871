@@ -57,6 +57,13 @@ VehDefs.W = {
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },
   gun120l44a0 = { kind = "shell", dmg = 620, speed = 4620, drop = 0.14, splash = 6, rate = 6.5, mag = 1, reload = 0, reserve = 42, range = 3000,
     vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },
+  -- 96 式（ZPT-98：DTW-125 I 型，40 发估）、96A / 99 式（ZPT-98：DTW-125 II 型，41 发估）、T-90A（2A46M-2：3BM42，43 发）——都是自动装弹机，7.1 秒一发
+  gun125c96 = { kind = "shell", dmg = 600, speed = 4844, drop = 0.14, splash = 6, rate = 7.1, mag = 1, reload = 0, reserve = 40, range = 3000,
+    vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },
+  gun125c99 = { kind = "shell", dmg = 620, speed = 4928, drop = 0.14, splash = 6, rate = 7.1, mag = 1, reload = 0, reserve = 41, range = 3000,
+    vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },
+  gun125m2 = { kind = "shell", dmg = 640, speed = 4802, drop = 0.14, splash = 6, rate = 7.1, mag = 1, reload = 0, reserve = 43, range = 3000,
+    vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },
   -- 59 式 / 69-II 式的 100 毫米线膛炮（用户 11-26「各系各阶段缺少的载具」：中国地面树一、二级）：59 式是 D-10T 的仿制（59 式 100 毫米坦克炮），
   --   手动装填 7～8 秒一发；69-II 式换了稳定器和激光测距、有尾翼稳定脱壳穿甲弹（Ballistics.GUN 里各自的弹）
   gun100d = { kind = "shell", dmg = 400, speed = 2484, drop = 0.18, splash = 6, rate = 7.5, mag = 1, reload = 0, reserve = 34, range = 2200,
@@ -78,6 +85,10 @@ VehDefs.W = {
   -- 87 式侦察警戒车的厄利空 KBA 25 毫米机关炮（日本制钢所特许生产；用户 11-27「很多缺的载具全部做一下」：日本「轻型」一列）：
   --   双路供弹，最高射速约 600 发 / 分；脱壳穿甲曳光弹初速 1335 米 / 秒（1 公里约 50 毫米）——速度按真弹换算成格（ac30 还是旧的游戏值）
   ac25 = { kind = "shell", dmg = 52, speed = 3738, drop = 0.15, splash = 3.5, rate = 0.1, mag = 100, reload = 6, reserve = 300, range = 2400,
+    vs = { inf = 1, light = 1, armor = 0.2, air = 1.3, ship = 0.3, fort = 0.55 }, fx = "ac", cal = 0.18 },
+  -- M2 / M2A2 布雷德利的 M242「大毒蛇」25 毫米链式炮（11-27 拆开重叠的版本；M2A3 照旧是 ac30）：双路供弹、常用 200 发 / 分（还有 100、500 发 / 分档）；
+  --   M791 脱壳穿甲曳光弹 1345 米 / 秒（1 公里约 60 毫米，M919 贫铀是 1990 年代的）；炮塔里 300 发待发、车里 600 发备弹
+  m242 = { kind = "shell", dmg = 52, speed = 3766, drop = 0.15, splash = 3.5, rate = 0.3, mag = 300, reload = 6, reserve = 600, range = 2400,
     vs = { inf = 1, light = 1, armor = 0.2, air = 1.3, ship = 0.3, fort = 0.55 }, fx = "ac", cal = 0.18 },
   -- BRDM-2 的 KPVT 14.5 毫米重机枪（BPU-1 单人炮塔，一节弹链 50 发、车里一共 500 发，约 600 发 / 分；B-32 穿甲燃烧弹 500 米约 32 毫米）
   kpvt = { kind = "gun", dmg = 62, rate = 0.1, mag = 50, reload = 6, reserve = 450, range = 1600, spread = 0.4,
@@ -106,6 +117,10 @@ VehDefs.W = {
   malyutka = { kind = "atgm", dmg = 600, speed = 336, splash = 3, rate = 1, mag = 1, reload = 25, reserve = 4, range = 8400, fx = "msl", turn = 1.3 },
   konkurs = { kind = "atgm", dmg = 750, speed = 582, splash = 3, rate = 1, mag = 1, reload = 20, reserve = 4, range = 11200, fx = "msl", turn = 1.9 },   -- 9M113「竞技」：208 米 / 秒、4 公里、600 毫米（BMP-2）
   kornet = { kind = "atgm", dmg = 1000, speed = 840, splash = 4, rate = 2, mag = 2, reload = 18, reserve = 4, range = 15400, fx = "msl", turn = 2.2 },   -- 9M133「短号」：300 米 / 秒、5.5 公里、串联 1100 毫米（BMP-2M 的「海岸」战斗模块四联装）
+  -- 11-27 拆开重叠的版本：M2（1981）的 BGM-71C 改进型陶式（单装药、不串联，约 600 毫米；278 米 / 秒、3750 米；发射箱两枚 + 车里五枚）、
+  --   86 式的红箭-73（仿 9M14「婴儿」：约 425 毫米、120 米 / 秒、3 公里，炮上导轨一枚 + 车里四枚）
+  tow1 = { kind = "atgm", dmg = 750, speed = 778, splash = 4, rate = 2.5, mag = 2, reload = 14, reserve = 5, range = 10500, fx = "msl", turn = 2.4 },
+  hj73 = { kind = "atgm", dmg = 620, speed = 336, splash = 3, rate = 1, mag = 1, reload = 25, reserve = 4, range = 8400, fx = "msl", turn = 1.3 },
   coax = { kind = "gun", dmg = 24, rate = 0.08, mag = 200, reload = 5, reserve = 2000, range = 900, spread = 0.45,
     vs = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }, fx = "lmg" },
   hmg = { kind = "gun", dmg = 40, rate = 0.11, mag = 100, reload = 5, reserve = 900, range = 1200, spread = 0.5,
@@ -167,6 +182,10 @@ D.ztz99a = tracked({ cat = "tank", L = 22, W = 10.2, H = 7.4, hullH = 4.2, clear
   sight = V(-1.9, 2.1, -2.6), cupola = V(1.7, 2.3, 0.6),   -- 车顶车长舱口一挺手动的 12.7 毫米重机枪（用户 11-21 晚：照真车加回，元数据 rws.mk = "manual"）
   smoke = { banks = { { at = V(3.3, 1.5, -1.6), yaw = 40 }, { at = V(-3.3, 1.5, -1.6), yaw = -40 } }, n = 4 },
   weapons = { "gun125", "coax" } })
+-- 11-27 拆开重叠的版本（用户「把重叠的版本拆开」「各维度还原一致」）：科技树 99 式原来写 base（借 99A 的模型和性能：DTC10、二代热像）
+-- 99 式（2001）：约 53 吨（估）、150HB 1500 马力（早期一说 1200）、公路 70 公里 / 时（估）；ZPT-98 125 毫米、DTW-125 II 型（DTC10 是 99A 才有的）、41 发；
+--   炮长镜 5 / 11.4 倍（公开资料）、第一代热像；炮塔正面楔形附加装甲；JD-3 激光对抗、FY-4 爆反照 99A 能装（改装页照 99A，估）
+D.ztz99base = variant(D.ztz99a, { like = "ztz99a", speed = 54.4, accel = 6.2, weapons = { "gun125c99", "coax" }, sightZoom = { day = { 5, 11.4 }, th = { 5, 11.4 } } })
 -- 59 式中型坦克（用户 11-26「给各系各阶段缺少的载具都从 sketchfeb 上搞出来」：中国地面树一、二级原来空着；原模型 MMD_SonicNewYear，
 --   tools/models/blveh.json type59）：T-54A 的国产型，36 吨、12150L 柴油机 520 马力（14.4 马力 / 吨）、公路 50 公里 / 时，倒车只有 6 公里 / 时上下；
 --   59 式 100 毫米线膛炮（D-10T），手动装填；没有稳定器（行进间打不准）、没有夜视以外的观瞄；四人车组（装填手在右、舱口上一挺 12.7 高射机枪）。
@@ -188,6 +207,13 @@ D.ztz96 = tracked({ cat = "tank", L = 20.5, W = 9.8, H = 7.0, hullH = 4.0, clear
   sight = V(-1.7, 2.0, -2.2), cupola = V(1.6, 2.2, 0.4),
   smoke = { banks = { { at = V(3.1, 1.4, -1.2), yaw = 40 }, { at = V(-3.1, 1.4, -1.2), yaw = -40 } }, n = 4 },
   weapons = { "gun125", "coax" } })
+-- 11-27 拆开重叠的版本：科技树 96 式、96A 原来写 base（借 ztz96：它其实是 96B——43 吨、1000 马力、DTC10、三代热像、FY 爆反）
+-- 96 式（1997）：41 吨、12150ZLA 730 马力、公路 57 公里 / 时（估）；ZPT-98 125 毫米、DTW-125 I 型、40 发（估）；激光测距 + 计算机、微光夜视；
+--   没有爆反（模型上 96B 的 FY 块不起作用：noEra）
+D.ztz96base = variant(D.ztz96, { like = "ztz96", noEra = true, speed = 44.3, accel = 3.9, weapons = { "gun125c96", "coax" } })
+-- 96A（2006）：42.8 吨、800 马力（另说 865，估）、公路 65 公里 / 时；DTW-125 II 型、41 发；数字火控（猎歼）、第二代热像；
+--   炮塔正面箭形 FY-4 爆反 + 首上（改装页默认 FY-4，TankMods.FOR.ztz96a）
+D.ztz96a = variant(D.ztz96, { like = "ztz96", speed = 50.6, accel = 4.1, weapons = { "gun125c99", "coax" } })
 -- T-90M「突破-3」（用户 11-24「没事干了就去找俄系」）：46.5 吨、V-92S2F 1130 马力、公路 60 公里 / 时；2A46M-5 125 毫米滑膛炮、转盘式自动装弹机（22 发）；
 --   三人车组：炮长左、车长右（同 99A）；炮塔正面、侧面、首上、侧裙板都是「化石」（Relikt）重型爆反；原模型 mansoorsajidp（带车内）
 D.t90m = tracked({ cat = "tank", L = 20.5, W = 10.2, H = 6.4, hullH = 4.4, clear = 1.3, speed = 46.7, accel = 5.3, rev = 4.7, turn = 36,
@@ -198,6 +224,10 @@ D.t90m = tracked({ cat = "tank", L = 20.5, W = 10.2, H = 6.4, hullH = 4.4, clear
   smoke = { banks = { { at = V(3.2, 1.3, -1.6), yaw = 40 }, { at = V(-3.2, 1.3, -1.6), yaw = -40 } }, n = 6 },
   sightZoom = { day = { 4, 12 }, th = { 3.7, 12 } },   -- 「松树-U」炮长瞄准镜：昼光 4 / 12 倍，热像（Catherine-FC）宽 3.7、窄 12 倍
   weapons = { "gun125r", "coax" } })
+-- T-90A（2004，11-27 拆开重叠的版本：原来写 base 借 T-90M）：46.5 吨、V-92S2 1000 马力、60 公里 / 时；2A46M-2 125 毫米（2006 年以后换 2A46M-5）、
+--   3BM42「芒果」/ 3BK31 / 3OF26 / 9M119M「反射」、43 发；焊接炮塔、接触-5（模型上 T-90M 的块照用，改装页照 T-90M）；
+--   1A45T「额尔齐斯」火控、1G46M 炮长镜（昼光 2.7–12 倍）、ESSA 热像（二代，4 / 12 倍，估）；「窗帘-1」光电对抗
+D.t90a = variant(D.t90m, { like = "t90m", speed = 46.7, accel = 4.7, weapons = { "gun125m2", "coax" }, sightZoom = { day = { 2.7, 12 }, th = { 4, 12 } } })
 -- T-80U（用户 11-25「需要模型自己找」：科技树 T-80 一族原来借 T-90M，换成真 T-80U）：46 吨、GTD-1250 燃气轮机 1250 马力、公路 70 公里 / 时
 --   （起步、加速是苏系里最快的）；2A46M-1 125 毫米滑膛炮、「篮子」式自动装弹机（28 发）、3BM42「芒果」脱壳穿甲弹；炮塔正面、首上挂「接触-5」
 --   重型爆反（原模型上就有，EraMeta）；三人车组：炮长左、车长右；原模型 javanilga
@@ -418,6 +448,9 @@ D.bmp1 = tracked({ cat = "apc", L = 17.7, W = 8.4, H = 5.8, hullH = 4.3, clear =
   sight = V(-1.0, 1.3, -0.9),
   sightZoom = { day = { 6 }, th = { 6.7 } },   -- 1PN22M1 炮长瞄准镜：昼光 6 倍、夜视 6.7 倍
   weapons = { "gun73", "malyutka", "coax" }, seats = 8 })
+-- 86 式步兵战车（1986，11-27 拆开重叠的版本：原来写 base 借 BMP-1）：BMP-1 的国产型，13.3 吨、300 马力（估）、65 公里 / 时；
+--   86 式 73 毫米低膛压滑膛炮（仿 2A28）+ 红箭-73 反坦克导弹（仿 9M14）+ 并列机枪；没有激光测距、主动红外夜视
+D.type86 = variant(D.bmp1, { like = "bmp1", weapons = { "gun73", "hj73", "coax" } })
 D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1.4, speed = 51.3, accel = 4.4, rev = 15.6, turn = 40,
   rw = { n = 6, r = 0.95, x = 3.7, z0 = -6.8, z1 = 6.8 }, skirt = true,
   turret = { pivot = V(0, 5.6, -0.4), size = V(5.0, 1.8, 5.2), style = "ifv", trav = 60, elev = { -9, 55 }, tow = true },
@@ -426,6 +459,12 @@ D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1
   sightZoom = { day = { 4, 12 }, th = { 4, 12, 24 } },   -- M2A3 炮长的综合瞄准具（IBAS）：昼光 4 / 12 倍，热像 4 / 12 倍 + 电子放大 24 倍
   smoke = { banks = { { at = V(2.4, 1.0, -2.2), yaw = 30 }, { at = V(-2.4, 1.0, -2.2), yaw = -30 } }, n = 4 },
   weapons = { "ac30", "tow2", "coax" }, seats = 6 })
+-- 11-27 拆开重叠的版本（用户「把重叠的版本拆开」「各维度还原一致」）：科技树 M2、M2A2 原来写 base（借 M2A3：30 毫米炮、IBAS 二代热像、激光测距）
+-- M2（1981；型号叫 m2a0，免得和 ImportedMeta 里表示 M2 机枪的 mg = "m2" 搞混）：22.6 吨、Cummins VTA-903T 500 马力、66 公里 / 时；
+--   M242 25 毫米（M791）+ BGM-71C 改进型陶式 + 并列机枪；铝合金车体；ISU 综合瞄准具 4 / 12 倍（第一代热像，没有激光测距）
+D.m2a0 = variant(D.m2a3, { like = "m2a3", speed = 51.3, accel = 4.9, weapons = { "m242", "tow1", "coax" }, sightZoom = { day = { 4, 12 }, th = { 4, 12 } } })
+-- M2A2（1988）：约 30 吨（估）、VTA-903T 600 马力、61 公里 / 时（估）；加挂钢装甲（正面挡 30 毫米）、可挂爆反块；TOW-2；ISU 还是没有激光测距（ODS 改型才加）
+D.m2a2 = variant(D.m2a3, { like = "m2a3", speed = 47.4, accel = 4.4, weapons = { "m242", "tow2", "coax" }, sightZoom = { day = { 4, 12 }, th = { 4, 12 } } })
 
 ---------------------------------------------------------------- 装甲车（轮式）
 
@@ -554,7 +593,8 @@ D.patriot = wheeled({ cat = "aa", L = 28, W = 8.4, H = 10, hullH = 4.4, clear = 
 --   豹 1（体视测距仪，豹 1A5 才换激光）、M60A1（合像测距仪，M60A3 才有激光）、BMP-1；其余的车都有激光测距
 local NO_LRF = { leo1 = true, m60a1 = true, bmp1 = true, t64a = true,   -- T-64A：TPD-2-49 合像测距瞄准镜（T-64B 才有激光）
   brdm2 = true, strela1 = true, type87rcv = true,   -- 11-27 补的：BRDM-2 的 PP-61AM、箭-1 的光学瞄准具、87 式的潜望瞄准镜都没有激光测距
-  m60 = true, m60a1rise = true, leo1a1a1 = true }   -- 11-27 拆出来的：M60 / M60A1 RISE 合像测距仪、豹 1A1A1 体视测距仪
+  m60 = true, m60a1rise = true, leo1a1a1 = true,   -- 11-27 拆出来的：M60 / M60A1 RISE 合像测距仪、豹 1A1A1 体视测距仪
+  type86 = true, m2a0 = true, m2a2 = true }   -- 86 式（同 BMP-1）、M2 / M2A2 的 ISU 都没有激光测距
 -- 每个型号补上默认值、名字
 for id, d in pairs(D) do
   d.id = id

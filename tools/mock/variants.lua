@@ -43,6 +43,14 @@ local SPLIT = {
   { "de_leo1a1a1", "leo1a1a1", "leo1", nv = "ir", gen = 1 },
   { "de_leo2a0", "leo2a0", "leo2a6", nv = "ii", gen = 2 },
   { "de_leo2a5", "leo2a5", "leo2a6", nv = "th1", gen = 3 },
+  -- 第 3 批：中国 96 / 96A / 99 式、86 式，俄 T-90A，美 M2 / M2A2（96B、99A、BMP-1、T-90M、M2A3 原来就有；86 式、布雷德利不是坦克炮，没有火控代）
+  { "cn_96", "ztz96base", "ztz96", noEra = true, nv = "ii", gen = 3 },
+  { "cn_96a", "ztz96a", "ztz96", nv = "th2", gen = 4 },
+  { "cn_99", "ztz99base", "ztz99a", nv = "th1", gen = 3 },
+  { "cn_86", "type86", "bmp1", nv = "ir" },
+  { "ru_t90a", "t90a", "t90m", nv = "th2", gen = 3 },
+  { "us_m2", "m2a0", "m2a3", nv = "th1" },
+  { "us_m2a2", "m2a2", "m2a3", nv = "th1" },
 }
 -- 一族里按年代排的型号（拆出来的 + 原来就有的）：默认弹的穿深、炮塔正面装甲（动能）不往回掉；skip 不比的（年代错位的老车，写进回报）
 local FAMILY = {
@@ -51,6 +59,11 @@ local FAMILY = {
   { name = "M60 一族", ids = { "m60", "m60a1", "m60a1rise", "m60a3" } },
   { name = "豹 1", ids = { "leo1", "leo1a1a1", "leo1a5" } },
   { name = "豹 2", ids = { "leo2a0", "leo2a4", "leo2a5", "leo2a6", "leo2a7v" } },
+  { name = "96 系", ids = { "ztz96base", "ztz96a", "ztz96" } },
+  { name = "99 系", ids = { "ztz99base", "ztz99a" } },
+  { name = "T-90", ids = { "t90a", "t90m" } },
+  { name = "布雷德利", ids = { "m2a0", "m2a2", "m2a3" },
+    skip = { m2a3 = true } },   -- M2A3 用的是 30 毫米 ac30（真车是 M242 25 毫米）：原来就有的年代错位
 }
 -- 借同族模型、真车没有爆反的老车（11-27 一起修的老 bug：原来 T-80B 22 格接触-5、T-72 乌拉尔 / A / B 各 37 格）
 local NOERA_OLD = { "t80b", "t72ural", "t72a", "t72b" }
@@ -76,6 +89,15 @@ for _, k in ipairs(KEEP) do
 end
 
 print("② 科技树：原来写 base 的地面项有了自己的型号")
+do
+  local left = {}
+  for _, nat in ipairs(TT.NATIONS) do
+    for _, it in ipairs(TT.list[nat].ground) do
+      if it.base ~= nil or it.stand then table.insert(left, it.key .. "→" .. tostring(it.base)) end
+    end
+  end
+  check(#left == 0, "地面树没有一项还写 base（模型、性能都借：「暂用」）" .. (#left > 0 and ("：" .. table.concat(left, " ")) or ""))
+end
 for _, s in ipairs(SPLIT) do
   local it = TT.get(s[1])
   check(it ~= nil and it.veh == s[2] and it.play == s[2] and it.model == s[3] and it.base == nil and not it.stand and TT.byVeh[s[2]] == it,
@@ -199,13 +221,32 @@ do
   end
 end
 
+do
+  local z96, z96a, z99, t90a, t86, m2, m2a2 = VD.get("ztz96base"), VD.get("ztz96a"), VD.get("ztz99base"), VD.get("t90a"), VD.get("type86"), VD.get("m2a0"), VD.get("m2a2")
+  if z96 and z96a and z99 and t90a and t86 and m2 and m2a2 then
+    check(not TM.has("ztz96base") and TM.FOR.ztz96a and TM.FOR.ztz96a.era[1] == "fy4" and TM.FOR.ztz96.era[1] == "fy2"
+      and cnt(TM.cellsOn("ztz96a")) == cnt(TM.cellsOn("ztz96")),
+      "96 式没有爆反；96A 出厂 FY-4（96B 是 FY-2），块照同一个模型")
+    check(TM.FOR.ztz99base == TM.FOR.ztz99a and has(TM.FOR.ztz99base.ew, "jd3") and TM.FOR.t90a == TM.FOR.t90m and has(TM.FOR.t90a.ew, "lws"),
+      "99 式的改装页照 99A（JD-3 激光对抗），T-90A 照 T-90M（「窗帘」光电对抗）")
+    check(WD.CAROUSEL.ztz96base and WD.CAROUSEL.ztz96a and WD.CAROUSEL.ztz99base and WD.CAROUSEL.t90a, "转盘式自动装弹机：殉爆时炮塔飞（96 / 96A / 99 / T-90A）")
+    check(has(t86.weapons, "hj73") and not has(t86.weapons, "malyutka") and t86.weapons[1] == VD.get("bmp1").weapons[1] and not t86.lrf,
+      "86 式：同 BMP-1 的 73 毫米炮，导弹是红箭-73，没有激光测距")
+    check(m2.weapons[1] == "m242" and has(m2.weapons, "tow1") and m2a2.weapons[1] == "m242" and has(m2a2.weapons, "tow2") and not WD.WPN.tow1.tandem
+      and not m2.lrf and not m2a2.lrf and VD.get("m2a3").lrf,
+      "M2 / M2A2：M242 25 毫米，M2 打单装药的改进型陶式、M2A2 打陶式 2；ISU 没有激光测距（M2A3 有）")
+    check(Lang.zh["veh.ztz96"] == "96B 式主战坦克", "ztz96 改名叫 96B（它本来就是 96B）：" .. tostring(Lang.zh["veh.ztz96"]))
+  end
+end
+
 print("⑥ 改装页、火控")
 for _, s in ipairs(SPLIT) do
   local d = VD.get(s[2])
   if d and not s.noEra and TM.FOR[s[3]] then
     local st = TM.stats(s[2], nil)
     check(TM.has(s[2]) and st ~= nil and TM.SPEC[s[2]] ~= nil and TM.SPEC[s[2]] ~= TM.SPEC[s[3]] and cnt(TM.cellsOn(s[2])) > 0,
-      string.format("%s：改装页照同族 %s（爆反 %s，%d 格），车重按自己的 %.1f 吨", s[2], s[3], tostring(TM.FOR[s[2]] and TM.FOR[s[2]].era[1]),
+      string.format("%s：改装页%s（爆反 %s，%d 格），车重按自己的 %.1f 吨", s[2], (TM.FOR[s[2]] == TM.FOR[s[3]]) and ("照同族 " .. s[3]) or "单独登记的一套",
+        tostring(TM.FOR[s[2]] and TM.FOR[s[2]].era[1]),
         cnt(TM.cellsOn(s[2])), TM.SPEC[s[2]] and TM.SPEC[s[2]].t or 0))
   end
   if s.gen then

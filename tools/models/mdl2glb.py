@@ -30,6 +30,7 @@ ALIAS = {
     'jltv': 'jltv', 'm1117': 'matv', 'm163': 'm163', 'cram': 'cram', 'patriot': 'patriot', 'm109a7': 'm109', 'm270': 'm270',
     # 11-27 拆开重叠的版本（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」）：同族的老 / 新型号借同一个模型（性能各是各的，VehDefs 的 like）
     'm1a2base': 'm1a2dc', 'm1a2sep': 'm1a2dc', 'm1a2sep3': 'm1a2dc',
+    'ztz96base': 'ztz96', 'ztz96a': 'ztz96', 'ztz99base': 'ztz99a2', 'm2a0': 'm2a3', 'm2a2': 'm2a3',
 }
 # 网页版烘焙出来车头朝后的（网页版游戏里 JLTV 用的是 M-ATV 的模型，这个 JLTV 模型从没开过，方向反了没人发现）：掉头 180°
 #   用户：「这个车操作是倒着开的」——模型的备胎（真车挂在车尾）在游戏认的车头那一端

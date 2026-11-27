@@ -107,6 +107,11 @@ B.AMMO = {
   -- 豹 2A0（1979）：120 毫米第一代尾翼稳定脱壳穿甲弹 DM13（钨合金；键名带 l44，105 毫米的 dm13 已经占了；初速估）
   dm13l44 = { cls = "ap", name = "DM13 (120)", sym = "KE", v0 = 1650, k = 3.8e-5, bs = 1200, tr = true,
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  -- 96 式（1997）、96A / 99 式（2001～）的 125 毫米尾翼稳定脱壳穿甲弹（DTC10 是 99A / 96B 才有的）：公开资料只有个大概，初速、阻力都是估的
+  dtw125 = { cls = "ap", name = "DTW-125 I", sym = "穿甲", v0 = 1730, k = 3.8e-5, bs = 1200, tr = true,
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  dtw125b = { cls = "ap", name = "DTW-125 II", sym = "穿甲", v0 = 1760, k = 3.6e-5, bs = 1200, tr = true,
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
 }
 -- 每门炮能打的弹（第一个是默认），以及车里炮长控制面板上的弹种键（InteriorScreens 的 gcdp 页）对到哪种弹
 B.GUN = {
@@ -135,6 +140,9 @@ B.GUN = {
   gun120sep3 = { "m829a4", "m829a3", "m830a1", "m1028", "jet120" },   -- M1A2 SEPv3：弹药数据链（ADL）打 M829A4（AMP XM1147 游戏里没有）
   gun105m60r = { "m735", "m392", "m456", "jet105" },           -- M60A1 RISE（1977，M68）：M735 钨合金尾翼稳定脱壳穿甲弹（M833 是 M60A3 的）
   gun120l44a0 = { "dm13l44", "dm12", "jet120" },               -- 豹 2A0（Rh-120 L/44）：DM13、DM12（DM33 1987 年起）
+  gun125c96 = { "dtw125", "heat125", "he125", "jet125" },      -- 96 式（ZPT-98）：DTW-125 I 型
+  gun125c99 = { "dtw125b", "heat125", "he125", "jet125" },     -- 96A、99 式（ZPT-98）：DTW-125 II 型
+  gun125m2 = { "bm42", "bk31", "of26", "refleks", "jet125" },  -- T-90A（2A46M-2）：3BM42「芒果」、3BK31、3OF26、9M119M「反射」（3BM60 是 T-90M 的）
 }
 -- 面板上的键 → 弹种（这门炮没有这一种就挑它同一类 cls 的：T-90M 借 99A 的面板，「穿甲」键打 3BM60）
 function B.panelAmmo(kind, wid)

@@ -252,7 +252,8 @@
   "creditEn": "This work is based on \"T-90M (With interior) [FREE]\" (https://sketchfab.com/3d-models/t-90m-with-interior-free-f465e873d8d0468abd5d84b1ecc22f19) by mansoorsajidp licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
   "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按部件分组、减面、车内归炮塔、贴图缩到 1024",
   "alias": [
-   "t90m"
+   "t90m",
+   "t90a"
   ],
   "rotZ": 180,
   "scale": 0.905,
@@ -2190,7 +2191,8 @@
   "creditEn": "This work is based on \"BMP-1 (outdated)\" (https://sketchfab.com/3d-models/bmp-1-outdated-9b00c6b1da094bb3802af5ca6a3081bf) by buh-late licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
   "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、按部件分组、减面（55 万 → 约 11 万个三角形）、贴图缩到 1024",
   "alias": [
-   "bmp1"
+   "bmp1",
+   "type86"
   ],
   "rotZ": 180,
   "scale": 1.0,

@@ -29,6 +29,9 @@ TM.SPEC = {
   t80u = { t = 46, hp = 1250, vmax = 70, ammo = 45, ready = 28 },   -- T-80U：46 吨、GTD-1250 燃气轮机、70 km/h、45 发（自动装弹机 28 发）   -- T-90M：46.5 吨、V-92S2F 1130 马力、60 km/h、43 发（自动装弹机 22 发）
   -- 11-27 拆开重叠的版本：能装改装（爆反、主动防护）的同族变型（改装页照同族那一型，见文件末尾），车重、功率按各自的
   m1a2sep3 = { t = 66.8, hp = 1500, vmax = 67, ammo = 42, ready = 36 },   -- M1A2 SEPv3：66.8 吨（73.6 短吨）、AGT1500、67 km/h、42 发
+  ztz96a = { t = 42.8, hp = 800, vmax = 65, ammo = 41, ready = 22 },     -- 96A：42.8 吨、800 马力（另说 865，估）、65 km/h
+  ztz99base = { t = 53, hp = 1500, vmax = 70, ammo = 41, ready = 22 },   -- 99 式（2001）：51–54 吨（估）、150HB 1500 马力、70 km/h（估）
+  t90a = { t = 46.5, hp = 1000, vmax = 60, ammo = 43, ready = 22 },      -- T-90A：46.5 吨、V-92S2 1000 马力、60 km/h、43 发（自动装弹机 22）
 }
 
 ---------------------------------------------------------------- 爆反型号
@@ -125,6 +128,9 @@ TM.FOR = {
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
   t90m = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
+  -- 11-27 拆开重叠的版本：96A 出厂就是炮塔正面箭形 FY-4 + 首上（模型是 96B 的，上面的块按 FY-4 算）；别的照 96B
+  ztz96a = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
+    eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
   m1a2 = { era = { "arat", "arat2" }, aps = { "none", "trophy" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock", "gau8" } },
   m1a1 = { era = { "arat", "arat2" }, aps = { "none", "trophy" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
@@ -151,6 +157,12 @@ TM.PRESETS = {
     { id = "front", z = { "tf", "ts", "gl", "lf", "sk" }, set = { era = "fy4", aps = "gl5" } },
     { id = "urban", z = { "tf", "ts", "tb", "gl", "sk", "sr" }, set = { era = "fy4", aps = "gl5", ew = "lws", slat = "slat", belly = "belly" } },
     { id = "breach", z = { "tf", "ts", "gl", "sk" }, set = { eng = "plow", belly = "belly" } },
+  },
+  ztz96a = {   -- 11-27：96A 出厂 FY-4（同 96B 的四套预设，爆反默认换成 FY-4）
+    { id = "factory", z = { "tf", "ts", "gl", "sk" }, set = { era = "fy4", aps = "none", ew = "none", slat = "none", belly = "none", eng = "none", cam = "none" } },
+    { id = "front", z = { "tf", "ts", "gl", "lf", "sk" }, set = { era = "fy4", aps = "gl5" } },
+    { id = "urban", z = { "tf", "ts", "tb", "gl", "sk", "sr" }, set = { era = "fy4", aps = "gl5", ew = "lws", slat = "slat", belly = "belly" } },
+    { id = "breach", z = { "tf", "ts", "gl", "sk" }, set = { era = "fy4", eng = "plow", belly = "belly" } },
   },
   t90m = {   -- 出厂就是「化石」重型爆反四个区全贴；城市型加车尾、侧面后段的栅栏和防地雷底板（叙利亚、乌克兰战场的样子）
     { id = "factory", z = { "tf", "ts", "gl", "sk" }, set = { era = "fy4", aps = "none", ew = "none", slat = "none", belly = "none", eng = "none", cam = "none" } },

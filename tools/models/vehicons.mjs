@@ -34,6 +34,7 @@ const GLB = {
   // 11-27 拆开重叠的版本（同族的老 / 新型号拍同一个模型）：M1 一族
   m1: 'm1a1', m1ip: 'm1a1', m1a1hc: 'm1a1', m1a2base: 'm1a2dc', m1a2sep: 'm1a2dc', m1a2sep3: 'm1a2dc',
   m60: 'm60a3', m60a1rise: 'm60a3', leo1a1a1: 'leo1', leo2a0: 'leo2a6', leo2a5: 'leo2a6',   // M60、豹
+  ztz96base: 'ztz96', ztz96a: 'ztz96', ztz99base: 'ztz99a2', type86: 'bmp1', t90a: 't90m', m2a0: 'm2a3', m2a2: 'm2a3',   // 中、俄、布雷德利
 };
 // 飞机、直升机（AirDefs 的型号）→ models/air 的原模型（ImportedAir.alias 去掉版本后缀和 ~）；没有原模型的 gj11 是 X-47B 的模型、gj2 / z20 借 MQ-9 / UH-60
 const AIR = {
