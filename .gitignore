@@ -17,3 +17,6 @@ __pycache__/
 
 # 授权不许再分发的原模型（Sketchfab Free Standard 等）：转好的文件直接发给用户，不进仓库
 /models/private/
+
+# 子代理的独立工作区（Claude Code 建的 git worktree）
+.claude/worktrees/
