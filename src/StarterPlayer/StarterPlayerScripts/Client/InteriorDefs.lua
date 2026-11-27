@@ -1985,8 +1985,8 @@ function Defs.side(b, ctx, L)
     seat = L.seat, eyeShift = L.eyeShift }
 end
 
----------------------------------------------------------------- 串列双座武装直升机（阿帕奇、直-10）：我坐后座（飞行员，高一截），前座射手在前下方
---   L = { cn, hud = 后座有平显（直-10）, ihadss = 头盔单目显示（阿帕奇：Interior 把平显画在眼前） }
+---------------------------------------------------------------- 串列双座武装直升机（阿帕奇；原来还有直-10，11-27 删了）：我坐后座（飞行员，高一截），前座射手在前下方
+--   L = { cn 中式座舱, hud = 后座有平显, ihadss = 头盔单目显示（阿帕奇：Interior 把平显画在眼前） }
 -- 资料：AH-64D/E 后座 —— 两块 6.24 英寸多功能显示器、上前显示器（EUFD）、备份仪表、左边总距杆和两根发动机功率杆、右边通信面板；
 --   座舱盖是平板玻璃（前后座中间一块透明防爆隔板），后座右边是门；前座（AH-64E）的目标截获显示器（TEDAC）带两个握把
 function Defs.tandem(b, ctx, L)
@@ -2113,7 +2113,6 @@ function Defs.tandem(b, ctx, L)
     seat = 2, ihadss = L.ihadss }
 end
 
-Defs.z10 = function(b, ctx) return Defs.tandem(b, ctx, { cn = true, hud = true }) end
 Defs.ah64e = function(b, ctx) return Defs.tandem(b, ctx, { ihadss = true }) end
 Defs.uh60 = function(b, ctx) return Defs.side(b, ctx, { half = 0.50, me = "R", ctrl = "heli", disp = "uh60m", win = "heli", chin = true, seat = 2 }) end
 Defs.ch47 = function(b, ctx) return Defs.side(b, ctx, { half = 0.60, me = "R", ctrl = "heli", disp = "ch47f", win = "heli", chin = true, seat = 2 }) end

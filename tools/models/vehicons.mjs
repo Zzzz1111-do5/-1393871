@@ -34,7 +34,7 @@ const GLB = {
 // 飞机、直升机（AirDefs 的型号）→ models/air 的原模型（ImportedAir.alias 去掉版本后缀和 ~）；没有原模型的 gj11 是 X-47B 的模型、gj2 / z20 借 MQ-9 / UH-60
 const AIR = {
   j20: 'j20', j35: 'j31', j15t: 'j15t', j16: 'j16', h6k: 'h6k', gj11: 'x47b', gj2: 'mq9', a10c: 'a10', f35: 'f35', f22: 'f22a',
-  mq9: 'mq9', b2: 'b2', z10: 'z10w', ah64e: 'ah64', z20: 'uh60', uh60: 'uh60', ch47: 'ch47',
+  mq9: 'mq9', b2: 'b2', ah64e: 'ah64', z20: 'uh60', uh60: 'uh60', ch47: 'ch47',
   j10: 'j10', j11: 'j11', j36: 'j36',   // 11-22 加的歼-10C、歼-11B、歼-36（sf_air.py 转的）
   j8: 'j8', f16: 'f16', j6: 'j6',   // 11-23 的歼-8II、F-16C，11-25 的歼-6（科技树里原来借歼-8II 的模型）
   f15: 'f15', f14: 'f14',   // 11-25 的 F-15C、F-14A
@@ -77,7 +77,7 @@ const save = (id, r) => {
 if (SET === 'air') {
   for (const [id, key] of Object.entries(AIR)) {
     if (!want(id)) continue;
-    const hide = (id === 'z10') ? '__TRotor' : '';   // 起落架照拍（MWT 的侧影带着起落架）；直-10 的尾桨是一大块方片（转起来才像），不要
+    const hide = '';   // 起落架照拍（MWT 的侧影带着起落架）；原来直-10 的尾桨是一大块方片不拍（直-10 11-27 删了）
     const r = await page.evaluate(async ([u, fl, hd]) => window.renderGLB(u, fl, hd), [`/air/${key}.glb`, FLIP.has(id), hide]);
     save('air_' + id, r);
   }
@@ -103,7 +103,7 @@ if (SET === 'photo') {
     if (fs.existsSync(path.join(outDir, 'pic_air_' + key + '.png')) && process.env.REDO !== '1') continue;
     // 两套起落架网格的（sf_gear.py：苏-57、苏-35、米格-29）：拍收起落架的样子——放下的腿、打开的舱门、舱里的东西不拍，关好的门板（GearUp）照拍
     const TWO = new Set(['su57', 't50', 'mig29', 'su35']);
-    const hide = (id === 'z10') ? '__TRotor' : (TWO.has(key) ? '__(Gear[NLRXB]|GDoor)' : '');
+    const hide = TWO.has(key) ? '__(Gear[NLRXB]|GDoor)' : '';
     const r = await page.evaluate(async ([u, o]) => window.renderPhoto(u, o), [`/air/${key}.glb`, { flip: FLIP.has(id), hide, pitch: 18, yaw: 38, tint: TINT[key] }]);
     save('pic_air_' + key, r);
   }

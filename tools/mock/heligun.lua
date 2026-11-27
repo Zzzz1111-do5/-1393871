@@ -1,6 +1,6 @@
--- 直升机机头炮塔（模拟器）：python3 tools/mock/run.py tools/mock/heligun.lua [air=ah64e|z10]
+-- 直升机机头炮塔（模拟器）：python3 tools/mock/run.py tools/mock/heligun.lua [air=ah64e|mi28|mi24]（原来还能测直-10，11-27 删了）
 --   用户 11-21：直升机炮管不会转动。原模型的机炮原来和机身烘焙在一块网格里；tools/models/air2glb.py 把它拆成 Gun（方位 + 俯仰）、GunY（炮塔座，只转方位）。
---   假装在 Studio 里导入了新版原模型（ah64_v2 / z10w_v2），开直升机、镜头往右边看、往下看：炮管跟着转过去、压下去，炮塔座只跟着转方位
+--   假装在 Studio 里导入了新版原模型（ah64_v2 等），开直升机、镜头往右边看、往下看：炮管跟着转过去、压下去，炮塔座只跟着转方位
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
@@ -27,7 +27,7 @@ G.Config.Bots.minPerTeam = 0
 T.runUntil(function() return G.worldReady end, 900)
 local me = T.join("P1", 5001, true)
 T.runUntil(function() return G.round and (G.round.phase == "prep" or G.round.phase == "battle") end, 30)
-local side = (AIR == "z10") and "atk" or "def"
+local side = (AIR == "mi28" or AIR == "mi24") and "atk" or "def"
 local P = G.P[me]
 P.team = side
 me.Team = G.TEAM[side]

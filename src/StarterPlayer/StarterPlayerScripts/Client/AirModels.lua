@@ -28,7 +28,7 @@ local SKIN = {
   def = { jet = RGB(128, 136, 142), stealth = RGB(96, 100, 106), heli = RGB(70, 76, 60), drone = RGB(150, 154, 158) },
 }
 local SKIN_ID = { h6k = RGB(196, 198, 196), b2 = RGB(66, 68, 72), a10c = RGB(112, 118, 120), j15t = RGB(164, 170, 172), ch47 = RGB(78, 84, 66), uh60 = RGB(58, 64, 52),
-  z20 = RGB(100, 110, 104), z10 = RGB(112, 120, 116) }
+  z20 = RGB(100, 110, 104) }
 local GLASS, GOLD, DARK, TIRE, STEEL, RADOME = RGB(36, 52, 62), RGB(150, 122, 62), RGB(36, 38, 40), RGB(26, 26, 28), RGB(84, 86, 88), RGB(200, 202, 196)
 
 local RS = game:GetService("ReplicatedStorage")
@@ -41,7 +41,7 @@ do
 end
 -- 原模型自带的「转起来的桨盘」（半透明的一整块圆盘 / 方片，材质不透明度只有 0.08 / 0.25）：导进 Roblox 后不透明度丢了，
 --   停着也是一整块实心圆盘（用户：挂载界面里螺旋桨位置对不上、而且是转起来的样子）——当成桨盘：停着不显示，转快了才淡淡地出现，桨叶同时变虚
-local BLUR = { z10w = { Rotor_2 = true, TRotor_2 = true } }
+local BLUR = {}   -- 模型键（不带版本号）→ { 块名 = true }；原来只有直-10 有（11-27 直-10 删了），以后带桨盘的模型照样往这里加
 -- 原模型上切出来的活动部件（ImportedAir 的 surf）：按动法算转角。sg 已经把正方向统一成：舵面后缘往下、方向舵 / 全动垂尾后缘往右、
 --   舱门和座舱盖打开、起落架收起；s 是哪一侧（1 右、−1 左）。操纵量 pit / rol / yaw 是 −1～1（抬头、右滚、右偏为正），flap 0～1
 --   减速板（c.brk，B 键）：这些机型没有单独的减速板，照真飞机用舵面减速——副翼两边一起上翘、襟副翼往下、双垂尾的方向舵 / 全动垂尾往外撇
@@ -270,7 +270,6 @@ AM.NOGEAR = NOGEAR
 local PIT_FIX = {
   a10_v3 = { { 0, 6.7, -14.5 } },                                -- 座舱盖（Body_3）顶 7.7、前风挡在 z −17.5
   ah64_v2 = { { 0, 6.10, -16.26 }, { 0, 7.36, -11.5 } },          -- 前座炮手、后座飞行员（后座高 0.45 米、靠后 1.7 米：同 InteriorDefs 串列座）
-  z10w_v2 = { { 0, 4.6, -10.4 }, { 0, 6.6, -6.2 } },              -- 前座比后座低得多（模型的前座盖顶 5.4、后座 7.2）
   uh60 = { { -1.4, 6.0, -16.0 }, { 1.4, 6.0, -16.0 } },           -- 驾驶舱顶棚 7.0、风挡上沿 z −17.5（直-20 借这个模型，坐左座）
   ch47 = { { -1.68, 7.4, -16.0 }, { 1.68, 7.4, -16.0 } },         -- 风挡 z −18～−17、地板 4.2
   h6k_v3 = { { -1.54, 10.6, -38.2 }, { 1.54, 10.6, -38.2 } },     -- 领航员的玻璃机头后面那一级台阶上；地板 7.8
@@ -1603,7 +1602,7 @@ function AM.build(d, team, load)
           local dir = R0 and R0.dir or 1
           local tilt = (g ~= "TRotor") and function(cc) return CFrame.Angles(-(cc.pit or 0) * 0.07, 0, -(cc.rol or 0) * 0.07) end or nil
           local it = add(mp, hub:Inverse() * cc0, "r", { hub = hub, f = function(cc) return (cc[spinKey] or 0) * dir end, tilt = tilt })
-          local bl = BLUR[string.gsub(imp.key, "_v%d+$", "")]   -- 按不带版本号的键查（z10w、z10w_v2 都是这几块）
+          local bl = BLUR[string.gsub(imp.key, "_v%d+$", "")]   -- 按不带版本号的键查（同一个模型的各版本块名一样）
           if bl and bl[name] then
             mp.CastShadow = false
             mp.Transparency = 1
@@ -1622,7 +1621,7 @@ function AM.build(d, team, load)
             M.pblades = M.pblades or {}
             table.insert(M.pblades, it)
           end
-        elseif g == "Gun" or g == "GunY" then   -- 机头炮塔（阿帕奇、直-10：tools/models/air2glb.py 从原模型里拆出来的）：跟着瞄准转——炮绕耳轴方位 + 俯仰，炮塔座只转方位
+        elseif g == "Gun" or g == "GunY" then   -- 机头炮塔（阿帕奇、眼镜蛇、米-24、米-28N：tools/models/air2glb.py、sf_air.py 从原模型里拆出来的）：跟着瞄准转——炮绕耳轴方位 + 俯仰，炮塔座只转方位
           local G0 = I[string.lower(g)] or I.gun
           local piv = G0 and (V(G0.p[1], G0.p[2], G0.p[3]) + O) or c
           add(mp, cc0, "t", { piv = piv, yawOnly = g == "GunY" })

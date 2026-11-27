@@ -14,7 +14,7 @@ H.quietWarn = true
 
 local IA = luau.load(fs.readFile("src/ReplicatedStorage/ImportedAir.lua"), { debugName = "ImportedAir" })()
 -- 型号 → 模型键（直-20 借 UH-60 的模型）
-local TYPES = { a10c = "a10_v3", ah64e = "ah64_v2", z10 = "z10w_v2", uh60 = "uh60", ch47 = "ch47", h6k = "h6k_v3", b2 = "b2_v3", z20 = "uh60" }
+local TYPES = { a10c = "a10_v3", ah64e = "ah64_v2", uh60 = "uh60", ch47 = "ch47", h6k = "h6k_v3", b2 = "b2_v3", z20 = "uh60" }
 local KEYS = {}
 for _, k in pairs(TYPES) do KEYS[k] = true end
 
@@ -89,7 +89,7 @@ for id, k in pairs(TYPES) do
 		end
 		check(nPilot >= 1, string.format("  %s 座舱里有飞行员（%d 个）", id, nPilot))
 		local guess = V3.new(0, d.H * 0.35, -d.L * 0.3) - O   -- 退回去猜的那个点（换成模型坐标）
-		local mine = pit[(id == "ah64e" or id == "z10" or id == "uh60" or id == "ch47") and 2 or 1]
+		local mine = pit[(id == "ah64e" or id == "uh60" or id == "ch47") and 2 or 1]
 		local far = (V3.new(mine[1], mine[2], mine[3]) - guess).Magnitude
 		check(far > 1.0, string.format("  %s 眼位离原来猜的点 %.1f 格", id, far))
 	end

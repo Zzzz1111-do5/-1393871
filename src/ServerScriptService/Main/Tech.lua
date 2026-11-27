@@ -721,7 +721,7 @@ function Tech.init(G)
   local tests = {}   -- [P] = { veh, dummies = { [i] = 实体 }, drones = { [i] = 实体 }, base, dir, foe, air }
   local DUMMY = { "t90m", "m1a2", "ztz96", "m1a1", "leo2a6", "t72b3", "bmp2", "type10" }
   local DRONE_JET = { "f16", "j10", "f15", "a10c", "j8" }
-  local DRONE_HELI = { "ah64e", "z10", "mi28", "mi24" }
+  local DRONE_HELI = { "ah64e", "ka52", "mi28", "mi24" }   -- 直-10 11-27 删了（原模型是扒的），换成卡-52
   -- 地面试驾的靶车：射击方向多少米、往右多少米、横着来回开的半程（米，没有就不动）
   --   训练场（11-26 晚）：每人一条靶道（960 格 ≈ 340 米宽），横着偏的、来回开的都收在自己的靶道里（最多偏 150 米）
   local RANGE = { { 300, -40 }, { 500, 60 }, { 700, -70, 70 }, { 1000, 30 }, { 1300, 60, 90 }, { 1600, -110 }, { 2000, 50 } }

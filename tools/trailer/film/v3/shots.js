@@ -1,5 +1,5 @@
 // 第三版微电影（用户 11-22：「给这个游戏做一个微电影宣传，之前的作废，这一版要体现游戏所有牛逼的点，用最新版做」）
-//   用游戏现在的地图（Map.K = 3 放大以后的棕榈岛，按原样，不再另外放大）和现在的模型（福建舰原模型、歼-20 v4、F-22A、拆出机炮的阿帕奇 / 直-10……）
+//   用游戏现在的地图（Map.K = 3 放大以后的棕榈岛，按原样，不再另外放大）和现在的模型（福建舰原模型、歼-20 v4、F-22A、拆出机炮的阿帕奇……；直-10 11-27 删了）
 //   分镜见 SHOTS；每个镜头 setup 搭好要用的东西，update(t) 摆好这一刻的镜头、模型、特效，返回后期参数；events 给配乐、音效（v3/audio.js）
 import * as THREE from 'three';
 import { V3, keys, ease, easeIn, easeOut, easeIO, smooth, lerp, shake, rng, DEG, fbm1, clamp, sat } from '../lib.js';

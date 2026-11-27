@@ -44,9 +44,7 @@ AirDefs.W = {
     vs = { inf = 1, light = 1.2, armor = 0.55, air = 1.4, ship = 0.5, fort = 0.7 } },
   m230 = { kind = "gun", rate = 0.095, dmg = 42, speed = 1500, range = 1600, splash = 4, cal = 0.2, turret = true,       -- M230 30 毫米链式炮（机头炮塔）
     vs = { inf = 1, light = 1.1, armor = 0.25, air = 1.2, ship = 0.3, fort = 0.6 } },
-  zh23 = { kind = "gun", rate = 0.1, dmg = 38, speed = 1500, range = 1500, splash = 3.5, cal = 0.18, turret = true,      -- 直-10 23 毫米炮塔
-    vs = { inf = 1, light = 1.1, armor = 0.22, air = 1.2, ship = 0.3, fort = 0.6 } },
-  m134 = { kind = "gun", rate = 0.025, dmg = 9, speed = 1700, range = 1100, splash = 0, cal = 0.08, door = true,          -- 舱门机枪
+  m134 ={ kind = "gun", rate = 0.025, dmg = 9, speed = 1700, range = 1100, splash = 0, cal = 0.08, door = true,          -- 舱门机枪
     vs = { inf = 1, light = 0.3, armor = 0.01, air = 0.5, ship = 0.02, fort = 0.05 } },
 
   -- 霹雳-2（K-13 / AIM-9B 那一代）：只能从后面咬尾、导引头视场窄、过载小，发动机烧两秒多、尾烟浓；歼-6 后期型翼下挂两枚
@@ -144,7 +142,7 @@ AirDefs.W = {
   lt2 = { kind = "bomb", guided = true, dmg = 1350, splash = 30, lockTime = 0.8, cone = 60, vs = VS_BOMB, shape = { L = 11, d = 1.04, fin = 1.2 } },
   fl90 = { kind = "rkt", dmg = 260, splash = 13, speed = 720, range = 1800, rate = 0.13, tubes = 12, vs = VS_RKT, shape = { L = 5.0, d = 1.2 } },
   -- 各国直升机的武器（用户 11-25「直升机也做一下各个国家的」）：底子照相近的那种（反坦克导弹照 AGM-114、火箭照 Hydra / 飞龙-90、
-  --   防空弹照毒刺、炮照 M230 / 直-10 的炮塔），速度、射程、威力按真弹之间的比例调（下面统一按真实尺度放大）
+  --   防空弹照毒刺、炮照 M230 的炮塔），速度、射程、威力按真弹之间的比例调（下面统一按真实尺度放大）
   a42 = { kind = "gun", rate = 0.11, dmg = 46, speed = 1600, range = 1800, splash = 4, cal = 0.2, turret = true,     -- 2A42 30 毫米（米-28N 机头炮塔、卡-52 右舷）
     vs = { inf = 1, light = 1.15, armor = 0.3, air = 1.2, ship = 0.3, fort = 0.6 } },
   yakb = { kind = "gun", rate = 0.03, dmg = 14, speed = 1600, range = 1300, splash = 1, cal = 0.12, turret = true,    -- 米-24V 机头 YakB-12.7 四管机枪
@@ -273,18 +271,8 @@ local function preset(key, map) return { key = key, map = map } end
 
 -- rotor：主旋翼（hub 桨毂位置、r 半径、blades 片数、rpm 每分钟转数、dir 1 逆时针（俯视）/ −1 顺时针），tail 尾桨（同上，axis "x" 横着装）
 -- 直升机速度：vMax 最大平飞、climb 爬升 / 下降、yaw 偏航（度 / 秒）、tilt 最大俯仰 / 滚转（度）
-D.z10 = { kind = "heli", cat = "heli", L = 40, W = 6.6, H = 11.2, gearH = 4.6, hp = 900, vMax = 95, climb = 34, yaw = 75, tilt = 26, accel = 30,
-  seats = 2, flares = 30, gun = "zh23", gunAmmo = 300, gunPos = V(0, -3.1, -13),
-  rotor = { hub = V(0, 5.6, -1), r = 18.2, blades = 5, rpm = 290, dir = 1, chord = 1.4 }, tail = { hub = V(-1.3, 3.6, 19.5), r = 3.1, blades = 4, rpm = 1400, axis = "x" },
-  style = "attackheli", tandem = true, tw = 4.2, boom = 15,
-  stub = { x = 3.2, span = 4.2, y = -0.8, z = 0.5 },
-  st = mirror({
-    { name = "outer", pos = V(5.4, -2.1, 0.6), opts = { "akd10", "fl90", "ty90" }, n = N({ akd10 = 4, ty90 = 2 }) },
-    { name = "inner", pos = V(3.4, -2.1, 0.6), opts = { "akd10", "fl90" }, n = N({ akd10 = 4 }) },
-  }),
-  presets = { preset("at", { outer = "akd10", inner = "akd10" }), preset("mix", { outer = "akd10", inner = "fl90" }), preset("rkt", { outer = "fl90", inner = "fl90" }),
-    preset("aa", { outer = "ty90", inner = "akd10" }) } }
-D.ah64e = { kind = "heli", cat = "heli", L = 44, W = 7.4, H = 12.2, gearH = 4.4, hp = 1000, vMax = 92, climb = 32, yaw = 70, tilt = 26, accel = 28,
+--   直-10 11-27 删了（原模型是从《战地 3》扒的，Sketchfab 上找不到能收的直-10）
+D.ah64e ={ kind = "heli", cat = "heli", L = 44, W = 7.4, H = 12.2, gearH = 4.4, hp = 1000, vMax = 92, climb = 32, yaw = 70, tilt = 26, accel = 28,
   seats = 2, flares = 30, gun = "m230", gunAmmo = 600, gunPos = V(0, -3.3, -10.5),
   rotor = { hub = V(0, 6.0, -0.5), r = 20.4, blades = 4, rpm = 289, dir = -1, chord = 1.5 }, tail = { hub = V(-1.4, 4.4, 21.6), r = 3.9, blades = 4, rpm = 1400, axis = "x", scissor = true },
   style = "attackheli", tandem = true, tw = 4.8, boom = 16, tads = true, longbow = true,
@@ -1042,7 +1030,7 @@ for id, d in pairs(D) do
 end
 -- 能挂副油箱的挂点（照真飞机：侧卫系、A-10 机翼内侧，歼-20 / 歼-35 / F-35 翼下，察打无人机内侧，直升机短翼）；左右成对的挂点共用一张 opts 表，只加一次
 local TANKS = { j15t = { inner = "tk800" }, j16 = { inner = "tk800" }, j20 = { wing = "tk800" }, j35 = { wingI = "tk800" }, gj2 = { inner = "tk800" },
-  a10c = { inner = "tk370" }, f35 = { wingI = "tk370" }, mq9 = { inner = "tk370" }, z10 = { inner = "tkh" }, z20 = { stub = "tkh" }, ah64e = { inner = "tk230" }, uh60 = { stub = "tk230" } }
+  a10c = { inner = "tk370" }, f35 = { wingI = "tk370" }, mq9 = { inner = "tk370" }, z20 = { stub = "tkh" }, ah64e = { inner = "tk230" }, uh60 = { stub = "tk230" } }
 for id, map in pairs(TANKS) do
   local d = D[id]
   for _, st in ipairs((d and d.st) or {}) do
@@ -1182,7 +1170,7 @@ end
 --   一直开加力四分钟、巡航十七分钟上下，一局里要回去加一两次油；侧卫系、F-35 内油多一点，无人机、轰炸机能飞一整局）
 local FUEL = { j20 = 520, j35 = 480, j15t = 540, j16 = 600, j11 = 640, j10 = 460, j36 = 760, j8 = 520, j6 = 380, f22 = 500, f35 = 500, f16 = 460, f15 = 620, f14 = 700,
   a10c = 600, h6k = 1300, b2 = 1600,
-  gj11 = 1200, gj2 = 2400, mq9 = 2400, z10 = 600, ah64e = 600, z20 = 720, uh60 = 720, ch47 = 900 }
+  gj11 = 1200, gj2 = 2400, mq9 = 2400, ah64e = 600, z20 = 720, uh60 = 720, ch47 = 900 }
 function AirDefs.fuelCap(d) return d.fuel or FUEL[d.id] or 360 end
 -- 每秒烧掉内油的几成：油门越小越省（慢车也烧一点），加力推满是军用推力的 2.2 倍；
 --   直升机：旋翼没转起来不烧，地上慢车三成，天上悬停六成，爬升（col 是升降杆 −1～1）、飞得快再多烧（spd 是速度 / 最大速度）

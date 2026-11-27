@@ -25,10 +25,10 @@ check(P.alive, "出生了")
 print("① 在机场岛上放一架直升机、坐进去，等旋翼转起来")
 local A2 = G.Map.AFIELD2
 local x, z = A2.x + 300, A2.z - A2.wid / 2 - 200
-local d = G.AD and G.AD.get and G.AD.get("z10")
+local d = G.AD and G.AD.get and G.AD.get("ah64e")   -- 原来开直-10（11-27 删了：原模型是扒的），换成阿帕奇（攻方也能开对面的直升机）
 local gy = G.airSurface(x, z)
-local e = G.spawnAircraft("atk", "z10", CF(x, gy + 6, z), nil, P)
-check(e ~= nil, "放了一架直-10")
+local e = G.spawnAircraft("atk", "ah64e", CF(x, gy + 6, z), nil, P)
+check(e ~= nil, "放了一架阿帕奇")
 if not e then T.summary() return end
 me.Character:PivotTo(CF(x + 20, gy + 3.5, z))
 T.tap(Enum.KeyCode.Backspace)   -- 先关上出生时的「目标与据点」说明（开着的时候三步卡等它）

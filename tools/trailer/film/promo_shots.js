@@ -1,7 +1,7 @@
 // 时代广场宣传片的新镜头：原片（shots.js）除了最后一镜都是夜戏，宣传片第三幕「天亮」要白天的大场面，这几镜专门拍
 //   N1 机群掠海：三架歼-20 贴着海面从镜头头顶掠过，开加力朝岛上爬升（左边岛的山脊、右边海平线上的日出）
 //   N2 舰队剪影：长焦逆光，054A、055 排在日出下面，近处几条登陆艇
-//   N3 直升机编队：三架直-10 从海上低空掠过滩头，朝山脊后面的太阳飞
+//   N3 直升机编队：三架米-28N（原来是直-10，11-27 删了）从海上低空掠过滩头，朝山脊后面的太阳飞
 //   N4 坦克纵队：99A 迎着晨光开上滩头，步兵跟着走，路过还在烧的碉堡
 //   N5 红蓝对峙：黑底里两辆坦克（红方 99A、蓝方 M1A2），一边红光、一边蓝光
 // 机位是按地形量出来的（从海上往北看：岛在北偏西 40° 到北偏东 10°，太阳在北偏东 23°、仰角 9°）
@@ -127,7 +127,7 @@ async function shotHelis(env, add) {
   const { fx, groundY } = env;
   const H = [];
   for (let i = 0; i < 3; i++) {
-    const h = await aircraft('z10w', env.REPO); add(h.root); H.push(h);
+    const h = await aircraft('mi28', env.REPO); add(h.root); H.push(h);   // 原来是直-10（11-27 删了）
     const d = new THREE.Mesh(new THREE.CircleGeometry(h.M.w * 0.5 * 1.25, 48), new THREE.MeshBasicMaterial({ color: 0x0d0f10, transparent: true, opacity: 0.3, depthWrite: false, side: THREE.DoubleSide }));
     d.rotation.x = -Math.PI / 2; if (h.rot.rotor) h.rot.rotor.add(d);   // 旋翼的虚影（同 S16）
   }

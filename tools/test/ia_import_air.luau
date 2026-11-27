@@ -3,7 +3,7 @@
 --   开服收进 ReplicatedStorage.Imported.Air → 客户端拼的飞机用原模型的块（蒙皮去掉，挂架和弹、灯、加力火焰留着）→
 --   挂架挂在原模型的机翼下表面、弹挂在下面 → 起落架收放（原模型自带的藏起来；歼-20 v4 的起落架是 j20_gear.py 补的网格，往前收、舱门跟着开关）→
 --   歼-15 折翼（外翼、挂的弹、翼尖灯一起绕原模型的铰链转）→ 加力火焰从原模型的尾喷口喷 → 阿帕奇旋翼转 → 所有型号都能拼、摆姿态
---   → 直-10 原模型自带的「转起来的桨盘」停着不显示、转快了才出现 → 在航母上按 E 弹出挂载编辑器，里面的歼-15T 也是原模型
+--   → 在航母上按 E 弹出挂载编辑器，里面的歼-15T 也是原模型（原来还测直-10 的桨盘，直-10 11-27 删了）
 -- 用法（仓库根目录）：lune run tools/test/ia_import_air.luau <rbxlx>
 local process = require("@lune/process")
 local roblox = require("@lune/roblox")
@@ -15,7 +15,7 @@ local Enum = roblox.Enum
 H.quietWarn = process.args[2] ~= "v"
 
 local IA = luau.load(fs.readFile("src/ReplicatedStorage/ImportedAir.lua"), { debugName = "ImportedAir" })()
-local KEYS = { "j15t", "ah64_v2", "j20_v4", "z10w_v2", "a10_v3", "tvc", "f22a", "j16_v3", "h6k_v3" }
+local KEYS = { "j15t", "ah64_v2", "j20_v4", "a10_v3", "tvc", "f22a", "j16_v3", "h6k_v3" }
 local function count(t) local n = 0 for _ in pairs(t) do n += 1 end return n end
 
 H.boot(process.args[1], { ds = "mock", before = function(game)
@@ -239,27 +239,7 @@ for i, list in pairs(MH.stores) do
 end
 check(lowOk and lowN > 0, string.format("%d 个挂点的弹都挂在原模型短翼下表面以下", lowN))
 
-print("③b 直-10：原模型自带的「转起来的桨盘」停着不显示，转快了才淡淡地出现、桨叶变虚")
-do
-	local dz = AD.get("z10")
-	local MZ = AM.build(dz, "atk", AD.presetLoad(dz))
-	local discs, blades = {}, {}
-	for _, it in ipairs(MZ.items) do
-		if it.p:IsA("MeshPart") then
-			local nm = string.match(it.p.Name, "__(.+)$")
-			if nm == "Rotor_2" or nm == "TRotor_2" then table.insert(discs, it.p) elseif nm == "Rotor_1" or nm == "TRotor_1" then table.insert(blades, it.p) end
-		end
-	end
-	local function tr(list) local a = {} for _, p in ipairs(list) do table.insert(a, p.Transparency) end return a end
-	pose(MZ, { gear = 1, rpm = 0 })   -- 挂载编辑器里就是这样摆的
-	local d0, b0 = tr(discs), tr(blades)
-	pose(MZ, { gear = 1, spin1 = 2, spinT = 3, rpm = 100 })
-	local d1, b1 = tr(discs), tr(blades)
-	check(MZ.imported == "z10w_v2" and #discs == 2 and #blades == 2, string.format("原模型：桨盘 %d 块、桨叶 %d 块", #discs, #blades))
-	check(#discs == 2 and d0[1] == 1 and d0[2] == 1 and b0[1] == 0 and b0[2] == 0, string.format("停着：桨盘藏起来（%s），桨叶实心（%s）", table.concat(d0, " / "), table.concat(b0, " / ")))
-	check(#discs == 2 and d1[1] < 1 and d1[2] < 1 and b1[1] > 0, string.format("转快了：桨盘出现（透明 %s），桨叶变虚（%s）", table.concat(d1, " / "), table.concat(b1, " / ")))
-	MZ.model:Destroy()
-end
+-- ③b 原来测直-10 原模型自带的「转起来的桨盘」（AirModels 的 BLUR）：直-10 11-27 删了（原模型是扒的），现在没有带桨盘的模型
 
 print("④ 歼-20（j20_v4）：原模型不减面；起落架是 tools/models/j20_gear.py 补的网格（关键帧往前收），起落架舱门跟着开关；零件拼的起落架不画了")
 local dj = AD.get("j20")

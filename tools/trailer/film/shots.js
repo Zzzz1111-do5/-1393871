@@ -892,10 +892,10 @@ async function shotKill(env, add) {
     events: [{ t: 0, k: 'missileFly' }, { t: 0.25, k: 'flares' }, { t: hitL, k: 'airboom' }],
   };
 }
-// S16 直-10 火箭齐射：跟在直-10 后面，看它一串串打出去、落在碉堡上炸开
+// S16 武装直升机火箭齐射：跟在直升机后面，看它一串串打出去、落在碉堡上炸开（原来拍直-10，11-27 直-10 删了（原模型是扒的），换成米-28N）
 async function shotHeli(env, add) {
   const { fx, groundY } = env;
-  const H1 = await aircraft('z10w', env.REPO), H2 = await aircraft('z10w', env.REPO);
+  const H1 = await aircraft('mi28', env.REPO), H2 = await aircraft('mi28', env.REPO);
   add(H1.root); add(H2.root);
   const tg = BUNKER_B.clone(); tg.y = groundY(tg.x, tg.z) + 2;
   const alt = (x, z, a) => Math.max(groundY(x, z) + a, a + 12);   // 永远在地形上面（原来有一段钻进山里）
@@ -1119,7 +1119,7 @@ async function shotFeatures(env, add) {
 // S21 片尾：选阵营、测试版、署名
 async function shotEnd(env, add) {
   env.worldVisible(false);
-  const credits = ['ZTZ-99A：philano', 'M1A2 SEPv3：dannzjs', '歼-20、F-22：andertan', '歼-15、直-10：42manako', '055 型驱逐舰：FeriseCAT', '爱国者：Muhamad Mirza Arrafi', 'ZTQ-15：lhc526', 'M4：BarcodeGames', '沙地贴图：Terrie Simmons-Ehrhardt'];
+  const credits = ['ZTZ-99A：philano', 'M1A2 SEPv3：dannzjs', '歼-20、F-22：andertan', '歼-15：42manako', '米-28N：Rukh3D', '055 型驱逐舰：FeriseCAT', '爱国者：Muhamad Mirza Arrafi', 'ZTQ-15：lhc526', 'M4：BarcodeGames', '沙地贴图：Terrie Simmons-Ehrhardt'];
   return {
     update(t) { cam(env, V3(0, 0, 0), V3(0, 0, -1), 40); return { exposure: 1, fade: 0, grain: 0.010, lift: 0 }; },
     titles: t => {
@@ -1139,11 +1139,11 @@ async function shotEnd(env, add) {
 // 调试：几架飞机摆在一起看
 async function shotDbg(env, add) {
   env.worldVisible(false);
-  const a = await aircraft('z10w', env.REPO), b = await aircraft('ah64', env.REPO), c = await aircraft('j15', env.REPO);
+  const a = await aircraft('mi28', env.REPO), b = await aircraft('ah64', env.REPO), c = await aircraft('j15', env.REPO);
   [a, b, c].forEach((x, i) => { add(x.root); x.root.position.set(-40 + i * 40, -5, -80); x.root.rotation.y = 0.6; });
   const key = new THREE.DirectionalLight(0xffffff, 4.0); key.position.set(-25, 18, 35); add(key);
   let info = '';
   a.root.traverse(o => { if (o.isMesh) { const m = o.material; info += `${o.name}:${m.type},t=${m.transparent},o=${m.opacity},vis=${o.visible},a=${m.alphaTest},side=${m.side}; `; } });
-  console.log('[film] z10w', info.slice(0, 600));
+  console.log('[film] mi28', info.slice(0, 600));
   return { update(t) { cam(env, V3(0, 0, 0), V3(0, -5, -80), 50); return { exposure: 1.4, lift: 0 }; } };
 }

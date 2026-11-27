@@ -125,7 +125,7 @@ export const PROMO = [
   cut('P16', 'S13', { from: 2.1, speed: 0.5, dur: 3.0, cam: zoom(1.2) }),   // 99A 开炮：慢镜头（只收视场角、不挪镜头：往后退会被铁丝网的桩子挡住）
   cut('P17', 'S14'),
   cut('P18', 'S16'),
-  cut('P19', 'S16', { from: 0.4, speed: 0.4, dur: 3.0, cam: both(tilt(-6), dutch(-3)) }),   // 直-10 火箭齐射：慢镜头（镜头往下压，直-10 不贴着画面下边）
+  cut('P19', 'S16', { from: 0.4, speed: 0.4, dur: 3.0, cam: both(tilt(-6), dutch(-3)) }),   // 武装直升机火箭齐射：慢镜头（镜头往下压，直升机不贴着画面下边）
   cut('P20', 'S17'),
   cut('P21', 'S15', { box: true, say: t => [big('AIR', fadeIO(t, 0.25, 1.6, 0.1, 0.3), { size: 0.11, sp: 0.6 })] }),
   cut('P22', 'S15B'),

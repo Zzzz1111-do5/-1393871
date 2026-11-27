@@ -12,7 +12,7 @@ export async function loadGLB(url) {
   if (!cache[url]) cache[url] = new Promise((res, rej) => loader.load(url, g => res(g.scene), undefined, rej));
   return cache[url];
 }
-// opaque：整架模型的材质按不透明画（直-10 的原模型整架设成了半透明，网页版 V3G_MATFIX 也是这么改的）
+// opaque：整架模型的材质按不透明画（原来给整架设成半透明的直-10 用，直-10 11-27 删了）
 function prepMats(root, env = 0.6, opaque = false) {
   root.traverse(o => {
     if (o.isMesh) {
@@ -238,7 +238,7 @@ export async function aircraft(key, base) {
   const M = META.ImportedAir.m[vk] || META.ImportedAir.m[key];
   const src = await loadGLB(`${base}/models/air/${key}.glb`);
   const model = src.clone(true);
-  prepMats(model, 0.35, key === 'z10w');
+  prepMats(model, 0.35, false);
   scrubInsignia(model);
   // 歼-20：原模型的漆面偏亮、偏光滑，月光在机背两条发动机舱的弧面上反出两道白光（用户看着像光柱）；按真机的暗灰隐身涂层压暗、调成哑光
   if (key === 'j20') model.traverse(o => {
@@ -256,8 +256,6 @@ export async function aircraft(key, base) {
   for (const o of collect(model, 'A_' + vk)) {
     const b = blockOf(o.name, 'A_' + vk), part = M.parts[b];
     const g = part ? part.g : 'Body';
-    if (key === 'z10w' && !/Rotor/.test(g)) o.traverse(x => { if (x.isMesh) { x.material = x.material.clone(); x.material.color.multiplyScalar(1.8); } });   // 原贴图很暗，夜里只剩一团黑
-    if (/Rotor/.test(g) && key === 'z10w') o.traverse(x => { if (x.isMesh) { x.material = x.material.clone(); x.material.transparent = true; x.material.opacity = 0.4; x.material.depthWrite = false; x.castShadow = false; } });   // 原模型的桨盘是「转起来的虚影」
     if (g === 'Rotor' && rot.rotor) rot.rotor.attach(o);
     else if (g === 'Rotor2' && rot.rotor2) rot.rotor2.attach(o);
     else if (g === 'TRotor' && rot.trotor) rot.trotor.attach(o);

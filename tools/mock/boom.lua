@@ -155,8 +155,8 @@ end
 local A2 = G.Map.AFIELD2
 local x, z = A2.x + 300, A2.z - A2.wid / 2 - 200
 local gy = G.airSurface(x, z)
-local e = G.spawnAircraft("atk", "z10", CF(x, gy + 6, z), C.AD.presetLoad(C.AD.get("z10"), "mix"), P)   -- 混挂：外侧导弹、内侧火箭巢
-check(e ~= nil, "放了一架直-10（航炮、火箭巢、导弹）")
+local e = G.spawnAircraft("atk", "ah64e", CF(x, gy + 6, z), C.AD.presetLoad(C.AD.get("ah64e"), "mix"), P)   -- 混挂：外侧导弹、内侧火箭巢（原来是直-10，11-27 删了）
+check(e ~= nil, "放了一架阿帕奇（航炮、火箭巢、导弹）")
 if e then
   me.Character:PivotTo(CF(x + 20, gy + 3.5, z))
   R.run(0.3)

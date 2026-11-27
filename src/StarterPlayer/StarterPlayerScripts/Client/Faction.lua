@@ -83,7 +83,7 @@ function Faction.init(G)
   -- 两张档案卡
   local cards = {}
   local W, H = 420, 468
-  local GEAR = { atk = { { "tank", "ztz99a" }, { "jet", "j35" }, { "heli", "z10" } }, def = { { "tank", "m1a2" }, { "jet", "f22" }, { "heli", "ah64e" } } }
+  local GEAR = { atk = { { "tank", "ztz99a" }, { "jet", "j35" }, { "heli", "z20" } }, def = { { "tank", "m1a2" }, { "jet", "f22" }, { "heli", "ah64e" } } }
   for i, side in ipairs({ "atk", "def" }) do
     local c = frame(content, UDim2.fromOffset(W, H), UDim2.new(0.5, (i == 1) and -(W + 14) or 14, 0.5, 16), RGB(13, 15, 19), 0.04, Vector2.new(0, 0.5))
     c.Name = "Card_" .. side

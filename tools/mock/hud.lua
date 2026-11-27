@@ -157,13 +157,13 @@ R.run(1.5)
 local hx, hz = x + 260, z - 120
 local hgy = G.airSurface(hx, hz)
 local hcf = CF(hx, hgy + 6, hz)
-local h = G.spawnAircraft("atk", "z10", hcf, nil, P)
+local h = G.spawnAircraft("atk", "ah64e", hcf, nil, P)   -- 原来是直-10（11-27 删了）
 me.Character:PivotTo(CF(hx + 20, hgy + 3.5, hz))
 R.run(0.3)
 T.act("enterVeh", h.id)
 R.run(1)
 local hs = C.fly
-check(hs ~= nil and hs.d.kind == "heli", "坐进了直-10")
+check(hs ~= nil and hs.d.kind == "heli", "坐进了阿帕奇")
 if hs then
   T.runUntil(function() return hs.rpm and hs.rpm >= 95 end, 15)
   T.key(Enum.KeyCode.E, true)

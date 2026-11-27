@@ -326,7 +326,7 @@ local VEH = {
   pgz07 = { "PGZ-07 自行高炮", "PGZ-07 SPAAG" }, pgl625 = { "PGL-625 弹炮结合防空车", "PGL-625 Gun-Missile AA" }, ld2000 = { "LD-2000 近防炮", "LD-2000 CIWS" },
   m163 = { "M163 火神高炮", "M163 VADS" }, mshorad = { "M-SHORAD", "M-SHORAD" }, cram = { "C-RAM 陆基密集阵", "C-RAM" }, patriot = { "爱国者", "Patriot" },
   plz07 = { "PLZ-07 自行榴弹炮", "PLZ-07 SPH" }, m109a7 = { "M109A7 帕拉丁", "M109A7 Paladin" }, m270 = { "M270 火箭炮", "M270 MLRS" }, m777 = { "M777 榴弹炮", "M777 Howitzer" },
-  z10 = { "直-10 武装直升机", "Z-10 Attack Helicopter" }, z20 = { "直-20 运输直升机", "Z-20 Transport Helicopter" },
+  z20 = { "直-20 运输直升机", "Z-20 Transport Helicopter" },
   ah64e = { "AH-64E 阿帕奇", "AH-64E Apache" }, uh60 = { "UH-60 黑鹰", "UH-60 Black Hawk" }, ch47 = { "CH-47 支奴干", "CH-47 Chinook" },
   mi24 = { "米-24V 雌鹿", "Mi-24V Hind" }, mi28 = { "米-28N 浩劫", "Mi-28N Havoc" }, ka52 = { "卡-52 短吻鳄", "Ka-52 Alligator" }, mi8 = { "米-8MT", "Mi-8MT" },
   tiger = { "虎式 UHT", "Tiger UHT" }, nh90 = { "NH90 TTH", "NH90 TTH" }, ah1w = { "AH-1W 超级眼镜蛇", "AH-1W SuperCobra" }, uh1n = { "UH-1N 双休伊", "UH-1N Twin Huey" },
@@ -517,7 +517,7 @@ local PRESET = {
 for k, v in pairs(PRESET) do add("preset." .. k, v[1], v[2]) end
 local AW = {
   gsh30 = { "30 毫米航炮", "30 mm cannon" }, m61 = { "20 毫米航炮", "20 mm cannon" }, gsh23 = { "23 毫米双管航炮", "23 mm twin cannon" }, nr30 = { "30 毫米航炮 ×3", "30 mm cannon ×3" }, gau22 = { "25 毫米航炮", "25 mm cannon" }, gau8 = { "GAU-8 30 毫米机炮", "GAU-8 30 mm" },
-  m230 = { "30 毫米链式炮", "30 mm chain gun" }, zh23 = { "23 毫米炮", "23 mm turret" }, m134 = { "舱门机枪", "Door gun" },
+  m230 = { "30 毫米链式炮", "30 mm chain gun" }, m134 = { "舱门机枪", "Door gun" },
   a42 = { "2A42 30 毫米炮", "2A42 30 mm cannon" }, yakb = { "YakB 12.7 毫米机枪", "YakB 12.7 mm gun" }, m197 = { "M197 20 毫米炮", "M197 20 mm cannon" },
   ataka = { "攻击（9M120）", "Ataka (9M120)" }, shturm = { "突击（9M114）", "Shturm (9M114)" }, vikhr = { "旋风（9K121）", "Vikhr (9K121)" },
   hot3 = { "HOT 3", "HOT 3" }, tow = { "陶式", "TOW" }, s8 = { "S-8 火箭", "S-8 rockets" }, igla = { "针-V", "Igla-V" }, type91 = { "91 式防空导弹", "Type 91 SAM" },

@@ -43,7 +43,7 @@ for _, id in ipairs(G.vehModels("atk")) do atkModels[id] = true end
 check(atkModels.m1a2 and atkModels.f35 and atkModels.ah64e and atkModels.ztz99a, "攻方能选 M1A2、F-35、阿帕奇（也有自己的 99A）")
 local defModels = {}
 for _, id in ipairs(G.vehModels("def")) do defModels[id] = true end
-check(defModels.ztz99a and defModels.j20 and defModels.z10, "守方能选 99A、歼-20、直-10")
+check(defModels.ztz99a and defModels.j20 and defModels.z20, "守方能选 99A、歼-20、直-20")
 check(not atkModels.ddg125, "舰艇还是各用各的（攻方没有美军驱逐舰）")
 local pad = nil
 for _, p in ipairs(G.pads) do
