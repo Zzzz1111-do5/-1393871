@@ -204,17 +204,24 @@ settle(0.5)
 local tdef = VD.get("t72b3")
 local gh0 = C.driveGunHit and C.driveGunHit()
 local o0 = (gh0 and gh0.o) or cam.CFrame.Position   -- 从炮口看得见（炮比车长的眼睛低，按炮挑方向）
-local tp = nil
-for k = 0, 35 do
-  local a = k / 36 * math.pi * 2
-  local x, z = spot.x + math.sin(a) * 1400, spot.z + math.cos(a) * 1400
-  if Map.isLand(x, z) and Map.slope(x, z) < 0.3 then
-    local p = V3(x, Map.height(x, z) + 3, z)
-    local hit = R.services.Workspace:Raycast(o0, (p - o0) * 0.98)
-    if not hit then tp = p break end
+-- 地面有起伏：贴地 4 格高的射线 1400 格远常被小坡挡住——几个距离（360～610 米）× 72 个方向挨个试，估距按实际距离比
+local tp, tdist = nil, nil
+local nTry = 0
+for _, rr in ipairs({ 1400, 1260, 1540, 1120, 1700 }) do
+  for k = 0, 71 do
+    local a = k / 72 * math.pi * 2
+    local x, z = spot.x + math.sin(a) * rr, spot.z + math.cos(a) * rr
+    if Map.isLand(x, z) and Map.slope(x, z) < 0.3 then
+      nTry = nTry + 1
+      local p = V3(x, Map.height(x, z) + 3, z)
+      local hit = R.services.Workspace:Raycast(o0, (p - o0) * 0.98)
+      local hitC = R.services.Workspace:Raycast(cam.CFrame.Position, (p - cam.CFrame.Position) * 0.98)
+      if not hit and not hitC then tp, tdist = p, rr / 2.8 break end
+    end
   end
+  if tp then break end
 end
-check(tp ~= nil, "找到 500 米外看得见的地方放靶车")
+check(tp ~= nil, string.format("找到 360～610 米外看得见的地方放靶车（试了 %d 处平地）", nTry))
 if not tp then T.summary() return end
 local tgt = G.newVehicle("atk", "t72b3", G.vehBaseAt(tdef, tp.X, tp.Z, (V3(spot.x, 0, spot.z) - V3(tp.X, 0, tp.Z)).Unit))
 tgt.noScore = true
@@ -254,7 +261,7 @@ T.tap(Enum.KeyCode.R)
 R.run(0.3)
 check(st.fcs.estimating == true, "R：车长估距中")
 settle(2.5)
-check(st.fcs.R ~= nil and math.abs(st.fcs.R - 500) <= 60, string.format("估出来 %s 米（靶车 500 米，差 6%% 以内）", tostring(st.fcs.R)))
+check(st.fcs.R ~= nil and math.abs(st.fcs.R - tdist) <= tdist * 0.12, string.format("估出来 %s 米（靶车 %.0f 米，差 12%% 以内）", tostring(st.fcs.R), tdist))
 local bi = find("BinoInfo")
 check(bi ~= nil and bi.Text:find("≈", 1, true) ~= nil, "望远镜下面写着估的距离：" .. tostring(bi and bi.Text))
 if SHOT then dofile(MOCK_DIR .. "/uidump.lua")(T, me, SHOT .. "/gunsight_binoc.json", true) end
