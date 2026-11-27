@@ -214,7 +214,9 @@ R.run(0.5)
 local panel = C.treeGui
 local nCard = 0
 for _, c in ipairs(panel and panel:GetDescendants() or {}) do if c.Name:match("^Card_") then nCard = nCard + 1 end end
-check(panel and panel.Visible and nCard == #TT.list[(C.treeState().nat)].ground, "科技树开着：中国坦克 " .. nCard .. " 格")
+local tnat = C.treeState().nat
+check(panel and panel.Visible and nCard == #TT.list[tnat].ground,
+  string.format("科技树开着：%s 地面 %d 格（这一系地面 %d 项）", tostring(tnat), nCard, #TT.list[tnat].ground))
 local nxt
 for _, it in ipairs(TT.list.cn.ground) do if TT.canResearch(t, it.key) then nxt = it break end end
 if nxt then
