@@ -9,6 +9,9 @@
 --     (c) 发射器挪到别处去喷，上一处还在飘的长寿命烟会不会跟着零件出了视野被一起剔除：寿命上限 ≥ 3 秒的烟、尘云（eSoot、eCloud、
 --         mHang、gRise、eRing、kHang、wSoot……碎屑火星除外）每处爆炸借一处，固定在那里，粒子没灭完不挪走（到寿命才还回池里）；
 --         离上一处不到 10 格的照用那一处（挪一点不碍事）。一层最多 8 处（长寿命）/ 6 处（别的），都占满了才借最早到期的那处
+--     「不去赌」只管到这个数（11-27 复核写明）：一层一帧里要在 6 处以上喷（霰弹的一把弹丸、一帧里扫一大串机枪弹着点）时，第 7 处起
+--     还是借这一帧用过的那几处（又回到 (b)：同一帧挪零件喷几次）；长寿命的烟同时超过 8 处在飘（火箭炮齐射、集束炸弹）时，借最早到期的
+--     那一处，它还在飘的烟可能跟着零件被剔除（又回到 (c)）。是降级、不出错；Studio 里这两样要是真的不对，最多是扎堆的那几处画少了
 --     (a) EmissionDirection = Front 时 SpreadAngle 的 X 是不是左右（水平）——见下面 SPREAD_XH：
 --         Studio 里怎么看：Play（钢城、沙海都行），开坦克在平地上开一炮——炮口前应该是一大片又宽又扁、贴着地往前、往两边推开的扇形尘幕；
 --         再往远处地上打一发榴弹（或看别人的落点）——落点那圈扬尘应该贴着地面往四周推开、是平的一圈。
@@ -17,7 +20,7 @@
 --   · 闪光灯池：8 盏点光源挂在 Attachment 上轮着用，亮度每帧按 Quad Out 降到 0（不每次新建零件、灯、补间）；投影子的同时只 1 盏
 --   · 弹坑焦痕池（24 块，60 秒后 10 秒淡掉，满了收最旧的）、余火池（6 处：炸弹、导弹炸完坑里烧一会儿）
 --   · 远近分档：离镜头 400 / 1100 / 2500 格（开镜按视场折算成看上去的远近）；同时活着的粒子估个数，太多了先砍碎屑、火星；
---     不走池的常喷发射器（碎块拖的火和烟、舱口火柱、炮塔身上的火）用 rateK 记进同一个数、按它少喷
+--     不走池的常喷发射器（碎块拖的火和烟、舱口火柱、炮塔身上的火）用 rateK 记进同一个数（按喷稳了以后同时活着的量：rate × min(寿命, 喷几秒)）、按它少喷
 --   · 预建（prewarmLater）：常用的层进局时分几帧建好（一帧 4 个），第一炮、第一次殉爆不顿
 --   · 贴图只用 Roblox 自带的（rbxasset://textures/particles/…），不上传图片
 --   · 测试：L.logOn = true 以后每喷一次记一笔（L.log），tools/mock/vfxreal.lua、groundhit.lua、boom.lua 按它查
@@ -390,15 +393,21 @@ function VfxLib.new(G, FXF)
     return m
   end
   -- 不走池的常喷发射器（碎块拖的火和烟、舱口火柱、炮塔身上挂的火和烟……）：rate 每秒几颗、secs 喷几秒、life 每颗活多久——
-  --   按到期时间记进同时活着的粒子数（全局预算管得到它们）；返回现在该按几成喷（粒子太多时少喷：Rate 乘它）
+  --   记进同时活着的粒子数（全局预算管得到它们）；返回现在该按几成喷（粒子太多时少喷：Rate 乘它）。
+  --   11-27 复核：原来把这几秒要喷的全记成「现在活着」（rate ×（secs + 0.25））——8 颗 / 秒喷 4 秒、每颗活 0.5 秒的一下记 34 颗，真活着的只有 4 颗；
+  --   一次殉爆一下记了九百多颗（真同时活着的两百出头），两三辆车接连殉爆就提前砍火星、一般的层也少喷，画面无故变素。
+  --   现在按喷稳了以后的量记一笔：rate × min(life, secs)；停喷以后一颗颗灭（线性减到 0），分四份在 [max(secs, life), secs + life] 里到期
+  --   （刚开喷那一下多记了一点：宁可多算）
   function L.rateK(rate, secs, life, prio)
     advance()
     local k = budgetK(prio or 2)
-    local per = (rate or 0) * k * BW
-    if per > 0 then
+    rate, secs, life = rate or 0, max(0, secs or 0), max(0.05, life or 1)
+    local m = rate * k * min(life, secs)
+    if m > 0 then
       local now = os.clock()
-      for t = 0, math.max(0, secs or 0), BW do accountAt(per, now + t + (life or 1)) end
-      L.stat.rated += rate * k * (secs or 0)
+      local t1, span = max(secs, life), min(secs, life)
+      for i = 1, 4 do accountAt(m / 4, now + t1 + span * i / 4) end
+      L.stat.rated += rate * k * secs
     end
     return k
   end

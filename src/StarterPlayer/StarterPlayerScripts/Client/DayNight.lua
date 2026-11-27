@@ -19,8 +19,9 @@ local DayNight = {}
 function DayNight.init(G)
   local DC = require(RS:WaitForChild("DayClock"))
   local Map = require(RS:WaitForChild("Map"))
-  -- 各图的光照参数（服务器 World.lighting 也用）：等不到就报错跳过（init.client.lua 每个模块单独 pcall），别把后面的模块卡死
-  local llMod = RS:WaitForChild("LightLooks", 20)
+  -- 各图的光照参数（服务器 World.lighting 也用）：等不到就报错跳过（init.client.lua 每个模块单独 pcall），别把后面的模块卡死——
+  --   等 10 秒（同 init.client.lua 等模块的规矩：用户 11-20 deploy 进不去那次立的；原来等 20 秒，后面的模块跟着多等）
+  local llMod = RS:WaitForChild("LightLooks", 10)
   if not llMod then error("缺少 ReplicatedStorage.LightLooks（脚本没换全？）") end
   local LL = require(llMod)
   local RGB = Color3.fromRGB
@@ -33,6 +34,9 @@ function DayNight.init(G)
   --   夜视画面要和原来一样亮——半夜开夜视的总曝光钉在原来的数（夜里基准 + 增亮：0.55 + 2.7、沙海 0.55 + 1.5、雪山 0.62 + 1.1），
   --   增亮 = 这个数减这张图夜里的基准（以后 LightLooks 再调夜里的曝光，夜视也不跟着变暗变亮）
   local NV_EV = { city = 0.55 + 2.7, range = 0.55 + 2.7, sands = 0.55 + 1.5, snow = 0.62 + 1.1 }
+  --   11-27 复核：月光也补回去——夜里的月光亮度 2.2 → 1.9～2.0、天光反照 EnvironmentDiffuseScale 0.35 → 0.25～0.3，只钉曝光的话
+  --   月光照到的开阔地夜视里暗一点点；开夜视时这两样也按夜里的程度（1 − dayK）往改之前的数（各图都是 2.2 / 0.35）插回去
+  local NV_BRIGHT, NV_DIFF = 2.2, 0.35
   local look = nil   -- 现在用哪一套（LightLooks.LOOK 的键）
   local function nvEv()
     local P = LL.LOOK[look] or LL.LOOK.city
@@ -60,7 +64,7 @@ function DayNight.init(G)
   --   在 12 点、6 点、18 点各看一眼太阳（同一帧里拨回来，画面上看不出），6 点、18 点离地平线超过 3°（sin ≈ 0.05）就不用这个纬度，
   --   退回原来的 23 度就停，打一条提示（不再往 0 度退：赤道上正午太阳在头顶，影子比 23 度还短，跟「太阳低、影子长」反着来；
   --   23 度是一直用到 11-27 的，昼夜那时就是对的）。读到的太阳方向没跟着钟点变（GetSunDirection 同一帧里不更新）是「判断不了」：
-  --   照用这张图的纬度，等钟点自己走到 6 点、18 点时再看一眼（watchSun：那时的读数隔了好几帧，是新的）
+  --   照用这张图的纬度，等钟点自己走到 17 点 / 18 点（7 点 / 6 点）时再看一眼（watchSun：那时的读数隔了好几帧，是新的）
   local latSeen = {}   -- 纬度 → true / false / "?"（看过一次就记住：Roblox 的算法一局里不会变）
   local function sunY(c, lat)
     Lighting.GeographicLatitude = lat
@@ -109,16 +113,26 @@ function DayNight.init(G)
     end
   end
   -- 钟点自己走到 6 点、18 点（日出、日落）时看一眼太阳：进图时判断不了的（"?"）在这儿补上。在写这一次的钟点之前读——
-  --   ClockTime 还是上一次更新写的（隔了好几帧）；离地平线超过 4°（sin ≈ 0.07）就退回 23 度（一局只换这一次，打提示）
+  --   ClockTime 还是上一次更新写的（隔了好几帧）；离地平线超过 4°（sin ≈ 0.07）就退回 23 度（一局只换这一次，打提示）。
+  --   11-27 复核：每局开局拨回 8 点，18 点要到开局后二十六七分钟才到——真按纬度挪了日落的话，17～18 点黄昏那套光照已经照在还挂得老高的太阳上，
+  --   18 点一判纬度一换，太阳在日落这个最显眼的时候跳一下。所以 17 点（还有 7 点）先看一眼：「6 点升 18 点落」的太阳（不管纬度怎么歪）
+  --   离落山一小时最多 15° 高、也不会已经落下去；读到高过 20° 或者低过 −2°（按季节走的夏天 48° 那里约 27°）就早一个钟头退回，
+  --   黄昏那套还没怎么上来（权重 0.14）。在这个范围里不算数（判不准），照旧等 6 点 / 18 点那一眼
   local function watchSun()
     if lat == LL.LAT0 or latSeen[lat] ~= "?" then return end
     local c = Lighting.ClockTime
-    if math.abs(c - 6) > 0.05 and math.abs(c - 18) > 0.05 then return end
+    local horizon = math.abs(c - 6) <= 0.05 or math.abs(c - 18) <= 0.05
+    local hourOff = math.abs(c - 7) <= 0.05 or math.abs(c - 17) <= 0.05
+    if not horizon and not hourOff then return end
     if math.abs(Lighting.GeographicLatitude - lat) > 1e-3 then return end
     local ok, y = pcall(function() return Lighting:GetSunDirection().Y end)
     if not ok or type(y) ~= "number" then return end
-    if math.abs(y) <= 0.07 then
-      latSeen[lat] = true
+    if horizon then
+      if math.abs(y) <= 0.07 then
+        latSeen[lat] = true
+        return
+      end
+    elseif y <= 0.342 and y >= -0.035 then   -- sin 20°、sin −2°
       return
     end
     latSeen[lat] = false
@@ -178,12 +192,14 @@ function DayNight.init(G)
       --   太阳一动整张阴影图都要重算，原来每 0.1 秒挪一下（用户 11-18「一卡一卡的」；11-25「特别卡」）
       put(Lighting, "ClockTime", math.floor(clock / 0.02 + 0.5) * 0.02)
       put(Lighting, "GeographicLatitude", lat)
-      put(Lighting, "Brightness", v.bright)
-      local amb, oamb, exp = v.amb, v.oamb, v.exp
-      if nv then   -- 夜视：本地增亮（白天只亮一点点；沙漠、雪地少加，见 nvEv）
+      local amb, oamb, exp, bright, diff = v.amb, v.oamb, v.exp, v.bright, v.diff
+      if nv then   -- 夜视：本地增亮（白天只亮一点点；沙漠、雪地少加，见 nvEv）；月光、天光反照补回改之前的（NV_BRIGHT）
         exp += nvEv() * nk + 0.25 * vk
         amb, oamb = lc(amb, RGB(52, 60, 56), nk), lc(oamb, RGB(96, 110, 100), nk)
+        bright = bright + (NV_BRIGHT - bright) * nk
+        diff = diff + (NV_DIFF - diff) * nk
       end
+      put(Lighting, "Brightness", bright)
       -- 照明弹（Warfx.lua 的 G.illum）：附近有照明弹在烧，整片地亮起来——环境光往暖白抬、曝光加一点，跟着它一闪一闪
       local il = G.illum and G.illum.k or 0
       if il > 0.01 then
@@ -197,7 +213,7 @@ function DayNight.init(G)
       put(Lighting, "ExposureCompensation", exp)
       put(Lighting, "ColorShift_Top", v.top)
       put(Lighting, "ColorShift_Bottom", v.bot)
-      put(Lighting, "EnvironmentDiffuseScale", v.diff)
+      put(Lighting, "EnvironmentDiffuseScale", diff)
       put(Lighting, "EnvironmentSpecularScale", v.spec)
       -- 影子：白天收紧（边缘清楚又不抖）、黄昏软一点、夜里（月光、灯光）更软
       put(Lighting, "ShadowSoftness", v.shadow)

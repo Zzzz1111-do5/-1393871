@@ -17,6 +17,10 @@
 --      老式扣血判毁的步战车、悍马有爆炸；老残骸、活着的车旁边 30 格内的工事被毁有爆炸；黑烟远近两个发射器换着喷（不改 Size）；
 --      碎块满 40 块收最早定住的
 --   ⑦ 曳光池（不每发新建零件）；发射器到上限后不返回空（借最近一档或收最久没用的）；火箭弹、导弹的弹种（服务器 Ents.rocketAm）
+--   11-27 复核之后加的：
+--   ⑤ 殉爆第一秒按连爆炸三下（最多的那种）数；离镜头 5000 / 7000 格的转盘车殉爆车身照样烧、冒黑烟；
+--      殉爆炸开那一刻旁边 12 格的步战车被老式判毁，它自己的爆炸照样画（不当重复吞掉）
+--   ⑦ 曳光一组 96 根、满了顶离镜头最远的、自己打的单独一组；常喷的发射器按喷稳了以后的量记进全局预算
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF = T.R, T.V3, T.CF
 local check = T.check
@@ -439,8 +443,9 @@ local function viewOf(ent)
 end
 local v2 = viewOf(e2)
 -- 殉爆第一秒所有粒子发射器一共喷了多少（审查 5：池里的 + 掀炮塔的 + 碎块拖的火和烟 + 舱口火柱 + 炮塔身上的火和烟 + 车身大火）：
---   模拟器数 ClientFx 下面和这辆车的样子下面所有 ParticleEmitter 的 Emit 颗数、开着的 Rate × 时间；样子用最费的「连爆」
+--   模拟器数 ClientFx 下面和这辆车的样子下面所有 ParticleEmitter 的 Emit 颗数、开着的 Rate × 时间；样子用最费的「连爆」、炸三下（最多的那种）
 C.wreckStyleOverride = "C"
+C.wreckBlastsOverride = 3
 R.peCount = { emit = 0, rate = 0, roots = { FXF, v2 and v2.model } }
 VL.logOn = true
 VL.log = {}
@@ -470,6 +475,7 @@ end
 local pcE, pcR = base1 and (R.peCount.emit - base1[1]) or -1, base1 and (R.peCount.rate - base1[2]) or -1
 R.peCount = nil
 C.wreckStyleOverride = nil
+C.wreckBlastsOverride = nil
 R.run(0.4)
 local Lw3 = VL.log
 VL.logOn = false
@@ -583,20 +589,33 @@ local function legacyKill(id, x, z)
   cam.CFrame = R.CFrame.lookAt(gpos(x, z) + V3(40, 25, 40), gpos(x, z))
   VL.logOn = true
   VL.log = {}
+  local toss0 = C.tossCount or 0
   G.wtRaw = true
   G.damageEnt(e3, (e3.hp or 0) + 1e6, nil)
   G.wtRaw = nil
-  R.run(1.2)
+  -- 大灯（Range ≥ 60）同时亮几盏：复核——别的车老式判毁掀炮塔时 View 原来还点一盏 Range 70 的，跟服务器那一下（boom）Range 120 的同时亮
+  local bigL = 0
+  for _ = 1, 6 do
+    R.run(1 / 30, 1 / 30)
+    local n = 0
+    for _, a in ipairs(rig:GetChildren()) do
+      local pl = a:FindFirstChildOfClass("PointLight")
+      if pl and pl.Enabled and pl.Range >= 60 then n = n + 1 end
+    end
+    if n > bigL then bigL = n end
+  end
+  R.run(1.0)
   local out = VL.log
   VL.logOn = false
-  return out, e3
+  return out, e3, bigL, (C.tossCount or 0) - toss0
 end
 local lx, lz = spot(140)
 for _, id in ipairs({ "bmp2", "hmmwv" }) do
-  local Ll = legacyKill(id, lx, lz)
+  local Ll, _, bigL, tossed = legacyKill(id, lx, lz)
   local nFl = 0
   for _, x in ipairs(Ll) do if x.name == "eFlash" then nFl = nFl + 1 end end
-  check(has(Ll, "eBall") and nFl == 1, string.format("老式扣血判毁的 %s：有爆炸（火球），服务器的两个 wreck 只画一个（白闪 %d 次）", id, nFl))
+  check(has(Ll, "eBall") and nFl == 1 and bigL == 1,
+    string.format("老式扣血判毁的 %s：有爆炸（火球），服务器的两个 wreck 只画一个（白闪 %d 次），大灯只亮一盏（%d 盏；掀炮塔 %d 次）", id, nFl, bigL, tossed))
   lx = lx + 45
 end
 local Lt = legacyKill(VEH, lx + 30, lz)
@@ -622,6 +641,54 @@ check(has(Lf1, "eBall"), "老残骸旁边 30 格内的工事被毁：有爆炸")
 local ep = e.root.CFrame.Position
 local Lf2 = fortKill(ep.X + 16, ep.Z - 6)
 check(has(Lf2, "eBall"), "活着的车旁边 30 格内的工事被毁：有爆炸")
+
+-- 复核（特效 1）：离镜头 4000 格外的转盘车殉爆——wreckCook 不接手，车身照别的残骸马上烧起来（原来残骸 40 秒不冒黑烟，6000 格外连火也没有）
+local function blackOf(Mx) return (Mx.black and Mx.black.Rate or 0) + (Mx.blackN and Mx.blackN.Rate or 0) end
+for _, far in ipairs({ 5000, 7000 }) do
+  local fx, fz = spot(far / 10 - 180)   -- 320 / 520 格外（离前面几辆车、残骸远一点）
+  local ef = G.newVehicle("atk", VEH, G.vehBaseAt(def, fx, fz, V3(0, 0, -1)))
+  R.run(1.5)
+  local vf = viewOf(ef)
+  cam.CFrame = R.CFrame.lookAt(gpos(fx, fz) + V3(far, 300, 0), gpos(fx, fz))
+  killAs(ef, "ammo")
+  R.run(0.5)
+  local Mf = vf and vf.M
+  local f0, b0 = Mf and Mf.fire.Rate or -1, Mf and blackOf(Mf) or -1
+  R.run((WD.CAROUSEL[VEH] and WD.cookSecs(ef.id) or 0) + 1.5)
+  local f1, b1 = Mf and Mf.fire.Rate or -1, Mf and blackOf(Mf) or -1
+  check(Mf and vf.cookT and not vf.cookJets and f0 > 0 and b0 > 0 and f1 > 0 and b1 > 0,
+    string.format("离镜头 %d 格的转盘车殉爆：先烧那几秒火 %.0f / 黑烟 %.0f，炸开以后火 %.0f / 黑烟 %.0f（都有）", far, f0, b0, f1, b1))
+end
+cam.CFrame = R.CFrame.lookAt(gpos(cx, cz) + V3(40, 25, 40), gpos(cx, cz))
+
+-- 复核（wreckDup）：殉爆炸开那一刻旁边 12 格的步战车被老式判毁——它自己那一下照样画（原来殉爆那一下先登记了位置，0.6 秒内 15 格内的当重复吞掉；
+--   ownCookOff 也只认离这一下最近的那辆车）
+do
+  local ax, az = spot(420)
+  local ea = G.newVehicle("atk", VEH, G.vehBaseAt(def, ax, az, V3(0, 0, -1)))
+  local eb = G.newVehicle("atk", "bmp2", G.vehBaseAt(VD.get("bmp2"), ax + 12, az, V3(0, 0, -1)))
+  R.run(1.5)
+  cam.CFrame = R.CFrame.lookAt(gpos(ax, az) + V3(50, 30, 50), gpos(ax, az))
+  local big1 = st.big
+  killAs(ea, "ammo")
+  local tA = nil
+  for _ = 1, 150 do
+    R.run(1 / 30, 1 / 30)
+    if st.big > big1 then tA = R.clock() break end
+  end
+  VL.logOn = true
+  VL.log = {}
+  R.as("client", function() C.boom(viewOf(ea).hullF.Position + V3(0, 3, 0), 4.6, "wreck") end)   -- 服务器殉爆那一下（同一刻到）
+  G.wtRaw = true
+  G.damageEnt(eb, (eb.hp or 0) + 1e6, nil)   -- 旁边的步战车老式判毁：服务器发它自己的 c = "wreck"
+  G.wtRaw = nil
+  R.run(0.4)
+  local bp = eb.root.CFrame.Position
+  local nearB = false
+  for _, x in ipairs(VL.log) do if x.name == "eBall" and (x.pos - bp).Magnitude < 10 then nearB = true end end
+  VL.logOn = false
+  check(tA ~= nil and nearB, "殉爆那一刻旁边 12 格的步战车被老式判毁：它自己的爆炸照样画（不当成殉爆那一下的重复）")
+end
 end
 
 print("⑥ 全局")
@@ -673,6 +740,44 @@ burst()
 R.run(0.05)
 check(tracers() == tr1, "第二梭子：一根新零件都不建（" .. (tracers() - tr1) .. "）")
 R.run(1.2)
+do
+-- 复核（特效 3）：一组最多 96 根（原来 32：别人车上的并列机枪、大机枪、工事、步兵机枪都挤在 lmg 一组，三挺就满了，快飞到的那根半路没了）；
+--   自己打的单独一组（lmg_me），不被别人的顶掉；满了顶离镜头最远的那根
+local _, trN2, act2, cap0 = C.tracerPool()
+local function live(key, maxD)
+  local n = 0
+  for _, r in ipairs(act2) do if r.key == key and (not maxD or (r.p0 - cam.CFrame.Position).Magnitude < maxD) then n = n + 1 end end
+  return n
+end
+R.as("client", function()
+  for i = 1, 10 do C.gunFx("lmg", ta, ta + V3(i * 2, 0, -600), true, nil, false) end                              -- 自己打的 10 发
+  for i = 1, 70 do C.gunFx("lmg", ta + V3(0, 0, -700), ta + V3(i, 0, -1300), false, nil, false) end            -- 别人的：700 格外打过来 70 发
+  for i = 1, 60 do C.gunFx("lmg", ta + V3(0, 0, -5), ta + V3(i, 0, -600), false, nil, false) end               -- 别人的：镜头跟前打 60 发
+end)
+local nMe, nAll, nNear = live("lmg_me"), live("lmg"), live("lmg", 100)
+check(cap0 >= 96 and nMe == 10 and nAll == math.min(130, cap0) and nNear == 60 and trN2.lmg <= cap0,
+  string.format("曳光一组最多 %d 根：别人的 130 发在飞 %d 根（镜头跟前那 60 根都在，顶掉的是 700 格外的）；自己打的 10 发单独一组、一根没被顶掉（%d 根）",
+    cap0, nAll, nMe))
+R.run(1.5)
+end
+do
+-- 复核（特效 2）：常喷的发射器（碎块拖的火和烟、舱口火柱……）记进全局预算按喷稳了以后同时活着的量（原来把这几秒要喷的全记成「现在活着」：
+--   8 颗 / 秒喷 4 秒、每颗活 0.5 秒的一下记 34 颗，真活着的 4 颗；一次殉爆记九百多颗，两三辆车接连殉爆就提前砍火星）
+local VfxLib = R.require(R.services.StarterPlayer:FindFirstChild("StarterPlayerScripts"):FindFirstChild("Client"):FindFirstChild("VfxLib"))
+local f2 = R.Instance.new("Folder")
+f2.Parent = R.workspace
+local L2 = VfxLib.new({}, f2)
+L2.rateK(8, 4, 0.5, 2)
+local a1 = L2.live
+L2.rateK(4, 11, 2.6, 2)
+local a2 = L2.live
+R.run(5)
+L2.rateK(0, 0, 0)
+local a3 = L2.live
+f2:Destroy()
+check(math.abs(a1 - 4) < 0.01 and math.abs(a2 - 14.4) < 0.01 and math.abs(a3 - 10.4) < 0.01,
+  string.format("常喷的记进全局预算：8 颗/秒 × 活 0.5 秒记 %.1f 颗（真活着 4）、再加 4 颗/秒 × 活 2.6 秒共 %.1f（14.4）；5 秒后头一个喷完、灭完了剩 %.1f（10.4）", a1, a2, a3))
+end
 -- 发射器到上限（审查 11）：没建过的层不返回空——借同一层最近的一档，再不行收最久没用的那一层
 local nNow = select(1, VL.count())
 VL.MAX_EM = nNow + 1

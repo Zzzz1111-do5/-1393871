@@ -1,14 +1,16 @@
 -- 光影（用户 11-27「光影照战雷做」：黄昏侧光暖、阴影软硬合适、远处空气透视、雪地反光不过曝、夜里月光冷；M3 上丝滑）：
 --   python3 tools/mock/run.py tools/mock/lightreal.lua
 --   不开整个服务器（一两分钟跑完）：装好 src，换图，直接跑 World.lighting（服务器）和 DayNight / SnowLook（客户端）
---   ① 各图各时段的数在规格（2026-11-27「特效和光影改法规格」第 5 节）的范围里，几个关键数和规格一样
+--   ① 各图各时段的数在规格（2026-11-27「特效和光影改法规格」第 5 节）的范围里，几个关键数和规格一样；
+--     用户 11-22「视野无限远」：每张图白天大气 ≤ 0.1，霾照那次减半以后的量级（钢城、训练场白天 ≤ 0.4、夜里 ≤ 0.5、任何时候 ≤ 0.8）
 --   ② 钟点一路走过去，混合出来的数是连续的（没有一下跳的）；正午是白天那套、半夜是夜里那套、日落前后是黄昏那套、日出前后是清晨那套
 --   ③ 开服（World.lighting）按当前钟点设一套（不再写死夜里：开局白天时不闪一下夜里）；纬度、风、新版光照按图；
 --     LightLooks 读不到时用原来写死的那套（不落到默认值）；地点文件（两个生成脚本）写 Realistic、PrioritizeLightingQuality = false
 --   ④ 客户端 DayNight：设到 Lighting 上的就是那一套；训练场那块换训练场那套；钟点跳了一秒左右缓过去；
 --     白天稳定时一个属性都不重复写；太阳光束夜里关；远处景深地面上照旧开（0.06，用户 11-22 要的）、开飞机 0.035、开镜关；
---     夜视画面和改之前一样亮（夜里基准曝光降了，增亮补回来）
---   ⑤ 纬度自检：日出日落跟着纬度挪的算法退回 23 度就停（不往 0 度退）、打提示；判断不了照用；钟点走到 6 / 18 点时再看一眼
+--     夜视画面和改之前一样亮（夜里基准曝光降了，增亮补回来；月光亮度、天光反照也补回来）
+--   ⑤ 纬度自检：日出日落跟着纬度挪的算法退回 23 度就停（不往 0 度退）、打提示；判断不了照用；钟点走到 6 / 18 点时再看一眼，
+--     17 点先看一眼（按季节走的太阳 17 点还挂得老高：早一个钟头退回，不等日落那一刻跳）
 --   ⑥ 雪山：下雪是圆点贴图（不是八角星）、受光、每秒不超过 400 片，机器跟不上少下
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R = T.R
@@ -50,9 +52,10 @@ local RANGES = {
   { "bright", "day", 2.8, 3.5 }, { "bright", "dusk", 2.0, 2.6 }, { "bright", "night", 1.8, 2.1 },
   { "exp", "day", -0.4, 0.05 }, { "exp", "night", 0.3, 0.5 },
   { "shadow", "day", 0.14, 0.2 }, { "shadow", "dusk", 0.2, 0.3 }, { "shadow", "night", 0.3, 0.42 },
-  -- 大气：用户 11-22「视野无限远」压到的 0.07～0.085 那个量级（规格的 0.14～0.19 审查时退回了），霾白天 ≤ 0.8、黄昏 / 清晨 ≤ 1.2
+  -- 大气：用户 11-22「视野无限远」压到的 0.07～0.085 那个量级（规格的 0.14～0.19 审查时退回了）；霾也照那次减半以后的量级（复核时退回）：
+  --   白天 0.3～0.8（钢城、训练场 ≤ 0.4 下面另查）、黄昏 / 清晨 0.5～0.8、夜里 ≤ 0.5
   { "dens", "day", 0.065, 0.1 }, { "dens", "dusk", 0.09, 0.105 }, { "dens", "dawn", 0.09, 0.105 }, { "dens", "night", 0.08, 0.09 },
-  { "off", "day", 0.1, 0.25 }, { "haze", "day", 0.3, 0.8 }, { "haze", "dusk", 0.8, 1.2 }, { "haze", "dawn", 0.8, 1.2 },
+  { "off", "day", 0.1, 0.25 }, { "haze", "day", 0.3, 0.8 }, { "haze", "dusk", 0.5, 0.8 }, { "haze", "dawn", 0.5, 0.8 }, { "haze", "night", 0.3, 0.5 },
   { "glare", "day", 0.2, 0.5 }, { "glare", "dusk", 0.8, 1.0 }, { "glare", "night", 0, 0 },
   { "bloomT", "day", 1.2, 1.35 }, { "bloomT", "dusk", 1.0, 1.1 }, { "bloomT", "night", 0.9, 1.0 },
   { "bloomI", "day", 0.4, 0.6 }, { "bloomI", "night", 0.9, 1.2 },
@@ -76,21 +79,29 @@ for _, key in ipairs(LOOKS) do
   if not (d <= 0.1 + 1e-9) then okD = false end
 end
 check(okD, "视野无限远（用户 11-22）：每张图白天大气 Density ≤ 0.1（" .. table.concat(dd, "、") .. "）")
+-- 11-22 那次霾也减了半（白天 0.7 → 0.3、夜里 1.1 → 0.5；文档：霾在远处、地平线上都起作用）：钢城、训练场白天 ≤ 0.4，各图夜里 ≤ 0.5
+local hh, okH = {}, true
+for _, key in ipairs(LOOKS) do
+  local P = LL.LOOK[key]
+  hh[#hh + 1] = string.format("%s 白天 %.2f / 夜里 %.2f", key, P.day.haze, P.night.haze)
+  if P.night.haze > 0.5 + 1e-9 or ((key == "city" or key == "range") and P.day.haze > 0.4 + 1e-9) then okH = false end
+end
+check(okH, "视野无限远（用户 11-22，霾减半）：钢城、训练场白天霾 ≤ 0.4，各图夜里 ≤ 0.5（" .. table.concat(hh, "、") .. "）")
 -- Glare 要 Haze > 0 才有效、Decay 要两个都 > 0：有 Glare 的都有 Haze
 local gh = true
 for _, key in ipairs(LOOKS) do for _, ph in ipairs(PH) do local s = LL.LOOK[key][ph] if s.glare > 0 and s.haze <= 0 then gh = false end end end
 check(gh, "有太阳周围那圈光（Glare）的时段都有霾（Haze > 0，不然 Glare 不起作用）")
 -- 规格里的几个关键数（照抄的，改了要同步规格）
 local C, S, N = LL.LOOK.city, LL.LOOK.sands, LL.LOOK.snow
-check(C.day.bright == 3.0 and rgb(C.day.oamb) == "86,92,104" and C.day.diff == 0.75 and C.day.dens == 0.08 and C.day.haze == 0.7 and C.day.bloomT == 1.25 and C.day.shadow == 0.18,
-  "钢城白天：亮度 3、天光 86,92,104、反光 0.75、大气 0.08 / 霾 0.7、泛光门槛 1.25、阴影 0.18")
-check(rgb(C.dusk.top) == "255,158,90" and C.dusk.glare == 0.95 and C.dusk.dens == 0.1 and C.dusk.haze == 1.1 and rgb(C.dawn.top) == "255,190,150" and C.dawn.haze == 1.2 and C.dawn.ccS == 0.06,
-  "钢城黄昏太阳 255,158,90、Glare 0.95、大气 0.1 / Haze 1.1；清晨太阳 255,190,150、晨雾 Haze 1.2、饱和 0.06")
+check(C.day.bright == 3.0 and rgb(C.day.oamb) == "86,92,104" and C.day.diff == 0.75 and C.day.dens == 0.08 and C.day.haze == 0.35 and C.day.bloomT == 1.25 and C.day.shadow == 0.18,
+  "钢城白天：亮度 3、天光 86,92,104、反光 0.75、大气 0.08 / 霾 0.35、泛光门槛 1.25、阴影 0.18")
+check(rgb(C.dusk.top) == "255,158,90" and C.dusk.glare == 0.95 and C.dusk.dens == 0.1 and C.dusk.haze == 0.6 and rgb(C.dawn.top) == "255,190,150" and C.dawn.haze == 0.7 and C.dawn.ccS == 0.06,
+  "钢城黄昏太阳 255,158,90、Glare 0.95、大气 0.1 / Haze 0.6；清晨太阳 255,190,150、一点晨雾 Haze 0.7、饱和 0.06")
 check(rgb(C.night.top) == "138,156,206" and C.night.exp == 0.45 and C.night.bright == 2.0 and C.night.dens == 0.085, "钢城夜里月光 138,156,206、曝光 0.45、亮度 2、大气 0.085（同原来）")
 check(S.day.dens == 0.085 and S.day.haze == 0.8 and S.day.exp == -0.12 and rgb(S.day.bot) == "96,76,54", "沙海白天大气 0.085 / 霾 0.8（一两公里对射看得清）、曝光 −0.12、沙地反光 96,76,54")
 check(N.day.exp == -0.35 and N.day.off == 0.24 and N.day.dens == 0.09 and rgb(N.day.bot) == "92,106,130" and N.day.bloomT == 1.2, "雪山白天曝光 −0.35、大气 0.09 / Offset 0.24（远山轮廓）、雪反光冷蓝 92,106,130、泛光门槛 1.2")
-check(LL.LOOK.range.day.dens == 0.07 and LL.LOOK.range.day.haze == 0.6 and rgb(LL.LOOK.range.day.bot) == "52,46,38" and LL.LOOK.range.night == C.night,
-  "训练场白天大气 0.07、霾 0.6、地面反光 52,46,38；夜里同钢城")
+check(LL.LOOK.range.day.dens == 0.07 and LL.LOOK.range.day.haze == 0.3 and rgb(LL.LOOK.range.day.bot) == "52,46,38" and LL.LOOK.range.night == C.night,
+  "训练场白天大气 0.07、霾 0.3（同 11-22）、地面反光 52,46,38；夜里同钢城")
 -- 写实：黄昏侧光暖、夜里月光冷、白天天光不算两份、雪地不过曝
 local warm, cold, ambLow = true, true, true
 for _, key in ipairs(LOOKS) do
@@ -140,7 +151,7 @@ for _, key in ipairs(LOOKS) do
     prev = v
   end
   check(worst < 0.03, string.format("%s：钟点每走 0.005 小时，每个数最多变它全程的 %.1f%%（%s，%.2f 点；一下跳的会过 3%%）", key, worst * 100, worstK, worstC))
-  check(densMax <= 0.1 + 1e-6 and hazeMax <= 1.2 + 1e-6, string.format("%s：一天里大气最浓 %.3f（≤ 0.1）、霾最多 %.2f（≤ 1.2）", key, densMax, hazeMax))
+  check(densMax <= 0.1 + 1e-6 and hazeMax <= 0.8 + 1e-6, string.format("%s：一天里大气最浓 %.3f（≤ 0.1）、霾最多 %.2f（≤ 0.8）", key, densMax, hazeMax))
   -- 正午 = 白天那套、半夜 = 夜里那套
   local noon, mid = LL.at(key, LL.weights(12, DC)), LL.at(key, LL.weights(0.5, DC))
   local okN, okM = true, true
@@ -202,7 +213,7 @@ local vn = serverAt("city", 2.3)
 check(near(L.Brightness, vn.bright) and near(L.ColorShift_Top, LL.LOOK.city.night.top), "夜里开服就是夜里那套（月光 " .. rgb(L.ColorShift_Top) .. "）")
 local bl, cc = L:FindFirstChild("NightBloom"), L:FindFirstChild("NightGrade")
 check(bl and cc and L:FindFirstChildOfClass("Sky") ~= nil and near(bl.Threshold, vn.bloomT) and near(cc.Saturation, vn.ccS), "泛光、调色、天空都建了")
--- LightLooks 读不到（脚本没换全）：等 20 秒，用原来写死的那套（按钟点白天 / 夜里），不落到 Roblox 的默认值（大气默认 0.3～0.4，很浓）
+-- LightLooks 读不到（脚本没换全）：等 10 秒（项目里等模块的规矩），用原来写死的那套（按钟点白天 / 夜里），不落到 Roblox 的默认值（大气默认 0.3～0.4，很浓）
 do
   local llm = RS:FindFirstChild("LightLooks")
   local a0 = L:FindFirstChildOfClass("Atmosphere")
@@ -212,13 +223,15 @@ do
   R.workspace:SetAttribute("DayFix", 9.5)
   local done = false
   R.task.spawn(function() World.lighting() done = true end)
-  R.run(21)
+  R.run(9)
+  local early = done
+  R.run(2)
   llm.Parent = RS
   local a = L:FindFirstChildOfClass("Atmosphere")
   local F = World.LIGHT_FALLBACK and World.LIGHT_FALLBACK.day
-  check(done and F ~= nil and a ~= nil and near(a.Density, F.dens) and near(a.Haze, F.haze) and near(L.Brightness, F.bright) and near(L.OutdoorAmbient, F.oamb)
+  check(done and not early and F ~= nil and a ~= nil and near(a.Density, F.dens) and near(a.Haze, F.haze) and near(L.Brightness, F.bright) and near(L.OutdoorAmbient, F.oamb)
     and near(bl.Threshold, F.bloomT) and near(cc.Saturation, F.ccS) and L.GeographicLatitude == 23 and #R.warns > nw,
-    string.format("LightLooks 读不到：上午 9:30 开服用原来白天那套（大气 %.3f、霾 %.2f、亮度 %.1f、纬度 %s，不是默认值），打一条警告",
+    string.format("LightLooks 读不到：等 10 秒（9 秒时还在等），上午 9:30 开服用原来白天那套（大气 %.3f、霾 %.2f、亮度 %.1f、纬度 %s，不是默认值），打一条警告",
       a and a.Density or -1, a and a.Haze or -1, L.Brightness, tostring(L.GeographicLatitude)))
   serverAt("city", 9.5)   -- 换回来
 end
@@ -342,7 +355,13 @@ tick(7)
 -- 夜视画面和改之前一样亮：夜里基准曝光 0.55 → 0.45，增亮 2.7 → 2.8（总的 3.25 照旧）
 check(near(L.ExposureCompensation, 0.55 + 2.7, 0.01) and atm.Density < LL.LOOK.city.night.dens,
   string.format("夜里开夜视：曝光 %.2f（同改之前 0.55 + 2.7）、大气 %.3f（照旧看得远一点）", L.ExposureCompensation, atm.Density))
+-- 月光也补回改之前的（复核：只钉曝光的话月光照到的开阔地暗一点点）：亮度 2.0 → 2.2、天光反照 0.25 → 0.35；关了夜视回到这一套
+check(near(L.Brightness, 2.2, 0.01) and near(L.EnvironmentDiffuseScale, 0.35, 0.01),
+  string.format("夜里开夜视：月光亮度 %.2f、天光反照 %.2f（同改之前 2.2 / 0.35）", L.Brightness, L.EnvironmentDiffuseScale))
 CG.nvLight = nil
+tick(1)
+check(near(L.Brightness, LL.LOOK.city.night.bright, 0.01) and near(L.EnvironmentDiffuseScale, LL.LOOK.city.night.diff, 0.01),
+  string.format("关了夜视：月光亮度 %.2f、天光反照 %.2f（回到这张图夜里那套）", L.Brightness, L.EnvironmentDiffuseScale))
 -- 训练场那块：训练场那套（白天大气淡一点）、纬度 40、风 (4,0,2)
 R.workspace:SetAttribute("DayFix", 12)
 cam.CFrame = CF(0, 40, 100352)
@@ -415,6 +434,27 @@ tick(0.5)
 local nw2 = #R.warns
 tick(0.5)
 check(CG.lightLook().lat == 48 and L.GeographicLatitude == 48 and #R.warns == nw2, "太阳 6 点在地平线上（照 6 点日出的算法）：钢城照用 48 度，不打提示")
+-- 17 点先看一眼（复核：每局开局 8 点，18 点要开局后二十六七分钟才到，按季节走的太阳 18 点一换纬度，日落那一刻跳一下）：
+--   「6 点升 18 点落」的太阳 17 点不超过 15° 高——不算数、照用；按季节走的 17 点还有 20° 以上——17 点就退回
+Map.use("sands")
+for _, f in ipairs(hooks) do f("sands") end
+sunModel = ew
+R.workspace:SetAttribute("DayFix", 16.9)
+tick(1)
+local nw3 = #R.warns
+R.workspace:SetAttribute("DayFix", 17)
+tick(1)
+check(CG.lightLook().lat == 29 and L.GeographicLatitude == 29 and #R.warns == nw3,
+  string.format("17 点：「6 点升 18 点落」的太阳 %.0f° 高（不超过 15°）——沙海照用 29 度，不打提示", math.deg(math.asin(ew(17, 29)))))
+R.workspace:SetAttribute("DayFix", 16.9)
+tick(1)
+sunModel = seasonal
+R.workspace:SetAttribute("DayFix", 17)
+tick(1)
+local w17 = false
+for i = nw3 + 1, #R.warns do if R.warns[i]:find("纬度 29", 1, true) and R.warns[i]:find("17.00", 1, true) then w17 = true end end
+check(CG.lightLook().lat == LL.LAT0 and L.GeographicLatitude == LL.LAT0 and w17,
+  string.format("按季节走的太阳 17 点还有 %.0f° 高：17 点就退回 23 度、打提示（不等到 18 点日落那一刻才跳）", math.deg(math.asin(seasonal(17, 29)))))
 sunModel, R.sunDir = nil, nil
 Map.use("snow")
 for _, f in ipairs(hooks) do f("snow") end

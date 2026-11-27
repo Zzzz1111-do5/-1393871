@@ -511,12 +511,17 @@ function Fx.init(G)
   -- 曳光池（11-27 审查 14：原来每发新建一个 Neon 零件 + 补间再 Debris，机枪扫射时这是「每帧新建实例」里剩下最大的一块）：
   --   按样子（武器：颜色、粗细；光晕、跳弹各一组）分组，每组最多 TR_CAP 根零件轮着用；飞的时候每帧一起挪（BulkMoveTo），
   --   飞到了挪回地底下藏着、还回组里。零件还是 ClientFx 的直接子零件：画中画（ScopePip）照样克隆它们画曳光（一组的零件不换样子，
-  --   画中画里克隆的那份颜色、粗细才对得上）。一组用满了顶掉这一组最早的那根
+  --   画中画里克隆的那份颜色、粗细才对得上）。
+  --   11-27 复核：一组原来最多 32 根、满了顶掉最早的那根（快飞到目标的那根半路没了）——「lmg」一组挤着别人车上的并列机枪、大机枪（VehDefs 的
+  --   coax / hmg 都是 fx = "lmg"）、工事和舰上的机枪、步兵机枪，「rifle」一组是所有机器人步兵：并列机枪每秒 12.5 发、打远处一挺就有十几根在飞，
+  --   三挺就满了；自己打的也跟别人挤一组、会被顶掉。现在：一组最多 96 根（跳弹 16；上限只管同时在飞的根数，藏在地底下的零件不画）；
+  --   自己打的单独一组（键后面加 _me：不会被别人的顶掉）；满了顶离镜头最远的那根（看得最不清楚的）
   local TR_HIDE = CFrame.new(0, -2600, 0)
-  local TR_CAP = { ric = 12 }
+  local TR_CAP = { ric = 16 }
+  local TR_CAP0 = 96
   local trFree, trN, trAct = {}, {}, {}   -- 组 → 空着的零件；组 → 一共几根；正在飞的（按开始的先后）
   local trParts, trCfs = {}, {}
-  G.tracerPool = function() return trFree, trN, trAct end   -- 测试用
+  G.tracerPool = function() return trFree, trN, trAct, TR_CAP0 end   -- 测试用
   -- 一根曳光：key 组、size、col、tr0 起始透明度（tr1 飞到时的透明度：跳弹越飞越淡）、p0 起点（零件中心）、du 方向、travel 中心走多远、dur 几秒
   local function streak(key, size, col, tr0, p0, du, travel, dur, tr1)
     local free = trFree[key]
@@ -526,13 +531,18 @@ function Fx.init(G)
     end
     local p = table.remove(free)
     if not p then
-      if trN[key] >= (TR_CAP[key] or 32) then   -- 这一组用满了：顶掉这一组最早的那根
+      if trN[key] >= (TR_CAP[key] or TR_CAP0) then   -- 这一组用满了：顶掉这一组离镜头最远的那根
+        local cp = cam.CFrame.Position
+        local far, fi, fd = nil, nil, -1
         for i, r in ipairs(trAct) do
           if r.key == key then
-            p = r.p
-            table.remove(trAct, i)
-            break
+            local dd = (r.p.Position - cp).Magnitude
+            if dd > fd then far, fi, fd = r, i, dd end
           end
+        end
+        if far then
+          p = far.p
+          table.remove(trAct, fi)
         end
       end
       if not p then
@@ -602,7 +612,7 @@ function Fx.init(G)
     local r = hv and hv.r or 0.12
     local speed = hv and hv.speed or 900
     local du0 = d.Unit
-    local tk = TRACER[id] and id or "x"
+    local tk = (TRACER[id] and id or "x") .. (mine and "_me" or "")   -- 自己打的单独一组（不被别人的顶掉）
     streak(tk, V(r, r, len), col, hv and 0 or 0.1, a + du0 * (len / 2), du0, L - len, L / speed)   -- 曳光（池里的零件，每帧挪）
     if hv and not lite then   -- 光晕：同一条线上粗一圈、很淡
       streak(tk .. "_g", V(hv.glow, hv.glow, len * 0.8), col, 0.78, a + du0 * (len / 2), du0, L - len * 0.9, L / speed)
@@ -1114,33 +1124,40 @@ function Fx.init(G)
   --   · r 格内那辆车已经是残骸（Wreck 属性；属性和这条特效是服务器同一帧发的，属性先到）
   --   · WreckFx 会把它当殉爆画：WtWhy == "ammo"，或者没有 WtWhy（老式血量打光）的坦克
   --   · 是这一次的：View 还没处理到、处理了不到 2 秒，或者转盘车先烧完炸开的那一刻前后 2 秒（不是早就躺在那儿的老残骸）
+  --   只看 r 格内离这一下最近的那辆车（11-27 复核：原来 30 格内任何一辆满足就算——殉爆那一刻旁边十几格的步战车被老式判毁，
+  --   它自己那一下也被当成殉爆的、不画；服务器发的位置就在那辆车的车身 / 炮塔座圈上，最近的那辆就是它）
   local function ownCookOff(p, r)
     local now = os.clock()
+    local bv, bem, bd = nil, nil, r
     for em, v in pairs(G.views or {}) do
-      if v.kind == "veh" and v.hullF and (v.hullF.Position - p).Magnitude < r then
-        local m = v.em or em
-        if m and m:GetAttribute("Wreck") then
-          local why = m:GetAttribute("WtWhy")
-          if why == "ammo" or (why == nil and v.def and v.def.cat == "tank") then
-            if not v.wrecked or (v.wreckT and now - v.wreckT < 2) or (v.cookT and math.abs(now - v.cookT) < 2) then return true end
-          end
-        end
+      if v.kind == "veh" and v.hullF then
+        local dd = (v.hullF.Position - p).Magnitude
+        if dd < bd then bv, bem, bd = v, em, dd end
+      end
+    end
+    if not bv then return false end
+    local m = bv.em or bem
+    if m and m:GetAttribute("Wreck") then
+      local why = m:GetAttribute("WtWhy")
+      if why == "ammo" or (why == nil and bv.def and bv.def.cat == "tank") then
+        if not bv.wrecked or (bv.wreckT and now - bv.wreckT < 2) or (bv.cookT and math.abs(now - bv.cookT) < 2) then return true end
       end
     end
     return false
   end
   G.ownCookOff = ownCookOff   -- 测试用
-  -- 同一处 0.6 秒内又来一个 c = "wreck" 的（老式判毁：Ents.lua 先发一个、Armor.lua / Air.lua 的 onDeath 又发一个）：只画一个
-  --   （同一批里的在 G.onFx 先挑了最大的那个；这里管跨批的）
+  -- 同一处 0.6 秒内又来一个 c = "wreck" 的（老式判毁：Ents.lua 先发一个、Armor.lua / Air.lua 的 onDeath 又发一个）：只画一个、只响一声
+  --   （同一批里的在 G.onFx 先挑了最大的那个；这里管跨批的）。own：这一下是不是附近那辆车自己的殉爆（ownCookOff，只出声不画）——
+  --   11-27 复核：原来不分，殉爆那一下（不画）也登记了，0.6 秒内 15 格内另一辆车（非坦克）的爆炸被当成重复吞掉；现在只跟同一种的比
   local wreckSeen = {}
-  local function wreckDup(p)
+  local function wreckDup(p, own)
     local now = os.clock()
     for i = #wreckSeen, 1, -1 do
       local w = wreckSeen[i]
       if now - w.t > 0.6 then table.remove(wreckSeen, i)
-      elseif (w.p - p).Magnitude < 15 then return true end
+      elseif w.own == own and (w.p - p).Magnitude < 15 then return true end
     end
-    wreckSeen[#wreckSeen + 1] = { p = p, t = now }
+    wreckSeen[#wreckSeen + 1] = { p = p, t = now, own = own }
     return false
   end
   -- hs 地面材质（钢甲：打在车上）、dv 来弹方向（服务器 G.explode 的 info）；am 炮弹的弹种（Ballistics 的 cls；火箭弹、导弹按战斗部，Ents.lua）：
@@ -1159,7 +1176,8 @@ function Fx.init(G)
     if am == "can" then return end
     local metal = hs ~= nil and HitSurf.METAL[hs] == true
     if metal and am == "ap" then return end
-    if c == "wreck" and wreckDup(p) then return end
+    local own = (c == "wreck") and ownCookOff(p, 30)
+    if c == "wreck" and wreckDup(p, own) then return end
     local d = (p - cam.CFrame.Position).Magnitude
     local gy = MapM.height(p.X, p.Z)
     local water = gy < 0.3 and p.Y < 5 and not metal   -- 打在船身上（吃水线附近）算打在钢甲上，不是水柱
@@ -1173,7 +1191,7 @@ function Fx.init(G)
       if G.concuss then G.concuss(d, r, c) end   -- 近处：耳鸣、发闷、一白一糊（Shock.lua）
     end
     -- 车殉爆（服务器 Wt.lua 殉爆那一下 s 4.2～4.6、老式判毁的坦克 s 2～2.4）：WreckFx.lua 照车的样子画火球、碎块、黑烟，这里只出声、震屏（见 ownCookOff）
-    if c == "wreck" and ownCookOff(p, 30) then return end
+    if own then return end
     local t = os.clock()
     if t - boomT > 0.25 then boomT, boomN = t, 0 end
     boomN += 1
@@ -2260,11 +2278,17 @@ function Fx.init(G)
   end
 
   -- 预建（审查 12：层第一次用到才现建，第一炮、第一次扫射一帧里新建十几个发射器会顿一下）：进局时把开炮（口径系数 k≈1）、
-  --   榴弹（S = 1）、穿甲弹打地、机枪打地常用的那几层排进 VfxLib，一帧建 4 个（几十帧建完；殉爆那几层 WreckFx.lua 自己排）
+  --   榴弹（S = 1）、穿甲弹打地、机枪打地常用的那几层排进 VfxLib，一帧建 4 个（几十帧建完；殉爆那几层 WreckFx.lua 自己排）。
+  --   按地面分的层按这张图的地面代号排；11-27 复核：原来只按 Fx 初始化那一刻的图排——地图是进服以后才投出来的（雪山、沙海），
+  --   那张图的地面（雪 i、冰 j、沙 n）那几层没预建，第一炮、第一发还是现建：换图（G.onMap）时把新地面的补排上
   do
-    local codes = { "d", "v", "r" }
-    if MapM.DESERT then codes[#codes + 1] = "n" end
-    if MapM.NAME == "snow" then codes[#codes + 1] = "i" codes[#codes + 1] = "j" end
+    local warmed = {}   -- 哪些地面代号排过了
+    local function mapCodes()
+      local codes = { "d", "v", "r" }
+      if MapM.DESERT then codes[#codes + 1] = "n" end
+      if MapM.NAME == "snow" then codes[#codes + 1] = "i" codes[#codes + 1] = "j" end
+      return codes
+    end
     local list = {}
     local function add(name, s, var, n) list[#list + 1] = { name, s, var, n } end
     add("mFlash", 1, nil, 2)   -- 炮口、炮口前各一颗：两处
@@ -2284,7 +2308,9 @@ function Fx.init(G)
     add("eAirSoot", 1)
     add("Imp_spout", 1)
     add("Imp_spout", 1, "L")
-    for _, c in ipairs(codes) do
+    local function perCode(c)
+      if warmed[c] then return end
+      warmed[c] = true
       for _, f in ipairs({ "", "C", "S" }) do
         add("gFan", 1, c .. f)
         add("gRise", 1, c .. f)
@@ -2311,10 +2337,18 @@ function Fx.init(G)
         add("Imp_" .. bits, 1)
         add("Imp_" .. bits, 1, "L")
       end
+      if c == "i" then add("eClod", 1, "iD") end
     end
-    if MapM.NAME == "snow" then add("eClod", 1, "iD") end
+    for _, c in ipairs(mapCodes()) do perCode(c) end
     add("gGrass", 1)
     VL.prewarmLater(list)
+    if G.onMap then
+      G.onMap(function()
+        list = {}
+        for _, c in ipairs(mapCodes()) do perCode(c) end
+        if #list > 0 then VL.prewarmLater(list) end
+      end)
+    end
   end
 
   function G.stepFx(dt)

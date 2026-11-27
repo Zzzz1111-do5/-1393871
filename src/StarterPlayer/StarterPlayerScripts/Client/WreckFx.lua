@@ -13,7 +13,10 @@
 --   离镜头远、机器跟不上（G.perfK）的少画；同时最多 3 处殉爆在冒碎块
 --   11-27 审查：
 --   · 预算（5）：殉爆第一秒所有发射器加起来（池里喷的 + 掀炮塔的火柱火星黑烟 + 碎块拖的火和烟 + 舱口火柱 + 炮塔身上的火和烟 + 车身大火）
---     压在 350 颗以内——掀炮塔那几层改走池（G.wreckTossFx / G.wreckLandFx），常喷的发射器少喷一点、用 VfxLib.rateK 记进全局预算
+--     压在 350 颗以内——掀炮塔那几层改走池（G.wreckTossFx / G.wreckLandFx），常喷的发射器少喷一点、用 VfxLib.rateK 记进全局预算。
+--     规格写的是 300，11-27 复核时明确接受 350：最费的连爆炸三下实测三百出头（接连殉爆的头一两下落不落在第一秒里，上下差二三十颗）；
+--     再砍就得砍火星、连爆、火柱，而用户 11-25 嫌过「载具爆炸效果不够猛」；M3 上贵的是贴脸的大块半透明（overdraw），不是这一秒
+--     多出来的二三十颗小火星；全局 1800 / 2800 的上限照样管着（tools/mock/vfxreal.lua 按炸三下查 ≤ 350）
 --   · 灯（6）：殉爆只点这里这一盏大灯（View 掀炮塔那盏去掉），白天最多亮 1.5 倍
 --   · 碎块（13）：碰撞组——只跟地形、建筑碰，不碰角色和车
 local Debris = game:GetService("Debris")
@@ -281,6 +284,7 @@ function WreckFx.init(G)
   end
   -- ② 火球 + 浓烟 + 火星（样子 A / B / C）
   G.wreckStyleOverride = nil   -- 测试用：强制样子（"A" / "B" / "C"）
+  G.wreckBlastsOverride = nil  -- 测试用：连爆炸几下（2 / 3；最费的是 3 下）
   local function fireball(p, R, k, style, L)
     local q = R / 14
     local function blast(at, m)
@@ -290,7 +294,7 @@ function WreckFx.init(G)
       VL.emit("wEdge", q, CF(at + V(0, R * 0.2, 0)), N(5 * m, k))
     end
     if style == "C" then   -- 连爆：两三下，隔 0.15～0.3 秒，位置在车里错开（后几下的闪光不另点大灯：一盏小的）
-      local nb = 2 + ((math.random() < 0.5) and 1 or 0)
+      local nb = G.wreckBlastsOverride or (2 + ((math.random() < 0.5) and 1 or 0))
       local t = 0
       for i = 1, nb do
         local off = V((math.random() - 0.5) * 0.6 * L, 0, (math.random() - 0.5) * 0.6 * L)
@@ -647,7 +651,7 @@ function WreckFx.init(G)
     local top = base.Position + V(0, (tp and tp.Y or H) + (d0.turret and 2.2 or 0.6), 0)
     local p = base.Position + V(0, H * 0.7, 0)
     local k, d = lod(p)
-    if d > 4000 then return end
+    if d > 4000 then return end   -- 太远：不接手（没设 v.cookJets）——View.lua 照别的残骸马上把车身的火、黑烟烧起来
     stat.cook = (stat.cook or 0) + 1
     prepBurn(M)
     v.cookJets = true
@@ -761,20 +765,35 @@ function WreckFx.init(G)
     end
   end
 
-  -- 预建（审查 12）：殉爆、掀炮塔那几层进局时分几帧建好（主战坦克的火球半径 11～14 格：q 0.83 / 1 两档），第一次殉爆不用现建
+  -- 预建（审查 12）：殉爆、掀炮塔那几层进局时分几帧建好（主战坦克的火球半径 11～14 格：q 0.83 / 1 两档），第一次殉爆不用现建；
+  --   贴地那圈土按地面分（土、草、沙、石；雪山加雪）——地图进服以后才投出来的，换图（G.onMap）时补排新地面的（同 Fx.lua）
   do
     local list = {}
+    local warmed = {}
+    local function dustFor(code)
+      if warmed[code] then return end
+      warmed[code] = true
+      for _, q in ipairs({ 0.83, 1 }) do list[#list + 1] = { "wDust", q, code } end
+      list[#list + 1] = { "tDust", 1, code }
+    end
+    local function mapCodes() return Map.NAME == "snow" and { "d", "v", "r", "i" } or { "d", "v", "n", "r" } end
     for _, q in ipairs({ 0.83, 1 }) do
       for _, nm in ipairs({ "wFlash", "wCore", "wFire", "wSoot", "wEdge", "wPillar", "wShock" }) do list[#list + 1] = { nm, q } end
-      for _, code in ipairs({ "d", "v", "n", "r" }) do list[#list + 1] = { "wDust", q, code } end
     end
     for _, nm in ipairs({ "wSpark", "wCrackle", "wFireBurst", "wFireSmoke", "wCrewSmoke", "tFire", "tSpark", "tSmoke", "tRing", "tLandSpark" }) do list[#list + 1] = { nm, 1 } end
     for _, nm in ipairs({ "wPopFlash", "wPopSpark", "wPopFire", "wPopSmoke" }) do
       list[#list + 1] = { nm, 1 }
       list[#list + 1] = { nm, 1, "B" }
     end
-    for _, code in ipairs({ "d", "v", "n", "r" }) do list[#list + 1] = { "tDust", 1, code } end
+    for _, code in ipairs(mapCodes()) do dustFor(code) end
     VL.prewarmLater(list)
+    if G.onMap then
+      G.onMap(function()
+        list = {}
+        for _, code in ipairs(mapCodes()) do dustFor(code) end
+        if #list > 0 then VL.prewarmLater(list) end
+      end)
+    end
   end
 end
 

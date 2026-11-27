@@ -160,7 +160,7 @@ function World.lighting()
   local okL, errL = pcall(function()
     local DC = require(RS:WaitForChild("DayClock"))
     clock = DC.clock()
-    LL = require(RS:WaitForChild("LightLooks", 20))
+    LL = require(RS:WaitForChild("LightLooks", 10))   -- 等 10 秒（项目里等模块的规矩；原来 20 秒）
     key = LL.keyFor(Map, nil)
     v = LL.at(key, LL.weights(clock, DC))
   end)

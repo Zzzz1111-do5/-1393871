@@ -355,10 +355,9 @@ function View.init(G)
     -- 一柱火（从座圈直冲上去）、往四周上方撒的火星、一团黑烟：11-27 审查 5 改走 VfxLib 的池（WreckFx.lua 的 G.wreckTossFx；
     --   原来每次新建 3 个发射器、一下喷 186 颗，跟 WreckFx 同一刻的大火球叠在一起，殉爆第一秒六七百颗）
     if G.wreckTossFx then G.try_(G.wreckTossFx, p, big) end
-    -- 灯、接着几下闷响：坦克（big）的殉爆 WreckFx 同一刻点了一盏大灯、画了一发发殉爆（审查 6：两盏大灯叠在一起，白天过曝），这里只给别的车
-    if not big then
-      if G.flash then G.flash(p + V(0, 6, 0), RGB(255, 170, 80), 70, 14, 0.9, { day = 1.5 }) end
-    end
+    -- 灯：这里不点大灯（审查 6：两盏大灯叠在一起，白天过曝）——坦克（big）的殉爆 WreckFx 同一刻点了一盏；别的车掀炮塔只在老式扣血判毁时有
+    --   （下面 add 里 whyW == nil 那一支），服务器那一下总会发 c = "wreck" 的爆炸（Ents.lua / Armor.lua），Fx.lua 的 boom 画它、点它那盏大灯
+    --   （11-27 复核：原来这里还给别的车点一盏 Range 70 的，跟 boom 那盏 Range 120 的同时亮）。接着几下闷响、小灯只给别的车（坦克 WreckFx 画了一发发殉爆）
     if G.playSound then
       G.playSound("boom", p, 0.5)
       if not big then
@@ -862,7 +861,10 @@ function View.init(G)
         elseif d.cat == "tank" or Random.new(seed * 31 + 7):NextNumber() < 0.4 then startToss(v) end
       end
       if G.wreckPrepBurn then G.try_(G.wreckPrepBurn, M) end   -- 火推亮、黑烟换深灰的贴图、近处那根小一号的黑烟（WreckFx.lua）
-      if not v.cookT then   -- 先烧再炸的（转盘车）：烧的那几秒 WreckFx 的 wreckCook 自己定（火 14、烟 6），炸开以后 heavyBurn 接着
+      -- 先烧再炸的（转盘车）：wreckCook 真接手了（v.cookJets）才由它定烧的那几秒（火 14、烟 6），炸开以后 heavyBurn 接着。
+      --   11-27 复核：原来判的是 v.cookT——wreckCook 离镜头 4000 格外直接不管（不建舱口火柱），这里也不设，残骸 40 秒不冒黑烟、6000 格外连火也没有
+      --   （沙海一两公里外开镜看自己打掉的 T-72、开飞机在高处都看不到烟柱）；远处的照别的残骸一样马上烧起来
+      if not v.cookJets then
         M.fire.Rate = 30
         setBlack(M, 6)
       end
