@@ -52,6 +52,11 @@ VehDefs.W = {
     vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },   -- M1A2 SEP 的 M256：M829A2
   gun120sep3 = { kind = "shell", dmg = 640, speed = 4354, drop = 0.14, splash = 6, rate = 6.0, mag = 1, reload = 0, reserve = 42, range = 3000,
     vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },   -- M1A2 SEPv3 的 M256 + 弹药数据链：M829A4
+  -- M60A1 RISE 的 M68（M735，63 发）、豹 2A0 的 Rh-120 L/44（DM13，42 发）：装填同 M60A1 / 豹 2A4
+  gun105m60r = { kind = "shell", dmg = 470, speed = 4203, drop = 0.14, splash = 6, rate = 6.5, mag = 1, reload = 0, reserve = 63, range = 2600,
+    vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.36 },
+  gun120l44a0 = { kind = "shell", dmg = 620, speed = 4620, drop = 0.14, splash = 6, rate = 6.5, mag = 1, reload = 0, reserve = 42, range = 3000,
+    vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },
   -- 59 式 / 69-II 式的 100 毫米线膛炮（用户 11-26「各系各阶段缺少的载具」：中国地面树一、二级）：59 式是 D-10T 的仿制（59 式 100 毫米坦克炮），
   --   手动装填 7～8 秒一发；69-II 式换了稳定器和激光测距、有尾翼稳定脱壳穿甲弹（Ballistics.GUN 里各自的弹）
   gun100d = { kind = "shell", dmg = 400, speed = 2484, drop = 0.18, splash = 6, rate = 7.5, mag = 1, reload = 0, reserve = 34, range = 2200,
@@ -278,6 +283,12 @@ D.leo2a7v = variant(D.leo2a6, { L = 22.0, W = 10.3, H = 8.6, hullH = 4.5, speed 
   weapons = { "gun120l55", "coax" } })
 -- 豹 2A4（1985）：55 吨、同一台 1500 马力；Rh-120 L/44 炮、DM33；炮塔是直立的复合装甲（模型是 2A6 的楔形，科技树上写「暂用」）
 D.leo2a4 = variant(D.leo2a6, { speed = 56.0, accel = 6.0, rev = 24.1, weapons = { "gun120l44", "coax" } })
+-- 11-27 拆开重叠的版本（用户「把重叠的版本拆开」「各维度还原一致」）：科技树豹 2A0、豹 2A5 原来写 base（借 2A4 / 2A6 的模型和性能）
+-- 豹 2A0（1979）：55.2 吨（估）、MB 873 1500 马力、公路 68 公里 / 时（估）；Rh-120 L/44、DM13（120 毫米第一代尾翼稳定脱壳）/ DM12；
+--   第一代复合装甲（直立炮塔，模型是 2A6 的楔形）；EMES 15 激光测距 + 计算机；夜里是 PZB 200 微光（WBG-X 热像是后几批才装的）
+D.leo2a0 = variant(D.leo2a6, { like = "leo2a6", speed = 52.9, accel = 6.0, rev = 24.1, weapons = { "gun120l44a0", "coax" } })
+-- 豹 2A5（1995）：59.5 吨（估）、1500 马力、72 公里 / 时；炮塔楔形附加装甲（同 2A6），炮还是 L/44（L/55 是 2A6 才换的）、DM33；车长 PERI-R17A2 热像（猎歼）
+D.leo2a5 = variant(D.leo2a6, { like = "leo2a6", speed = 56.0, accel = 5.5, rev = 24.1, weapons = { "gun120l44", "coax" } })
 -- 豹 1（用户 11-25「需要模型自己找」：原来借 M10）：40 吨、MTU MB 838 830 马力、公路 65 公里 / 时；L7A3 105 毫米线膛炮、DM13 脱壳穿甲弹；
 --   装甲薄（首上 70 毫米斜置）、跑得快；四人车组：炮长、车长在右；原模型 FlashPoin（原贴图是没上漆的灰，按联邦国防军黄橄榄色调过）
 D.leo1 = tracked({ cat = "tank", L = 19.5, W = 9.3, H = 7.0, hullH = 4.3, clear = 1.2, speed = 50.6, accel = 4.6, rev = 19.4, turn = 40,
@@ -288,6 +299,9 @@ D.leo1 = tracked({ cat = "tank", L = 19.5, W = 9.3, H = 7.0, hullH = 4.3, clear 
   smoke = { banks = { { at = V(3.3, 1.6, 0.6), yaw = 60 }, { at = V(-3.3, 1.6, 0.6), yaw = -60 } }, n = 4 },
   sightZoom = { day = { 8 }, th = { 8 } },   -- TZF 1A 炮长瞄准镜 8 倍（没有热像，夜里照红外探照灯）
   weapons = { "gun105l7", "coax" } })
+-- 豹 1A1A1（1975，11-27 拆开重叠的版本：原来写 base 借豹 1）：42.4 吨、MB 838 CaM-500 830 马力、65 公里 / 时；炮塔加了 Blohm + Voss 的间隙装甲（约 +760 千克）；
+--   L7A3、DM13 脱壳穿甲弹（DM23 尾翼稳定脱壳 1979 年以后才有）；TEM 2A 体视测距仪（没有激光）、稳定器；夜里主动红外（PZB 200 微光是 1A1A2 才有）
+D.leo1a1a1 = variant(D.leo1, { like = "leo1", speed = 50.6, accel = 4.3, rev = 19.4 })
 -- 豹 1A5（1987）：42.4 吨；EMES 18 火控、WBG-X 热像，打 DM33（105）尾翼稳定脱壳穿甲弹；炮塔加了间隙装甲
 D.leo1a5 = variant(D.leo1, { speed = 50.6, accel = 4.3, rev = 19.4, weapons = { "gun105a5", "coax" }, sightZoom = { day = { 3, 12 }, th = { 3, 12 } } })
 -- M60A3 TTS（用户 11-25「需要模型自己找」：原来借 M10）：52.6 吨、AVDS-1790-2C 750 马力柴油机、公路 48 公里 / 时（慢）；M68E1 105 毫米线膛炮、
@@ -322,6 +336,13 @@ D.m551 = tracked({ cat = "tank", L = 18.2, W = 8.0, H = 7.5, hullH = 4.5, clear 
   weapons = { "gun152", "coax" } })
 -- M60A1（1962）：49.7 吨、750 马力；M68 炮打 M392A2 脱壳穿甲弹，合像式测距、没有热像（模型是 M60A3，科技树上写「暂用」）
 D.m60a1 = variant(D.m60a3, { speed = 37.3, accel = 3.4, rev = 13.2, weapons = { "gun105m60", "coax" }, sightZoom = { day = { 8 }, th = { 8 } } })
+-- 11-27 拆开重叠的版本（用户「把重叠的版本拆开」「各维度还原一致」）：科技树 M60、M60A1 RISE 原来写 base（借 M60A1 的模型和性能）
+-- M60（1960）：46.3 吨、AVDS-1790-2 750 马力、48 公里 / 时；M68 105 毫米（M392 脱壳 / M456 破甲）；M48 式的短炮塔（长鼻子炮塔是 M60A1 才换的）；
+--   M17 合像测距仪 + 机械弹道计算机（没有激光）；没有炮控稳定器（noStab：瞄准线跟着车体颠；M60A1 1972 年起才加装 AOS 稳定器）；AN/VSS-1 红外探照灯
+D.m60 = variant(D.m60a1, { like = "m60a3", noStab = true, speed = 37.3, accel = 3.6, rev = 13.2 })
+-- M60A1 RISE（1977，Reliability Improved Selected Equipment）：约 50.5 吨（估）、AVDS-1790-2C 750 马力；M735 钨合金尾翼稳定脱壳穿甲弹（1978）；
+--   还是合像测距（激光测距是 M60A3 才有）、加装稳定器；RISE Passive 型被动微光夜视
+D.m60a1rise = variant(D.m60a1, { like = "m60a3", speed = 37.3, accel = 3.3, rev = 13.2, weapons = { "gun105m60r", "coax" } })
 D.m1a2 = tracked({ cat = "tank", turbine = true, L = 23, W = 10.2, H = 7.6, hullH = 4.2, clear = 1.4, speed = 52.1, accel = 5.2, rev = 29.6, turn = 35,
   rw = { n = 7, r = 1.05, x = 4.0, z0 = -7.8, z1 = 7.6 }, era = false, skirt = true, tusk = false,
   turret = { pivot = V(0, 4.2, 0.9), size = V(7.8, 2.4, 9.4), style = "abrams", trav = 42, elev = { -9, 20 }, bustle = 3.0 },
@@ -532,7 +553,8 @@ D.patriot = wheeled({ cat = "aa", L = 28, W = 8.4, H = 10, hullH = 4.4, clear = 
 -- 没有激光测距机的（用户 11-25「全部都做」⑤：战雷历史模式里这种车按 R 是车长估距——要等两秒、有误差）：
 --   豹 1（体视测距仪，豹 1A5 才换激光）、M60A1（合像测距仪，M60A3 才有激光）、BMP-1；其余的车都有激光测距
 local NO_LRF = { leo1 = true, m60a1 = true, bmp1 = true, t64a = true,   -- T-64A：TPD-2-49 合像测距瞄准镜（T-64B 才有激光）
-  brdm2 = true, strela1 = true, type87rcv = true }   -- 11-27 补的：BRDM-2 的 PP-61AM、箭-1 的光学瞄准具、87 式的潜望瞄准镜都没有激光测距
+  brdm2 = true, strela1 = true, type87rcv = true,   -- 11-27 补的：BRDM-2 的 PP-61AM、箭-1 的光学瞄准具、87 式的潜望瞄准镜都没有激光测距
+  m60 = true, m60a1rise = true, leo1a1a1 = true }   -- 11-27 拆出来的：M60 / M60A1 RISE 合像测距仪、豹 1A1A1 体视测距仪
 -- 每个型号补上默认值、名字
 for id, d in pairs(D) do
   d.id = id

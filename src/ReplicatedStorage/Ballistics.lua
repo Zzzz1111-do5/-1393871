@@ -104,6 +104,9 @@ B.AMMO = {
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
   m829a4 = { cls = "ap", name = "M829A4", sym = "SABOT", v0 = 1555, k = 3.5e-5, bs = 1200, tr = true,      -- 2015 年起，要弹药数据链（ADL：SEPv3）；初速没公开，估
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  -- 豹 2A0（1979）：120 毫米第一代尾翼稳定脱壳穿甲弹 DM13（钨合金；键名带 l44，105 毫米的 dm13 已经占了；初速估）
+  dm13l44 = { cls = "ap", name = "DM13 (120)", sym = "KE", v0 = 1650, k = 3.8e-5, bs = 1200, tr = true,
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
 }
 -- 每门炮能打的弹（第一个是默认），以及车里炮长控制面板上的弹种键（InteriorScreens 的 gcdp 页）对到哪种弹
 B.GUN = {
@@ -130,6 +133,8 @@ B.GUN = {
   gun120a2 = { "m829a1", "m830", "m830a1", "jet120" },         -- M1A2（1992）：M829A2 1994 年起
   gun120sep = { "m829a2", "m830a1", "m830", "jet120" },        -- M1A2 SEP（2000）：M829A3 2003 年起
   gun120sep3 = { "m829a4", "m829a3", "m830a1", "m1028", "jet120" },   -- M1A2 SEPv3：弹药数据链（ADL）打 M829A4（AMP XM1147 游戏里没有）
+  gun105m60r = { "m735", "m392", "m456", "jet105" },           -- M60A1 RISE（1977，M68）：M735 钨合金尾翼稳定脱壳穿甲弹（M833 是 M60A3 的）
+  gun120l44a0 = { "dm13l44", "dm12", "jet120" },               -- 豹 2A0（Rh-120 L/44）：DM13、DM12（DM33 1987 年起）
 }
 -- 面板上的键 → 弹种（这门炮没有这一种就挑它同一类 cls 的：T-90M 借 99A 的面板，「穿甲」键打 3BM60）
 function B.panelAmmo(kind, wid)

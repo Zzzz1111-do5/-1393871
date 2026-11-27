@@ -33,7 +33,8 @@ local MODEL = { t80u = "t80u", t80b = "t80u", t80bvm = "t80u", bmp1 = "bmp1", le
   t64a = "t64", t64b = "t64", type74 = "type74", type74g = "type74",
   gepard1a1 = "gepard", gepard1a2 = "gepard", bmp2 = "bmp2", bmp2m = "bmp2",
   -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」）：科技树原来写 base 的地面车有了自己的型号，模型借同族的
-  m1 = "m1a1i", m1ip = "m1a1i", m1a1hc = "m1a1i", m1a2base = "m1a2dc", m1a2sep = "m1a2dc", m1a2sep3 = "m1a2dc" }
+  m1 = "m1a1i", m1ip = "m1a1i", m1a1hc = "m1a1i", m1a2base = "m1a2dc", m1a2sep = "m1a2dc", m1a2sep3 = "m1a2dc",
+  m60 = "m60a3", m60a1rise = "m60a3", leo1a1a1 = "leo1", leo2a0 = "leo2a6", leo2a5 = "leo2a6" }
 local bad = {}
 local function near(a, b) return a and b and (a - b).Magnitude < 0.02 end
 for id, key in pairs(MODEL) do
@@ -80,6 +81,8 @@ local want = {
   de_gepard = { "gepard1a1" }, de_gepard1a2 = { "gepard1a2" }, ru_bmp2 = { "bmp2" }, ru_bmp2m = { "bmp2m", "bmp2" },
   us_m1 = { "m1", "m1a1" }, us_m1ip = { "m1ip", "m1a1" }, us_m1a1hc = { "m1a1hc", "m1a1" },
   us_m1a2 = { "m1a2base", "m1a2" }, us_m1a2sep = { "m1a2sep", "m1a2" }, us_m1a2sep3 = { "m1a2sep3", "m1a2" },
+  us_m60 = { "m60", "m60a3" }, us_m60a1rise = { "m60a1rise", "m60a3" }, de_leo1a1a1 = { "leo1a1a1", "leo1" },
+  de_leo2a0 = { "leo2a0", "leo2a6" }, de_leo2a5 = { "leo2a5", "leo2a6" },
 }
 local tb = {}
 for k, w in pairs(want) do
@@ -87,14 +90,14 @@ for k, w in pairs(want) do
   if not it or it.play ~= w[1] or it.stand or it.model ~= w[2] then table.insert(tb, k .. "→" .. tostring(it and it.play) .. "/" .. tostring(it and it.model)) end
 end
 check(#tb == 0, "这几族开的是自己的型号（同族老型号借同族的模型）" .. (#tb > 0 and ("：" .. table.concat(tb, " ")) or ""))
--- 11-27：M1 一族拆开了（上面 want 里）；还没拆的照样借。59 式 11-26 有了自己的原模型（原来这一条写「59 式借 M60、删了」，11-26 以后就过不了）
+-- 11-27：M1 一族、M60、豹拆开了（上面 want 里）；还没拆的照样借。59 式 11-26 有了自己的原模型（原来这一条写「59 式借 M60、删了」，11-26 以后就过不了）
 local st = {}
-for _, k in ipairs({ "cn_86", "us_m60" }) do
+for _, k in ipairs({ "cn_86" }) do
   local it = TT.get(k)
   if not (it and it.stand) then table.insert(st, k) end
 end
-check(#st == 0 and TT.get("cn_86").play == "bmp1" and TT.get("us_m60").play == "m60a1" and TT.get("cn_59") ~= nil and TT.get("cn_59").play == "type59",
-  "还没拆的照样借（86 式借 BMP-1、M60 借 M60A1）；59 式开自己的型号" .. (#st > 0 and ("：" .. table.concat(st, " ")) or ""))
+check(#st == 0 and TT.get("cn_86").play == "bmp1" and TT.get("cn_59") ~= nil and TT.get("cn_59").play == "type59",
+  "还没拆的照样借（86 式借 BMP-1）；59 式开自己的型号" .. (#st > 0 and ("：" .. table.concat(st, " ")) or ""))
 check(VD.get("t64a").weapons[1] == "gun125a" and B.GUN.gun125a[1] == "bm15" and WD.AMMO.bm15 ~= nil and not VD.get("t64a").lrf and VD.get("t64b").lrf,
   "T-64A 打 3BM15、没有激光测距；T-64B 有")
 

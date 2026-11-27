@@ -36,7 +36,7 @@ O.RET = {
 -- 每辆车真车的夜视（科技树的键；查的公开资料）：没写的按年份、东西方推（O.nvByYear）
 O.TREE_NV = {
   cn_59 = "ir", cn_69 = "ir", cn_86 = "ir", cn_96 = "ii", cn_96a = "th2", cn_96b = "th3", cn_99 = "th1", cn_99a = "th2", cn_pgl625 = "th3",
-  de_leo1 = "ir", de_leo1a1a1 = "ii", de_leo1a5 = "th1", de_leo2a0 = "ii", de_leo2a4 = "th1", de_leo2a5 = "th1", de_leo2a6 = "th2", de_leo2a7v = "th3",
+  de_leo1 = "ir", de_leo1a1a1 = "ir", de_leo1a5 = "th1", de_leo2a0 = "ii", de_leo2a4 = "th1", de_leo2a5 = "th1", de_leo2a6 = "th2", de_leo2a7v = "th3",
   de_gepard = "none", de_gepard1a2 = "none",
   us_m60 = "ir", us_m60a1 = "ir", us_m60a1rise = "ii", us_m60a3 = "th1", us_m1 = "th1", us_m1ip = "th1", us_m1a1 = "th1", us_m1a1hc = "th1",
   us_m1a2 = "th1", us_m1a2sep = "th2", us_m1a2sep2 = "th2", us_m1a2sep3 = "th3", us_m551 = "ir", us_m2 = "th1", us_m2a2 = "th1", us_m2a3 = "th2",
@@ -56,6 +56,7 @@ O.VEH_NV = {
   brdm2 = "none", strela1 = "none", type87rcv = "ii",
   -- 11-27 拆开重叠的版本：同族的老 / 新型号各自的夜视（同 TREE_NV）
   m1 = "th1", m1ip = "th1", m1a1hc = "th1", m1a2base = "th1", m1a2sep = "th2", m1a2sep3 = "th3",
+  m60 = "ir", m60a1rise = "ii", leo1a1a1 = "ir", leo2a0 = "ii", leo2a5 = "th1",
 }
 local EAST = { cn = true, ru = true }
 function O.nvByYear(year, nat)

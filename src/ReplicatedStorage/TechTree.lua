@@ -83,11 +83,12 @@ local LIST = {
   de = {
     [G] = {
       { "de_leo1", "豹1", "Leopard 1", 1965, 1, 1, 7.0, veh = "leo1" },
-      { "de_leo1a1a1", "豹1A1A1", "Leopard 1A1A1", 1975, 2, 1, 7.7, base = "leo1" },
+      -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开」「各维度还原一致」）：豹 1A1A1、豹 2A0、豹 2A5 原来写 base，现在各开各的型号、模型借同族的
+      { "de_leo1a1a1", "豹1A1A1", "Leopard 1A1A1", 1975, 2, 1, 7.7, veh = "leo1a1a1", model = "leo1" },
       { "de_leo1a5", "豹1A5", "Leopard 1A5", 1987, 4, 1, 8.3, veh = "leo1a5", model = "leo1" },
-      { "de_leo2a0", "豹2A0", "Leopard 2A0", 1979, 3, 2, 9.0, base = "leo2a4" },
+      { "de_leo2a0", "豹2A0", "Leopard 2A0", 1979, 3, 2, 9.0, veh = "leo2a0", model = "leo2a6" },
       { "de_leo2a4", "豹2A4", "Leopard 2A4", 1985, 4, 2, 9.7, veh = "leo2a4", model = "leo2a6" },
-      { "de_leo2a5", "豹2A5", "Leopard 2A5", 1995, 5, 2, 10.7, base = "leo2a6" },
+      { "de_leo2a5", "豹2A5", "Leopard 2A5", 1995, 5, 2, 10.7, veh = "leo2a5", model = "leo2a6" },
       { "de_leo2a6", "豹2A6", "Leopard 2A6", 2001, 5, 2, 11.3, veh = "leo2a6" },
       { "de_leo2a7v", "豹2A7V", "Leopard 2A7V", 2020, 7, 2, 12.0, veh = "leo2a7v" },
       { "de_gepard", "猎豹1A1", "Gepard 1A1", 1976, 3, 5, 8.3, veh = "gepard1a1" },
@@ -101,9 +102,10 @@ local LIST = {
   },
   us = {
     [G] = {
-      { "us_m60", "M60 巴顿", "M60", 1960, 1, 1, 7.0, base = "m60a1" },
+      -- 11-27 拆开重叠的版本：M60、M60A1 RISE 原来写 base（借 M60A1），现在各开各的型号、模型借同族的（M60A3）
+      { "us_m60", "M60 巴顿", "M60", 1960, 1, 1, 7.0, veh = "m60", model = "m60a3" },
       { "us_m60a1", "M60A1", "M60A1", 1962, 1, 1, 7.3, veh = "m60a1", model = "m60a3" },
-      { "us_m60a1rise", "M60A1 RISE", "M60A1 RISE", 1977, 3, 1, 7.7, base = "m60a1" },
+      { "us_m60a1rise", "M60A1 RISE", "M60A1 RISE", 1977, 3, 1, 7.7, veh = "m60a1rise", model = "m60a3" },
       { "us_m60a3", "M60A3 TTS", "M60A3 TTS", 1979, 3, 1, 8.0, veh = "m60a3" },
       -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」「各维度还原一致」）：M1 一族原来六项写 base（模型、性能都借 M1A1 / M1A2 SEPv2），
       --   现在各开各的型号（VehDefs：炮、弹、装甲、机动、观瞄照年代），模型借同族的（科技树上写「同族模型」）

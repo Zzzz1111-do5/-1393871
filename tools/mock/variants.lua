@@ -37,11 +37,20 @@ local SPLIT = {
   { "us_m1a2", "m1a2base", "m1a2", noEra = true, nv = "th1", gen = 4 },
   { "us_m1a2sep", "m1a2sep", "m1a2", noEra = true, nv = "th2", gen = 4 },
   { "us_m1a2sep3", "m1a2sep3", "m1a2", nv = "th3", gen = 4 },
+  -- 第 2 批：M60 两型、豹三型（M60A1 / M60A3、豹 1 / 1A5、豹 2A4 / 2A6 原来就有）
+  { "us_m60", "m60", "m60a3", nv = "ir", gen = 0 },
+  { "us_m60a1rise", "m60a1rise", "m60a3", nv = "ii", gen = 1 },
+  { "de_leo1a1a1", "leo1a1a1", "leo1", nv = "ir", gen = 1 },
+  { "de_leo2a0", "leo2a0", "leo2a6", nv = "ii", gen = 2 },
+  { "de_leo2a5", "leo2a5", "leo2a6", nv = "th1", gen = 3 },
 }
 -- 一族里按年代排的型号（拆出来的 + 原来就有的）：默认弹的穿深、炮塔正面装甲（动能）不往回掉；skip 不比的（年代错位的老车，写进回报）
 local FAMILY = {
   { name = "M1 一族", ids = { "m1", "m1ip", "m1a1", "m1a1hc", "m1a2base", "m1a2sep", "m1a2", "m1a2sep3" },
     skip = { m1a1 = true } },   -- M1A1（1985）打的是 M829A3（2003 年的弹）：原来就有的年代错位，不在这次拆的范围
+  { name = "M60 一族", ids = { "m60", "m60a1", "m60a1rise", "m60a3" } },
+  { name = "豹 1", ids = { "leo1", "leo1a1a1", "leo1a5" } },
+  { name = "豹 2", ids = { "leo2a0", "leo2a4", "leo2a5", "leo2a6", "leo2a7v" } },
 }
 -- 借同族模型、真车没有爆反的老车（11-27 一起修的老 bug：原来 T-80B 22 格接触-5、T-72 乌拉尔 / A / B 各 37 格）
 local NOERA_OLD = { "t80b", "t72ural", "t72a", "t72b" }
@@ -174,6 +183,19 @@ do
     check(F ~= nil and has(F.aps, "trophy") and has(F.era, "arat") and not TM.has("m1a2sep") and not TM.has("m1"),
       "TUSK（ARAT）/ Trophy 只有 SEPv3 能装（M1～SEP 没有改装页）")
     check(m1.turbine and sep3.turbine and m1.speed > hc.speed and m1.accel > sep3.accel, "燃气轮机；M1 / IPM1 限速 72、M1A1 起 67 公里 / 时；越重加速越慢")
+  end
+end
+
+do
+  local m60, a1, rise, l1, l2a0, l2a5 = VD.get("m60"), VD.get("m60a1"), VD.get("m60a1rise"), VD.get("leo1a1a1"), VD.get("leo2a0"), VD.get("leo2a5")
+  if m60 and a1 and rise and l1 and l2a0 and l2a5 then
+    check(m60.noStab == true and not a1.noStab and not rise.noStab and profTf("m60") < profTf("m60a1") and m60.accel > a1.accel,
+      "M60 没有稳定器（noStab）、M48 式短炮塔比 M60A1 薄、车轻加速快")
+    check(B.GUN[rise.weapons[1]][1] == "m735" and m60.weapons[1] == a1.weapons[1], "M60A1 RISE 打 M735；M60 同 M60A1 打 M392")
+    check(not m60.lrf and not rise.lrf and not l1.lrf and l2a0.lrf and VD.get("m60a3").lrf, "合像 / 体视测距的没有激光（M60、RISE、豹 1A1A1），豹 2A0、M60A3 有")
+    check(l2a5.weapons[1] == "gun120l44" and VD.get("leo2a6").weapons[1] == "gun120l55" and B.GUN[l2a0.weapons[1]][1] == "dm13l44",
+      "豹 2A5 还是 L/44（L/55 是 2A6 才换的）、豹 2A0 打 DM13")
+    check(OPT.TREE_NV.de_leo1a1a1 == "ir" and OPT.TREE_NV.de_leo2a0 == "ii", "豹 1A1A1 主动红外（PZB 200 微光是 1A1A2 才有）、豹 2A0 微光")
   end
 end
 

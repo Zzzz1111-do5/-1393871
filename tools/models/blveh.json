@@ -2325,7 +2325,9 @@
   "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按框把炮和每个车轮拆出来、减面（42 万 → 约 10 万个三角形）、贴图缩到 1024",
   "alias": [
    "leo2a6",
-   "leo2a4"
+   "leo2a4",
+   "leo2a0",
+   "leo2a5"
   ],
   "rotZ": 180,
   "scale": 0.44,
@@ -2763,7 +2765,8 @@
   "changes": "Blender 转换（tools/models/blveh.py）：按部件分组、按框把每个车轮拆出来、履带减面、底色贴图按联邦国防军黄橄榄色（RAL 6014）调色、贴图缩到 1024",
   "alias": [
    "leo1",
-   "leo1a5"
+   "leo1a5",
+   "leo1a1a1"
   ],
   "rotZ": 0,
   "scale": 1.0,
@@ -3278,7 +3281,9 @@
   "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、缩到真实尺寸、按框把炮、炮塔、每个车轮拆出来、材质底色改成美军森林绿",
   "alias": [
    "m60a3",
-   "m60a1"
+   "m60a1",
+   "m60",
+   "m60a1rise"
   ],
   "rotZ": 180,
   "scale": 0.00082,

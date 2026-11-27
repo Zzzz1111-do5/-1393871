@@ -1770,6 +1770,13 @@ add("vw.gun120hc", "120 毫米炮（M256）", "120 mm M256")
 add("vw.gun120a2", "120 毫米炮（M256）", "120 mm M256")
 add("vw.gun120sep", "120 毫米炮（M256）", "120 mm M256")
 add("vw.gun120sep3", "120 毫米炮（M256，弹药数据链）", "120 mm M256 (ADL)")
+add("veh.m60", "M60 主战坦克", "M60 MBT")
+add("veh.m60a1rise", "M60A1 RISE 主战坦克", "M60A1 RISE MBT")
+add("veh.leo1a1a1", "豹 1A1A1 主战坦克", "Leopard 1A1A1 MBT")
+add("veh.leo2a0", "豹 2A0 主战坦克", "Leopard 2A0 MBT")
+add("veh.leo2a5", "豹 2A5 主战坦克", "Leopard 2A5 MBT")
+add("vw.gun105m60r", "105 毫米炮（M68）", "105 mm M68")
+add("vw.gun120l44a0", "120 毫米炮（Rh-120 L/44）", "120 mm Rh-120 L/44")
 
 -- 科技树每一辆的名字（TechTree.lua）：tree.<键>——名牌、击毁提示、驾驶界面写科技树里的名字（借来的型号也写自己的名字）
 do
