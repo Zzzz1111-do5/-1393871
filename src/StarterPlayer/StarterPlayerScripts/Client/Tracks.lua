@@ -191,9 +191,17 @@ function Tracks.init(G)
     end)
     return S
   end
+  -- 两个 CFrame 差不多一样（同 View.lua：位置差不到 0.0005 格、朝向差不到约 0.04°）
+  local function sameCF(a, b)
+    if a == nil or b == nil then return a == b end
+    local dp = a.Position - b.Position
+    if dp:Dot(dp) > 2.5e-7 then return false end
+    return a.LookVector:Dot(b.LookVector) > 0.9999998 and a.UpVector:Dot(b.UpVector) > 0.9999998
+  end
   local function hideAll(S)
     if not S.shown then return end
     S.shown = false
+    S.putH = nil   -- 再露出来时一定重摆（透明度也要重设）
     S.hidT = now()
     for i, p in ipairs(S.parts) do
       if S.vis[i] then p.Transparency = 1 S.vis[i] = false end
@@ -266,6 +274,9 @@ function Tracks.init(G)
     -- 左转（yawRate > 0）右边那条是外侧，走得快
     if not brk[1] then S.s[1] = (S.s[1] + (f - y * sh.xm) * dt) % sh.total end   -- 左
     if not brk[2] then S.s[2] = (S.s[2] + (f + y * sh.xm) * dt) % sh.total end   -- 右
+    -- 停着不动（两边履带都没走、断没断没变、车身没挪）：板已经摆好了，这一帧不重摆（11-27 M3 丝滑：停着对狙时每辆省 100 多块）
+    if S.putH and S.s[1] == S.ps1 and S.s[2] == S.ps2 and brk[1] == S.pb1 and brk[2] == S.pb2 and sameCF(hullF, S.putH) then return end
+    S.putH, S.ps1, S.ps2, S.pb1, S.pb2 = hullF, S.s[1], S.s[2], brk[1], brk[2]
     local N, ds, Z, Y, NZ, NY, VIS = sh.N, sh.ds, sh.z, sh.y, sh.nz, sh.ny, sh.vis
     local n = 0
     for side = 1, 2 do

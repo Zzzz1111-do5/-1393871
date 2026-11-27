@@ -181,14 +181,14 @@ function WtFlight.init(G)
   local aspLine = frame(asp, UDim2.fromOffset(1.6, 11), UD2(0.5, 0, 0.5, 0), HUD, 0, V2(0.5, 0))
   aspLine.Name = "AspectLine"
   local tracks = setmetatable({}, { __mode = "k" })
-  local function velOf(em, p, t)   -- 目标的速度：两帧位置差平滑（服务器不发速度）
+  local function velOf(em, p, t)   -- 目标的速度（服务器不发速度）：只在服务器真挪了它时按两次挪之间的时间算、按时间平滑（View.lua G.velTrack）
     local r = tracks[em]
-    if not r then tracks[em] = { p = p, t = t, v = V() } return V() end
-    if t - r.t > 1e-3 then
-      local raw = (p - r.p) / (t - r.t)
-      if raw.Magnitude < 3000 then r.v = r.v:Lerp(raw, math.min(1, (t - r.t) * 5)) end
-      r.p, r.t = p, t
+    if not r then
+      r = {}
+      tracks[em] = r
     end
+    if G.velTrack then return G.velTrack(r, p, t, 3000) end
+    r.p, r.t, r.v = p, t, r.v or V()
     return r.v
   end
 

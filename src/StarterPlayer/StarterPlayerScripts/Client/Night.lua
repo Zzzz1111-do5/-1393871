@@ -293,23 +293,45 @@ function Night.init(G)
   virCC.Enabled = false
   virCC.Saturation, virCC.Contrast, virCC.Brightness, virCC.TintColor = -1, 0.42, -0.12, RGB(236, 238, 238)
   virCC.Parent = Lighting
-  local virHl = {}
-  local function virHlClear()
-    for _, h in ipairs(virHl) do h:Destroy() end
-    virHl = {}
-  end
-  local function virHlAdd(a)
+  -- 高亮：一个给所有实体的样子（G.viewFolder），再给最近的 24 个别的玩家（Highlight 同时最多画 31 个）。
+  --   11-27 M3 丝滑：原来每半秒把全部 Highlight 拆掉重建——引擎每次都要把几百上千块载具零件重新收一遍，热成像里每半秒一顿；
+  --   现在罩实体样子的那个进热成像建一次、一直留着，玩家的只在最近的 24 个换人时增删（没变的不动），出热成像再全拆
+  local virHlView, virHlPl = nil, {}   -- [角色] = Highlight
+  local function newHl(a)
     local h = Instance.new("Highlight")
     h.FillColor, h.OutlineColor = Color3.new(1, 1, 1), Color3.new(1, 1, 1)
     h.FillTransparency, h.OutlineTransparency = 0.12, 0.65
     h.DepthMode = Enum.HighlightDepthMode.Occluded
     h.Adornee = a
     h.Parent = workspace.CurrentCamera
-    table.insert(virHl, h)
+    return h
   end
-  local function virHlRefresh()   -- 一个给所有实体的样子，再给最近的 24 个别的玩家（Highlight 同时最多画 31 个）
-    virHlClear()
-    if G.viewFolder then virHlAdd(G.viewFolder) end
+  -- 新出来的车（View 往 G.viewFolder 里放了新模型）：Highlight 照理会跟着把新零件罩上，但 M3 上还没核实过（11-27 审查）——
+  --   保险起见记一笔，下一次半秒挑人时把罩车的那一个重建（只这一个；最多 3 秒一次，几辆车一起出来也只重建一回）
+  local vfConn, vfSeen, vfDirty, vfKick = nil, nil, false, -99
+  local function virHlClear()
+    if virHlView then virHlView:Destroy() virHlView = nil end
+    for _, h in pairs(virHlPl) do h:Destroy() end
+    virHlPl = {}
+    if vfConn then vfConn:Disconnect() vfConn = nil end
+    vfSeen, vfDirty = nil, false
+  end
+  local function virHlRefresh()
+    local vf = G.viewFolder
+    if vf ~= vfSeen then
+      if vfConn then vfConn:Disconnect() vfConn = nil end
+      vfSeen, vfDirty = vf, false
+      if vf then vfConn = vf.ChildAdded:Connect(function() vfDirty = true end) end
+    end
+    if vfDirty and virHlView and os.clock() - vfKick >= 8 then   -- 同 Drive：保险放到 8 秒
+      vfDirty, vfKick = false, os.clock()
+      virHlView:Destroy()
+      virHlView = nil
+    end
+    if vf and not (virHlView and virHlView.Parent and virHlView.Adornee == vf) then
+      if virHlView then virHlView:Destroy() end
+      virHlView = newHl(vf)
+    end
     local cam = workspace.CurrentCamera
     local cp = cam and cam.CFrame.Position or Vector3.zero
     local list = {}
@@ -319,7 +341,17 @@ function Night.init(G)
       if pl ~= me and hrp then table.insert(list, { ch, (hrp.Position - cp).Magnitude }) end
     end
     table.sort(list, function(a, b) return a[2] < b[2] end)
-    for i = 1, math.min(24, #list) do virHlAdd(list[i][1]) end
+    local want = {}
+    for i = 1, math.min(24, #list) do want[list[i][1]] = true end
+    for ch, h in pairs(virHlPl) do
+      if not want[ch] or not h.Parent or h.Adornee ~= ch then
+        h:Destroy()
+        virHlPl[ch] = nil
+      end
+    end
+    for ch in pairs(want) do
+      if not virHlPl[ch] then virHlPl[ch] = newHl(ch) end
+    end
   end
   local virArt = nil
   local function virApply(want)

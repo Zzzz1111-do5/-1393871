@@ -51,6 +51,7 @@ function Marks.init(G)
   local beam = part(V(0.6, 160, 0.6), RGB(255, 90, 60), nil, 0.55)
   crossA.Name, crossB.Name, beam.Name = "BombCross", "BombCross", "BombBeam"
   local function hideBomb()
+    if not (bombRing.Parent or crossA.Parent or crossB.Parent or beam.Parent) then return end   -- 已经收着：不每帧再写一遍（11-27）
     bombRing.Parent, crossA.Parent, crossB.Parent, beam.Parent = nil, nil, nil, nil
   end
   -- 按服务器的炸弹物理往前推，落到地面（或海面）为止；第二个返回值是落下要几秒（Fly.lua 的轰炸瞄准镜、CCRP 用）
@@ -124,7 +125,9 @@ function Marks.init(G)
     local st = G.fly
     local p = st and st.pilot and not st.crashed and st.poi
     if not p then
-      for _, q in ipairs(poiParts) do q.Parent = nil end
+      if poiParts[1].Parent or poiParts[5].Parent then
+        for _, q in ipairs(poiParts) do q.Parent = nil end
+      end
       return
     end
     local h = 18   -- 方框半边长（格）

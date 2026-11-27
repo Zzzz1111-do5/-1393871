@@ -167,5 +167,92 @@ function Theme.setSelected(b, on)
     b.TextColor3 = on and Theme.C.BG or Theme.C.TEXT
   end
 end
+-- 次级选中（整备的预设、内油、我的方案……）：白底只给页签和主按钮（一屏白底最多两块），次级的选中不填白——
+--   选中：RAISE 底（透明 0.1）+ 1 像素白描边 + 贴底 2 像素白线、字白；没选中：透明底 + 1 像素细线（A.line）、字灰。琥珀留给「正在改的挂点」和预览
+--   字在按钮自己身上（Text 不空）或者子零件 Label 上，两种都认
+function Theme.setPicked(b, on)
+  on = on == true
+  b.BackgroundColor3 = Theme.C.RAISE
+  b.BackgroundTransparency = on and 0.1 or 1
+  local s = Theme.stroke(b)
+  s.Color = on and Theme.C.TEXT or Theme.C.LINE
+  s.Transparency = on and 0.1 or Theme.A.line
+  local u = b:FindFirstChild("PickLine")
+  if not u then
+    u = Instance.new("Frame")
+    u.Name = "PickLine"
+    u.BorderSizePixel = 0
+    u.BackgroundColor3 = Theme.C.TEXT
+    u.BackgroundTransparency = 0
+    u.Size = UDim2.new(1, 0, 0, 2)
+    u.Position = UDim2.new(0, 0, 1, -2)
+    u.Parent = b
+  end
+  u.Visible = on
+  local col = on and Theme.C.TEXT or Theme.C.MUTE
+  if (b:IsA("TextButton") or b:IsA("TextLabel")) and b.Text ~= "" then b.TextColor3 = col end
+  local l = b:FindFirstChild("Label")
+  if l and l:IsA("TextLabel") then l.TextColor3 = col end
+  b:SetAttribute("Picked", on)
+end
+
+---------------------------------------------------------------- 动效（docs/style.md「动效」；用户 11-27「做的很粗糙 我需要非常艺术经验的效果」）
+-- 时长（秒）：短、克制——按钮反馈 0.12，界面变化不超过 0.3，大的换场（镜头）0.55；退场比进场短
+Theme.T = {
+  hover = 0.12,    -- 悬停、描边变亮、选中（琥珀细描边 + 底边 2 像素；不抬起，同战斗里的弹药栏）
+  num = 0.22,      -- 数字滚动、条长变化
+  ui = 0.22,       -- 界面里一小块展开、收起、换内容
+  panel = 0.28,    -- 进场：面板从旁边滑进来 + 淡入
+  out = 0.18,      -- 退场（比进场短）
+  cam = 0.55,      -- 镜头换位（进整备、点挂点、换页签）
+  mount = 0.22,    -- 装上一枚弹（从挂架下滑上去，带一点回弹）
+  done = 0.6,      -- 一项研究完：描边琥珀变绿
+  stagger = 0.025, -- 列表每一项比上一项晚这么多出来
+  cell = 0.015,    -- 弹药架一格一格填满 / 清空
+}
+Theme.STAGGER_MAX = 8   -- 错开最多算到第 8 项（后面的和第 8 项一起出来：长列表不拖）
+-- 缓动：进场、数字、选中都是先快后慢（Out）；镜头两头慢（InOut）；装弹带一点回弹（Back）。界面上不用先慢后快（In）
+Theme.EASE = {
+  out = { "Quart", "Out" },
+  hover = { "Quad", "Out" },
+  cam = { "Quart", "InOut" },
+  back = { "Back", "Out" },
+}
+-- 第 i 项（1 起）的错开延迟
+function Theme.stagger(i)
+  return math.clamp((i or 1) - 1, 0, Theme.STAGGER_MAX - 1) * Theme.T.stagger
+end
+-- 缓动曲线本身（0～1 → 0～1，给自己逐帧插值的地方用：镜头、3D 里的东西）：同上面 EASE 的名字
+function Theme.ease(k, x)
+  x = math.clamp(x, 0, 1)
+  if k == "cam" then   -- Quart 两头慢
+    if x < 0.5 then return 8 * x ^ 4 end
+    return 1 - (-2 * x + 2) ^ 4 / 2
+  elseif k == "back" then   -- Back 先快后慢、冲过一点再回来
+    local c1 = 1.70158
+    return 1 + (c1 + 1) * (x - 1) ^ 3 + c1 * (x - 1) ^ 2
+  elseif k == "hover" then   -- Quad 先快后慢
+    return 1 - (1 - x) ^ 2
+  end
+  return 1 - (1 - x) ^ 4   -- Quart 先快后慢
+end
+-- 补间：Theme.tween(界面零件, { 属性 = 终值 }, 时长（秒数或 Theme.T 的键，默认 ui）, 缓动（Theme.EASE 的键，默认 out）, 延迟秒数)
+--   TweenService 包在 pcall 里：零件已经删了、属性名写错、在不支持的环境里，都直接把属性设成终值（界面停在对的样子，不报错）；返回 Tween 或 nil
+local TS = nil
+function Theme.tween(o, props, t, ease, delay)
+  if typeof(o) ~= "Instance" or type(props) ~= "table" then return nil end
+  local dur = (type(t) == "number") and t or Theme.T[t or "ui"] or Theme.T.ui
+  local e = Theme.EASE[ease or "out"] or Theme.EASE.out
+  local ok, tw = pcall(function()
+    TS = TS or game:GetService("TweenService")
+    local info = TweenInfo.new(math.max(0, dur), Enum.EasingStyle[e[1]], Enum.EasingDirection[e[2]], 0, false, math.max(0, delay or 0))
+    local x = TS:Create(o, info, props)
+    x:Play()
+    return x
+  end)
+  if ok then return tw end
+  for k, v in pairs(props) do pcall(function() o[k] = v end) end
+  return nil
+end
 
 return Theme

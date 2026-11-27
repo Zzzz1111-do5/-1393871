@@ -242,7 +242,12 @@ function Play.init(G)
     local vp = cam.ViewportSize
     local ray = cam:ViewportPointToRay(vp.X / 2, vp.Y / 2)
     -- 实体（小兵、车、船、工事）不打服务器的隐形命中盒，按画面上看得见的位置算（View.lua G.viewRay；服务器按你看到的那一刻判定，Rewind.lua）
-    rayP.FilterDescendantsInstances = { player.Character, G.fxFolder, G.viewFolder, workspace:FindFirstChild("Ents") }
+    -- 列表里不能有空洞（在机库里没有角色：player.Character 是 nil，{ nil, … } 设进去会报错）
+    local fl = {}
+    for _, x in ipairs({ { player.Character }, { G.fxFolder }, { G.viewFolder }, { workspace:FindFirstChild("Ents") } }) do
+      if x[1] then fl[#fl + 1] = x[1] end
+    end
+    rayP.FilterDescendantsInstances = fl
     local len = range or 1500
     local res = G.rayFar(ray.Origin, ray.Direction * len, rayP)   -- 迫击炮、标点打到远处没加载的地形：按地形高度算（Stream.lua）
     if not ground and G.viewRay then
@@ -399,6 +404,7 @@ function Play.init(G)
     elseif k == Enum.KeyCode.R then reload()
     elseif k == Enum.KeyCode.V then G.firstPerson = not (G.firstPerson ~= false)   -- 第一 / 第三人称
     elseif k == Enum.KeyCode.Z then   -- 标记敌人（服务器 Weapons.lua 的 ACT.spot：准星方向几度以内、看得见的敌人，队友那边标出来）
+      if (G.workshopOpen and G.workshopOpen()) or not player.Character then return end   -- 机库的整备里 Ctrl+Z 是撤销；没有角色（在机库里）不标
       local p = aimPoint(Config.QuickSpot and Config.QuickSpot.range or 620, true)
       if p then G.R.Act:FireServer("spot", p) end
       if G.sfx then G.sfx("dry", nil, { vol = 0.45, speed = 1.7 }) end   -- 轻轻「嗒」一下
@@ -652,7 +658,10 @@ function Play.init(G)
     -- 第一人称的瞄准镜（使命召唤那样）：倍率跟着举镜进度放大——枪举到一半以后才开始拉近，镜子贴到眼前时正好放大到位
     --   （视角收窄得太早，还没举到眼前的枪和手会被放大得很怪）；松开右键照样跟着慢慢退回来
     local sw = cur.id and W[cur.id]
-    if fp and armed and sw and sw.scope and sw.kind ~= "spot" and G.fpsAds and G.fps then
+    if G.hangarStage and G.hangarStage.active and G.hangarStage.active() then
+      -- 机库的厂房 / 停机坪接管着镜头（HangarStage 定 40°）：这里不往 70° 拉——原来两边每帧来回改，视场角跟着帧率在 42～52° 之间晃，
+      --   画面和整备 3D 上的挂点编号（按当时的视场角投影）对不上
+    elseif fp and armed and sw and sw.scope and sw.kind ~= "spot" and G.fpsAds and G.fps then
       -- 镜内单独放大（画中画，用户 11-21）：镜外只放大一点点（普通开镜），倍率在镜片里那个圆（ScopePip.lua）
       local Z = (G.scopePipMode and G.scopePipMode()) and (G.PIP_ADS or 1.25) or (G.scopeZoom and G.scopeZoom(sw) or sw.scope)
       local e = math.clamp((G.fpsAds() - 0.35) / 0.6, 0, 1)

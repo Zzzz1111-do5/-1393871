@@ -47,7 +47,9 @@ function WtMap.init(G)
   end
   -- 左栏
   local LW = 320
-  local left = frame(dim, UDim2.new(0, LW, 1, -120), UDim2.new(0, 28, 0, 60), TH.C.PANEL, 0.12)
+  -- 锚点放在中间（11-27 审查）：打开时 G.uiPop 的 UIScale 以锚点为原点缩放——锚点在左上角时是从左上往右下长，看着像往右下飘了一下
+  local left = frame(dim, UDim2.new(0, LW, 1, -120), UDim2.new(0, 28 + LW / 2, 0.5, 0), TH.C.PANEL, 0.12)
+  left.AnchorPoint = Vector2.new(0.5, 0.5)
   left.Name = "Side"
   TH.corner(left)
   TH.stroke(left)
@@ -67,7 +69,8 @@ function WtMap.init(G)
   hint.Name = "Hint"
   sec1.Name, sec2.Name = "SecObj", "SecVeh"
   -- 右边：大地图 + 网格
-  local mapBox = frame(dim, UDim2.fromOffset(600, 600), UDim2.new(0, 28 + LW + 40, 0, 60), RGB(0, 0, 0), 0.2)
+  local mapBox = frame(dim, UDim2.fromOffset(600, 600), UDim2.fromOffset(28 + LW + 40 + 300, 60 + 300), RGB(0, 0, 0), 0.2)
+  mapBox.AnchorPoint = Vector2.new(0.5, 0.5)   -- 同左栏：锚点在中间（大小在 layout 里按屏幕定，位置跟着摆）
   mapBox.Name = "MapBox"
   TH.stroke(mapBox)
   local holder = frame(mapBox, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
@@ -94,6 +97,7 @@ function WtMap.init(G)
     local vs = workspace.CurrentCamera and workspace.CurrentCamera.ViewportSize or Vector2.new(1280, 720)
     local s = math.max(200, math.min(vs.Y - 110, vs.X - (28 + LW + 40) - 28))
     mapBox.Size = UDim2.fromOffset(s, s)
+    mapBox.Position = UDim2.fromOffset(28 + LW + 40 + s / 2, 60 + s / 2)   -- 左上角照旧在 (28 + LW + 40, 60)
   end
   -- 格子坐标（小地图、地图上的点说位置用）：世界坐标 → 「C7」
   function G.mapGridRef(x, z)
@@ -158,6 +162,8 @@ function WtMap.init(G)
     if y == 0 then text(vehList, L("这一局还没出车", "Nothing spawned yet"), UDim2.new(1, 0, 0, 20), nil, TH.S.small, TH.C.MUTE) end
   end
 
+  local TweenService = game:GetService("TweenService")
+  local DIM_T = TweenInfo.new((TH.T and TH.T.ui) or 0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)   -- Theme.T.ui、EASE.out（docs/style.md「动效」）
   local function setOpen(on)
     if on == open then return end
     open = on
@@ -166,6 +172,13 @@ function WtMap.init(G)
       layout()
       fill()
       if G.mapMount then G.mapMount(holder, UDim2.fromScale(1, 1)) end
+      -- 打开（11-27「动画做出丝滑感」）：原来一下子盖满屏——背后暗下来（0.22 秒）、左栏和地图从 0.96 弹到 1（0.18 秒，从各自的中心长开）
+      if G.uiPop and not (G.reducedMotion and G.reducedMotion()) then
+        dim.BackgroundTransparency = 1
+        TweenService:Create(dim, DIM_T, { BackgroundTransparency = 0.25 }):Play()
+        G.uiPop(left, 0.96, true)
+        G.uiPop(mapBox, 0.96, true)
+      end
     else
       local P = G.hudParts
       if G.mapMount and P then G.mapMount(P.miniClip or P.miniBox, UDim2.fromScale(1, 1)) end

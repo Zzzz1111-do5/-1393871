@@ -92,6 +92,25 @@ function WtHud.init(G)
   hitSub.Name = "Detail"
   hitBox.Visible = false
   local hitUntil = 0
+  -- 出现、换内容、消失（11-27 审查）：原来每来一条都从 1.15 倍瞬间跳回去再缩——机炮一秒 3～30 条，缩放永远走不完，正中那行字一直在闪
+  --   （docs/style.md「正中：命中提示（一闪就走）」）。现在只在三种时候轻轻弹一下（1.07 倍，0.12 秒）：原来没显示、结果升级了
+  --   （击穿 → 击毁 / 致命）、离上次弹超过 0.4 秒；连着来的只换字。到点不再一下子没了：字 0.18 秒淡掉再藏（又来一条就接着显示）
+  local HIT_FADE = 0.18
+  local hitRank, hitPopAt = 0, -9
+  local function hitShown(rank)
+    local now = os.clock()
+    local was = hitBox.Visible and now <= hitUntil   -- 正在淡出的当成没显示：重新弹出来
+    if hitTop.TextTransparency ~= 0 then
+      hitTop.TextTransparency, hitTop.TextStrokeTransparency = 0, 0.35
+      hitSub.TextTransparency, hitSub.TextStrokeTransparency = 0, 0.35
+    end
+    hitBox.Visible = true
+    if not was or rank > hitRank or now - hitPopAt > 0.4 then
+      hitPopAt = now
+      if G.uiPop then G.uiPop(hitBox, 1.07) end
+    end
+    hitRank = was and math.max(hitRank, rank) or rank   -- 显示期间只记最高一级（机炮打车击穿、跳弹混着来，跳弹 → 击穿不算升级）
+  end
   local function showHit(m)
     local top, col
     if m.kill then
@@ -105,7 +124,7 @@ function WtHud.init(G)
     local sub = details(m)
     if (m.r == "np" or m.r == "ric") and m.pen and m.arm then sub = T("wt.mm", m.arm, m.pen) .. ((sub ~= "") and ("   " .. sub) or "") end
     hitSub.Text = sub
-    hitBox.Visible = true
+    hitShown(m.kill and 3 or ((m.r == "pen") and 2 or 1))
     hitUntil = os.clock() + (m.kill and 3.6 or 2.6)
   end
 
@@ -128,7 +147,7 @@ function WtHud.init(G)
     hitTop.Text = T(big and "wta.crit" or "wt.hit")
     hitTop.TextColor3 = big and KILL or PEN
     hitSub.Text = airBits(m)
-    hitBox.Visible = true
+    hitShown(big and 3 or 1)
     hitUntil = os.clock() + (big and 3 or 1.6)
   end
 
@@ -835,6 +854,23 @@ function WtHud.init(G)
     vcam.CFrame = CFrame.lookAt(eye, tgt)
   end
 
+  local GHOST_N = 120   -- 回放里车的半透明影子最多几块
+  -- 影子用哪几块（11-27 审查）：原来按包围盒体积挑最大的 120 块——履带板（Tracks.lua 挂在车模型下的 TrackLink，一辆八九十块）占了名额，
+  --   细长的件（炮管、天线、机枪，体积小）被挤掉，而炮管是回放里最好认的东西。现在履带板不要，按最长的那条边排：丢的是螺栓、灯座这种小块
+  local function ghostParts(model)
+    local cand = {}
+    for _, p in ipairs(model:GetDescendants()) do
+      if p:IsA("BasePart") and p.Transparency < 0.9 and p.Name ~= "TrackLink" then
+        local sz = p.Size
+        cand[#cand + 1] = { p, math.max(sz.X, sz.Y, sz.Z) }
+      end
+    end
+    if #cand > GHOST_N then table.sort(cand, function(a, b) return a[2] > b[2] end) end
+    local out = {}
+    for i = 1, math.min(#cand, GHOST_N) do out[i] = cand[i][1] end
+    return out
+  end
+  G.wtGhostParts = ghostParts   -- 测试用
   local function showXray(m)
     local d = VD.get and VD.get(m.veh) or VD[m.veh]
     local x = m.xr
@@ -853,17 +889,17 @@ function WtHud.init(G)
     local n = 0
     if v and v.model and v.hullF then
       local inv = (v.hullF):Inverse()
-      for _, p in ipairs(v.model:GetDescendants()) do
-        if p:IsA("BasePart") and p.Transparency < 0.9 and n < 400 then
-          n += 1
-          local c = p:Clone()
-          for _, ch in ipairs(c:GetChildren()) do if not ch:IsA("SpecialMesh") then ch:Destroy() end end
-          pcall(function() c.TextureID = "" end)
-          c.Anchored, c.CanCollide, c.CastShadow = true, false, false
-          c.Material, c.Color, c.Transparency = Enum.Material.SmoothPlastic, RGB(150, 190, 220), 0.88
-          c.CFrame = inv * p.CFrame
-          c.Parent = world
-        end
+      -- 只复制 GHOST_N 块（11-27 M3 丝滑：原来最多复制 400 块，命中那一下卡一顿；零件拼的车小零件上百块，
+      --   88% 透明的影子里看不出来；原模型的车本来就没几块，照旧整辆）
+      for _, p in ipairs(ghostParts(v.model)) do
+        n += 1
+        local c = p:Clone()
+        for _, ch in ipairs(c:GetChildren()) do if not ch:IsA("SpecialMesh") then ch:Destroy() end end
+        pcall(function() c.TextureID = "" end)
+        c.Anchored, c.CanCollide, c.CastShadow = true, false, false
+        c.Material, c.Color, c.Transparency = Enum.Material.SmoothPlastic, RGB(150, 190, 220), 0.88
+        c.CFrame = inv * p.CFrame
+        c.Parent = world
       end
     end
     if n == 0 then
@@ -1182,7 +1218,17 @@ function WtHud.init(G)
 
   G.frameConn("WtHud", function(dt)
     local t = os.clock()
-    if hitBox.Visible and t > hitUntil then hitBox.Visible = false end
+    if hitBox.Visible and t > hitUntil then   -- 到点：字淡掉再藏
+      local a = math.clamp((t - hitUntil) / HIT_FADE, 0, 1)
+      if a >= 1 then
+        hitBox.Visible = false
+        hitRank = 0
+      else
+        local st = 0.35 + 0.65 * a
+        hitTop.TextTransparency, hitTop.TextStrokeTransparency = a, st
+        hitSub.TextTransparency, hitSub.TextStrokeTransparency = a, st
+      end
+    end
     if hurtText.Visible and t > hurtUntil then hurtText.Visible = false end
     if xr.Visible then
       if t > xrUntil then

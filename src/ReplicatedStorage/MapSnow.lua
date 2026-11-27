@@ -1459,6 +1459,9 @@ local function heightAt(x, z)
 end
 function Map.height(x, z) return heightAt(x, z), 1e9 end
 function Map.ground(x, z) return heightAt(x, z) end
+-- 据点的高度（同沙海、钢城都有 p.y）：原来雪山没写——服务器数圈里的人（Round.countIn、Ents.countAt）、客户端判断「在不在点里」
+--   （Operation.lua）都拿 p.y 比高度，nil 一减就报错（开坦克时每帧一次，屏幕上方红字常亮）。据点都在谷底，按谷底高（不查山体，开局不去载山的高度图）
+for _, p in ipairs(Map.POINTS) do p.y = floorH(p.x, p.z) end
 -- 写一块地形时（World.lua writeChunk 前后 Map.colCache(true / false)）：每一列的谷底高、山体高只算一次（定高度、定材质、判断壳都要）
 local CCF, CCP = nil, nil
 local function colInfo(x, z)

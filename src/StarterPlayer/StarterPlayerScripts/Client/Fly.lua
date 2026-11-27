@@ -1202,20 +1202,22 @@ function Fly.init(G)
       end
     end
     if not best then st.stickV = nil return nil end
-    -- 目标的速度：两帧位置差，平滑一下（雷达跟踪着的用雷达的）
+    -- 目标的速度：只在服务器真挪了它时按两次挪之间的时间算、按时间平滑（View.lua G.velTrack；原来每帧差分 × 0.3，
+    --   提前量一跳一跳、帧率不同手感也不同）；换了目标重新量。雷达单目标跟踪着的用雷达测的速度（velTrack 照样跟着量，丢了雷达锁接得上）
     local now = os.clock()
     local sv = st.stickV
-    local vT = V()
-    best.radar = rdl ~= nil and rdl.em == best.em
-    if best.radar and rdl.v then
-      vT = rdl.v
-    elseif sv and sv.em == best.em and now > sv.t + 1e-3 then
-      local raw = (best.p - sv.p) / (now - sv.t)
-      vT = (raw.Magnitude < 1500) and (sv.v or raw):Lerp(raw, 0.3) or (sv.v or V())
-    elseif sv and sv.em == best.em then
-      vT = sv.v or V()
+    if not sv or sv.em ~= best.em then
+      sv = { em = best.em }
+      st.stickV = sv
     end
-    st.stickV = { em = best.em, p = best.p, t = now, v = vT }
+    local vT
+    if G.velTrack then vT = G.velTrack(sv, best.p, now, 1500)
+    else
+      sv.p, sv.t, sv.v = best.p, now, sv.v or V()
+      vT = sv.v
+    end
+    best.radar = rdl ~= nil and rdl.em == best.em
+    if best.radar and rdl.v then vT = rdl.v end
     local vr = vT - (st.vel or V())
     local t = best.dist / gw.speed
     local lead = best.p
@@ -1457,26 +1459,12 @@ function Fly.init(G)
   --   火箭巢（kind rkt）：一个挂点挂一个巢，stores 记的是巢里还剩几发（AD.count = 管数 19 / 20），FM.storeMass / storeDrag 按外形算的是一整个装满的巢——
   --   原来照「发数 × 一整个巢」算（用户 11-27「飞机试驾不了」时查到）：苏-25（四个 B-8 巢）凭空重了 27 吨、43 吨推不动，推满油门滑出跑道两三公里还离不了地；
   --   A-10（两个火箭巢）重 11 吨、滑出跑道才离地。现在一个巢：空巢壳四成 + 剩下的火箭按发数折，阻力按一个巢（打空了巢还挂着）
+  --   算法挪进了 FlightModel.loadout（机库整备的性能对比、资料卡用同一套，不另编数）：这里给它现在挂的、每个挂点还剩几枚、两种油
   local function fmMass(D)
-    local d = st.d
-    local m = D.m0 + D.fi * clamp(st.fuel or 1, 0, 1) + D.fi * math.max(st.fuelX or 0, 0)
-    local dS = 0
-    for i, s in ipairs(d.st or {}) do
-      local wid = st.load and st.load[i]
-      local w = wid and AD.W[wid]
-      local n = (st.stores and st.stores[i]) or 0
-      if w and w.kind == "rkt" then
-        local full = math.max(w.tubes or 1, 1)
-        m += FM.storeMass(w, AD.M) * (0.4 + 0.6 * clamp(n / full, 0, 1))
-        if not s.bay then dS += FM.storeDrag(w, AD.M) end
-      elseif w and n > 0 then
-        m += FM.storeMass(w, AD.M) * n
-        if not s.bay then dS += FM.storeDrag(w, AD.M) * n end
-      end
-    end
-    return m, dS / D.S
+    local L = FM.loadout(st.d, st.load, st.fuel or 1, { D = D, stores = st.stores or {}, fuelX = st.fuelX or 0, AD = AD })
+    return L.m, L.dCD0
   end
-  G.flyMass = function() return st and st.fmD and fmMass(st.fmD) end   -- 测试用
+  G.flyMass = function() if st and st.fmD then return fmMass(st.fmD) end return nil end   -- 测试用：质量、外挂阻力增量
 
   local function jetPhysics(dt)
     local d = st.d

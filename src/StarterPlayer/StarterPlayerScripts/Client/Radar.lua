@@ -54,17 +54,15 @@ function Radar.init(G)
 
   -- 敌机的速度：按位置两帧差平滑（服务器不发速度）
   local track = setmetatable({}, { __mode = "k" })
+  --   只在服务器真挪了它时按两次挪之间的时间算（View.lua G.velTrack；原来每帧差分，「0、0、一大截」）
   local function velOf(em, p, now)
     local t = track[em]
     if not t then
-      track[em] = { p = p, t = now, v = V() }
-      return V()
+      t = {}
+      track[em] = t
     end
-    if now - t.t > 1e-3 then
-      local raw = (p - t.p) / (now - t.t)
-      if raw.Magnitude < 2000 then t.v = t.v:Lerp(raw, math.min(1, (now - t.t) * 6)) end
-      t.p, t.t = p, now
-    end
+    if G.velTrack then return G.velTrack(t, p, now, 2000) end
+    t.p, t.t, t.v = p, now, t.v or V()
     return t.v
   end
 
