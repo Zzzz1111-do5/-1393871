@@ -1345,6 +1345,11 @@ function Round.init(G)
       queue = G.queueState and G.queueState() or nil,   -- 匹配中：{ n 排了几个人, need 凑满几个, left 还剩几秒, wait }（WtMatch.lua）
     }
   end
+  -- 这一局算他的（匹配进来 / 半路加入：P.match 是这一局的局号）、在准备 / 战斗阶段：机库是局内选车页（下面 personal 的 C.pick），
+  --   局内不能试驾（Tech.lua testDrive 按这个拦；同战雷的出击页）
+  function G.inMatch(P)
+    return P.match ~= nil and P.match == R.n and (R.phase == "prep" or R.phase == "battle")
+  end
   local function personal(P, C)
     local t = now()
     C.team = P.team
@@ -1353,7 +1358,7 @@ function Round.init(G)
     C.queued = P.queued   -- 匹配中：自己排着的那一辆（科技树的键；没排是 nil）
     -- 局内选车（用户 11-26：匹配完进局，再在局内的界面选载具；车毁了回到这个界面）：这一局算他的（匹配进来 / 半路加入）、现在没车 →
     --   客户端机库（TechUI.lua）就是选车页：主按钮「出击」、多一个「退出战斗」、先选中匹配时点的那一辆（pickPref）
-    local inMatch = P.match ~= nil and P.match == R.n and (R.phase == "prep" or R.phase == "battle") and not P.testDeploy
+    local inMatch = G.inMatch(P) and not P.testDeploy
     C.pick = (inMatch and not P.vehicle) or nil
     C.pickPref = C.pick and P.pickPref or nil
     C.myVote = (not G.mapId and G.mapVotes and G.mapVotes[P.pl]) or nil   -- 自己投的哪张（选地图界面高亮）

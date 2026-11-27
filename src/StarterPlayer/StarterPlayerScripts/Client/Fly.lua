@@ -1437,10 +1437,13 @@ function Fly.init(G)
       pitchIn, rollIn, yawIn = st.kP, st.kR, st.kY
     end
     if G.mobile and controls then   -- 手机：摇杆直接当驾驶杆（往前推是低头）
+      -- pitchIn 的符号同键盘：W 推杆（低头）= +1、S 拉杆（抬头）= −1（下面 pull = −pitchIn、inp.sy = −pitchIn，地上 pitchIn < −0.3 抬机头）。
+      --   Roblox 的 MoveVector 往前推（同按 W）Z = −1，所以要取反——原来 pitchIn = mv.Z：往前推成了拉杆、往回拉成了推杆，
+      --   手机上往回拉想抬头起飞反倒压机头（试驾审查 8；直升机那段 fwdIn = −mv.Z 本来就是对的）
       local ok, mv = pcall(function() return controls:GetMoveVector() end)
       if ok and typeof(mv) == "Vector3" then
         if math.abs(mv.X) > 0.1 then rollIn = mv.X end
-        if math.abs(mv.Z) > 0.1 then pitchIn = mv.Z end
+        if math.abs(mv.Z) > 0.1 then pitchIn = -mv.Z end
       end
     end
     local cf = st.cf

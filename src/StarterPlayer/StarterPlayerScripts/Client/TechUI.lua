@@ -735,10 +735,12 @@ function TechUI.init(G)
       local _, key = selIt()
       if key then act("testDrive", key) end
     end)
+    H.testBtn = tb   -- 局内选车（S.pick）藏起来：下面按阶段刷新那段
     local vb = button(sbox, L("只看车", "Hide UI"), UDim2.new(0, 84, 0, 26), UDim2.new(1, -174, 0, 108))
     vb.Name = "ViewBtn"
     vb.TextSize = TH.S.small
     vb.MouseButton1Click:Connect(function() ui.Visible = false back.Visible = true end)
+    H.viewBtn = vb
   end
 
   do   -- 底下（11-25 照战雷重排）：一条「科技树」把手 + 各国页签（点哪国换哪国），下面五个阵容槽位（refreshHangar 里填）
@@ -1306,6 +1308,12 @@ function TechUI.init(G)
           end
         end
         if H.nats then H.nats.Visible = not S.pick end   -- 这一局里不能换系（阵容跟着这一局）
+        -- 局内选车页没有「试驾」（同战雷的出击页；试驾审查 4：局内飞机卡按设计禁选，右边「试驾」还在、点了开的是选中的坦克）——
+        --   「只看车」挪到最右边补上空位；局外、匹配中照旧
+        if H.testBtn and H.testBtn.Visible == (S.pick == true) then
+          H.testBtn.Visible = not S.pick
+          if H.viewBtn then H.viewBtn.Position = UDim2.new(1, S.pick and -84 or -174, 0, 108) end
+        end
         -- 用户 11-26「那个局内选车的界面别弄科技树了」：底下「科技树」那一条整条收起、开着的科技树关上
         if H.dock then H.dock.Visible = not S.pick end
         if S.pick and G.treeGui and G.treeGui.Visible and closeTree then closeTree() end

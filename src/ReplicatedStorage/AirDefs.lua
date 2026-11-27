@@ -996,9 +996,11 @@ end
 
 -- 飞行物理（FlightModel，用户 11-26 晚「每个飞机要有不同的参数」）：喷气机的平飞最大速度（军推 / 加力）、失速速度改按每型的真实物理量算
 --   （1000 米、一半内油 + 两枚中距弹）——AI、平显、服务器限速、起降速度都跟玩家开的那套物理一致；FlightModel 没登记的型号照旧用上面的数
+local FMod = nil   -- 下面 AirDefs.takeoffRun 也用
 do
   local okFM, FM = pcall(function() return require(script.Parent:WaitForChild("FlightModel", 5)) end)
   if okFM and type(FM) == "table" and FM.get then
+    FMod = FM
     for id, d in pairs(D) do
       if d.kind == "jet" then
         local P = FM.get(id) or (d.like and FM.get(d.like))
@@ -1220,6 +1222,70 @@ function AirDefs.tankFuel(d, load)
     end
   end
   return f, drag, n
+end
+
+---------------------------------------------------------------- 起飞滑跑（静态估算）
+
+-- 推满油门在平跑道上要滑多远才离地（格）。用户 11-27「飞机试驾不了」：满油满弹的轰-6K、B-2、MQ-9 在训练场 3600 格的跑道上滑不起来，
+--   试驾（Tech.lua）按这个挑在跑道上还是空中出生。照客户端 Fly.lua 地上那段一帧一帧推（改那边的滑跑、抬头、质量，这里要跟着改）：
+--   · 油门每秒推 55（有加力推到 130），发动机转速有惯性（FlightModel.engine）；
+--   · 推力减气动阻力（零升、外挂、起落架、襟翼）、再减机轮滚动阻力（重量的 3%）；低速时襟翼放着，两秒放到底；
+--   · 到抬头速度 vRot 拉杆，机头每秒抬 6°（轰炸机、运输机 3°），最多 12°（9°）；升力（带襟翼）托得住 1.02 倍重量就离地。
+--   质量同 Fly.lua fmMass：空重 + 内油 + 副油箱里的油 + 挂的弹（火箭巢一个挂点算一个满巢），外挂阻力（弹舱里的不算）。
+--   o 可以给：treeKey 科技树的版本、load 挂载（默认第一套预设）、fuel 内油几成（默认满）、thrK 推力倍率（改装 ModThr）、h 跑道多高（格）。
+--   返回：滑了多少格、离没离地（两分钟还没离地是 false）、用了几秒、质量（kg）；直升机、没有飞行物理的返回 nil
+function AirDefs.takeoffRun(d, o)
+  o = o or {}
+  local FM = FMod
+  if not (FM and d and d.kind == "jet" and d.vRot) then return nil end
+  local Dm = FM.get(d.id, o.treeKey) or FM.get(d.like or "") or FM.get(d.prop and "mq9" or ((d.g or 9) < 4 and "h6k" or "f16"))   -- 同 Fly.lua begin
+  if not Dm then return nil end
+  local M = AirDefs.M
+  local load = o.load or AirDefs.presetLoad(d)
+  local m = Dm.m0 + Dm.fi * math.clamp(o.fuel or 1, 0, 1) + Dm.fi * (AirDefs.tankFuel(d, load))
+  local dS = 0
+  for i, s in ipairs(d.st or {}) do
+    local wid = load[i]
+    local w = wid and AirDefs.W[wid]
+    if w then
+      local n = (w.kind == "rkt") and 1 or AirDefs.count(s, wid)   -- 火箭巢：一个满巢
+      m += FM.storeMass(w, M) * n
+      if not s.bay then dS += FM.storeDrag(w, M) * n end
+    end
+  end
+  local cd = Dm.CD0 + dS / Dm.S + Dm.gearCD
+  local rho = FM.atmo((o.h or 0) / M)
+  local F = FM.new(Dm, { 1, 0, 0, 0, 1, 0, 0, 0, 1 }, 0, 0, 0, 0)
+  local thrMax = d.ab and 130 or 100
+  local thrK = o.thrK or 1
+  local big = (d.g or 9) < 4
+  local rotMax, rotRate = math.rad(big and 9 or 12), math.rad(big and 3 or 6)
+  local Wt = m * FM.G
+  local dt = 1 / 60
+  local thr, spd, dist, t, flapK, rotP = 0, 0, 0, 0, 0, 0
+  while t < 120 do
+    thr = math.min(thrMax, thr + 55 * dt)
+    FM.engine(F, Dm, dt, thr, false)
+    local tgt = (thr <= 100) and d.vMil * thr / 100 or d.vMax
+    if tgt > spd then
+      local V0 = spd / M
+      local T = FM.thrust(Dm, F.N, F.abf, V0 / 340, rho, V0) * thrK
+      local Dr = 0.5 * rho * V0 * V0 * Dm.S * (cd + 0.03 * flapK)
+      local a = (T - Dr - 0.03 * Wt) / m * M
+      spd += math.clamp(a, 0, (tgt - spd) / dt) * dt
+    end
+    spd = math.min(spd, d.vMax)
+    dist += spd * dt
+    t += dt
+    if spd >= d.vRot then rotP = math.min(rotP + rotRate * dt, rotMax) end
+    if rotP > math.rad(2) then
+      local Vm = spd / M
+      if 0.5 * rho * Vm * Vm * Dm.S * FM.CL(Dm, rotP, flapK) >= Wt * 1.02 then return dist, true, t, m end
+    end
+    local fw = (spd < d.stall * 1.6) and 1 or 0
+    flapK = (flapK < fw) and math.min(fw, flapK + dt / 2) or math.max(fw, flapK - dt / 2)
+  end
+  return dist, false, t, m
 end
 
 return AirDefs
