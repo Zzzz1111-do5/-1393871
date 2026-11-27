@@ -882,6 +882,34 @@ function Air.init(G)
     G.damageEnt(e, 1e6, e.lastHitBy or { team = "none", name = why or "crash" })
   end
 
+  -- 出作战区：读秒，读完判毁（用户 11-27「超出战场区域开始读秒吧 读完了自动炸」，同战雷）——出了作战区的方框（Zones.play）开始读，
+  --   飞回来就停；读完服务器判毁（算坠毁：之前打过它的人照旧记功）。原来是客户端自动驾驶掉头、再往外 1200 格服务器不认、拉回。
+  --   读秒还没完就飞出 OOB_HARD 格（超音速十秒能飞一两万格）直接判毁。剩几秒写在飞机的 Oob 属性上（整数秒，平显照着显示）
+  local OOB_T = { jet = 10, heli = 10 }
+  local OOB_HARD = 12000
+  local function oobShow(e, left)
+    local v = left and math.max(0, math.ceil(left)) or nil
+    if e.model:GetAttribute("Oob") ~= v then e.model:SetAttribute("Oob", v) end
+  end
+  local function oobStep(e, out)
+    if not e.alive then return end
+    if out then
+      local t = now()
+      e.oobUntil = e.oobUntil or (t + (OOB_T[e.def.kind] or 10))
+      local left = e.oobUntil - t
+      if left <= 0 then
+        e.oobUntil = nil
+        oobShow(e, nil)
+        crash(e, "bounds")
+        return
+      end
+      oobShow(e, left)
+    elseif e.oobUntil then
+      e.oobUntil = nil
+      oobShow(e, nil)
+    end
+  end
+
   -- 飞得快一卡一卡（用户 11-18）：原来按「两次收到报告的间隔」算允许飞多远（最少按 0.02 秒）——报告挤在一起到（客户端帧率低、网络抖、
   --   服务器一帧处理两包），高速时一包挪的距离就超了，服务器把飞机拉回上一个位置，客户端一顿一顿地往回跳。
   --   现在按「离上次认下的位置过了多久」算（挤在一起到的两包，第二包允许的距离也是按真实经过的时间），再加一个会慢慢回满的余量；
@@ -897,11 +925,18 @@ function Air.init(G)
     local def = e.def
     e.syncSlack = math.min(160, (e.syncSlack or 160) + dtA * 120)
     local allow = def.vMax * 1.6 * dtA
-    -- 作战区按所在的区块（Zones.lua：训练场在十万格外，按训练场中心、训练场的作战区算）；客户端在作战区边上开始掉头、再往外 1000 硬拦
+    -- 作战区按所在的区块（Zones.lua：训练场在十万格外，按训练场中心、训练场的作战区算）：出了作战区读秒（oobStep），
+    --   再往外 OOB_HARD 格直接判毁（原来客户端在边上自动掉头、再往外 1200 格这里不认、拉回去）
     local rx, rz, zn = p1.X, p1.Z, "battle"
     if Map.Zones then rx, rz, zn = Map.Zones.rel(p1.X, p1.Z) end
-    local lim = (Map.Zones and Map.Zones.play(zn, Map) or Map.PLAY) + 1200
-    local bad = p1.Y ~= p1.Y or math.abs(rx) > lim or math.abs(rz) > lim or p1.Y > (Map.CEIL or 2600) + 1400   -- 升限按地图（雪山 7200）
+    local play = Map.Zones and Map.Zones.play(zn, Map) or Map.PLAY
+    local lim = play + OOB_HARD
+    local bad = p1.Y ~= p1.Y or p1.Y > (Map.CEIL or 2600) + 1400   -- 升限按地图（雪山 7200）
+    if not bad and (math.abs(rx) > lim or math.abs(rz) > lim) then
+      G.moveEnt(e, cf)
+      crash(e, "bounds")
+      return
+    end
     if not bad and dist > allow then
       local over = dist - allow
       if over <= e.syncSlack then
@@ -925,6 +960,8 @@ function Air.init(G)
       return
     end
     G.moveEnt(e, cf)
+    oobStep(e, math.abs(rx) > play or math.abs(rz) > play)
+    if not e.alive then return end
     if typeof(d.v) == "Vector3" and d.v.Magnitude < def.vMax * 1.6 then e.vel = d.v end
     if e.onGround and d.gd ~= true then e.upAt = now() end   -- 刚离地（AI 舰艇的自动防空导弹 12 秒内不打：Navy.lua）
     e.onGround = d.gd == true
@@ -1056,6 +1093,11 @@ function Air.init(G)
       if D and D.char and D.remote ~= e then D.char:PivotTo(e.root.CFrame) end
       for i, Q in ipairs(e.pass) do if Q.char then Q.char:PivotTo(e.root.CFrame * CF(((i % 2) * 2 - 1) * 2, 0, -2 + i * 2.5)) end end
       if e.alive then burnFuel(e, dt) end
+      if e.alive and e.oobUntil and t >= e.oobUntil then   -- 读秒读完了客户端却不再报位置（掉线、卡住）：照样判毁
+        e.oobUntil = nil
+        oobShow(e, nil)
+        crash(e, "bounds")
+      end
       if e.alive and not D then
         local p = e.root.CFrame.Position
         local g = surface(p.X, p.Z)

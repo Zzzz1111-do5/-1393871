@@ -182,7 +182,9 @@ function DeathFx.init(G)
     if not cam then return end
     if G.S and G.S.phase == "end" then return end
     S.n += 1
-    S.on, S.t0, S.char, S.dur = true, os.clock(), ch, wasDown and DUR_DOWN or DUR
+    -- 试驾里摔了 / 被打掉：阵亡画面短一点（2.4 秒）就回机库（用户 11-27「我坠机能不能自动返回主页」）——试驾的车 / 飞机模型带 TestDrive 属性
+    local testD = G.inTestDrive and G.inTestDrive() or false
+    S.on, S.t0, S.char, S.dur = true, os.clock(), ch, testD and math.min(2.4, DUR) or (wasDown and DUR_DOWN or DUR)
     S.camType0, S.fov0 = cam.CameraType, cam.FieldOfView
     local hrp = ch and (ch:FindFirstChild("HumanoidRootPart") or ch:FindFirstChild("Head"))
     S.focus0 = (hrp and hrp:IsA("BasePart") and hrp.Position) or cam.Focus.Position
@@ -194,6 +196,7 @@ function DeathFx.init(G)
       local m = seat:FindFirstAncestorOfClass("Model")
       if m and m ~= ch then S.veh = m S.focus0 = m:GetPivot().Position end
     end
+    if S.veh and S.veh:GetAttribute("TestDrive") == true then S.dur = math.min(2.4, S.dur) end   -- 死的时候 Drive / Fly 可能已经先收了：再看一眼座位所在的车
     S.from = cam.CFrame.Position
     local flat = Vector3.new(cam.CFrame.LookVector.X, 0, cam.CFrame.LookVector.Z)
     S.back = (flat.Magnitude > 0.05) and -flat.Unit or V(0, 0, 1)

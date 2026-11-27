@@ -444,6 +444,7 @@ add("ui.reloading", "{1}  换弹中…", "{1}  reloading…")
 add("ui.reloadKey", "R 换弹", "R to reload")
 add("ui.healed", "治疗 +{1}", "Healed +{1}")
 add("ui.spotted", "标记了 {1} 个敌人", "Spotted {1} enemies")
+add("ui.markNone", "准星附近没有看得见的敌人", "No visible enemy near the crosshair")   -- 载具里按中键标记（Weapons.lua vmark）
 add("ui.strikeCalled", "炮火覆盖：{1} 秒后落下", "Artillery inbound in {1}s")
 add("ui.strikeCd", "炮击还要 {1} 秒才能再叫", "Artillery ready in {1}s")
 add("ui.mortarRange", "超出射程（{1}～{2}）", "Out of range ({1}-{2})")
@@ -614,6 +615,9 @@ add("air.passenger", "（乘客）", "(passenger)")
 add("air.ab", "加力", "AFTERBURNER")
 add("air.missile", "导弹来袭", "MISSILE")
 add("air.oob", "返回作战区域", "RETURN TO BATTLE AREA")
+add("air.oobT", "返回作战区域  {1}", "RETURN TO BATTLE AREA  {1}")   -- 出作战区读秒（Air.lua oobStep，读完判毁）
+add("ui.oobT", "返回战场区域  {1}", "RETURN TO BATTLE AREA  {1}")   -- 地面车开出战场区域读秒（Armor.lua）
+add("ui.oobOk", "已回到战场区域", "Back in the battle area")
 add("air.stall", "失速", "STALL")
 add("air.pullup", "拉起", "PULL UP")
 add("air.tooFast", "太快 · 收油门再落", "TOO FAST · CUT THROTTLE")

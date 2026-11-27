@@ -110,7 +110,7 @@ function WtAir.init(G)
       elseif k == "pilot" then
         S.koT = S.koT or now()
       elseif k == "rotor" then
-        S.wingT = S.wingT or now()   -- 旋翼没了：掉下去，12 秒还没摔就算打下来
+        S.wingT = S.wingT or now()   -- 旋翼没了：掉下去，4 秒还没摔就算打下来（同断翼）
       end
     end
     -- 起火、漏油
@@ -252,7 +252,8 @@ function WtAir.init(G)
           end
         end
         if e.alive and S.koT and t - S.koT > 4 then destroy(e, S.src) end
-        if e.alive and S.wingT and t - S.wingT > 12 then destroy(e, S.src) end
+        -- 断翼 / 旋翼没了：4 秒还没摔就算打下来（原来 12 秒——从高处掉下来要看十几秒才回机库；用户 11-27「我坠机能不能自动返回主页」）
+        if e.alive and S.wingT and t - S.wingT > 4 then destroy(e, S.src) end
         if dirty and e.alive then push(e) end
       end
     end

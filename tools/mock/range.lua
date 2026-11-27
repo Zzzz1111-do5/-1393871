@@ -3,7 +3,7 @@
 --   ① 地图函数按区块分派（Map.lua zoneWrap）：训练场里的高度、材质是训练场的（平地 12、挡弹墙鼓起来），战场里的照旧
 --   ② 训练场建好（G.rangeReady）：地形写了（平地 FillBlock、挡弹墙逐列写体素）、设施都在（8 条靶道、距离牌、跑道、直升机坪、靶区）
 --   ③ 坦克试驾：车在训练场第 1 条靶道的射击线上，七辆靶车在这条靶道 300～2000 米，三架靶机在训练场上空；第二个人用第 2 条靶道
---   ④ 飞机试驾：停在训练场跑道东头；在训练场里飞不算出界，飞出训练场作战区按训练场中心掉头（不往战场飞）
+--   ④ 飞机试驾：停在训练场跑道东头；在训练场里飞不算出界，飞出训练场作战区按训练场中心算出界、开始读秒
 --   ⑤ 大厅（主菜单、机库厂房、机库停机坪）离战场、训练场都几万格
 --   ⑥ 镜头在训练场：远处那圈平地换成训练场的草地、在训练场平地的高度；回机库沉在场景最低的零件底下；回战场换回来
 local T = dofile(MOCK_DIR .. "/common.lua")
@@ -136,7 +136,7 @@ T.remoteAs(me, "Drive", { op = "exit", hangar = true })
 T.runUntil(function() return not P.alive end, 15)
 R.run(9)
 
-print("④ 飞机试驾：训练场跑道，出界按训练场中心掉头")
+print("④ 飞机试驾：训练场跑道，出界按训练场中心读秒")
 T.act("testDrive", "cn_j6")
 T.runUntil(function() return P.alive and P.vehicle ~= nil and P.vehicle.air end, 20)
 local ea = P.vehicle
@@ -165,9 +165,9 @@ if ea and st then
   check(st.oob == false, "在训练场上空飞：不算出界（原来离战场中心十万格，一直当出界往回拽）")
   place(RM.X + Zones.RANGE.PLAY + 600, RM.Z, V3(1, 0, 0))
   R.run(0.5)
-  local yaw = st.aimYaw or 0
-  local aim = V3(-math.sin(yaw), 0, -math.cos(yaw))
-  check(st.oob == true and aim.X < -0.9, string.format("飞出训练场作战区：掉头朝训练场中心（准心朝 %.2f, %.2f）", aim.X, aim.Z))
+  -- 用户 11-27「超出战场区域开始读秒吧 读完了自动炸」：出界不再自动掉头，按训练场的作战区读秒（读完判毁见 tools/mock/bounds.lua）
+  local left = ea.model:GetAttribute("Oob")
+  check(st.oob == true and left ~= nil and left <= 10, "飞出训练场作战区：按训练场中心算出界、开始读秒（剩 " .. tostring(left) .. " 秒）")
   check(ea.alive and Zones.of(ea.root.CFrame.Position.X, ea.root.CFrame.Position.Z) == "range", "服务器认（没当成飞出地图拉回去）")
 end
 T.remoteAs(me, "Drive", { op = "exit", hangar = true })

@@ -431,6 +431,33 @@ function Armor.init(G)
     return (dir + V((math.random() - 0.5) * 2 * s, (math.random() - 0.5) * 2 * s, (math.random() - 0.5) * 2 * s)).Unit
   end
 
+  -- 开出战场区域：读秒，读完判毁（用户 11-27「超出战场区域开始读秒吧 读完了自动炸」，同战雷）——界在地形边上往里 OOB_IN 格
+  --   （三张战场图的基地都在 ±6656～16000，离界很远；训练场靶道在中间），出界读 OOB_T 秒，开回来就停；读完判毁（之前打过它的人照旧记功）。
+  --   剩几秒写在屏幕正中（G.msg center，每秒一条）
+  local OOB_T, OOB_IN = 10, 1200
+  local function oobStep(e, P, out)
+    if not e.alive then return end
+    if out then
+      local t = now()
+      e.oobUntil = e.oobUntil or (t + OOB_T)
+      local left = math.ceil(e.oobUntil - t)
+      if left <= 0 then
+        e.oobUntil, e.oobShown = nil, nil
+        G.wtRaw = true   -- 战雷式伤害：整车直接判毁（不按零件算）
+        local ok, err = pcall(G.damageEnt, e, 1e9, e.lastHitBy or { team = "none", name = "bounds" })
+        G.wtRaw = false
+        if not ok and G.reportError then G.reportError("出界判毁", err) end
+        return
+      end
+      if e.oobShown ~= left and P and P.pl then
+        e.oobShown = left
+        G.msg(P.pl, "center", "ui.oobT", left)
+      end
+    elseif e.oobUntil then
+      e.oobUntil, e.oobShown = nil, nil
+      if P and P.pl then G.msg(P.pl, "center", "ui.oobOk") end
+    end
+  end
   local function sync(P, e, d)
     if e.locked then return end
     local cf = d.cf
@@ -449,11 +476,14 @@ function Armor.init(G)
     local h = Map.height(p1.X, p1.Z)
     local bad = flat > maxD or p1.Y ~= p1.Y or math.abs(p1.Y - math.max(h, -e.def.H) - e.def.H / 2) > e.def.H * 1.5 + 6
     if not e.def.amphib and h < -3 and not e.lcac then bad = true end
+    local oobOut = false
     do   -- 开出地图：按所在的区块算（训练场 Zones.RANGE 在十万格外）
       local rx, rz, zn = p1.X, p1.Z, "battle"
       if Map.Zones then rx, rz, zn = Map.Zones.rel(p1.X, p1.Z) end
       local lim = Map.Zones and Map.Zones.land(zn, Map) or Map.R
       if math.abs(rx) > lim or math.abs(rz) > lim then bad = true end
+      -- 战场区域的界：地形边上往里 OOB_IN 格（出了界读秒，下面 oobStep；地形边上照旧拉回）
+      oobOut = math.abs(rx) > lim - OOB_IN or math.abs(rz) > lim - OOB_IN
     end
     e.lastSync = t
     if bad then
@@ -463,6 +493,8 @@ function Armor.init(G)
     end
     e.syncBudget = math.max(0, e.syncBudget - flat)
     G.moveEnt(e, cf)
+    oobStep(e, P, oobOut)
+    if not e.alive then return end
     if e.lcac then   -- 站在气垫艇上：艇跟着车走；开上岸了把车放下
       if e.lcac.alive then G.moveEnt(e.lcac, lcacUnder(cf * CF(0, -e.def.H / 2, 0))) end
       if h > 0.8 then dropOff(e) end

@@ -1496,7 +1496,7 @@ function Fly.init(G)
     local upright = upV.Y > 0.3   -- 没倒飞、没在翻筋斗
     local nCmd, rc, yc
     local stickHeld = math.abs(st.kP or 0) + math.abs(st.kR or 0) + math.abs(st.kY or 0) > 0.02
-    if G.mobile or (kb and not st.eo and not st.oob and (not mAim or stickHeld)) then
+    if G.mobile or (kb and not st.eo and (not mAim or stickHeld)) then   -- 出作战区也照旧自己飞（不再自动掉头，服务器读秒）
       -- 驾驶杆（键盘 / 手机摇杆）：往后拉要过载、松杆 1 g，坡度 33° 以内补一点杆保高度；没压 A / D、坡度 20° 以内机翼慢慢自己摆平
       local pull = -pitchIn   -- 往后拉为正
       nCmd = (pull >= 0) and (1 + pull * (GMAX - 1)) or (1 + pull * 3)   -- 推杆到 −2 g
@@ -1629,7 +1629,7 @@ function Fly.init(G)
     -- 教官给的过载、滚转角速度、偏航（飞行员昏迷、断翼、平尾没了这些交给 FlightModel 按受伤算）
     st.nCmd = clamp(nCmd, -2, GMAX)
     st.yawCmd = yc
-    local stickMode = G.mobile or (kb and not st.eo and not st.oob and (not mAim or stickHeld))   -- 键盘 / 手机摇杆直接操纵（不然教官飞）
+    local stickMode = G.mobile or (kb and not st.eo and (not mAim or stickHeld))   -- 键盘 / 手机摇杆直接操纵（不然教官飞）
     if st.ground then st.pr, st.rr, st.yr = 0, 0, 0 st.c.pit, st.c.rol, st.c.yaw = 0, 0, 0 end
     local pos = cf.Position
     if st.ground and st.cat then
@@ -2524,13 +2524,11 @@ function Fly.init(G)
       if Zn then cx, cz = Zn.center(zn) end
       local lim = Zn and Zn.play(zn, Map) or Map.PLAY
       local rx, rz = p.X - cx, p.Z - cz
+      -- 出了作战区：不再自动掉头（用户 11-27「超出战场区域开始读秒吧 读完了自动炸」，同战雷）——操纵照旧在玩家手里，
+      --   服务器读秒（Air.lua oobStep，剩几秒在飞机的 Oob 属性上，平显正中写），读完判毁；再往外 12000 格服务器直接判毁，
+      --   这里的硬边只是保险（别飞进别的区块）
       st.oob = math.abs(rx) > lim or math.abs(rz) > lim
-      if st.oob and d.kind == "jet" then
-        local back = V(-rx, 0, -rz).Unit
-        st.aimYaw = math.atan2(-back.X, -back.Z)
-        st.aimPitch = 0.05
-      end
-      local hard = lim + 1000
+      local hard = lim + 12500
       if math.abs(rx) > hard or math.abs(rz) > hard then
         st.cf = st.cf - p + V(cx + math.clamp(rx, -hard, hard), p.Y, cz + math.clamp(rz, -hard, hard))
         if d.kind == "heli" then st.hv = V() end
@@ -2560,6 +2558,15 @@ function Fly.init(G)
         st.engSnd.Volume = 0.7 + 0.4 * load
       end
       if st.crashed then st.engSnd.Volume = 0 end
+    end
+    -- 摔了（客户端判的坠毁）3 秒服务器还没判毁（没认成坠机、或者那一包丢了）：自己回机库，不用再长按 H
+    --   （用户 11-27「我坠机能不能自动返回主页」；服务器判毁的照常走阵亡画面，几秒后自动回机库）
+    if st.pilot and st.crashed then
+      st.crashT = st.crashT or os.clock()
+      if not st.crashBack and os.clock() - st.crashT > 3 then
+        st.crashBack = true
+        G.R.Drive:FireServer({ op = "exit", hangar = true })
+      end
     end
     -- 航炮后坐：开火时机身高频抖一点（模型跟着抖，用户：飞机机炮要有散布、后坐力和打击感）
     local gunOn = st.pilot and st.trig and (st.gunAmmo or 0) > 0 and not st.crashed
@@ -3001,7 +3008,9 @@ function Fly.init(G)
       if st.rwrT and os.clock() < st.rwrT then warn = ((os.clock() * 4) % 1 < 0.6) and T("air.missile") or ""
       elseif st.rwrLockT and os.clock() < st.rwrLockT then warn = ((os.clock() * 2) % 1 < 0.7) and T(st.rwrLockFull and "air.radarLock" or "air.radarTrack") or ""
       elseif st.out and not st.ground then warn = T("air.flameout")
-      elseif st.oob then warn = T("air.oob")
+      elseif st.oob or st.em:GetAttribute("Oob") then   -- 出作战区：服务器读的秒（Air.lua oobStep）
+        local left = st.em:GetAttribute("Oob")
+        warn = left and T("air.oobT", left) or T("air.oob")
       elseif d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05 then warn = T("air.stall")
       elseif os.clock() - (st.floatT or -9) < 0.6 then warn = T("air.tooFast")   -- 接地太快、贴着跑道飘：收油门
       elseif not st.ground and agl < 60 and st.vel.Y < -25 then warn = T("air.pullup")
