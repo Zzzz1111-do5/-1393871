@@ -10,6 +10,16 @@ function Ents.init(G)
   local V = Vector3.new
   local GRAV = V(0, -workspace.Gravity * 0.55, 0)   -- 弹道用的重力（比角色的轻一点，火箭弹、手雷飞得远一点）
   local HitSurf = require(game:GetService("ReplicatedStorage"):WaitForChild("HitSurf"))
+  -- 碰撞组（客户端殉爆飞出去的钢板碎块用，WreckFx.lua，11-27 审查 13）：VfxChunk 只跟地形、建筑（Default）碰，不碰角色和车（VfxActor）。
+  --   客户端自己也注册（谁先都行）；这里注册好的会复制到客户端（万一客户端不让注册、不让改）。服务器上没有零件放进这两个组，不影响别的
+  pcall(function()
+    local PS = game:GetService("PhysicsService")
+    for _, n in ipairs({ "VfxChunk", "VfxActor" }) do
+      if not PS:IsCollisionGroupRegistered(n) then PS:RegisterCollisionGroup(n) end
+    end
+    PS:CollisionGroupSetCollidable("VfxChunk", "VfxActor", false)
+    PS:CollisionGroupSetCollidable("VfxChunk", "VfxChunk", false)
+  end)
 
   local folder = Instance.new("Folder")
   folder.Name = "Ents"
@@ -262,6 +272,23 @@ function Ents.init(G)
   params.FilterType = Enum.RaycastFilterType.Exclude
   params.IgnoreWater = false
 
+  -- 火箭弹、导弹的弹种（给客户端画爆炸用，11-27 审查 10）：破甲战斗部的按破甲弹画（白尖的闪、射流、灰烟、土少），别的照旧按榴弹（爆破）画
+  --   炮弹带的 cls 照给；坦克炮里打出去的炮射导弹按 Ballistics 的 cls（9M119M「反射」：atgm）；车载反坦克导弹（陶式、婴儿、短号）atgm；
+  --   步兵的火箭筒（RPG-7、AT4）heat；直升机的反坦克导弹（杀伤半径 ≤ 10 的空地弹：地狱火、AKD-10、攻击、突击、旋风、HOT、陶式）heat；
+  --   大的空地导弹（Kh-29、小牛、KD-88、反辐射）、反舰弹、航空火箭弹、炸弹、防空导弹不给（爆破战斗部）
+  local BAL = require(game:GetService("ReplicatedStorage"):WaitForChild("Ballistics"))
+  local function rocketAm(s)
+    if s.cls then return s.cls end
+    local w = s.w or {}
+    local a = w.ammo and BAL.AMMO and BAL.AMMO[w.ammo]
+    if a and a.cls then return a.cls end
+    if w.kind == "atgm" then return "atgm" end
+    if w.kind == "proj" then return "heat" end
+    if w.kind == "agm" and (w.splash or 99) <= 10 and not w.nuke then return "heat" end
+    return nil
+  end
+  G.rocketAm = rocketAm   -- 测试用
+
   local shotN = 0
   function G.launch(s)
     s.t = 0
@@ -359,8 +386,8 @@ function Ents.init(G)
           end
           -- 溅射出错也要把 wtSkip 放掉：不然这辆车之后再也不掉血
           G.wtSkip = wtE
-          -- 打在钢甲上：爆炸带上材质、来向、弹种（客户端画「打在车上」：没有土柱、弹坑；穿甲弹不画爆炸，11-27）
-          local mInfo = (hs and HitSurf.METAL[hs]) and { h = hs, d = s.vel.Unit, am = s.cls } or nil
+          -- 打在钢甲上：爆炸带上材质、来向、弹种（客户端画「打在车上」：没有土柱、弹坑；穿甲弹不画爆炸，11-27；火箭弹、导弹按战斗部：rocketAm）
+          local mInfo = (hs and HitSurf.METAL[hs]) and { h = hs, d = s.vel.Unit, am = rocketAm(s) } or nil
           local okE, errE = pcall(function()
             if s.kind == "shell" then
               s.w.splashW = s.w.splashW or { dmg = (s.w.dmg or 100) * 0.3, splash = s.w.splash, vs = s.w.vs,
@@ -439,7 +466,15 @@ function Ents.init(G)
           local m = G.eraBlast and G.eraBlast(res.Position, s.w, s.vel)
           if m then G.dmgK = m end
           local hs2 = res.Instance and HitSurf.of(res.Instance, res.Material)
-          G.explode(res.Position, s.w, s.src, nil, hs2 and { h = hs2, d = s.vel.Unit } or nil)   -- 按材质、来向画（钢甲上也带：客户端画打在车上的那一套，11-27）
+          -- 按材质、来向、战斗部画（钢甲上也带：客户端画打在车上的那一套）；11-27 审查 10：带上弹种（rocketAm）——炮射导弹、反坦克导弹、
+          --   火箭筒这些破甲战斗部的客户端按破甲弹画，原来一律画成榴弹
+          local amR = rocketAm(s)
+          local info = hs2 and { h = hs2, d = s.vel.Unit, am = amR } or nil
+          if not info and amR then
+            info = groundInfo(res.Position) or {}
+            info.am = amR
+          end
+          G.explode(res.Position, s.w, s.src, nil, info)
           if res.Instance and s.kind == "rocket" then hitThing(res.Instance, s.w, s.w.dmg * 0.3, s.src) end   -- 直接命中多一点
           if m then G.dmgK = nil end
           done = true

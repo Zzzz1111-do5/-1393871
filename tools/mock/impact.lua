@@ -21,7 +21,8 @@ if C.menuShown and C.menuShown() then
   R.run(0.5)
 end
 local P1, P2 = G.P[p1], G.P[p2]
-local function spawnOf(P) return (P.team == "atk") and "fleet" or "camp" end
+-- 出生点（11-27 审查 15a）：原来用的是岛图的名字（fleet 舰队、camp 营地）——现在的图（沙海、钢城）走 Map.BASES，两边的出生点都叫 base
+local function spawnOf(P) return (G.Map.BASES and G.Map.BASES[P.team]) and "base" or ((P.team == "atk") and "fleet" or "camp") end
 T.actAsRemote(p1, "deploy", "rifle", spawnOf(P1))
 T.actAsRemote(p2, "deploy", "rifle", spawnOf(P2))
 R.run(1)
@@ -90,10 +91,21 @@ check(near(dustH, eG and eG.b or gp, 8), "客户端：扬尘的发射器挪到�
 check(not has(sounds, "ping") and not has(sounds, "clang"), "打土没有金属声")
 
 sent = {}
-local sea = V3(A2.x, 0, A2.z - 3200)
-G.botShot(V3(sea.X, 40, sea.Z + 200), sea, W, src, {}, 0)
-local eW = sent[#sent]
-check(eW and eW.h == "w", "打在海里：h = w（" .. tostring(eW and eW.h) .. "）")
+-- 现在的图（沙海、钢城）没有海：往外找一块，找不到就跳过这一条（打印出来，不算不对）
+local sea = nil
+for dd = 0, 20000, 400 do
+  for _, q in ipairs({ V3(A2.x, 0, A2.z - 3200 - dd), V3(A2.x + dd, 0, A2.z), V3(A2.x - dd, 0, A2.z), V3(A2.x, 0, A2.z + dd) }) do
+    if not sea and G.Map.height(q.X, q.Z) < -3 then sea = q end
+  end
+  if sea then break end
+end
+if sea then
+  G.botShot(V3(sea.X, 40, sea.Z + 200), sea, W, src, {}, 0)
+  local eW = sent[#sent]
+  check(eW and eW.h == "w", "打在海里：h = w（" .. tostring(eW and eW.h) .. "）")
+else
+  print("    这张图没有海（往外找了两万格）：跳过「打在海里：h = w」")
+end
 
 sent = {}
 G.botShot(from, from + V3(0, 500, 0), W, src, { p1.Character }, 0)

@@ -699,9 +699,13 @@ local function opAt(kind, w)
 end
 R.opAt = opAt
 
+-- 所有粒子发射器（弱表：粒子计数按 Rate × 时间算常喷的那些，见 R.step）
+R.pes = setmetatable({}, { __mode = "k" })
+R.collisionGroups = {}   -- PhysicsService 注册的碰撞组：名字 → { 别的组 = 碰不碰 }
 local function make(cls)
   local o = setmetatable({ _cls = cls, _p = {}, _kids = {}, _attr = {}, _ev = {}, _chg = {}, _dead = false }, INST)
   o._p.Name = cls
+  if cls == "ParticleEmitter" then R.pes[o] = true end
   return o
 end
 
@@ -1049,6 +1053,7 @@ def("BasePart", "PVInstance", {
   Orientation = { T.Vector3, v3() },
   LocalTransparencyModifier = { T.number, 0 },
   AssemblyLinearVelocity = { T.Vector3, v3() },   -- 模拟器没有物理：只记着（跳伞时服务器给人一个初速度）
+  CollisionGroup = { function(v) return type(v) == "string" and (v == "Default" or R.collisionGroups[v] ~= nil) end, "Default" },   -- 碰撞组（要先 PhysicsService 注册，11-27 碎块）
 }, { events = { Touched = true, TouchEnded = true }, ro = { Position = function(o) return partCF(o).Position end }, noCreate = true })
 def("Part", "BasePart", { Shape = { E("PartType"), Enum.PartType.Block } })
 -- 没有 Decoration、GrassLength：Roblox 不许脚本读写这两个（文档 Not Scriptable；一碰就报「不是 Terrain 的有效成员」）——
@@ -1270,7 +1275,10 @@ def("ParticleEmitter", "Instance", {
   Squash = { T.NumberSequence, NumberSequence.new(0) }, Shape = { E("ParticleEmitterShape"), Enum.ParticleEmitterShape.Box },
   ShapeStyle = { E("ParticleEmitterShapeStyle"), Enum.ParticleEmitterShapeStyle.Volume }, ShapeInOut = { E("ParticleEmitterShapeInOut"), Enum.ParticleEmitterShapeInOut.Outward },
   ShapePartial = { T.number, 1 }, WindAffectsDrag = { T.bool, false }, TimeScale = { T.number, 1 },
-}, { methods = { Emit = function(_, n) if n ~= nil and type(n) ~= "number" then error("Emit 要数字", 2) end end, Clear = function() end } })
+}, { methods = { Emit = function(o, n)
+  if n ~= nil and type(n) ~= "number" then error("Emit 要数字", 2) end
+  if R.peCount and R.peCounted(o) then R.peCount.emit = R.peCount.emit + (n or 1) end   -- 粒子计数（tools/mock/vfxreal.lua）
+end, Clear = function() end } })
 def("SpotLight", "Instance", { Brightness = { T.number, 1 }, Range = { T.number, 16 }, Angle = { T.number, 90 }, Color = { T.Color3, newC3(1, 1, 1) },
   Face = { E("NormalId"), Enum.NormalId.Front }, Shadows = { T.bool, false }, Enabled = { T.bool, true } })
 def("SurfaceLight", "Instance", { Brightness = { T.number, 1 }, Range = { T.number, 16 }, Angle = { T.number, 90 }, Color = { T.Color3, newC3(1, 1, 1) },
@@ -1809,6 +1817,29 @@ do
   } })
 end
 R.services.ScriptContext = service("ScriptContext", {}, { events = { Error = true } })
+-- 碰撞组（11-27：殉爆的碎块只跟地形、建筑碰，不碰角色和车）：只记着谁跟谁碰（模拟器没有物理）；R.noCollisionGroups 时注册报错（试「注册不了照旧」那条路）
+local function cgName(n) if type(n) ~= "string" or n == "" or #n > 100 then error("碰撞组名字要 1～100 个字", 3) end return n end
+local function cgHas(n) return n == "Default" or R.collisionGroups[n] ~= nil end
+R.services.PhysicsService = service("PhysicsService", {}, { methods = {
+  RegisterCollisionGroup = function(_, n)
+    if R.noCollisionGroups then error("RegisterCollisionGroup 不能在这里调用", 2) end
+    cgName(n)
+    if n ~= "Default" and not R.collisionGroups[n] then R.collisionGroups[n] = {} end
+  end,
+  IsCollisionGroupRegistered = function(_, n) return cgHas(cgName(n)) end,
+  CollisionGroupSetCollidable = function(_, a, b, on)
+    if not cgHas(cgName(a)) or not cgHas(cgName(b)) then error("碰撞组没注册：" .. tostring(a) .. " / " .. tostring(b), 2) end
+    if type(on) ~= "boolean" then error("CollisionGroupSetCollidable 第三个参数要 true / false", 2) end
+    R.collisionGroups[a] = R.collisionGroups[a] or {}
+    R.collisionGroups[b] = R.collisionGroups[b] or {}
+    R.collisionGroups[a][b], R.collisionGroups[b][a] = on, on
+  end,
+  CollisionGroupsAreCollidable = function(_, a, b)
+    local t = R.collisionGroups[a]
+    if t and t[b] ~= nil then return t[b] end
+    return true
+  end,
+} })
 R.services.ProximityPromptService = service("ProximityPromptService", { Enabled = { T.bool, true } }, { events = { PromptTriggered = true } })
 -- EditableMesh / EditableImage（只模拟接口和参数检查；R.noEditable = true 时当成用不了）
 R.Content = { fromObject = function(o)
@@ -2485,7 +2516,23 @@ end
 
 ------------------------------------------------------------ 推进时间
 
+-- 粒子计数（tools/mock/vfxreal.lua：殉爆第一秒所有发射器一共喷了多少颗）：R.peCount = { emit = 0, rate = 0, roots = { 实例… } } 时，
+--   Emit 的颗数、开着的发射器 Rate × 时间都记上（只数 roots 下面的发射器；不给 roots 就全数）
+function R.peCounted(o)
+  local pc = R.peCount
+  if not pc then return false end
+  if rawget(o, "_dead") then return false end
+  if not pc.roots then return rawget(o, "_parent") ~= nil end
+  for _, r in ipairs(pc.roots) do if base.IsDescendantOf(o, r) then return true end end
+  return false
+end
 function R.step(dt)
+  local pc = R.peCount
+  if pc then
+    for pe in pairs(R.pes) do
+      if pe.Enabled and pe.Rate > 0 and R.peCounted(pe) then pc.rate = pc.rate + pe.Rate * dt end
+    end
+  end
   clock = clock + dt
   R.stepNo = (R.stepNo or 0) + 1   -- 第几步（测试按步数地形写入：tools/mock/terrainbg.lua）
   R.frameDelta, R.mouseDelta = R.mouseDelta, nil

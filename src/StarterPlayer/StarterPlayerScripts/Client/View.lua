@@ -352,66 +352,22 @@ function View.init(G)
   local TOSS_G = 9.81 * 2.8 * 1.25   -- 重力（格/秒²，略重一点，落得干脆）
   local trackMark   -- 履带印（下面定义）
   local function tossFx(p, big)
-    if not G.fxPart then return end
-    local part = G.fxPart
-    -- 一柱火：从座圈直冲上去
-    local h = part(nil, V(0.4, 0.4, 0.4), CFrame.lookAt(p, p + V(0, 1, 0)), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
-    local fire = Instance.new("ParticleEmitter")
-    fire.Texture = "rbxasset://textures/particles/fire_main.dds"
-    fire.Rate = 0
-    fire.Lifetime = NumberRange.new(0.35, 0.8)
-    fire.Speed = NumberRange.new(28, 60)
-    fire.SpreadAngle = Vector2.new(14, 14)
-    fire.Drag = 1.5
-    fire.LightEmission = 1
-    fire.LightInfluence, fire.Brightness = 0, 3   -- 11-27：fire_main 本身暗褐，自己发光要推亮（Instance.new 的 LightInfluence 默认就是 0）
-    fire.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3.5), NumberSequenceKeypoint.new(0.5, 7), NumberSequenceKeypoint.new(1, 2) })
-    fire.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(1, 1) })
-    fire.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 246, 200)), ColorSequenceKeypoint.new(0.4, RGB(255, 160, 60)), ColorSequenceKeypoint.new(1, RGB(120, 40, 20)) })
-    fire.EmissionDirection = Enum.NormalId.Front
-    fire.Parent = h
-    fire:Emit(big and 70 or 40)
-    -- 火星：往四周上方撒，带重力落下来（11-27：白点顺着飞的方向拉成线，不用八角星）
-    local sp = Instance.new("ParticleEmitter")
-    sp.Texture = "rbxasset://textures/particles/explosion01_implosion_main.dds"
-    sp.Rate = 0
-    sp.Lifetime = NumberRange.new(0.8, 1.8)
-    sp.Speed = NumberRange.new(30, 70)
-    sp.SpreadAngle = Vector2.new(60, 60)
-    sp.Acceleration = V(0, -40, 0)
-    sp.LightEmission, sp.LightInfluence, sp.Brightness = 1, 0, 3
-    sp.Orientation = Enum.ParticleOrientation.VelocityParallel
-    pcall(function() sp.Squash = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 0.8) }) end)
-    sp.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.45), NumberSequenceKeypoint.new(1, 0.12) })
-    sp.Color = ColorSequence.new(RGB(255, 210, 120))
-    sp.EmissionDirection = Enum.NormalId.Front
-    sp.Parent = h
-    sp:Emit(big and 90 or 50)
-    -- 黑烟蘑菇云（11-27：深灰的烟贴图、受光照——夜里不再自己发亮成灰白一团、跟着风）
-    local sm = Instance.new("ParticleEmitter")
-    sm.Texture = "rbxasset://textures/particles/explosion01_smoke_main.dds"
-    sm.Rate = 0
-    sm.Lifetime = NumberRange.new(2.5, 4.5)
-    sm.Speed = NumberRange.new(14, 30)
-    sm.SpreadAngle = Vector2.new(30, 30)
-    sm.Drag = 1.2
-    sm.LightInfluence = 1
-    pcall(function() sm.WindAffectsDrag = true end)
-    sm.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 5), NumberSequenceKeypoint.new(1, 20) })
-    sm.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(1, 1) })
-    sm.Color = ColorSequence.new(RGB(255, 255, 255))
-    sm.EmissionDirection = Enum.NormalId.Front
-    sm.Parent = h
-    sm:Emit(big and 26 or 14)
-    Debris:AddItem(h, 6)
-    if G.flash then G.flash(p + V(0, 6, 0), RGB(255, 170, 80), 70, 14, 0.9) end
+    -- 一柱火（从座圈直冲上去）、往四周上方撒的火星、一团黑烟：11-27 审查 5 改走 VfxLib 的池（WreckFx.lua 的 G.wreckTossFx；
+    --   原来每次新建 3 个发射器、一下喷 186 颗，跟 WreckFx 同一刻的大火球叠在一起，殉爆第一秒六七百颗）
+    if G.wreckTossFx then G.try_(G.wreckTossFx, p, big) end
+    -- 灯、接着几下闷响：坦克（big）的殉爆 WreckFx 同一刻点了一盏大灯、画了一发发殉爆（审查 6：两盏大灯叠在一起，白天过曝），这里只给别的车
+    if not big then
+      if G.flash then G.flash(p + V(0, 6, 0), RGB(255, 170, 80), 70, 14, 0.9, { day = 1.5 }) end
+    end
     if G.playSound then
       G.playSound("boom", p, 0.5)
-      for i = 1, 4 do   -- 车里的炮弹接着一发发殉爆：闷闷的几声
-        task.delay(0.5 + i * 0.45 + math.random() * 0.3, function()
-          G.playSound("mortar", p, 0.7 + math.random() * 0.3)
-          if G.flash then G.flash(p + V(0, 2, 0), RGB(255, 150, 70), 30, 5, 0.25) end
-        end)
+      if not big then
+        for i = 1, 4 do   -- 车里的炮弹接着一发发殉爆：闷闷的几声
+          task.delay(0.5 + i * 0.45 + math.random() * 0.3, function()
+            G.playSound("mortar", p, 0.7 + math.random() * 0.3)
+            if G.flash then G.flash(p + V(0, 2, 0), RGB(255, 150, 70), 30, 5, 0.25, { day = 1.5 }) end
+          end)
+        end
       end
     end
     if G.shake then
@@ -421,54 +377,8 @@ function View.init(G)
     end
   end
   local function landFx(p)
-    if not G.fxPart then return end
-    local part = G.fxPart
-    local h = part(nil, V(0.4, 0.4, 0.4), CFrame.lookAt(p, p + V(0, 1, 0)), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
-    -- 贴地一圈冲击波（11-27：原来是一个塑料圆柱零件撑开，近看是塑料片；换成冲击波贴图的粒子，平躺）
-    local ring = Instance.new("ParticleEmitter")
-    ring.Texture = "rbxasset://textures/particles/explosion01_shockwave_main.dds"
-    ring.Rate = 0
-    ring.Lifetime = NumberRange.new(0.5, 0.6)
-    ring.Speed = NumberRange.new(0.05)
-    ring.Orientation = Enum.ParticleOrientation.VelocityPerpendicular
-    ring.EmissionDirection = Enum.NormalId.Front
-    ring.LightInfluence = 1
-    ring.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3), NumberSequenceKeypoint.new(1, 15) })
-    ring.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 1) })
-    ring.Color = ColorSequence.new(RGB(160, 146, 124))
-    ring.Parent = h
-    ring:Emit(1)
-    local du = Instance.new("ParticleEmitter")
-    du.Texture = "rbxasset://textures/particles/smoke_main.dds"
-    du.Rate = 0
-    du.Lifetime = NumberRange.new(1, 2.2)
-    du.Speed = NumberRange.new(8, 22)
-    du.SpreadAngle = Vector2.new(75, 75)
-    du.Drag = 2.5
-    du.Acceleration = V(0, -4, 0)
-    du.LightInfluence = 1   -- 11-27：土受光照（Instance.new 默认 0：夜里自己发亮）
-    du.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3), NumberSequenceKeypoint.new(1, 11) })
-    du.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
-    du.Color = ColorSequence.new(RGB(140, 124, 98))
-    du.EmissionDirection = Enum.NormalId.Front
-    du.Parent = h
-    du:Emit(22)
-    local sp = Instance.new("ParticleEmitter")
-    sp.Texture = "rbxasset://textures/particles/explosion01_implosion_main.dds"
-    sp.Rate = 0
-    sp.Lifetime = NumberRange.new(0.3, 0.7)
-    sp.Speed = NumberRange.new(20, 40)
-    sp.SpreadAngle = Vector2.new(80, 80)
-    sp.Acceleration = V(0, -40, 0)
-    sp.LightEmission, sp.LightInfluence, sp.Brightness = 1, 0, 3
-    sp.Orientation = Enum.ParticleOrientation.VelocityParallel
-    pcall(function() sp.Squash = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2), NumberSequenceKeypoint.new(1, 0.8) }) end)
-    sp.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(1, 0.1) })
-    sp.Color = ColorSequence.new(RGB(255, 200, 120))
-    sp.EmissionDirection = Enum.NormalId.Front
-    sp.Parent = h
-    sp:Emit(24)
-    Debris:AddItem(h, 3)
+    -- 贴地一圈冲击波、一圈土、一把火星（审查 5：走池，WreckFx.lua 的 G.wreckLandFx；原来每次新建 3 个发射器）
+    if G.wreckLandFx then G.try_(G.wreckLandFx, p) end
     if G.playSound then G.playSound("splash", p, 0.35) G.playSound("boom", p, 1.6) end
   end
   G.tossCount = 0   -- 测试用
@@ -498,12 +408,13 @@ function View.init(G)
     G.tossCount += 1
     G.tossVy = vy   -- 测试用
     tossFx(tF.Position, v.def.cat == "tank")
-    -- 炮塔身上挂着火和黑烟一起飞（火 Rate 30、烟 Rate 10，2.5 秒；落地 1 秒后关）
+    -- 炮塔身上挂着火和黑烟一起飞（2.5 秒；落地 1 秒后关）：审查 5——火 30 → 12、烟 10 → 4 颗 / 秒，记进 VfxLib 的全局预算（粒子太多时再少喷）
     if G.fxPart then
       local th = G.fxPart(nil, V(0.4, 0.4, 0.4), tF, RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+      local kb = (G.vfx and G.vfx.rateK) and G.vfx.rateK(16, 3, 3, 2) or 1
       local tf = Instance.new("ParticleEmitter")
       tf.Texture = "rbxasset://textures/particles/fire_main.dds"
-      tf.Rate = 30
+      tf.Rate = 12 * kb
       tf.Lifetime = NumberRange.new(0.35, 0.7)
       tf.Speed = NumberRange.new(1, 4)
       tf.SpreadAngle = Vector2.new(40, 40)
@@ -516,7 +427,7 @@ function View.init(G)
       tf.Parent = th
       local ts = Instance.new("ParticleEmitter")
       ts.Texture = "rbxasset://textures/particles/explosion01_smoke_main.dds"
-      ts.Rate = 10
+      ts.Rate = 4 * kb
       ts.Lifetime = NumberRange.new(1.8, 3)
       ts.Speed = NumberRange.new(1, 3)
       ts.SpreadAngle = Vector2.new(30, 30)
@@ -565,6 +476,10 @@ function View.init(G)
     if T.fxH and T.fxH.Parent then T.fxH.CFrame = T.cf end
   end
   G.stepToss = stepToss
+  -- 残骸车身黑烟的 Rate：远近两个发射器（WreckFx.lua 的 G.wreckBlackRate：镜头近的喷小一号那根，另一根 0）
+  local function setBlack(M, r)
+    if G.wreckBlackRate then G.wreckBlackRate(M, r) elseif M.black then M.black.Rate = r end
+  end
 
   -- 履带印：薄薄一片深色的方块贴在地上，淡出后回收（对象池，最多 MAX_MARK 段）
   local MAX_MARK = 360
@@ -946,8 +861,11 @@ function View.init(G)
           end
         elseif d.cat == "tank" or Random.new(seed * 31 + 7):NextNumber() < 0.4 then startToss(v) end
       end
-      if G.wreckPrepBurn then G.try_(G.wreckPrepBurn, M) end   -- 火推亮、黑烟换深灰的贴图（WreckFx.lua）
-      M.fire.Rate, M.black.Rate = 30, 6
+      if G.wreckPrepBurn then G.try_(G.wreckPrepBurn, M) end   -- 火推亮、黑烟换深灰的贴图、近处那根小一号的黑烟（WreckFx.lua）
+      if not v.cookT then   -- 先烧再炸的（转盘车）：烧的那几秒 WreckFx 的 wreckCook 自己定（火 14、烟 6），炸开以后 heavyBurn 接着
+        M.fire.Rate = 30
+        setBlack(M, 6)
+      end
       -- 殉爆的大火球、钢板碎块、接连殉爆、舱口窜火、浓黑烟柱、地面烧焦（WreckFx.lua，用户 11-25「载具爆炸效果不够猛画风不够战雷」）
       if G.wreckFx and not v.cookT then G.try_(G.wreckFx, v, whyW, base0) end   -- 先烧再炸的（转盘车殉爆）：大火球等烧完那一下再画
       if M.fire.Parent then   -- 夜里残骸的火光照亮周围（每帧闪一闪）
@@ -989,23 +907,25 @@ function View.init(G)
       if age > 40 and not v.burnt1 then
         v.burnt1 = true
         if M.fire then M.fire.Rate = 6 end
-        if M.black then M.black.Rate = 3 end
+        if M.black then setBlack(M, 3) end
       elseif age > 70 then
         v.burnt2 = true
         if M.fire then M.fire.Rate = 0 end
-        if M.black then M.black.Rate = 1.2 end
+        if M.black then setBlack(M, 1.2) end
         if v.fireLight then v.fireLight:Destroy() v.fireLight = nil end
       end
-      -- 镜头 60 格内黑烟小一号（贴脸的大烟团最费：半透明叠太多层）；半秒看一次，进 55 / 出 70 才换
+      -- 镜头 60 格内黑烟小一号（贴脸的大烟团最费：半透明叠太多层）；半秒看一次，进 55 / 出 70 才换。
+      --   11-27 审查 7：两个发射器换着喷（M.black 远、M.blackN 小一号的；WreckFx.lua 的 G.wreckBlackRate），不改 Size——
+      --   Size 是整条曲线，一改连已经在飘的四十来颗一起缩放，走过那条线整根烟柱一下变小
       v.nearT = (v.nearT or 0) + dt
-      if M.black and M.blackNear and v.nearT > 0.5 then
+      if M.black and M.blackN and G.wreckBlackRate and v.nearT > 0.5 then
         v.nearT = 0
         local dd = (M.black.Parent.Position - camPos).Magnitude
         local want = v.blackNear
         if dd < 55 then want = true elseif dd > 70 then want = false end
         if want ~= v.blackNear then
           v.blackNear = want
-          M.black.Size = want and M.blackNear or M.blackFar
+          G.wreckBlackRate(M, nil, want == true)
         end
       end
     end

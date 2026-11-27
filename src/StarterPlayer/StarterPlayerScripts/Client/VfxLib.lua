@@ -1,11 +1,24 @@
 -- 全面大战场（客户端）——特效共用的底子（用户 11-27：开炮、炮弹打地、机枪打地、坦克殉爆都照战雷 Eagle's Shadow 做，「在 M3 的 Mac 上要丝滑」）
---   · 粒子发射器池：每一「层」（贴图、颜色、大小曲线……）按大小分档常驻一个发射器，用的时候把它的小零件挪到位置、Emit 几颗——
---     不每发都 Instance.new 一堆零件和发射器再 Destroy。粒子喷出去就留在世界里（不跟零件走），同一个发射器一帧里能在好几处喷。
---     颜色、大小、透明度曲线改了会连已经在飞的粒子一起变，所以按「层 + 大小档 + 变体（地面颜色、贴脸）」各建一个，不在用的时候改；
---     速度、散开角只影响新喷的，可以按次改（kick）。发射器总数有上限（MAX_EM），满了借同一层最近的一档
+--   · 粒子发射器池：每一「层」（贴图、颜色、大小曲线……）按大小分档常驻发射器，用的时候把它的小零件挪到位置、Emit 几颗——
+--     不每发都 Instance.new 一堆零件和发射器再 Destroy。粒子喷出去就留在世界里（不跟零件走）。
+--     颜色、大小、透明度曲线改了会连已经在飞的粒子一起变，所以按「层 + 大小档 + 变体（地面颜色、贴脸）」各建一份，不在用的时候改；
+--     速度、散开角只影响新喷的，可以按次改（emitK）。发射器总数有上限（MAX_EM），满了借同一层最近的一档，再不行收最久没用的那一层
+--   · 一层可以有几「处」（site：一个小零件 + 一个发射器，配置一样）——下面三条引擎行为模拟器验证不了，代码里不去赌它（11-27 审查 3）：
+--     (b) 同一帧里把一个零件挪来挪去、喷好几次，粒子是不是出在各自的位置：同一帧里换了位置 / 朝向就换一处喷（犁沟那一串土团、
+--         两颗白闪、制退器两边），一处只在一个地方喷
+--     (c) 发射器挪到别处去喷，上一处还在飘的长寿命烟会不会跟着零件出了视野被一起剔除：寿命上限 ≥ 3 秒的烟、尘云（eSoot、eCloud、
+--         mHang、gRise、eRing、kHang、wSoot……碎屑火星除外）每处爆炸借一处，固定在那里，粒子没灭完不挪走（到寿命才还回池里）；
+--         离上一处不到 10 格的照用那一处（挪一点不碍事）。一层最多 8 处（长寿命）/ 6 处（别的），都占满了才借最早到期的那处
+--     (a) EmissionDirection = Front 时 SpreadAngle 的 X 是不是左右（水平）——见下面 SPREAD_XH：
+--         Studio 里怎么看：Play（钢城、沙海都行），开坦克在平地上开一炮——炮口前应该是一大片又宽又扁、贴着地往前、往两边推开的扇形尘幕；
+--         再往远处地上打一发榴弹（或看别人的落点）——落点那圈扬尘应该贴着地面往四周推开、是平的一圈。
+--         要是看到的是竖起来的一堵墙、竖着的一个圈（尘往天上喷成一道竖缝），就是 X / Y 反了：把本文件里 `local SPREAD_XH = true`
+--         改成 false（只改这一行，所有用到 {左右, 上下} 的层一起换过来），再开一炮看一遍
 --   · 闪光灯池：8 盏点光源挂在 Attachment 上轮着用，亮度每帧按 Quad Out 降到 0（不每次新建零件、灯、补间）；投影子的同时只 1 盏
 --   · 弹坑焦痕池（24 块，60 秒后 10 秒淡掉，满了收最旧的）、余火池（6 处：炸弹、导弹炸完坑里烧一会儿）
---   · 远近分档：离镜头 400 / 1100 / 2500 格（开镜按视场折算成看上去的远近）；同时活着的粒子估个数，太多了先砍碎屑、火星
+--   · 远近分档：离镜头 400 / 1100 / 2500 格（开镜按视场折算成看上去的远近）；同时活着的粒子估个数，太多了先砍碎屑、火星；
+--     不走池的常喷发射器（碎块拖的火和烟、舱口火柱、炮塔身上的火）用 rateK 记进同一个数、按它少喷
+--   · 预建（prewarmLater）：常用的层进局时分几帧建好（一帧 4 个），第一炮、第一次殉爆不顿
 --   · 贴图只用 Roblox 自带的（rbxasset://textures/particles/…），不上传图片
 --   · 测试：L.logOn = true 以后每喷一次记一笔（L.log），tools/mock/vfxreal.lua、groundhit.lua、boom.lua 按它查
 local VfxLib = {}
@@ -83,7 +96,7 @@ function VfxLib.new(G, FXF)
   L.holder = holder
 
   -- SpreadAngle 的 (X, Y)：EmissionDirection = Front 时 X 是左右、Y 是上下（文档：Top 时两个分量是 X / Z 两个轴上的散开）。
-  --   Studio 里要是看着反了（贴地一圈变成竖着的一圈），把这里改成 false
+  --   Studio 里要是看着反了（贴地一圈变成竖着的一圈、开炮的扇形尘幕变成竖着的一堵墙），把这里改成 false（怎么看见文件开头 (a)）
   local SPREAD_XH = true
   local function spreadV(sp)
     if type(sp) == "number" then return Vector2.new(sp, sp) end
@@ -111,18 +124,24 @@ function VfxLib.new(G, FXF)
   L.wind = windNow
 
   local DEFS = {}      -- 层名 → { f = function(档的大小倍数, 变体) → 配置, fixed = 不分档 }
-  local POOLS = {}     -- 键 → 发射器
+  local POOLS = {}     -- 键 → 层 { name, key, ti, var, o, sites = { 一处 = { h 小零件, pe 发射器, cf, t 上次喷, till 占到什么时候 } } }
   local nEm = 0
-  local MAX_EM = 420
-  L.stat = { emitters = 0, made = 0, emits = 0, emitted = 0, flashes = 0, scorch = 0, burners = 0, borrowed = 0, cut = 0 }
-  local madeT, madeN = 0, 0   -- 每秒新建了几个发射器（测试查：别一下子建太多）
+  L.MAX_EM = 420   -- 发射器（处）一共最多几个（测试可以临时调小）
+  local SITE_LONG, SITE_SHORT = 8, 6   -- 一层最多几处：长寿命的烟尘 8 处（同时 8 处在飘），别的 6 处（一帧里在 6 个地方喷：犁沟的一串土团）
+  local LONG = 3          -- 寿命上限 ≥ 3 秒的（碎屑火星除外）：每处借一处，粒子没灭完不挪走
+  local NEAR_R = 10       -- 离上一处不到 10 格：照用那一处
+  local RECENT = 0.04     -- 「同一帧」：这么久以内喷过（帧率 25 以上都算得住；算多了只是多借一处）
+  L.stat = { emitters = 0, made = 0, emits = 0, emitted = 0, flashes = 0, scorch = 0, burners = 0, borrowed = 0, cut = 0,
+    sites = 0, stolen = 0, recycled = 0, warm = 0, rated = 0 }
+  local madeT, madeN = 0, 0   -- 每秒新建了几个发射器（测试查：别一下子建太多；预建的不算）
   L.madeMax = 0
 
   -- 配置字段：tex 贴图、life / spd {小, 大}、size / tr（NumberSequence）、col（ColorSequence）、acc 加速度、drag 阻力、
   --   le LightEmission、li LightInfluence（不写：le > 0.5 的 0，别的 1）、bright Brightness（不写：火的贴图 3，别的 1）、z ZOffset、
   --   dir EmissionDirection、spread 数或 {左右, 上下}、rot 转速、flat 平躺（VelocityPerpendicular）、vp 顺着速度拉长（VelocityParallel）、
   --   sq Squash、wind 跟着风、shape {"Sphere"/"Box"/…, 体积或表面, 往外或往里}、box 小零件的大小（出生的体积）、
-  --   prio 1 要紧（闪光、火球）/ 2 一般 / 3 碎屑火星（粒子多了先砍）、cat "imp"（弹着点：另有 600 颗的上限）
+  --   prio 1 要紧（闪光、火球）/ 2 一般 / 3 碎屑火星（粒子多了先砍）、cat "imp"（弹着点：另有 600 颗的上限）、
+  --   site true / false：一处一个零件、粒子没灭完不挪（不写：寿命上限 ≥ 3 秒、prio 不是 3 的算）
   function L.def(name, f, fixed)
     DEFS[name] = { f = f, fixed = fixed }
   end
@@ -182,43 +201,93 @@ function VfxLib.new(G, FXF)
   end
   L.apply = apply
 
-  local function shortTex(t) return (t and t:match("([%w_]+)%.%w+$")) or tostring(t) end
-  local function newEm(name, key, ti, var, o)
-    local h = holder(key, o.box)
+  local warming = false   -- 正在预建（不算进「每秒新建了几个」）
+  local function newSite(e)
+    local n = #e.sites
+    local h = holder((n == 0) and e.key or (e.key .. "~" .. (n + 1)), e.o.box)
     local pe = Instance.new("ParticleEmitter")
-    apply(pe, o)
+    apply(pe, e.o)
     pe.Parent = h
-    local e = { h = h, pe = pe, name = name, key = key, ti = ti, var = var, o = o, life = (o.life[1] + o.life[2]) / 2,
-      big = maxOf(o.size), tex = shortTex(o.tex), used = os.clock() }
-    POOLS[key] = e
+    local s = { h = h, pe = pe, cf = nil, t = -1e9, till = 0 }
+    e.sites[n + 1] = s
     nEm += 1
     L.stat.emitters = nEm
     L.stat.made += 1
-    local t = os.clock()
-    if t - madeT > 1 then madeT, madeN = t, 0 end
-    madeN += 1
-    if madeN > L.madeMax then L.madeMax = madeN end
+    L.stat.sites += 1
+    if not warming then
+      local t = os.clock()
+      if t - madeT > 1 then madeT, madeN = t, 0 end
+      madeN += 1
+      if madeN > L.madeMax then L.madeMax = madeN end
+    end
+    return s
+  end
+  local function shortTex(t) return (t and t:match("([%w_]+)%.%w+$")) or tostring(t) end
+  local function newEm(name, key, ti, var, o)
+    local long = o.site
+    if long == nil then long = o.life[2] >= LONG and (o.prio or 2) ~= 3 end
+    local e = { name = name, key = key, ti = ti, var = var, o = o, life = (o.life[1] + o.life[2]) / 2,
+      big = maxOf(o.size), tex = shortTex(o.tex), used = os.clock(), long = long == true, sites = {} }
+    local s = newSite(e)
+    e.h, e.pe = s.h, s.pe   -- 第一处（测试、别的模块看配置用：几处的配置都一样）
+    POOLS[key] = e
     return e
   end
 
-  local function get(name, s, var)
+  -- 到上限：收最久没用的那一层（它的粒子早灭了），腾出位置
+  local function recycle(keep)
+    local now = os.clock()
+    local old, ot, oldBusy, obt = nil, math.huge, nil, math.huge
+    for _, x in pairs(POOLS) do
+      if x ~= keep then
+        local busy = false
+        for _, s in ipairs(x.sites) do
+          if now < s.till or now - s.t < x.o.life[2] + 0.2 then busy = true break end
+        end
+        if not busy and x.used < ot then old, ot = x, x.used end
+        if x.used < obt then oldBusy, obt = x, x.used end
+      end
+    end
+    old = old or oldBusy
+    if not old then return false end
+    for _, s in ipairs(old.sites) do
+      s.h:Destroy()
+      nEm -= 1
+    end
+    POOLS[old.key] = nil
+    L.stat.emitters = nEm
+    L.stat.recycled += 1
+    return true
+  end
+
+  local function keyOf(name, s, var)
     local D = DEFS[name]
     if not D then return nil end
     local ti, sc = 0, 1
     if not D.fixed then ti, sc = tierOf(s) end
     local key = D.fixed and (name .. (var or "")) or (name .. "#" .. ti .. (var or ""))
+    return key, ti, sc, D
+  end
+  local function get(name, s, var)
+    local key, ti, sc, D = keyOf(name, s, var)
+    if not key then return nil end
     local e = POOLS[key]
     if e then
       e.used = os.clock()
       return e
     end
-    if nEm >= MAX_EM then   -- 满了：借同一层、同一变体最近的一档（大小差一点，总比不画好）
+    if nEm >= L.MAX_EM then
+      -- 满了：先借同一层、同一变体最近的一档（差三档以内：大小差不到一倍，总比不画好），没有就收最久没用的那一层，腾出来建这一层
       local best, bd = nil, math.huge
       for _, x in pairs(POOLS) do
         if x.name == name and x.var == var and abs(x.ti - ti) < bd then best, bd = x, abs(x.ti - ti) end
       end
-      if best then L.stat.borrowed += 1 end
-      return best
+      if best and bd <= 3 then
+        L.stat.borrowed += 1
+        best.used = os.clock()
+        return best
+      end
+      if not recycle(nil) then return best end
     end
     local ok, o = pcall(D.f, sc, var)
     if not ok or type(o) ~= "table" then
@@ -228,6 +297,42 @@ function VfxLib.new(G, FXF)
     return newEm(name, key, ti, var, o)
   end
   L.get = get
+
+  -- 这一次喷在哪一处（见文件开头 (b)、(c)）
+  local function sameCF(a, b)
+    return (a.Position - b.Position).Magnitude < 0.05 and a.LookVector:Dot(b.LookVector) > 0.9995 and a.UpVector:Dot(b.UpVector) > 0.9995
+  end
+  local function pickSite(e, cf, now)
+    local sites = e.sites
+    local p = cf.Position
+    -- ① 这一帧在同一个位置、同一个朝向喷过的：接着用
+    for _, s in ipairs(sites) do
+      if now - s.t < RECENT and s.cf and sameCF(s.cf, cf) then return s end
+    end
+    -- ② 这一帧没用过、离上一处不到 10 格的：挪一点照用（上一处的烟还在零件附近）
+    local best, bd = nil, NEAR_R
+    for _, s in ipairs(sites) do
+      if now - s.t >= RECENT and s.cf then
+        local d = (s.cf.Position - p).Magnitude
+        if d < bd then best, bd = s, d end
+      end
+    end
+    if best then return best end
+    -- ③ 这一帧没用过、粒子已经灭完的（长寿命的到寿命了；别的喷完就能挪）
+    for _, s in ipairs(sites) do
+      if now - s.t >= RECENT and now >= s.till then return s end
+    end
+    -- ④ 再建一处
+    if #sites < (e.long and SITE_LONG or SITE_SHORT) and nEm < L.MAX_EM then return newSite(e) end
+    -- ⑤ 都占着（太多了才会这样）：借这一帧没用过、最早到期的那处
+    local old = nil
+    for _, s in ipairs(sites) do
+      if now - s.t >= RECENT and (not old or s.till < old.till) then old = s end
+    end
+    L.stat.stolen += 1
+    return old or sites[1]
+  end
+  L.pickSite = pickSite   -- 测试用
 
   ---------------------------------------------------------------- 同时活着的粒子：按到期时间分桶估个数（每 0.25 秒一桶，管 40 秒）
   local NB, BW = 160, 0.25
@@ -250,80 +355,110 @@ function VfxLib.new(G, FXF)
     end
     curB = nb
   end
-  local function account(e, n)
-    local b = floor((os.clock() + e.life) / BW)
+  local function accountAt(n, expiry, imp)
+    local b = floor(expiry / BW)
     if b <= curB then b = curB + 1 end
     if b - curB >= NB then b = curB + NB - 1 end
     local i = b % NB + 1
     bAll[i] += n
     L.live += n
-    if e.o.cat == "imp" then
+    if imp then
       bImp[i] += n
       L.liveImp += n
     end
   end
+  local function account(e, n) accountAt(n, os.clock() + e.life, e.o.cat == "imp") end
   -- 全局：活着的超过 SOFT 开始砍（碎屑火星先砍、一般的少砍、闪光火球不砍），到 HARD 只留要紧的
   L.SOFT, L.HARD, L.IMP_MAX = 1800, 2800, 600
+  local function budgetK(pr)
+    local live = L.live
+    if live > L.HARD then return (pr == 1) and 0.5 or 0 end
+    if live > L.SOFT then
+      local f = (live - L.SOFT) / (L.HARD - L.SOFT)
+      if pr == 3 then return 1 - f elseif pr == 2 then return 1 - 0.6 * f end
+    end
+    return 1
+  end
   local function budget(e, n)
     advance()
     local pr = e.o.prio or 2
-    local k = 1
-    local live = L.live
-    if live > L.HARD then
-      k = (pr == 1) and 0.5 or 0
-    elseif live > L.SOFT then
-      local f = (live - L.SOFT) / (L.HARD - L.SOFT)
-      if pr == 3 then k = 1 - f elseif pr == 2 then k = 1 - 0.6 * f end
-    end
+    local k = budgetK(pr)
     if e.o.cat == "imp" and L.liveImp + n > L.IMP_MAX then k = 0 end
     local m = floor(n * k + 0.5)
-    if pr == 1 and n >= 1 and m < 1 and live <= L.HARD * 1.3 then m = 1 end
+    if pr == 1 and n >= 1 and m < 1 and L.live <= L.HARD * 1.3 then m = 1 end
     if m < n then L.stat.cut += n - m end
     return m
   end
+  -- 不走池的常喷发射器（碎块拖的火和烟、舱口火柱、炮塔身上挂的火和烟……）：rate 每秒几颗、secs 喷几秒、life 每颗活多久——
+  --   按到期时间记进同时活着的粒子数（全局预算管得到它们）；返回现在该按几成喷（粒子太多时少喷：Rate 乘它）
+  function L.rateK(rate, secs, life, prio)
+    advance()
+    local k = budgetK(prio or 2)
+    local per = (rate or 0) * k * BW
+    if per > 0 then
+      local now = os.clock()
+      for t = 0, math.max(0, secs or 0), BW do accountAt(per, now + t + (life or 1)) end
+      L.stat.rated += rate * k * (secs or 0)
+    end
+    return k
+  end
 
   L.logOn, L.log = false, {}
-  local function logIt(e, n, cf)
+  local function logIt(e, n, cf, s)
     local o = e.o
     local c0 = o.col.Keypoints[1].Value
     L.log[#L.log + 1] = { name = e.name, key = e.key, tex = e.tex, n = n, big = e.big, flat = o.flat == true, vp = o.vp == true,
-      le = o.le or 0, li = e.pe.LightInfluence, bright = e.pe.Brightness, col = c0, pos = cf.Position, wind = o.wind == true,
-      life = { o.life[1], o.life[2] }, var = e.var, sq = o.sq ~= nil, cat = o.cat }
+      le = o.le or 0, li = s.pe.LightInfluence, bright = s.pe.Brightness, col = c0, pos = cf.Position, wind = o.wind == true,
+      life = { o.life[1], o.life[2] }, var = e.var, sq = o.sq ~= nil, cat = o.cat, site = s.h, long = e.long,
+      spread = s.pe.SpreadAngle, look = cf.LookVector, up = cf.UpVector }
   end
 
+  -- 速度、散开角（只影响新喷的）：这一处的值不一样才写
+  local function kickSite(s, spd, spread)
+    if spd and (s.ks1 ~= spd[1] or s.ks2 ~= spd[2]) then
+      s.ks1, s.ks2 = spd[1], spd[2]
+      s.pe.Speed = NumberRange.new(spd[1], spd[2])
+    end
+    if spread and s.ksp ~= spread then
+      s.ksp = spread
+      s.pe.SpreadAngle = spreadV(spread)
+    end
+  end
+  local function emitIn(e, cf, n, spd, spread)
+    n = budget(e, floor(n + 0.5))
+    if n < 1 then return e end
+    local now = os.clock()
+    local s = pickSite(e, cf, now)
+    kickSite(s, spd, spread)
+    s.h.CFrame = cf
+    s.cf = cf
+    s.pe:Emit(n)
+    s.t = now
+    if e.long then s.till = max(s.till, now + e.o.life[2] + 0.3) end
+    account(e, n)
+    L.stat.emits += 1
+    L.stat.emitted += n
+    if L.logOn then logIt(e, n, cf, s) end
+    return e
+  end
   -- 喷：name 层、s 大小倍数（按 1.2 倍一档）、cf 小零件放哪（Top 发射的 +Y、Front 发射的正面朝要喷的方向）、n 几颗、var 变体
   function L.emit(name, s, cf, n, var)
     if not n or n < 0.5 then return nil end
     local e = get(name, s, var)
     if not e then return nil end
-    n = budget(e, floor(n + 0.5))
-    if n < 1 then return e end
-    e.h.CFrame = cf
-    e.pe:Emit(n)
-    account(e, n)
-    L.stat.emits += 1
-    L.stat.emitted += n
-    if L.logOn then logIt(e, n, cf) end
-    return e
-  end
-  -- 按次改只影响新喷的属性（速度、散开角、寿命）：值一样就不写
-  function L.kick(e, spd, spread)
-    if not e then return end
-    if spd and (e.ks1 ~= spd[1] or e.ks2 ~= spd[2]) then
-      e.ks1, e.ks2 = spd[1], spd[2]
-      e.pe.Speed = NumberRange.new(spd[1], spd[2])
-    end
-    if spread and e.ksp ~= spread then
-      e.ksp = spread
-      e.pe.SpreadAngle = spreadV(spread)
-    end
+    return emitIn(e, cf, n)
   end
   -- 先改速度 / 散开角再喷（同一层不同次的初速不一样：入射角、口径）
   function L.emitK(name, s, cf, n, var, spd, spread)
+    if not n or n < 0.5 then return nil end
     local e = get(name, s, var)
     if not e then return nil end
-    L.kick(e, spd, spread)
-    return L.emit(name, s, cf, n, var)
+    return emitIn(e, cf, n, spd, spread)
+  end
+  -- 改一层所有处的速度 / 散开角（别的模块用）
+  function L.kick(e, spd, spread)
+    if not e then return end
+    for _, s in ipairs(e.sites) do kickSite(s, spd, spread) end
   end
   function L.count()
     local nh = 0
@@ -331,9 +466,44 @@ function VfxLib.new(G, FXF)
     return nEm, nh
   end
   L.pools = POOLS
-  -- 预先建好（弹着点那几种常用的：测试一开始就找得到）
+  -- 马上建好（弹着点那几种常用的：测试一开始就找得到）
   function L.prewarm(list, s, var)
     for _, name in ipairs(list) do get(name, s or 1, var) end
+  end
+  -- 分几帧建好（进局时：开炮、榴弹、殉爆、机枪打地常用的那几层；一帧 WARM_N 个，第一炮、第一次殉爆不用现建）：
+  --   list = { { 层名, 大小, 变体, 几处（不写 1：一下要在两处喷的白闪、制退器、犁沟的一串土团多建几处） }, … }
+  local warmQ, warmI = {}, 1
+  local WARM_N = 4
+  function L.prewarmLater(list)
+    for _, it in ipairs(list) do warmQ[#warmQ + 1] = it end
+  end
+  function L.warmLeft() return #warmQ - warmI + 1 end
+  local function stepWarm()
+    if warmI > #warmQ then
+      if #warmQ > 0 then warmQ, warmI = {}, 1 end
+      return
+    end
+    local n = 0
+    warming = true
+    while warmI <= #warmQ and n < WARM_N do
+      local it = warmQ[warmI]
+      warmI += 1
+      local key = keyOf(it[1], it[2], it[3])
+      if key and nEm < L.MAX_EM - 40 then   -- 留 40 个给打起来现用的
+        local e = POOLS[key]
+        if not e then
+          e = get(it[1], it[2], it[3])
+          L.stat.warm += 1
+          n += 1
+        end
+        while e and #e.sites < math.min(it[4] or 1, e.long and SITE_LONG or SITE_SHORT) do
+          newSite(e)
+          L.stat.warm += 1
+          n += 1
+        end
+      end
+    end
+    warming = false
   end
 
   ---------------------------------------------------------------- 远近分档
@@ -374,15 +544,18 @@ function VfxLib.new(G, FXF)
       liveSh -= 1
     end
   end
-  -- p 位置、color、range（最大 120）、bright（夜里的亮度；白天自动加亮）、t 几秒降到 0、o.shadow 想投影子（同时只给 1 盏）
+  -- p 位置、color、range（最大 120）、bright（夜里的亮度；白天自动加亮）、t 几秒降到 0、
+  --   o.shadow 想投影子（同时只给 1 盏）、o.day 白天最多亮几倍（不写 2.5：小的闪光白天要亮一倍半才看得出来；
+  --   殉爆、榴弹、炸弹那种大灯给 1.5——Realistic 光照下白天再乘 2.5 一大片过曝）
+  L.DAY_MUL, L.DAY_MUL_BIG = 2.5, 1.5
   function L.flash(p, color, range, bright, t, o)
     if typeof(p) ~= "Vector3" then return nil end
     local cam = workspace.CurrentCamera
     range = min(120, range or 20)
     if cam and (cam.CFrame.Position - p).Magnitude > range + 400 then return nil end
-    -- 白天照到四周的光要亮一倍半才看得出来（太阳底下原来这点光基本看不见）
     local dk = G.dayK and G.dayK() or 0
-    local b = (bright or 4) * (1 + 1.5 * dk)
+    local dm = (o and o.day) or L.DAY_MUL
+    local b = (bright or 4) * (1 + (dm - 1) * dk)
     local now = os.clock()
     local slot, weak, wv = nil, nil, math.huge
     for i = 1, MAXL do
@@ -497,7 +670,8 @@ function VfxLib.new(G, FXF)
       s.f.Size = L.ns(0, R * 0.3, 1, R * 0.05)
       s.k.Size = L.ns(0, R * 0.4, 1, R * 1.8)
     end
-    s.f.Rate, s.k.Rate = 12, 3
+    local kb = L.rateK(15, secs, 3, 2)   -- 记进全局预算（火 12 + 烟 3 颗 / 秒）
+    s.f.Rate, s.k.Rate = 12 * kb, 3 * kb
     s.t0, s.till, s.free = now, now + secs, now + secs + 6
     L.stat.burners += 1
     return s
@@ -510,6 +684,8 @@ function VfxLib.new(G, FXF)
 
   ---------------------------------------------------------------- 每帧（Fx 的 stepFx 调）
   local slowT = 0
+  local stepHooks = {}   -- 别的模块每帧要跟着跑的（Fx 的曳光池）
+  function L.onStep(f) stepHooks[#stepHooks + 1] = f end
   function L.step(dt)
     local now = os.clock()
     for i = 1, MAXL do
@@ -519,6 +695,8 @@ function VfxLib.new(G, FXF)
         if u >= 1 then release(s) else s.pl.Brightness = s.b0 * (1 - u) * (1 - u) end
       end
     end
+    for _, f in ipairs(stepHooks) do f(dt or 1 / 60, now) end
+    stepWarm()
     slowT += dt or 0
     if slowT < 0.25 then return end
     slowT = 0

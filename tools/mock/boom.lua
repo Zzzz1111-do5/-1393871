@@ -22,7 +22,9 @@ me:SetAttribute("Side", "atk")
 G.pushOne(P)
 R.run(1)
 local C = T.C
-T.act("deploy", "rifle", "af2")
+-- 出生点（11-27 审查 15a）：老测试用的是岛图的名字（af2 机场岛）——现在的图（沙海、钢城）走 Map.BASES，出生点叫 base / baseAir（Round.lua）
+if C.menuShown and C.menuShown() then C.menuEnter() R.run(0.5) end
+T.act("deploy", "rifle", "base")
 R.run(2)
 check(P.alive, "出生了")
 local FXF = R.services.Workspace:FindFirstChild("ClientFx")
@@ -30,13 +32,15 @@ local SS = R.services.SoundService
 local EXP = "rbxasset://sounds/impact_explosion_03.mp3"
 
 -- 一件事之后客户端特效文件夹里新出来的零件（声音挂在新零件上），和这一下喷了哪几层（11-27 起特效走 VfxLib 的发射器池：C.vfx.log）
+--   余火（VfxLib 的余火池 VL.burn：炸弹、导弹坑里烧一会儿）不进喷的记录：按 stat.burners 多了几处算（审查 15a）
 local function fresh(f)
   local before = {}
   for _, c in ipairs(FXF:GetChildren()) do before[c] = true end
   C.vfx.logOn = true
   C.vfx.log = {}
+  local b0 = C.vfx.stat.burners
   f()
-  local out = { log = C.vfx.log }
+  local out = { log = C.vfx.log, burn = C.vfx.stat.burners - b0 }
   C.vfx.log = {}
   for _, c in ipairs(FXF:GetChildren()) do if not before[c] then out[#out + 1] = c end end
   return out
@@ -57,7 +61,7 @@ local function stats(list)
       if x.ClassName == "Sound" then sounds[#sounds + 1] = x end
     end
   end
-  return { n = n, big = big, tex = tex, flat = flat, sounds = sounds, clod = clod, core = core }
+  return { n = n, big = big, tex = tex, flat = flat, sounds = sounds, clod = clod, core = core, burn = list.burn or 0 }
 end
 local function texList(t)
   local o = {}
@@ -89,7 +93,7 @@ check(S.shell.tex.explosion01_core_main and S.shell.clod > 0 and S.shell.tex.smo
 check(S.shell.big > S.gun.big and S.msl.big > S.shell.big * 1.5 and S.bomb.big > S.msl.big * 1.4,
   string.format("一档比一档大（航炮 %.0f < 炮弹 %.0f < 导弹 %.0f < 炸弹 %.0f）", S.gun.big, S.shell.big, S.msl.big, S.bomb.big))
 check(S.msl.flat and S.bomb.flat and S.bomb.tex.explosion01_shockwave_main, "导弹、炸弹在地上：贴地一圈冲击波")
-check(S.bomb.tex.fire_main, "炸弹炸完弹坑里还烧一会儿")
+check(S.bomb.tex.fire_main or S.bomb.burn > 0, "炸弹炸完弹坑里还烧一会儿（余火池 " .. tostring(S.bomb.burn) .. " 处）")
 check(S.bomb.big >= 60, string.format("炸弹的烟尘柱够大（%.0f 格，约 %.0f 米）", S.bomb.big, S.bomb.big / 2.8))
 
 -- 声音：近处的不晚到，按大小变调（炸弹低沉两层、航炮弹脆）
@@ -111,7 +115,8 @@ for d = 800, 20000, 400 do
   local x, z = base.X, base.Z + d
   if G.Map.height(x, z) < -3 then sea = V3(x, 0.5, z) break end
 end
-check(sea ~= nil, "找到一块海面")
+-- 现在的图（沙海、钢城）没有海：找不到就跳过海面那两条（打印出来，不算不对）
+if not sea then print("    这张图没有海（往外找了两万格）：跳过「海面：水柱」「海面爆炸哗的一声」两条") end
 if sea then
   cam.CFrame = R.CFrame.lookAt(sea + V3(0, 40, 200), sea)
   local w = stats(fresh(function() R.as("client", function() C.boom(sea, 1.3, "shell") end) end))
