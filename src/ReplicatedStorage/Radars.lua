@@ -13,7 +13,9 @@
 --     rwr 敌方告警器上的代号；lpi 敌方告警器发现距离乘几（低截获）
 --   算好的（老代码照旧读 name / kind / range / lock / az / el / notch）：key、range、lock、el = max(elU, elD)、ldK（没写是 1）
 --   RD.of(id, treeKey)：这一型（科技树的版本优先，同 FlightModel.VAR）的雷达，没有对空雷达返回 nil。**不退回 like**：苏-27 借苏-35S 的模型，雷达照旧是 N001
---   RD.frame(r, i)：第 i 种扫描方式扫一帧几秒（行数 × 2 × 半宽 / 扫描速度）；RD.half(r)：默认扫描方式的方位半宽（雷达屏横轴、告警器）
+--   RD.frame(r, i)：第 i 种扫描方式扫一帧几秒（行数 × 2 × 半宽 / 扫描速度）；RD.half(r)：默认扫描方式的方位半宽（告警器，第 6 步换成对方的真实扫描区）
+--   RD.modes(r)：这部雷达有的模式（rws 总有；tws 要 r.tws > 0；acm 要有近战模式）；RD.scanOk(r, mode, i)：这种模式能不能用第 i 种扫描方式
+--     （AWG-9 的边扫边跟只能用 twsScans 那两种）；RD.acmGeo(r, k)：近战模式 k 的扫描区（这部雷达的 acmGeo 优先）；RD.fade(r, i)：亮点多久暗掉
 --   RD.card(r, T, en)：资料卡「雷达」那一节的行
 --   **以后加有雷达的飞机**：RD.OF 加一行（AirDefs 型号 → 雷达键）；科技树里借型号（base）的版本雷达不一样的，RD.VAR 加一行（科技树键 → 雷达键）；
 --     给借型号的版本建了自己的 AirDefs 型号以后，RD.OF 补上新型号、RD.VAR 删掉那一行
@@ -23,12 +25,15 @@ RD.M = 2.8         -- 1 米多少格（AirDefs 载入时改成 AirDefs.M）
 RD.BAR = 3.5       -- 一行的俯仰间隔°
 RD.BEAM = 2        -- 波束半宽°
 RD.ACM_KM = 18.5   -- 近战自动截获（真机 10 海里 → RD.K·√18.5 ≈ 13850 格）
--- 近战扫描区（机体坐标；第 5 步用）：平显 30°×20°、竖扫 10°×60°、瞄准线、可挪 60°×10°、头盔
+RD.ACQ = math.floor(RD.K * math.sqrt(RD.ACM_KM) + 0.5)   -- 近战模式里这个距离以内第一个扫到的自动进单目标跟踪（格）
+RD.MEM = 2         -- 单目标跟踪丢了目标：先按记忆外推几秒（屏上 STT MEM），还是没有再丢锁、回到原来的扫描
+RD.SLEW = { az = 40, el = 25, wheel = 2 }   -- 挪扫描中心：Alt+←→ 方位 °/秒、Alt+↑↓ 俯仰 °/秒、Alt+滚轮 一格几度（像真机油门杆上的天线俯仰轮）
+-- 近战扫描区（机体坐标）：平显 30°×20°、竖扫 10°×60°、瞄准线、可挪 60°×10°、头盔
 RD.ACM = { hud = { az = 15, el0 = -10, el1 = 10 }, vert = { az = 5, el0 = -10, el1 = 50 }, bore = { az = 1.5, el0 = -1.5, el1 = 1.5 },
   slew = { az = 30, el0 = -5, el1 = 5, slew = true }, hmd = { az = 2, el0 = -2, el1 = 2, head = true } }
 -- 屏上写的真机缩写（用户 11-27 定的：中英一样）；某部雷达叫法不一样的写在它的 acmTag 里（F-14 的 PLM / VSL）
 RD.ACM_TAG = { hud = "HUD", vert = "VS", vertLo = "VS LO", bore = "BORE", slew = "SLEW", hmd = "HMD", pal = "PAL" }
-RD.MODE_TAG = { rws = "RWS", tws = "TWS", stt = "STT", acm = "ACM" }
+RD.MODE_TAG = { rws = "RWS", tws = "TWS", stt = "STT", acm = "ACM", mem = "MEM" }
 
 local function inh(b, o)
   local t = {}
@@ -148,9 +153,23 @@ function RD.frame(r, i)
   local s = r.scans[i or 1]
   return s[2] * 2 * s[1] / r.rate
 end
--- 默认扫描方式的方位半宽（第 4 步有扫描中心以前：雷达看得见的方位、雷达屏横轴、敌方告警器都按它——不然苏-35S 的 ±120° 万向架一下子全看得见）
+-- 默认扫描方式的方位半宽（敌方告警器现在按它算「扫没扫到我」——不然苏-35S 的 ±120° 万向架一下子全扫得到；第 6 步同步了对方的扫描区以后换掉）
 function RD.half(r) return math.min(r.scans[1][1], r.az) end
 function RD.tag(r, k) return (r.acmTag and r.acmTag[k]) or RD.ACM_TAG[k] or string.upper(k) end
+function RD.modes(r)
+  local m = { "rws" }
+  if (r.tws or 0) > 0 then table.insert(m, "tws") end
+  if r.acm and #r.acm > 0 then table.insert(m, "acm") end
+  return m
+end
+function RD.scanOk(r, mode, i)
+  if not r.scans[i] then return false end
+  if mode ~= "tws" or not r.twsScans then return true end
+  for _, j in ipairs(r.twsScans) do if j == i then return true end end
+  return false
+end
+function RD.acmGeo(r, k) return (r.acmGeo and r.acmGeo[k]) or RD.ACM[k] end
+function RD.fade(r, i) return math.max(2.6, RD.frame(r, i) + 0.8) end
 
 -- 资料卡（TechUI）「雷达」那一节：{ { 字, 是不是标题 }, … }。T(键, …) 是 Lang 的翻译（客户端 G.T），en 英文界面；r 为 nil 写「没有对空雷达」
 function RD.card(r, T2, en)

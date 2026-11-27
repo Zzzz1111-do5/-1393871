@@ -3,7 +3,8 @@
 --   「战雷不同的雷达会有不同的扫描图」「飞机本身会和自己的导弹形成数据链互相提供信息」「被发现那个标记移动到左侧」
 --   ① 坐进歼-20：左上参数表（节流阀、表速、速度、马赫数、海拔高、雷达高、每种弹一行、热焰弹、干扰箔、燃油量、两台发动机的油温 / 引擎），
 --      原来那套 MWT 式的（右上机型卡、准星两边高度速度、六边形武器键）收起来；机头 ⊕；顶上航向罗盘；圆形小地图在右上
---   ② 右侧雷达屏：在屏幕右半边，写 SRC PD、扫描范围、量程；Alt+Q 换量程、Alt+R 关掉（写 OFF，雷达弹看不见目标）再开
+--   ② 右侧雷达屏：在屏幕右半边，写 RWS（真机缩写）、扫描区「±60° · 2 行」、量程；Alt+Q 换量程、Alt+R 关掉（写 OFF，雷达弹看不见目标）再开；
+--      Alt+E 换模式 TWS → ACM（平显上画近战扫描区：平显视场一个框、Alt+Z 换竖扫两条竖线）→ 回 RWS
 --   ③ 选红外弹（霹雳-10）、前方一架敌机：大圈小圈锁定前白、锁上红；锁定框写距离、接近速度、高度差
 --   ④ 雷达告警圆盘：敌机雷达锁着我（服务器 rwrLock）→ 标型号、虚线；导弹打过来（rwr）→「MSL」；敌机的雷达按它的科技树版本取
 --      （苏-30SM：歼-16 + TreeKey ru_su30sm 的 N011M 标「30」，不是歼-16 的「J16」）
@@ -77,10 +78,11 @@ print("② 右侧雷达屏")
 local scope = find("RadarScope")
 check(scope and T.visible(scope) and scope.Position.X.Scale == 1 and scope.AnchorPoint.X == 1, "雷达屏贴着屏幕右边")
 local mode = find("RadarMode")
-check(mode and mode.Text == "SRC PD", "写 SRC PD（搜索、脉冲多普勒）：" .. tostring(mode and mode.Text))
+check(mode and mode.Text == "RWS", "写 RWS（搜索，真机缩写：用户 11-27 定的）：" .. tostring(mode and mode.Text))
 local zone, rng = find("RadarZone"), find("RadarRange")
-local rdj = st.rd   -- 歼-20 的 KLJ-5（Radars.lua）：方位按默认扫描方式的宽度，俯仰按万向架
-check(rdj ~= nil and zone and zone.Text == string.format("%d°×%d°", AD.Radars.half(rdj) * 2, rdj.elU + rdj.elD), "扫描范围（方位 × 俯仰）：" .. tostring(zone and zone.Text))
+local rdj = st.rd   -- 歼-20 的 KLJ-5（Radars.lua）：默认扫描方式 ±60° · 2 行
+local sc1 = rdj and rdj.scans[1]
+check(sc1 ~= nil and zone and zone.Text == C.T("rd.zone", tostring(sc1[1]), tostring(sc1[2])), "扫描区（方位半宽 · 行数）：" .. tostring(zone and zone.Text))
 local r0 = rng and rng.Text
 local function altKey(code)
   T.key(Enum.KeyCode.LeftAlt, true)
@@ -93,7 +95,21 @@ check(rng and rng.Text ~= r0, "Alt+Q 换量程：" .. tostring(r0) .. " → " ..
 altKey(Enum.KeyCode.R)
 check(mode.Text == "OFF" and C.radarOn and C.radarOn() == false, "Alt+R 关雷达：写 OFF")
 altKey(Enum.KeyCode.R)
-check(C.radarOn and C.radarOn() == true and string.sub(mode.Text, 1, 3) == "SRC", "再按一下又开了")
+check(C.radarOn and C.radarOn() == true and mode.Text == "RWS", "再按一下又开了")
+-- Alt+E 换模式：KLJ-5 有边扫边跟、近战；近战时平显上画扫描区（歼-20 第一种近战是平显视场：一个框）
+altKey(Enum.KeyCode.E)
+check(mode.Text == "TWS", "Alt+E：TWS（边扫边跟）：" .. tostring(mode.Text))
+altKey(Enum.KeyCode.E)
+local az = find("WtAcmZone")
+local nEdge = 0
+for _, d in ipairs(az and az:GetDescendants() or {}) do if d.Name == "AcmEdge" and T.visible(d) then nEdge = nEdge + 1 end end
+check(mode.Text == "ACM HUD" and az and T.visible(az) and nEdge == 4, "再按：ACM HUD（近战平显视场），平显上画出扫描区的框（" .. nEdge .. " 条边）：" .. tostring(mode.Text))
+altKey(Enum.KeyCode.Z)
+nEdge = 0
+for _, d in ipairs(az and az:GetDescendants() or {}) do if d.Name == "AcmEdge" and T.visible(d) then nEdge = nEdge + 1 end end
+check(mode.Text == "ACM VS" and nEdge == 2, "Alt+Z：ACM VS（竖扫），平显上两条竖线（" .. nEdge .. " 条）")
+altKey(Enum.KeyCode.E)
+check(mode.Text == "RWS" and not T.visible(az), "再按 Alt+E 回到 RWS，平显上的近战扫描区收起来")
 
 print("③ 红外弹的大圈小圈：锁定前白、锁上红；锁定框")
 local fe = G.spawnAircraft("def", "f16", st.cf * CF(40, 15, -600), nil, nil)

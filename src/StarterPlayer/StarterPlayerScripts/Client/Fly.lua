@@ -1182,6 +1182,8 @@ function Fly.init(G)
     local myTeam = me:GetAttribute("Side")
     local p0, fwd = st.cf.Position, st.cf.LookVector
     local keep = st.stick and st.stick.em
+    -- 雷达单目标跟踪着的（Radar.lua 的 st.rdLock，跟选的什么弹无关）在圈里就先算它：雷达测的距离、速度（真机的机炮提前量就靠雷达测距）
+    local rdl = (st.rdLock and not st.rdLock.mem) and st.rdLock or nil
     local best, bestS = nil, math.huge
     for _, em in ipairs(f:GetChildren()) do
       local root = em:FindFirstChild("Root")
@@ -1193,18 +1195,21 @@ function Fly.init(G)
         if dist > 40 and dist < gw.range * (wt and 1.3 or 1) then
           local c = fwd:Dot(to / dist)
           if c > ((em == keep) and (wt and LEAD_OUT or STICK_OUT) or (wt and LEAD_IN or STICK_IN)) then
-            local sc = (1 - c) * 1000 + dist / gw.range - ((em == keep) and 2 or 0)
+            local sc = (1 - c) * 1000 + dist / gw.range - ((em == keep) and 2 or 0) - ((rdl and rdl.em == em) and 1e4 or 0)
             if sc < bestS then best, bestS = { em = em, p = p, dist = dist }, sc end
           end
         end
       end
     end
     if not best then st.stickV = nil return nil end
-    -- 目标的速度：两帧位置差，平滑一下
+    -- 目标的速度：两帧位置差，平滑一下（雷达跟踪着的用雷达的）
     local now = os.clock()
     local sv = st.stickV
     local vT = V()
-    if sv and sv.em == best.em and now > sv.t + 1e-3 then
+    best.radar = rdl ~= nil and rdl.em == best.em
+    if best.radar and rdl.v then
+      vT = rdl.v
+    elseif sv and sv.em == best.em and now > sv.t + 1e-3 then
       local raw = (best.p - sv.p) / (now - sv.t)
       vT = (raw.Magnitude < 1500) and (sv.v or raw):Lerp(raw, 0.3) or (sv.v or V())
     elseif sv and sv.em == best.em then
@@ -1314,68 +1319,77 @@ function Fly.init(G)
     return best
   end
   -- 雷达弹照战雷手动锁（用户 11-27 定的）：不再「选了雷达弹就自动锁最近的」——雷达屏上的目标 R / Alt+T 选中（st.rdSel，屏上「|—|」），
-  --   Alt+F 锁定进单目标跟踪（STT，st.lock）、再按一下解锁；锁着时 R / Alt+T 换成屏上的下一个。红外弹、空地弹、炸弹照旧自动挑
+  --   Alt+F 锁定进雷达的单目标跟踪（STT：Radar.lua 的 st.rdLock）、再按一下解锁；锁着时 R / Alt+T 换成屏上的下一个。红外弹、空地弹、炸弹照旧自动挑
+  --   **雷达锁定跟所选武器脱钩**（战雷那样）：STT 是雷达自己的，选什么弹都能锁；雷达弹的锁（st.lock）就锁雷达跟踪着的那架（或者 TWS 里指定的航迹），
+  --   红外弹的导引头跟着雷达指（雷达锁着的在导引头视场里就先咬它），机炮的提前量优先算雷达锁着的（gunStick）
   --   手机还没有锁定键（第 7 步加：点亮点选、按钮锁）：R 选中就锁
   local function radarManual(w) return st ~= nil and st.rd ~= nil and w ~= nil and w.kind == "aam" and w.seeker == "radar" end
   local function toastT(k, ...) if G.toast then G.toast(T(k, ...), "info") end end
-  -- 锁这一架（进单目标跟踪）；锁不上返回 false、原因（Lang 键）、参数
-  local function radarLockOn(w, em)
+  local function candOf(w, em)
+    for _, c in ipairs(candidates(w)) do if c.em == em then return c end end
+    return nil
+  end
+  -- 雷达锁这一架（进 STT）：要在雷达屏上、看得见、在这部雷达的锁定距离里；锁不上返回 false、原因（Lang 键）、参数。
+  --   选着雷达弹的话马上接上弹的锁（射程、离轴角够不着的等飞近了下面每帧自己接上）
+  local function radarLockOn(em)
     local ok, why, _, _, dist = G.radarSees(st, em)
     if why == "off" then return false, "rd.isOff" end
     if not ok or not (G.radarHas and G.radarHas(st, em)) then return false, "rd.cantSee" end
-    local lim = math.min(st.rd.lock, w.range or 3200)
-    if dist > lim then return false, "rd.lockFar", string.format("%.1f", lim / AD.M / 1000) end
-    local c = nil
-    for _, c2 in ipairs(candidates(w)) do if c2.em == em then c = c2 end end
-    if not c then return false, "rd.cantSee" end
-    if not inTrack(w, c) then return false, "rd.lockOff" end
-    st.lock, st.lockT, st.rdSel = c, 0, em
+    if dist > st.rd.lock then return false, "rd.lockFar", string.format("%.1f", st.rd.lock / AD.M / 1000) end
+    if not (G.radarStt and G.radarStt(st, em)) then return false, "rd.cantSee" end
+    local _, w = storeW()
+    if radarManual(w) then
+      local c = candOf(w, em)
+      if c and inTrack(w, c) then st.lock, st.lockT = c, 0 end
+    end
     return true
   end
-  G.flyRadarLockOn = function(em)   -- 直接锁这一架（同 Alt+F 锁选中的；第 5 步近战自动截获、测试用）：锁上返回 true
-    local _, w = storeW()
-    if not st or not radarManual(w) then return false end
-    return radarLockOn(w, em)
+  G.flyRadarLockOn = function(em)   -- 直接锁这一架（同 Alt+F 锁选中的；测试用）：锁上返回 true
+    if not st or not st.rd then return false end
+    return (radarLockOn(em))
   end
-  function G.flyNextTarget()
+  -- radarKey：Alt+T（Radar.lua 转过来）——只在雷达屏上选，不管选的什么弹；R 照旧：选着雷达弹在雷达屏上选，别的弹按导引头挑
+  function G.flyNextTarget(radarKey)
     if not st then return end
     local _, w = storeW()
-    if not w or w.kind == "gun" or w.kind == "rkt" then return end
-    if radarManual(w) then
-      local cur = (st.lock and st.lock.em) or st.rdSel
+    if st.rd and (radarKey == true or radarManual(w)) then
+      local lk = st.rdLock
+      local cur = (lk and lk.em) or st.rdSel
       local nx = G.radarNext and G.radarNext(st, cur)
       if not nx then
-        if not st.lock then toastT((G.radarOn and not G.radarOn()) and "rd.isOff" or "rd.noTgt") end
+        if not lk then toastT((G.radarOn and not G.radarOn()) and "rd.isOff" or "rd.noTgt") end
         return
       end
       local ok, why, arg = true, nil, nil
-      if st.lock then   -- 锁着：换成下一个（锁不上就留着原来的）
-        if nx ~= st.lock.em then ok, why, arg = radarLockOn(w, nx) end
+      if lk then   -- 锁着：换成下一个（锁不上就留着原来的）
+        if nx ~= lk.em then ok, why, arg = radarLockOn(nx) end
       else
         st.rdSel = nx
-        if G.mobile then ok, why, arg = radarLockOn(w, nx) end
+        if G.mobile then ok, why, arg = radarLockOn(nx) end
       end
       if not ok then toastT(why, arg) end
       return
     end
+    if not w or w.kind == "gun" or w.kind == "rkt" then return end
     local c = pickTarget(w, st.lock and st.lock.id)
     st.lock, st.lockT = c, 0
   end
-  -- Alt+F（Radar.lua 转过来）：锁着就解锁（还选着它），没锁就锁选中的（没选中的挑屏上离机头最近的）
+  -- Alt+F（Radar.lua 转过来）：雷达锁着就解锁（还选着它），没锁就锁选中的（没选中的挑屏上离扫描中心最近的）
   function G.flyRadarLock()
     if not st or not st.pilot or not st.rd then return end
-    local _, w = storeW()
-    if not radarManual(w) then toastT("rd.needRw") return end
-    if st.lock then
-      st.rdSel = st.lock.em
-      st.lock, st.lockT = nil, 0
+    local lk = st.rdLock
+    if lk then
+      st.rdSel = lk.em
+      if G.radarUnlock then G.radarUnlock(st) end
+      local _, w = storeW()
+      if st.lock and st.lock.em == lk.em and radarManual(w) then st.lock, st.lockT = nil, 0 end
       toastT("rd.unlock")
       return
     end
     local em = st.rdSel or (G.radarNext and G.radarNext(st, nil))
     if not em then toastT((G.radarOn and not G.radarOn()) and "rd.isOff" or "rd.noTgt") return end
     st.rdSel = em
-    local ok, why, arg = radarLockOn(w, em)
+    local ok, why, arg = radarLockOn(em)
     if not ok then toastT(why, arg) end
   end
   -- 选中这一架（手机点雷达屏上的亮点用，第 7 步接）：要在雷达屏上
@@ -2162,7 +2176,7 @@ function Fly.init(G)
 
   ---------------------------------------------------------------- 输入
 
-  local RADAR_ALT = {}   -- 按住 Alt 时归雷达的键（R / T / F / Q 现在用；E 模式、Z 扫描方式、C 回中、方向键挪天线留给第 4、5 步）
+  local RADAR_ALT = {}   -- 按住 Alt 时归雷达的键（Radar.lua：R 开关、T 选目标、F 锁定、Q 量程、E 模式、Z 扫描方式、C 回中、方向键挪天线）
   for _, kc in ipairs({ "R", "T", "F", "Q", "E", "Z", "C", "Up", "Down", "Left", "Right" }) do RADAR_ALT[Enum.KeyCode[kc]] = true end
   UIS.InputBegan:Connect(function(io, gp)
     if gp or not st then return end
@@ -2242,7 +2256,7 @@ function Fly.init(G)
     if gp or not st or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
     if st.uav or st.eo then   -- 平板前视光电：滚轮细调倍率（1× ~ 12×）
       st.zoom = clamp(st.zoom * (1 + 0.18 * io.Position.Z), 1, 40)
-    elseif st.pilot and st.rd and (key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt)) then   -- Alt+滚轮归雷达（第 4 步挪天线俯仰），不动油门
+    elseif st.pilot and st.rd and (key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt)) then   -- Alt+滚轮归雷达（挪天线俯仰），不动油门
       if G.radarWheel then G.radarWheel(io.Position.Z) end
     elseif st.pilot and st.d.kind == "jet" then   -- 战雷：滚轮是油门（一格 5%，推过 100% 就是加力）
       st.thr = clamp(st.thr + io.Position.Z * 5, 0, st.d.ab and 130 or 100)
@@ -2921,6 +2935,27 @@ function Fly.init(G)
     end
     -- 锁定：选中的弹要锁的话，目标在视场里待够锁定时间
     if st.pilot and w and (w.kind == "aam" or w.kind == "agm" or (w.kind == "bomb" and w.guided)) then
+      local rdl = st.rdLock   -- 雷达的单目标跟踪（Radar.lua）：跟选的什么弹无关
+      if radarManual(w) then
+        -- 雷达弹锁的就是雷达跟踪着的：STT，或者 TWS 里指定的航迹（不用 STT：对方告警器不报锁定，Radar.lua 每次航迹更新报一次数据链）
+        local want = (rdl and rdl.em) or (G.radarTwsSel and G.radarTwsSel(st)) or nil
+        if st.lock and st.lock.em ~= want then st.lock, st.lockT = nil, 0 end
+        if st.lock then st.lock.tws = rdl == nil end   -- 指定航迹上又按了 Alt+F（进了 STT）/ STT 丢了还在航迹里：同一架，换个跟法
+        if not st.lock and want then
+          local c = candOf(w, want)
+          if c and inTrack(w, c) then
+            c.tws = rdl == nil
+            st.lock, st.lockT = c, 0
+          end
+        end
+      elseif rdl and not rdl.mem and w.kind == "aam" and w.seeker == "ir" and not (st.lock and st.lock.em == rdl.em) then
+        -- 红外弹的导引头跟着雷达指：雷达锁着的在导引头视场里就先咬它（不按离机头最近的挑）
+        local c = candOf(w, rdl.em)
+        if c and inCone(w, c) then
+          c.slaved = true
+          st.lock, st.lockT = c, 0
+        end
+      end
       if st.lock and (not st.lock.em.Parent or st.lock.em:GetAttribute("Wreck")) then st.lock = nil end
       if st.lock then
         local root = st.lock.em:FindFirstChild("Root")
@@ -2932,16 +2967,19 @@ function Fly.init(G)
             local vc = (d0 - st.lock.dist) / dt / AD.M
             st.lock.vc = st.lock.vc and (st.lock.vc + (vc - st.lock.vc) * math.min(1, dt * 3)) or vc
           end
-          -- 雷达弹（战雷）：雷达得一直看得见它——它侧着飞把你放在 3 / 9 点（置零）、钻进地杂波、出了雷达的万向架，超过 1 秒丢锁
-          --   （单目标跟踪时天线跟着目标转：方位按万向架 ±az，不按搜索的扫描宽度）
+          -- 雷达弹（战雷）：雷达得一直跟着它——STT 这一帧看得见（它侧着飞把你放在 3 / 9 点置零、钻进地杂波、出了万向架时 Radar.lua 先按记忆外推，
+          --   这时进度不涨、不能发射；记忆外推 RD.MEM 秒还没找回来 Radar.lua 丢锁、提示，上面 want 没了这里跟着丢）；TWS 的航迹还在（没过期）
           local rOk, rWhy = true, nil
-          if w.seeker == "radar" and st.rd and G.radarSees then rOk, rWhy = G.radarSees(st, st.lock.em, true) end
-          st.lock.radarWhy = (not rOk) and rWhy or nil
-          if rOk then
-            st.lock.radarLostT = 0
-          else
-            st.lock.radarLostT = (st.lock.radarLostT or 0) + dt
+          if radarManual(w) then
+            if st.lock.tws then
+              rOk = G.radarTrackOf ~= nil and G.radarTrackOf(st, st.lock.em) ~= nil
+              rWhy = (not rOk) and "track" or nil
+            else
+              rOk = rdl ~= nil and rdl.em == st.lock.em and not rdl.mem
+              rWhy = (rdl and rdl.why) or "track"
+            end
           end
+          st.lock.radarWhy = (not rOk) and rWhy or nil
           -- 在离轴角里：锁定进度往上走；出了离轴角、还在跟踪范围里：锁留着（菱形变黄、不能发射，进度不涨），偏出去 4 秒才丢
           local inside = inCone(w, st.lock) and rOk
           if st.lock.dist < (w.range or 3200) * 1.1 and (inside or inTrack(w, st.lock)) then
@@ -2952,11 +2990,6 @@ function Fly.init(G)
             else
               st.lock.outT = (st.lock.outT or 0) + dt
               if st.lock.outT > 4 then st.lock, st.lockT = nil, 0 end
-            end
-            if st.lock and (st.lock.radarLostT or 0) > 1.0 then   -- 雷达丢了：置零 / 地杂波 / 出了范围
-              local why = st.lock.radarWhy
-              st.lock, st.lockT = nil, 0
-              if G.toast then G.toast(T((why == "notch") and "air.radarLostNotch" or "air.radarLost"), "info") end
             end
           else
             st.lock, st.lockT = nil, 0
@@ -3170,12 +3203,7 @@ function Fly.init(G)
         lockBox.Visible, lockText.Visible = false, false
       end
       -- 锁定音（导引头嗡嗡、雷达弹嘀声）：B 的 AirAudio.lua（上面 G.airAudioStep），A 原来在这里那套 11-24 合并时去掉了（两套一起响）
-      -- 雷达锁着敌机：半秒告诉服务器一次（对方的雷达告警会响；红外弹是被动的不报）
-      if st.lock and w and w.seeker == "radar" and w.kind == "aam" and st.lock.em and st.lock.em:GetAttribute("Kind") == "air" and os.clock() >= (st.lockPingT or 0)
-        and not st.lock.radarWhy then   -- 雷达真跟踪着（没置零、没出范围）才报：服务器按这个给飞出去的雷达弹走数据链
-        st.lockPingT = os.clock() + 0.5
-        G.R.Drive:FireServer({ op = "lockOn", tgt = st.lock.id, full = st.lockT >= (w.lockTime or 1) })
-      end
+      -- 雷达锁着敌机报服务器（lockOn：数据链、对方的告警）挪到了 Radar.lua：STT 跟踪着半秒一次、TWS 指定的航迹每次更新一次——跟选的什么弹无关
       -- 炸弹落点（不制导的、或者没锁上的制导炸弹）
       if w and w.kind == "bomb" and not (st.lock and st.lockT >= (w.lockTime or 1)) then
         local gp2, gon = project((bombNow()))   -- 按服务器的炸弹物理算（跟地上的红圈、瞄准镜十字一个点）
@@ -3211,12 +3239,8 @@ function Fly.init(G)
     elseif G.airHudOff then
       G.airHudOff()
     end
-    -- 战雷式机载雷达屏（Radar.lua）：搜索扫描、锁着雷达弹的目标时 STT
-    if G.radarStep then
-      local _, rw = storeW()
-      local lockEm = (st.lock and rw and rw.seeker == "radar") and st.lock.em or nil
-      G.try_(G.radarStep, st, dt, lockEm)
-    end
+    -- 战雷式机载雷达屏（Radar.lua）：搜索 / 边扫边跟 / 近战扫描、单目标跟踪（st.rdLock，跟选的什么弹无关）
+    if G.radarStep then G.try_(G.radarStep, st, dt) end
     -- 战雷的轰炸瞄准镜画面、CCRP 目标点的方框和箭头（Bombsight.lua）
     if G.bsDraw then
       local s2 = { on = st.bsight == true, poi = (st.pilot and not st.crashed) and st.poi or nil, ccrp = st.ccrp, relT = st.ccrpRelT }

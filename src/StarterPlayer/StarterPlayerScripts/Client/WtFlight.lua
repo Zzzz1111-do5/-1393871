@@ -150,6 +150,17 @@ function WtFlight.init(G)
   local smallC, smallS = ringOf(gui, 26, WHITE, 1.6)
   smallC.Name = "SeekerHead"
   smallC.Visible = false
+  -- 雷达近战模式的扫描区（Radar.lua 的 G.radarAcmZone，机体坐标）：竖扫两条竖线、平显视场 / 可挪一个框、瞄准线 / 头盔一个小圈
+  local acmZ = frame(gui, UDim2.fromScale(1, 1), UD2(), INK, 1)
+  acmZ.Name = "WtAcmZone"
+  acmZ.Visible = false
+  local acmSeg = {}
+  for i = 1, 4 do
+    acmSeg[i] = seg(acmZ, HUD, 1.4)
+    acmSeg[i].Name = "AcmEdge"
+  end
+  local acmRing = ringOf(acmZ, 20, HUD, 1.4)
+  acmRing.Name = "AcmRing"
 
   ---------------------------------------------------------------- 锁定框（雷达 / 导引头跟踪着的目标）
   local box = frame(gui, UDim2.fromOffset(30, 30), UD2(), INK, 1, V2(0.5, 0.5))
@@ -375,15 +386,60 @@ function WtFlight.init(G)
     else
       bigC.Visible, smallC.Visible = false, false
     end
+    -- 雷达近战模式的扫描区：按机体坐标的角度投到画面上（离机头 800 格的那个面）；竖扫的上头（+50°）多半在画面外，线照样画（屏幕边上截断）
+    local zA = G.radarAcmZone and G.radarAcmZone()
+    if zA and not st.eo and not st.bsight then
+      local function at(a, e)
+        local ca, ce = math.cos(rad(a)), math.cos(rad(e))
+        local dir = cf:VectorToWorldSpace(V(math.sin(rad(a)) * ce, math.sin(rad(e)), -ca * ce))
+        local _, _, sp = proj(pos + dir * 800)
+        return sp.X, sp.Y, sp.Z > 1
+      end
+      local okAll = true
+      if zA.fixed or zA.head then
+        local x, y, on = at(zA.cAz, zA.cEl)
+        local r0 = math.max(px(math.max(zA.A, zA.H, zA.beam or 2)) * 2, 12)
+        acmRing.Position, acmRing.Size, acmRing.Visible = UDim2.fromOffset(x, y), UDim2.fromOffset(r0, r0), on
+        for _, s2 in ipairs(acmSeg) do s2.Visible = false end
+        okAll = on
+      else
+        acmRing.Visible = false
+        local a0, a1, e0, e1 = zA.cAz - zA.A, zA.cAz + zA.A, zA.cEl - zA.H, zA.cEl + zA.H
+        local x00, y00, o1 = at(a0, e0)
+        local x10, y10, o2 = at(a1, e0)
+        local x01, y01, o3 = at(a0, e1)
+        local x11, y11, o4 = at(a1, e1)
+        okAll = o1 and o2 and o3 and o4
+        if okAll then
+          setSeg(acmSeg[1], x00, y00, x01, y01)   -- 左边
+          setSeg(acmSeg[2], x10, y10, x11, y11)   -- 右边
+          if zA.vert then   -- 竖扫只画两条竖线
+            acmSeg[3].Visible, acmSeg[4].Visible = false, false
+          else
+            setSeg(acmSeg[3], x01, y01, x11, y11)
+            setSeg(acmSeg[4], x00, y00, x10, y10)
+          end
+        else
+          for _, s2 in ipairs(acmSeg) do s2.Visible = false end
+        end
+      end
+      acmZ.Visible = okAll
+    else
+      acmZ.Visible = false
+    end
 
-    -- ③ 锁定框：距离、接近速度、高度差、目标往哪飞
-    local tgt = st.lock
-    if lk and lk.on and lk.p and tgt and not st.eo and not st.bsight then
+    -- ③ 锁定框：距离、接近速度、高度差、目标往哪飞（选的弹没锁、雷达 STT 锁着的也画：雷达锁定跟所选武器无关）
+    local tgt, blk = st.lock, lk
+    if not (blk and blk.on and blk.p and tgt) and st.rdLock and not st.rdLock.mem and st.rdLock.p then
+      local rp, ron = proj(st.rdLock.p)
+      if ron then blk, tgt = { on = true, p = rp, dist = st.rdLock.dist }, st.rdLock end
+    end
+    if blk and blk.on and blk.p and tgt and not st.eo and not st.bsight then
       box.Visible = true
-      box.Position = lk.p
-      local m = (lk.dist or 0) / AD.M
+      box.Position = blk.p
+      local m = (blk.dist or 0) / AD.M
       bDist.Text = (m >= 1000) and string.format("%.1f km", m / 1000) or string.format("%d m", math.floor(m + 0.5))
-      bVc.Text = lk.vc and string.format("%d m/s", math.floor(lk.vc + 0.5)) or ""
+      bVc.Text = blk.vc and string.format("%d m/s", math.floor(blk.vc + 0.5)) or ""
       local em = tgt.em
       local root = em and em.Parent and em:FindFirstChild("Root")
       if root then

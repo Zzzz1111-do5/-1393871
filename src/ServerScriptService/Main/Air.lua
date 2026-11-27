@@ -447,7 +447,8 @@ function Air.init(G)
 
   -- 导弹：助推到额定速度、之后慢慢减速；比例导引（带提前量）、过载有限；导引头看不到目标就丢失；近炸
   -- 主动雷达弹（霹雳-15、AIM-120……；战雷式，用户 11-24 夜：「雷达扫描图……为雷达锁定式导弹提供引导，所以也有 39 机动的这种说法」）：
-  --   离目标远时靠发射机的雷达跟踪（数据链）——发射机得一直锁着（客户端每半秒报 lockOn → e.radarTgt / e.radarT），断了就往最后估的拦截点飞（惯导）；
+  --   离目标远时靠发射机的雷达跟踪（数据链）——发射机得一直跟着它（客户端 STT 每半秒报 lockOn → e.radarTgt / e.radarT；边扫边跟每扫一帧报一次，
+  --   带 e.radarTws = 一帧几秒，数据链多等这么久），断了就往最后估的拦截点飞（惯导）；
   --   近到 w.act 自己开导引头：只看弹头前方 40°；目标相对地面的速度在视线上的分量小于 w.notch（侧着飞、把导弹放在 3 / 9 点：置零）超过半秒就丢；
   --   开了导引头以后也会被箔条骗（flare 里）。开机以后目标重新进视场、不置零了还能再咬上
   local function arhStep(s, dt)
@@ -461,7 +462,7 @@ function Air.init(G)
     local dist = (rp - s.pos).Magnitude
     if not s.active and dist > w.act then
       local sh = s.byEnt and G.entById[s.byEnt]
-      local dl = sh ~= nil and sh.alive and sh.radarTgt == ref.id and now() - (sh.radarT or -9) < 1.3
+      local dl = sh ~= nil and sh.alive and sh.radarTgt == ref.id and now() - (sh.radarT or -9) < 1.3 + (sh.radarTws or 0)
       s.dl = dl
       if dl then
         if s.tgt ~= ref and not (s.tgt and s.tgt.decoy) then s.tgt, s.tgId, s.aimPt = ref, ref.id, nil end
@@ -473,7 +474,12 @@ function Air.init(G)
       end
       return
     end
-    if not s.active then G.fx({ k = "shotAct", id = s.id }) end   -- 导引头开机：告诉客户端（雷达屏上这发弹的数据链虚线变实线，WtFlight / Radar.lua）
+    if not s.active then
+      G.fx({ k = "shotAct", id = s.id })   -- 导引头开机：告诉客户端（雷达屏上这发弹的数据链虚线变实线，WtFlight / Radar.lua）
+      -- 边扫边跟打出去的（发射时对方的告警器不知道）：导引头开机这时候才报「导弹来袭」
+      if s.rwrLate and ref.driver and ref.driver.pl then G.R.Drive:FireClient(ref.driver.pl, { op = "rwr", id = s.id, w = s.rwrLate }) end
+      s.rwrLate = nil
+    end
     s.active = true
     if s.tgt and s.tgt.decoy then return end   -- 被箔条骗走了
     local los = (rp - s.pos) / math.max(dist, 1)
@@ -729,12 +735,18 @@ function Air.init(G)
       --   其余的（响尾蛇、霹雳-10 的导轨、侧弹舱伸出去的导轨、地狱火）照旧：在导轨上点火冲出去
       local ej = w.eject or ((s.ej or s.bay == "main") and "drop") or nil
       local E = ej and (type(ej) == "table" and ej or AD.EJ[ej]) or nil
+      -- 对边扫边跟的航迹打主动雷达弹（没有 STT，客户端报的 lockOn 带 tws）：对方的告警器这时不报，等导引头开机（arhStep）
+      local quiet = tgt ~= nil and w.seeker == "radar" and w.act ~= nil and e.radarTws ~= nil and e.radarTgt == tgt.id
       local sh = G.launch({ kind = "missile", pos = launch, vel = E and (base + fwd * E.f - scf.UpVector * E.d) or (base + fwd * 60 - scf.UpVector * 6),
         w = w, src = S, ignore = ignoreOf(e), life = (w.life or 8) + (E and E.t or 0),
         step = guideMissile, age = 0, ejT = E and E.t or nil, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = (not tgt and w.kind == "agm") and aimPt or nil, byEnt = e.id,
         ref = (w.seeker == "radar" and w.act) and tgt or nil })   -- 主动雷达弹：记住真正的目标（数据链 / 开导引头按它）
       e.nextStore = t + 0.35
-      if tgt and tgt.driver then G.R.Drive:FireClient(tgt.driver.pl, { op = "rwr", id = sh.id, w = wid }) end
+      if quiet then
+        sh.rwrLate = wid
+      elseif tgt and tgt.driver then
+        G.R.Drive:FireClient(tgt.driver.pl, { op = "rwr", id = sh.id, w = wid })
+      end
     elseif w.kind == "bomb" then
       local function drop(j)
         local c2 = stationWorld(e, e.def.st[j])
@@ -767,15 +779,18 @@ function Air.init(G)
     G.fx({ k = "storeOff", id = e.id, st = i, w = wid })
   end
 
-  -- 雷达锁定告警（战雷的 RWR：被敌机雷达锁着，告警一阵阵嘀嘀响）：客户端雷达弹锁着敌机半秒报一次；
-  --   服务器看一眼（敌方、飞机、12000 格以内）转告被锁那架的飞行员（Fly.lua 的 rwrLock）；红外弹是被动的，不报
-  local function lockOn(e, tid, full)
+  -- 雷达锁定告警（战雷的 RWR：被敌机雷达锁着，告警一阵阵嘀嘀响）：客户端雷达 STT 跟踪着敌机半秒报一次（Radar.lua，跟选的什么弹无关）；
+  --   服务器看一眼（敌方、飞机、12000 格以内）转告被锁那架的飞行员（Fly.lua 的 rwrLock）；红外弹是被动的，不报。
+  --   tws（数字，一帧几秒）：边扫边跟指定的航迹更新了——只记下来给数据链用（等一帧），**不发 rwrLock**（对方的告警器分不出边扫边跟）
+  local function lockOn(e, tid, full, tws)
     local tg = (type(tid) == "string") and G.entById[tid] or nil
     if not tg or not tg.alive or not tg.air or tg.team == e.team or not tg.root or not e.root then return end
     local tn = now()
+    local twsS = (type(tws) == "number" and tws == tws) and math.clamp(tws, 0.2, 12) or nil
     if (tg.root.CFrame.Position - e.root.CFrame.Position).Magnitude < 20000 then
-      e.radarTgt, e.radarT = tg.id, tn   -- 雷达跟踪着它：飞出去的主动雷达弹按这个走数据链（arhStep）
+      e.radarTgt, e.radarT, e.radarTws = tg.id, tn, twsS   -- 雷达跟踪着它：飞出去的主动雷达弹按这个走数据链（arhStep）
     end
+    if twsS then return end
     if tn < (e.lockPingT or 0) then return end
     e.lockPingT = tn + 0.35
     if (tg.root.CFrame.Position - e.root.CFrame.Position).Magnitude > 12000 then return end
@@ -994,7 +1009,7 @@ function Air.init(G)
       if typeof(d.aim) == "Vector3" then e.aim = d.aim end
       e.stick = d.stk == true
     elseif d.op == "fire" then fireStore(P, e, d.w, d.tgt, d.aim, d.n, d.rip)
-    elseif d.op == "lockOn" then lockOn(e, d.tgt, d.full)
+    elseif d.op == "lockOn" then lockOn(e, d.tgt, d.full, d.tws)
     elseif d.op == "flare" then flare(P, e)
     elseif d.op == "jettison" then dropTanks(e, false)
     elseif d.op == "crash" then

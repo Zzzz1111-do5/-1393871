@@ -7,6 +7,9 @@
 --      APG-68、KLJ-5、SL-8A、N035 的游戏量程跟原来 AirDefs RADAR 表（×2.5）差不到 15%；AWG-9 的边扫边跟只能用 ±40°×2、±20°×4；APG-68 一帧 4 秒
 --   ③ 资料卡（Radars.card）：中英文的字都在 Lang 里（没有漏翻的键），APG-66 写「只能单目标跟踪」、N011M 写边扫边跟 15 批、没有雷达写「没有对空雷达」；
 --      Fly.lua / Radar.lua 用到的 rd.* 提示都有中英文
+--   ④ 模式、扫描（第 4、5 步）：RD.modes——没有边扫边跟的（APG-66、N001、N019、早期 APG-63、SL-8A）按 Alt+E 跳过 TWS，有近战模式的都能进 ACM；
+--      AWG-9 的 TWS 只能用 twsScans；每种近战模式的扫描区（RD.acmGeo）在万向架里；近战自动截获 13850 格（真机 10 海里）；记忆外推 2 秒；
+--      亮点暗掉的时间比一帧长（RD.fade：机械扫描 ±60°×4 行一帧 8 秒，亮点 8.8 秒）
 local fs = require("@lune/fs")
 local luau = require("@lune/luau")
 local process = require("@lune/process")
@@ -160,12 +163,53 @@ check(c11:find("N011M", 1, true) ~= nil and c11:find("边扫边跟 15 批", 1, t
 check(c0:find("没有对空雷达", 1, true) ~= nil, "没有雷达的写「没有对空雷达」")
 check(cardText(RD.T.klj5):find("（估）", 1, true) ~= nil and cardText(RD.T.apg68):find("（估）", 1, true) == nil, "外界估的（KLJ-5）写「估」，公开的（APG-68）不写")
 local miss = {}
-for _, k in ipairs({ "rd.keys", "rd.noTgt", "rd.isOff", "rd.cantSee", "rd.lockFar", "rd.lockOff", "rd.unlock", "rd.needRw", "wt.radarOn", "wt.radarOff", "wt.radarRange",
-	"air.radarLost", "air.radarLostNotch" }) do
+for _, k in ipairs({ "rd.keys", "rd.keys2", "rd.noTgt", "rd.isOff", "rd.cantSee", "rd.lockFar", "rd.unlock", "wt.radarOn", "wt.radarOff", "wt.radarRange",
+	"air.radarLost", "air.radarLostNotch", "air.radarNotch", "air.radarClutter", "rd.zone", "rd.scanT", "rd.modeT", "rd.m.rws", "rd.m.tws", "rd.m.acm", "rd.center", "rd.alt" }) do
 	if not (Lang.zh[k] and Lang.en[k]) then table.insert(miss, k) end
 end
 check(#miss == 0, "Fly.lua / Radar.lua 用到的提示都有中英文" .. ((#miss > 0) and ("（缺 " .. table.concat(miss, " ") .. "）") or ""))
 check(Lang.zh["air.helpJet"]:find("Alt+F", 1, true) ~= nil and Lang.en["air.helpJetKb"]:find("Alt+F", 1, true) ~= nil, "开飞机的按键说明写了 Alt+F 雷达锁定")
+local helpOk = true
+for _, k in ipairs({ "air.helpJet", "air.helpJetKb" }) do
+	for _, lang in ipairs({ "zh", "en" }) do
+		for _, key in ipairs({ "Alt+E", "Alt+Z", "Alt+C" }) do
+			if not Lang[lang][k]:find(key, 1, true) then helpOk = false end
+		end
+	end
+end
+check(helpOk, "开飞机的按键说明（中英）写了 Alt+E 模式、Alt+Z 扫描方式、Alt+C 天线回中")
+local zh1, zh2 = Lang.t("zh", "rd.zone", "60", "2"), Lang.t("en", "rd.scanT", "30", "4", "4.0")
+check(zh1 == "±60° · 2 行" and zh2 == "Scan ±30° · 4 bar (frame 4.0 s)", "雷达屏的扫描区字样：" .. zh1 .. " / " .. zh2)
+
+print("④ 模式、扫描")
+local function has(t, v) for _, x in ipairs(t) do if x == v then return true end end return false end
+local noTws, acmAll, geoBad = {}, true, {}
+for k, r in pairs(RD.T) do
+	local ms = RD.modes(r)
+	if ms[1] ~= "rws" then table.insert(geoBad, k .. " 第一个模式不是 RWS") end
+	if has(ms, "tws") ~= (r.tws > 0) then table.insert(geoBad, k .. " 有没有 TWS 跟批数对不上") end
+	if r.tws == 0 then table.insert(noTws, k) end
+	if not has(ms, "acm") then acmAll = false end
+	for _, a in ipairs(r.acm or {}) do
+		local g = RD.acmGeo(r, a)
+		if not (g and g.az > 0 and g.el1 > g.el0 and g.az <= r.az and g.el1 <= r.elU and g.el0 >= -r.elD) then table.insert(geoBad, k .. " 近战 " .. a .. " 的扫描区出了万向架") end
+	end
+	for i = 1, #r.scans do
+		local sc = r.scans[i]
+		if sc[2] * RD.BAR > r.elU + r.elD then table.insert(geoBad, k .. " 第 " .. i .. " 种扫描比俯仰万向架还高") end
+		if RD.fade(r, i) < RD.frame(r, i) then table.insert(geoBad, k .. " 亮点没扫完一帧就暗了") end
+	end
+end
+table.sort(noTws)
+check(#geoBad == 0, "模式、近战扫描区、扫描高度都说得通" .. ((#geoBad > 0) and ("：" .. table.concat(geoBad, "；")) or ""))
+check(table.concat(noTws, " ") == "apg63 apg66 n001 n001e n019 sl8a", "没有边扫边跟（Alt+E 跳过 TWS）：" .. table.concat(noTws, " "))
+check(acmAll, "每部雷达都有近战模式（Alt+E 能进 ACM）")
+check(RD.scanOk(RD.T.awg9, "tws", 1) and not RD.scanOk(RD.T.awg9, "tws", 2) and RD.scanOk(RD.T.awg9, "tws", 4) and RD.scanOk(RD.T.awg9, "rws", 2)
+	and RD.scanOk(RD.T.apg68, "tws", 3), "AWG-9 的 TWS 只能用第 1、4 种扫描（RWS 都能用）；APG-68 的 TWS 都能用")
+check(RD.ACQ == 13850, "近战自动截获 " .. RD.ACQ .. " 格（真机 10 海里）")
+check(RD.MEM == 2 and RD.MODE_TAG.mem == "MEM" and RD.MODE_TAG.stt == "STT", "STT 丢了先记忆外推 2 秒（屏上 STT MEM）")
+check(math.abs(RD.fade(RD.T.apg68, 2) - 8.8) < 1e-9 and math.abs(RD.fade(RD.T.klj5, 1) - 2.6) < 1e-9, string.format("亮点多久暗掉：APG-68 ±60°×4 行 %.1f 秒、KLJ-5 默认 %.1f 秒", RD.fade(RD.T.apg68, 2), RD.fade(RD.T.klj5, 1)))
+check(RD.acmGeo(RD.T.awg9, "bore").az == 1.2 and RD.acmGeo(RD.T.apg68, "vert").el1 == 50 and RD.acmGeo(RD.T.apg66, "vert").el1 == 30, "近战扫描区：F-14 的 PLM 用自己的（±1.2°），APG-68 竖扫到 +50°、APG-66 到 +30°")
 
 print(bad == 0 and "全部通过" or ("有 " .. bad .. " 项不对"))
 process.exit(bad == 0 and 0 or 1)
