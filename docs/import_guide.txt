@@ -690,7 +690,8 @@ local SSS=game:GetService("ServerScriptService") local SS=game:GetService("Serve
      输出（Window → Output）里出现「脚本换好了：33 项……」就好了（项数以后可能变）：同名的旧脚本删掉、新的放到原来的位置，ScriptsUpdate 文件夹自己删掉。
   4. 保存（要上线就「发布到 Roblox」）。
   注意：只有涉及「要重导模型」的更新（上面写着「第 N 包：重导 …」的）才需要另外导模型；只改脚本的更新这四步就够了。
-  还有：地点文件自己的设置 ScriptsUpdate 换不了——Workspace 的流式加载（D 第五包）、Terrain 的草叶（A 第七包）要照那一包里写的在属性面板里手动设一次。
+  还有：地点文件自己的设置 ScriptsUpdate 换不了——Workspace 的流式加载（D 第五包）、Terrain 的草叶（A 第七包）要照那一包里写的在属性面板里手动设一次；
+    11-27 光影：资源管理器 Lighting → 属性里 LightingStyle 选 Realistic、PrioritizeLightingQuality 取消勾选（画质往下降时先保视野距离、M3 上更顺；脚本改不了这两项）。
   更省事的办法是上面「二」：把导入的模型存一次传上来，以后我给的 RobloxTotalBattlefield.rbxlx 就自带你的模型，直接打开整个文件就行。
 
 四、注意

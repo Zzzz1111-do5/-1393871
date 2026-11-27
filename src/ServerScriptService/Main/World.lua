@@ -130,10 +130,24 @@ World.floodPole = floodPole
 
 ---------------------------------------------------------------- 光影
 
--- 夜战（用户：交战全部设成夜晚——夜晚弥补画质，做出 3A 的质感）：凌晨两点多，月亮偏西、冷蓝的月光，环境光压得很低，远处深蓝灰的雾；
---   主要的光是枪口焰、爆炸、热诱弹、航行灯、跑道灯、甲板灯、营地探照灯（Future 光照：地图文件里设好了，脚本改不了）；夜视仪在客户端 Night.lua
+-- 昼夜更替（用户 11-25「给沙漠地图做个昼夜更替」；11-26「所有地图开局默认白天」）：光照由客户端 DayNight.lua 按钟点画，
+--   这里开服时先按当前钟点设一套（数和客户端同一份：ReplicatedStorage/LightLooks.lua）——原来这里写死夜里那套，开局在白天时，
+--   服务器这一下复制到客户端，画面先闪一下夜里、过 0.1 秒 DayNight 才改回来。还建好客户端要调的几样：大气、天空、泛光、调色
+--   用户 11-27 光影照战雷（LightLooks.lua 开头写了为什么这么调）：按图设纬度（太阳低一点、影子长一点）、全局风（烟尘、草顺着一个方向飘）
+-- LightLooks 读不到（脚本没换全）时的兜底：原来写死的那套（11-25 DayNight 的白天 / 夜里、11-22「视野无限远」的大气），按开服的钟点二选一——
+--   不能落到 Roblox 的默认值（Atmosphere 默认 Density 0.395：几百格外就灰成一片；泛光、调色也是默认的）。客户端 DayNight 那时也起不来，
+--   画面就停在这一套上（钟点不走），能玩、不难看
+local FALLBACK = {
+  day = { bright = 3.3, amb = RGB(56, 58, 64), oamb = RGB(104, 108, 116), top = RGB(255, 246, 230), bot = RGB(42, 38, 32), diff = 1, spec = 1, exp = 0.05,
+    shadow = 0.12, dens = 0.07, off = 0.06, acol = RGB(196, 208, 224), adec = RGB(96, 112, 136), glare = 0.35, haze = 0.3,
+    bloomI = 0.6, bloomS = 26, bloomT = 1.3, ccB = 0.02, ccC = 0.12, ccS = 0.08, ccTint = RGB(255, 251, 244) },
+  night = { bright = 2.2, amb = RGB(14, 17, 24), oamb = RGB(38, 45, 62), top = RGB(140, 160, 210), bot = RGB(8, 10, 16), diff = 0.35, spec = 0.9, exp = 0.55,
+    shadow = 0.3, dens = 0.085, off = 0.06, acol = RGB(44, 54, 76), adec = RGB(12, 15, 24), glare = 0.15, haze = 0.5,
+    bloomI = 1.1, bloomS = 36, bloomT = 1.05, ccB = 0.02, ccC = 0.14, ccS = -0.12, ccTint = RGB(222, 232, 255) },
+}
+World.LIGHT_FALLBACK = FALLBACK   -- 测试用
 function World.lighting()
-  -- 昼夜（用户 11-25「给沙漠地图做个昼夜更替」）：开服记一次这一圈从哪一刻起算，之后跨局接着走（ReplicatedStorage/DayClock.lua；客户端 DayNight.lua 画）
+  -- 开服记一次这一圈从哪一刻起算，之后跨局接着走（ReplicatedStorage/DayClock.lua；每局开局 Round.lua 拨回早上）
   pcall(function()
     if type(workspace:GetAttribute("DayT0")) ~= "number" then
       local DC = require(RS:WaitForChild("DayClock"))
@@ -141,48 +155,68 @@ function World.lighting()
       workspace:SetAttribute("DayT0", DC.t0For(DN.start or 15.5))
     end
   end)
-  pcall(function()
-    Lighting.ClockTime = 2.3
-    Lighting.GeographicLatitude = 23
-    Lighting.Brightness = 2.2
-    Lighting.GlobalShadows = true
-    Lighting.Ambient = RGB(14, 17, 24)
-    Lighting.OutdoorAmbient = RGB(38, 45, 62)
-    Lighting.ColorShift_Top = RGB(140, 160, 210)
-    Lighting.ColorShift_Bottom = RGB(8, 10, 16)
-    Lighting.EnvironmentDiffuseScale = 0.35
-    Lighting.EnvironmentSpecularScale = 0.9
-    Lighting.ShadowSoftness = 0.3
-    Lighting.ExposureCompensation = 0.55
-    Lighting.FogColor = RGB(16, 20, 30)
-    Lighting.FogStart = 900
-    Lighting.FogEnd = 100000   -- 视野放到很远（用户 11-22：「视野给我改成无限远」；远处的看不清改成客户端的景深模糊，DayNight.lua）
+  -- 这一局的战场那套（训练场那块由客户端按镜头换）；LightLooks 没换进来（脚本没换全）就用上面的兜底那套
+  local LL, v, key, clock = nil, nil, "city", 2.3
+  local okL, errL = pcall(function()
+    local DC = require(RS:WaitForChild("DayClock"))
+    clock = DC.clock()
+    LL = require(RS:WaitForChild("LightLooks", 10))   -- 等 10 秒（项目里等模块的规矩；原来 20 秒）
+    key = LL.keyFor(Map, nil)
+    v = LL.at(key, LL.weights(clock, DC))
   end)
+  if not okL then
+    warn("[全面大战场] 光照参数（ReplicatedStorage.LightLooks）读不了，先用原来的那套：" .. tostring(errL))
+    LL = nil
+    local okD, dk = pcall(function() return require(RS:WaitForChild("DayClock", 5)).dayK(clock) end)
+    v = (okD and type(dk) == "number" and dk >= 0.5) and FALLBACK.day or FALLBACK.night
+  end
+  -- 新版光照（Technology 弃用了）：LightingStyle = Realistic（写实：硬的太阳影子、高光）、PrioritizeLightingQuality = false。
+  --   后一项官方说明：画质档往下降的时候先降什么——true 先保住近处的高级阴影、高质量着色器（视野距离先缩），false 先保住视野距离
+  --   （光照、着色先降）；满画质时两样一样。用户 11-22 要「视野无限远」、11-27 要 M3 上非常丝滑（M3 跟不上时 Roblox 自动把画质档往下调）：false。
+  --   这两项游戏脚本写不了（API 的写权限是 PluginOrOpenCloud：只有插件、命令栏、Open Cloud 能改，同 Terrain.Decoration、StreamingEnabled），
+  --   真游戏里下面两行会被 pcall 吞掉，以地点文件为准：tools/build.luau、build_rbxlx.py 写好了；已经导入过的地点要在 Studio 里改一次
+  --   （Lighting 的属性里 PrioritizeLightingQuality 取消勾选，docs/import_guide.txt「三、只换脚本」）。留着这两行：模拟器里能写，测试照这个查
+  pcall(function() Lighting.LightingStyle = Enum.LightingStyle.Realistic end)
+  pcall(function() Lighting.PrioritizeLightingQuality = false end)
+  if v then pcall(function()
+    Lighting.ClockTime = math.floor(clock / 0.02 + 0.5) * 0.02
+    Lighting.GeographicLatitude = LL and (LL.LAT[key] or LL.LAT0) or 23
+    Lighting.Brightness = v.bright
+    Lighting.GlobalShadows = true
+    Lighting.Ambient = v.amb
+    Lighting.OutdoorAmbient = v.oamb
+    Lighting.ColorShift_Top = v.top
+    Lighting.ColorShift_Bottom = v.bot
+    Lighting.EnvironmentDiffuseScale = v.diff
+    Lighting.EnvironmentSpecularScale = v.spec
+    Lighting.ShadowSoftness = v.shadow
+    Lighting.ExposureCompensation = v.exp
+    Lighting.FogColor = v.acol
+    Lighting.FogStart = 900
+    Lighting.FogEnd = 100000   -- 视野放到很远（用户 11-22：「视野给我改成无限远」；远处的层次交给大气）
+  end) end
+  -- 全局风（格/秒）：WindAffectsDrag 的烟尘、地形的草、云都顺着它；暴风雨（客户端 Warfx.lua）在这个基础上往大了插
+  if LL then pcall(function() workspace.GlobalWind = LL.WIND[key] end) end
   pcall(function()
     local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
-    atm.Density = 0.085   -- 原来 0.3、0.21（用户：视野很短；11-22 改成无限远）：客户端昼夜（DayNight.lua）按这个量级再调
-    atm.Offset = 0.06
-    atm.Color = Map.DESERT and RGB(70, 60, 54) or RGB(44, 54, 76)   -- 沙漠图：暖褐的沙尘夜空
-    atm.Decay = Map.DESERT and RGB(22, 17, 14) or RGB(12, 15, 24)
-    atm.Glare = 0.15
-    atm.Haze = 0.5
+    if v then atm.Density, atm.Offset, atm.Color, atm.Decay, atm.Glare, atm.Haze = v.dens, v.off, v.acol, v.adec, v.glare, v.haze end
     atm.Parent = Lighting
   end)
-  pcall(function()   -- 星空、大一点的月亮
+  pcall(function()   -- 星空、大一点的月亮（雪山客户端换成银河天空盒、木卫三：SnowLook.lua）
     local sky = Lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky")
     sky.StarCount = 6000
     sky.MoonAngularSize = 13
     sky.CelestialBodiesShown = true
     sky.Parent = Lighting
   end)
-  pcall(function()   -- 后期：亮的东西（灯、火、曳光）泛光；整体冷一点、对比高一点
+  pcall(function()   -- 后期：亮的东西（火球、闪光、灯、曳光）泛光；调色（DayNight 跟着钟点改）
     local bloom = Lighting:FindFirstChild("NightBloom") or Instance.new("BloomEffect")
     bloom.Name = "NightBloom"
-    bloom.Intensity, bloom.Size, bloom.Threshold = 1.1, 36, 1.05
+    if v then bloom.Intensity, bloom.Size, bloom.Threshold = v.bloomI, v.bloomS, v.bloomT end
     bloom.Parent = Lighting
     local cc = Lighting:FindFirstChild("NightGrade") or Instance.new("ColorCorrectionEffect")
     cc.Name = "NightGrade"
-    cc.Brightness, cc.Contrast, cc.Saturation, cc.TintColor = 0.02, 0.14, -0.12, RGB(222, 232, 255)
+    if v then cc.Brightness, cc.Contrast, cc.Saturation, cc.TintColor = v.ccB, v.ccC, v.ccS, v.ccTint end
     cc.Parent = Lighting
   end)
 end

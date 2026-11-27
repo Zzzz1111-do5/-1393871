@@ -215,6 +215,7 @@ if side == "def" then
   check(not C.drive.sight and not cc.Enabled, "再按 Shift 退出瞄准镜，调色关了")
   check(shown("HintOptic") == nil, "退出瞄准镜提示也收起来")
   check(C.nvgOn() and lighting:FindFirstChild("NVGrade") ~= nil, "退出瞄准镜，夜视仪的画面又回来了")
+  -- 远处景深（用户 11-22「远处模糊这样」、11-25 压到 0.06）地面上照旧开着：开镜时关、退出来又开
   check(fb ~= nil and fb.Enabled and not C.sightNv, "退出瞄准镜：远处景深模糊又开了，镜里夜视档的增亮撤掉")
 
   print("④ 开战后开炮、放烟幕弹")

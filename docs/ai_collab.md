@@ -26,6 +26,46 @@
 
 ## 正在做
 
+- F（11-27，特效、光影照战雷——合到本地分支 vfxlight-final：wip/vfxlight 的 a3a3ea7 特效 + 4c70454 光影、两边审查后的修 fix-vfx / fix-light、
+  复核后的修；没 push）。用户要的：像战雷（Eagle's Shadow 那一版）、写实、在 M3 的 Mac 上非常丝滑。**特效的规矩（别互相覆盖）**：
+  · **Client/VfxLib.lua 是特效共用的底子**（Fx.lua 建它放在 G.vfx，WreckFx、View 都用它）：粒子发射器池——每一「层」用 VL.def(名字, 配置函数, 不分档) 登记，
+    用的时候 VL.emit(名字, 大小, CFrame, 几颗, 变体)：按「层 + 大小档（1.2 倍一档）+ 变体（地面代号、贴脸……）」常驻发射器，**别每发都 Instance.new 发射器、零件**；
+    颜色 / 大小 / 透明度曲线一改连在飞的粒子一起变——要不一样的样子就另起一个变体，别在用的时候改（只有速度、散开角可以按次改：VL.emitK）。
+  · **一处一个零件**（「处」= 一个小零件 + 一个发射器）：同一帧在两处喷用两处；寿命 ≥ 3 秒的烟尘每处爆炸借一处、没灭完不挪走。一层最多 6 处（长寿命 8 处），
+    再多会借最早到期的那处（降级：VfxLib 文件头写了）。引擎行为三条（SpreadAngle 的 X 是不是水平、同帧挪零件多次 Emit、零件挪走烟会不会被剔除）
+    模拟器验证不了，要在 Studio 里看（VfxLib 文件头 (a)(b)(c)；SPREAD_XH 反了改一行）。
+  · **不走池的常喷发射器**（碎块拖的火和烟、舱口火柱、炮塔身上的火……）Rate 要乘 VL.rateK(每秒几颗, 喷几秒, 寿命, 优先级) 的返回值——记进同一个
+    全局预算（同时活着的粒子：1800 起砍碎屑火星、2800 只留要紧的），按喷稳了以后同时活着的量记。闪光灯只用 VL.flash / G.flash（8 盏轮着用、投影子的只 1 盏；
+    大的白天最多 1.5 倍：o.day = VL.DAY_MUL_BIG）。
+  · **碎块碰撞组**：VfxChunk（殉爆的钢板碎块、负重轮）只碰 Default（地形、房子），不碰 VfxActor（所有玩家角色、EntView 里车的样子）、碎块之间也不碰；
+    客户端 WreckFx、服务器 Ents.lua 开头都注册（注册不了照旧碰所有东西、输出里一条提示）。别的模块新加会被碎块绊住的东西，放进 VfxActor。
+  · **曳光池**（Fx.lua streak）：按样子分组、一组最多 96 根（跳弹 16）、自己打的单独一组（_me），每帧 BulkMoveTo，飞到了藏回地底下；满了顶离镜头最远的。
+  · **预建**：常用的层进局时分几帧建好（VL.prewarmLater，一帧 4 个）；按地面分的层按这张图的地面代号排、换图（G.onMap）时补排。新加常用的层记得排进去
+    （Fx.lua 文件末尾、WreckFx.lua 文件末尾），vfxreal 查「第一炮新建 0 个发射器」。
+  · 殉爆去重：服务器发的 c = "wreck"，离它最近的那辆车是这一次殉爆（WreckFx 画火球）就只出声、震屏（Fx.lua ownCookOff）；同一处 0.6 秒内同一种的只算一次（wreckDup）。
+    转盘车（WtDamage.CAROUSEL）先烧再炸：wreckCook 离镜头 4000 格内才接手（v.cookJets），远处的照别的残骸马上烧。
+  · 殉爆第一秒所有发射器加起来 ≤ 350 颗（规格写的 300，复核时明确接受 350：见 WreckFx.lua 文件头）；测试 tools/mock/vfxreal.lua、wreckfx.lua、
+    groundhit.lua、boom.lua、impact.lua、wtvfx.lua。
+
+- F（11-27，光影照战雷审查后的修：分支 fix-light，在 wip/vfxlight 的 4c70454 上，只改光照这一侧；复核后的修在 vfxlight-final）——**光照的规矩（别互相覆盖）**：
+  · **ReplicatedStorage/LightLooks.lua 是唯一的光照数据源**（各图白天 / 黄昏 / 清晨 / 夜里 24 个字段、纬度 LAT、全局风 WIND）：服务器 World.lighting、
+    客户端 DayNight 都读它；要改光照的数就改这里，别在别的模块里另写一套（World.lua 里只留一份 LightLooks 读不到时的兜底）。
+  · **客户端只有 DayNight 写 Lighting 的亮度、环境光（Ambient / OutdoorAmbient）、曝光、ClockTime**（还有大气、NightBloom、NightGrade、SunShafts、FarBlur）。
+    夜视（Night.lua 的 G.nvLight）、照明弹（Warfx 的 G.illum）、暴风雨（G.weather）都是给 DayNight 一个量，由它叠上去；别的模块要变亮变暗就加自己的
+    PostEffect 或者给 DayNight 一个量——直接写这几项会被它下一次更新改回来（它只在值变了才写），两边来回写就一闪一闪。
+  · **新模块 LightLooks（光照）、VfxLib（特效）必须进地点**：发包前重新生成 RobloxTotalBattlefield.rbxlx 和 ScriptsUpdate.rbxmx（`lune run tools/build.luau`）。
+    少了 VfxLib，Fx 等 10 秒报错跳过（没有特效）；少了 LightLooks，DayNight 等 10 秒报错跳过（同 init.client.lua 等模块的规矩）、
+    开服用 World 里写死的兜底那套（不动的光照）。
+  · 全局风的基数在 G.windBase（DayNight 换图 / 换区块时设），暴风雨（Warfx）在它上面往大了插；要改风改 LightLooks.WIND。
+  · Lighting.LightingStyle、PrioritizeLightingQuality 游戏脚本写不了（API 写权限 PluginOrOpenCloud，同 Terrain.Decoration），只能写进地点文件
+    （build.luau / build_rbxlx.py 现在写 Realistic + false，不再写 Technology = Future）；用户已经导入过的地点要在 Studio 里改一次（import_guide「三」）。
+  · 用户要过的别悄悄推翻：地面上的远处景深 FarBlur 0.06（11-22「远处模糊这样」、11-25 压淡）照旧开；大气按 11-22「视野无限远」的量级
+    （白天 0.07～0.09、黄昏 0.1、夜里 0.085，lightreal 查着白天 ≤ 0.1）；**霾 Haze 也是**——11-22 那次一起减了半（白天 0.3、夜里 0.5）：
+    钢城白天 0.35、训练场 0.3、各图夜里 0.5、黄昏 / 清晨 0.6～0.8，沙海、雪山白天 0.8（用户 11-25 / 11-26 调过的 0.9 / 1.0 以内）；
+    lightreal 查着钢城、训练场白天 ≤ 0.4、夜里 ≤ 0.5、任何时候 ≤ 0.8。这次还改了：照明弹顺风飘 ×0.15、最多 60 格；纬度自检退到 23° 就停、打提示
+    （17 点、18 点各看一眼太阳）；夜视总曝光、月光亮度、天光反照补回改之前的数。
+    测试 tools/mock/lightreal.lua、battle.lua（照明弹漂移、暴风雨里换风的基数）、veh.lua（退出瞄准镜景深又开）。
+
 - F（11-27，用户：「坦克的开镜你直接去按照战雷的做」+ 一张战雷开镜截图「这个样子」、「然后再做一个望远镜」、「镜子里的线条和字太粗了而且不够清晰 光学渐变也有些生硬」；
   11-26 的「照真镜子重画」）——**新：ReplicatedStorage/SightDefs.lua（数据、算法）+ Client/GunSight.lua（画）**，Drive.lua 建它、每帧调：
   · 全屏开镜（圆形目镜、热像框、红色发光分划、镜下红字都收了；Interior 的 ScopeFx 车外开炮长镜只从黑淡入 0.2 秒、不留暗边，车里的观瞄设备暗边改成 16 圈细环）；

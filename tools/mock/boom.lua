@@ -22,39 +22,46 @@ me:SetAttribute("Side", "atk")
 G.pushOne(P)
 R.run(1)
 local C = T.C
-T.act("deploy", "rifle", "af2")
+-- 出生点（11-27 审查 15a）：老测试用的是岛图的名字（af2 机场岛）——现在的图（沙海、钢城）走 Map.BASES，出生点叫 base / baseAir（Round.lua）
+if C.menuShown and C.menuShown() then C.menuEnter() R.run(0.5) end
+T.act("deploy", "rifle", "base")
 R.run(2)
 check(P.alive, "出生了")
 local FXF = R.services.Workspace:FindFirstChild("ClientFx")
 local SS = R.services.SoundService
 local EXP = "rbxasset://sounds/impact_explosion_03.mp3"
 
--- 一件事之后客户端特效文件夹里新出来的零件
+-- 一件事之后客户端特效文件夹里新出来的零件（声音挂在新零件上），和这一下喷了哪几层（11-27 起特效走 VfxLib 的发射器池：C.vfx.log）
+--   余火（VfxLib 的余火池 VL.burn：炸弹、导弹坑里烧一会儿）不进喷的记录：按 stat.burners 多了几处算（审查 15a）
 local function fresh(f)
   local before = {}
   for _, c in ipairs(FXF:GetChildren()) do before[c] = true end
+  C.vfx.logOn = true
+  C.vfx.log = {}
+  local b0 = C.vfx.stat.burners
   f()
-  local out = {}
+  local out = { log = C.vfx.log, burn = C.vfx.stat.burners - b0 }
+  C.vfx.log = {}
   for _, c in ipairs(FXF:GetChildren()) do if not before[c] then out[#out + 1] = c end end
   return out
 end
--- 这些零件上的粒子：几组、最大的一颗多大、用了哪些贴图、有没有平躺的圈
+-- 几层粒子、最大的一颗多大、用了哪些贴图、有没有平躺的圈、土块（白点染色拉成线）几层、火球最大多大；新零件上的声音
 local function stats(list)
-  local n, big, tex, flat, sounds = 0, 0, {}, false, {}
+  local n, big, tex, flat, sounds, clod, core = 0, 0, {}, false, {}, 0, 0
+  for _, x in ipairs(list.log or {}) do
+    n = n + 1
+    tex[x.tex] = true
+    if x.big > big then big = x.big end
+    if x.flat then flat = true end
+    if x.tex == "explosion01_implosion_main" and x.le <= 0.5 and x.vp then clod = clod + 1 end
+    if x.tex == "explosion01_core_main" and x.big > core then core = x.big end
+  end
   for _, h in ipairs(list) do
     for _, x in ipairs(h:GetChildren()) do
-      if x.ClassName == "ParticleEmitter" then
-        n = n + 1
-        local nm = x.Texture:match("([%w_]+)%.%w+$") or x.Texture
-        tex[nm] = true
-        for _, k in ipairs(x.Size.Keypoints or {}) do if k.Value > big then big = k.Value end end
-        if x.Orientation == Enum.ParticleOrientation.VelocityPerpendicular then flat = true end
-      elseif x.ClassName == "Sound" then
-        sounds[#sounds + 1] = x
-      end
+      if x.ClassName == "Sound" then sounds[#sounds + 1] = x end
     end
   end
-  return { n = n, big = big, tex = tex, flat = flat, sounds = sounds }
+  return { n = n, big = big, tex = tex, flat = flat, sounds = sounds, clod = clod, core = core, burn = list.burn or 0 }
 end
 local function texList(t)
   local o = {}
@@ -81,12 +88,12 @@ for _, it in ipairs({ { "gun", 0.3, 0 }, { "shell", 0.5, 60 }, { "msl", 1.3, -60
   S[c] = stats(list)
   print(string.format("    %-5s 粒子 %2d 组、最大一颗 %5.1f 格、贴图 %s、声音 %d 个", c, S[c].n, S[c].big, texList(S[c].tex), #S[c].sounds))
 end
-check(S.gun.n >= 2 and S.gun.big < 12 and not S.gun.tex.explosion01_core_main, "航炮弹：一点火光、几颗火星、一小团土，没有大火球")
-check(S.shell.tex.explosion01_core_main and S.shell.tex.SquareParticle and S.shell.tex.smoke_main, "炮弹：火球、碎块、尘土和烟")
+check(S.gun.n >= 2 and S.gun.big < 12 and S.gun.core <= 4, string.format("航炮弹：一点火光、几颗火星、一小团土，火最大 %.1f 格（没有大火球）", S.gun.core))
+check(S.shell.tex.explosion01_core_main and S.shell.clod > 0 and S.shell.tex.smoke_main and not S.shell.tex.SquareParticle, "炮弹：火球、土块（白点拉成线，不是方块）、尘土和烟")
 check(S.shell.big > S.gun.big and S.msl.big > S.shell.big * 1.5 and S.bomb.big > S.msl.big * 1.4,
   string.format("一档比一档大（航炮 %.0f < 炮弹 %.0f < 导弹 %.0f < 炸弹 %.0f）", S.gun.big, S.shell.big, S.msl.big, S.bomb.big))
 check(S.msl.flat and S.bomb.flat and S.bomb.tex.explosion01_shockwave_main, "导弹、炸弹在地上：贴地一圈冲击波")
-check(S.bomb.tex.fire_main, "炸弹炸完弹坑里还烧一会儿")
+check(S.bomb.tex.fire_main or S.bomb.burn > 0, "炸弹炸完弹坑里还烧一会儿（余火池 " .. tostring(S.bomb.burn) .. " 处）")
 check(S.bomb.big >= 60, string.format("炸弹的烟尘柱够大（%.0f 格，约 %.0f 米）", S.bomb.big, S.bomb.big / 2.8))
 
 -- 声音：近处的不晚到，按大小变调（炸弹低沉两层、航炮弹脆）
@@ -108,12 +115,13 @@ for d = 800, 20000, 400 do
   local x, z = base.X, base.Z + d
   if G.Map.height(x, z) < -3 then sea = V3(x, 0.5, z) break end
 end
-check(sea ~= nil, "找到一块海面")
+-- 现在的图（沙海、钢城）没有海：找不到就跳过海面那两条（打印出来，不算不对）
+if not sea then print("    这张图没有海（往外找了两万格）：跳过「海面：水柱」「海面爆炸哗的一声」两条") end
 if sea then
   cam.CFrame = R.CFrame.lookAt(sea + V3(0, 40, 200), sea)
   local w = stats(fresh(function() R.as("client", function() C.boom(sea, 1.3, "shell") end) end))
   local white = false
-  check(w.flat and not w.tex.SquareParticle, "海面：水柱、水雾、平躺的一圈白沫，没有土块（贴图 " .. texList(w.tex) .. "）")
+  check(w.flat and w.clod == 0, "海面：水柱、水雾、平躺的一圈白沫，没有土块（贴图 " .. texList(w.tex) .. "）")
   local hasWater = false
   for _, s in ipairs(w.sounds) do if s.SoundId:find("impact_water") then hasWater = true end end
   R.run(0.2)
@@ -123,7 +131,7 @@ end
 local sky = base + V3(0, 260, 0)
 cam.CFrame = R.CFrame.lookAt(sky + V3(0, 0, 150), sky)
 local a = stats(fresh(function() R.as("client", function() C.boom(sky, 0.7, "flak") end) end))
-check(a.tex.smoke_main and not a.tex.SquareParticle and not a.flat, "半空（高炮）：一团火、一团黑烟，没有土块和贴地的圈")
+check((a.tex.explosion01_smoke_main or a.tex.smoke_main) and a.clod == 0 and not a.flat, "半空（高炮）：一团火、一团黑烟，没有土块和贴地的圈")
 cam.CFrame = R.CFrame.lookAt(base + V3(0, 30, 120), base)
 
 print("③ 服务器的爆炸带类别")
