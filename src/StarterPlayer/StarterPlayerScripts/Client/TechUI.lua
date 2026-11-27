@@ -1938,9 +1938,13 @@ function TechUI.init(G)
       av.pitch = math.clamp(av.pitch + io.Delta.Y * 0.008, -0.2, 1.3)
     end
   end)
-  RunService.RenderStepped:Connect(function(dt)
+  -- 松开鼠标时指针已经拖出了视口（视口自己的 InputEnded 收不到）：在全局也认一下，别卡在拖动状态
+  UIS.InputEnded:Connect(function(io)
+    if io.UserInputType == Enum.UserInputType.MouseButton1 or io.UserInputType == Enum.UserInputType.Touch then av.drag = false end
+  end)
+  RunService.RenderStepped:Connect(function()
     if not infoP.Visible then return end
-    if not av.drag then av.yaw += (dt or 0.016) * 0.22 end   -- 不拖的时候慢慢转
+    -- 不再自己慢慢转（用户 11-27「这里面飞机不要自动旋转了 改为鼠标拖动旋转吧」）：左键 / 手指拖动转、滚轮缩放
     placeCam()
   end)
   local function statRows(it)
