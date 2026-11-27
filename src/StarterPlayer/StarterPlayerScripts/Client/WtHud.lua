@@ -315,7 +315,11 @@ function WtHud.init(G)
         end
       end
     end
-    A.info = T(big and "wt.xrJetB" or "wt.xrJet", m.pen or "?", m.arm or "?")
+    if x.tan then   -- 串联破甲：主装药前面一小段，前级先炸一下（引爆爆反、开路）
+      A.pre = nb(V3(1, 1, 1), CF(p0 - dv * 0.9), RGB(255, 236, 200), Enum.PartType.Ball)
+      A.preR = nb(V3(0.05, 1, 1), CFrame.lookAt(p0 - dv * 0.9, p0 - dv * 1.9) * CFrame.Angles(0, math.pi / 2, 0), RGB(255, 210, 150), Enum.PartType.Cylinder)
+    end
+    A.info = T(big and "wt.xrJetB" or (x.tan and "wt.xr.tandem" or "wt.xrJet"), m.pen or "?", m.arm or "?")
     A.info2 = m.kill and T((m.why == "ammo") and "wt.killAmmo" or ((m.why == "fire") and "wt.killFire" or "wt.kill")) or nil
     return A
   end
@@ -324,6 +328,14 @@ function WtHud.init(G)
     local A = xa
     local p0, dv, core, w = A.p0, A.dv, A.core, A.w
     local ti = t - TI
+    -- 串联：前级在主装药打上前 0.14 秒先炸一小团
+    if A.pre then
+      local pq = (t - (TI - 0.14)) / 0.32
+      if pq >= 0 and pq < 1 then
+        A.pre.Size, A.pre.Transparency = V3(1, 1, 1) * lerp(0.4, 2.6, ease(pq)), pq
+        A.preR.Size, A.preR.Transparency = V3(0.05, lerp(0.4, 3.4, ease(pq)), lerp(0.4, 3.4, ease(pq))), lerp(0.25, 1, pq)
+      else A.pre.Transparency, A.preR.Transparency = 1, 1 end
+    end
     -- ① 弹飞进来，尾巴拖一道曳光
     if ti < 0 then
       local sp = p0 - dv * (12 * (1 - t / TI))
@@ -458,6 +470,359 @@ function WtHud.init(G)
     vcam.CFrame = CFrame.lookAt(eye, tgt)
   end
 
+  ---------------------------------------------------------------- X 光：动能弹、穿甲爆破、杀爆、碎甲的慢放（用户待办「不同弹种击中的 X 光效果不一样」）
+  --   服务器给 x.sub（Wt.lua xrSub），这里一种一个样子（伤害上的区别在 Wt.lua SUBFX）：
+  --   fs 长杆尾翼稳定脱壳穿甲弹：细长的杆扎进去，杆头被装甲啃短（入口往回溅一圈火花），里面一道窄而密的破片锥，剩下的杆接着往里钻
+  --   ds 脱壳穿甲弹：粗短的钨芯，钻得浅一点、破片锥宽一点
+  --   ap 全口径穿甲弹：胖弹头把一块烧红的装甲塞子顶进车里，破片锥最宽、块头最大
+  --   aphe 穿甲爆破弹：先像 ap 一样钻进去，走一米多（引信延时）在车里炸开——一团火、破片四面八方、窗口一片橙
+  --   ac 机炮 / 机枪的小弹：小闪、细孔、几片
+  --   he 杀爆弹：在车外炸开——半个火球、贴着装甲的大冲击波、破片往外飞，烟往上冒；薄皮车才有几片钻进来
+  --   hesh 碎甲弹：弹头拍扁成一张饼贴在装甲上、起爆，冲击波一圈圈穿过装甲，内壁烧红、崩成一大锥碎片往里飞（装甲没有洞）
+  local KS = {
+    fs = { len = 2.6, w = 0.09, col = RGB(255, 238, 180), TI = 0.5, P = 0.42, back = 10, deep = 1, erode = 0.6 },
+    ds = { len = 1.5, w = 0.17, col = RGB(235, 235, 245), TI = 0.55, P = 0.48, back = 7, deep = 0.9, erode = 0.35 },
+    ap = { len = 1.15, w = 0.38, col = RGB(205, 175, 120), TI = 0.62, P = 0.6, back = 4, deep = 1, plug = true, wide = true },
+    aphe = { len = 1.15, w = 0.38, col = RGB(205, 175, 120), TI = 0.62, P = 0.6, back = 4, deep = 1, plug = true, wide = true, burst = 1.2 },
+    ac = { len = 0.6, w = 0.07, col = RGB(255, 220, 150), TI = 0.4, P = 0.3, back = 4, deep = 1, small = true },
+    he = { len = 1.0, w = 0.42, col = RGB(126, 132, 100), TI = 0.62, P = 0.5, blast = true },
+    hesh = { len = 1.0, w = 0.44, col = RGB(160, 158, 118), TI = 0.62, P = 0.6, scab = true },
+  }
+  -- 方向随机散在一个锥里（半角 deg）
+  local function coneDir(R, axis, deg)
+    local a = R() * math.pi * 2
+    local th = math.rad(deg) * math.sqrt(R())
+    local u1 = axis:Cross(math.abs(axis.Y) < 0.9 and V3(0, 1, 0) or V3(1, 0, 0)).Unit
+    local u2 = axis:Cross(u1).Unit
+    return (axis * math.cos(th) + (u1 * math.cos(a) + u2 * math.sin(a)) * math.sin(th)).Unit
+  end
+  -- 击毁：弹药殉爆（打到的那个弹药架）、起火（打到的油箱 / 发动机），tB 殉爆的时刻
+  local function killFx(A, m, d, yaw, hitP, R, tB)
+    local lay = W.layout(d)
+    local hk = {}
+    for _, H in ipairs(hitP) do hk[H.it.k] = H.it end
+    local function find(keys)
+      for _, k in ipairs(keys) do if hk[k] then return hk[k] end end
+      for _, k in ipairs(keys) do for _, it in ipairs(lay.list) do if it.k == k then return it end end end
+      return nil
+    end
+    if m.kill and m.why == "ammo" then
+      local it = find({ "ammo", "ammoH" })
+      if it then
+        A.boom = nb(V3(1, 1, 1), CF(W.center(d, yaw, it)), WHITE, Enum.PartType.Ball)
+        A.boomR = math.max(d.W or 6, 6) * 1.1
+        A.boomT = tB
+      end
+    end
+    if m.fire or (m.kill and m.why == "fire") then
+      local it = find({ "fuelL", "fuelR", "engine", "ammoH" })
+      if it then
+        local c = W.center(d, yaw, it)
+        A.fire, A.fireT = {}, tB + (A.boom and 0.6 or 0.05)
+        for i = 1, 4 do
+          table.insert(A.fire, { p = nb(V3(1, 1, 1), CF(c), (i % 2 == 0) and RGB(255, 190, 70) or RGB(255, 110, 40), Enum.PartType.Ball),
+            c = c + V3((R() - 0.5) * 1.6, (i - 1) * 0.45, (R() - 0.5) * 1.6), s = 1.1 + R() * 0.8 })
+        end
+      end
+    end
+  end
+  -- 一根往外长的破片（头上一颗亮点）：o 起点、rv 方向、len 长、t 开始、d 长出来用的时间
+  local function frag(list, o, rv, len, t, dur, th, col)
+    table.insert(list, { p = nb(V3(th, th, 0.1), CF(o), col or RGB(255, 240, 150)), tip = nb(V3(th * 3.4, th * 3.4, th * 3.4), CF(o), RGB(255, 250, 220), Enum.PartType.Ball),
+      o = o, rv = rv, len = len, t = t, d = dur, th = th })
+  end
+  local function fragStep(list, t)
+    for _, F in ipairs(list) do
+      local ft = t - F.t
+      if ft >= 0 then
+        local q = ft / F.d
+        local cur = F.len * ease(q)
+        if seg(F.p, F.o, F.o + F.rv * math.max(cur, 0.06), F.th) then
+          if q < 1 then
+            F.p.Color, F.p.Transparency = RGB(255, 240, 150), 0
+            F.tip.CFrame, F.tip.Transparency = CF(F.o + F.rv * cur), 0
+          else
+            local fq = math.clamp((ft - F.d) / 1.2, 0, 1)
+            F.p.Color, F.p.Transparency = RGB(255, 226, 90):Lerp(RGB(255, 140, 50), fq), lerp(0, 0.35, fq)
+            F.tip.Transparency = 1
+          end
+        end
+      end
+    end
+  end
+
+  local function xkBuild(m, x, d, yaw, p0, dv, hitP, sub)
+    local K = KS[sub]
+    local M = W.M
+    local R = rng(x.seed)
+    local A = { t0 = os.clock(), p0 = p0, dv = dv, K = K, sub = sub, hitP = hitP, TI = K.TI, P = K.P, frags = {}, back = {} }
+    A.step = nil   -- 下面赋值（xkStep 在后面定义）
+    A.core = math.max((x.core or 0) * M, K.small and 0.6 or 1.0)
+    local zone, _, _, n = W.where(d, p0, dv, yaw)
+    if zone == "tur" and n then n = W.fromTur(d, n, yaw) - W.fromTur(d, V3(), yaw) end
+    if not n or n.Magnitude < 0.5 then n = -dv end
+    n = n.Unit
+    A.n = n
+    A.shell = nb(V3(K.w, K.w, K.len), CF(p0 - dv * 12), K.col)
+    A.trail = nb(V3(0.06, 0.06, 0.1), CF(p0 - dv * 12), RGB(255, 140, 50))
+    A.flash = nb(V3(1, 1, 1), CF(p0), RGB(255, 255, 255), Enum.PartType.Ball)
+    A.ring = nb(V3(0.05, 1, 1), CFrame.lookAt(p0 + n * 0.06, p0 + n * 1.06) * CFrame.Angles(0, math.pi / 2, 0), RGB(220, 235, 255), Enum.PartType.Cylinder)
+    A.crater = nb(V3(0.7, 0.7, 0.7), CF(p0), ORANGE, Enum.PartType.Ball)
+    local function mark(it, tt)
+      for _, H in ipairs(hitP) do if H.it == it and (not H.at or tt < H.at) then H.at = tt end end
+    end
+    -- 往回溅的火花（杆头被装甲啃下来的碎渣）
+    for _ = 1, (K.back or 0) do
+      table.insert(A.back, { p = nb(V3(0.16, 0.16, 0.16), CF(p0), WHITE, Enum.PartType.Ball), v = coneDir(R, n, 55) * (1.2 + R() * 2.2), t = K.TI + R() * 0.12, s = 0.1 + R() * 0.14 })
+    end
+    local half = x.half or 18
+    local nF = math.max(4, x.n or 10)
+    if K.blast then
+      -- 杀爆：车外炸开（火球半个露在外面）、烟往上冒，破片往外飞；打穿了（薄皮车）几片钻进来
+      A.fbR = math.max((x.bl or 2.2) * M * 0.45, 2.4)
+      A.fb = nb(V3(1, 1, 1), CF(p0 + n * 0.4), WHITE, Enum.PartType.Ball)
+      A.smoke = nb(V3(1, 1, 1), CF(p0 + n * 1.2), RGB(92, 90, 86), Enum.PartType.Ball)
+      for _ = 1, 16 do frag(A.frags, p0 + n * 0.2, coneDir(R, n, 78), (1.6 + R() * 1.8) * M, K.TI + R() * 0.06, 0.32 + R() * 0.2, 0.07, RGB(255, 220, 130)) end
+      if m.r == "pen" or m.kill then
+        for _ = 1, 6 do
+          local rv = coneDir(R, dv, 35)
+          local len = (0.8 + R() * 0.8) * M
+          local hits = W.trace(d, yaw, p0 + dv * 0.2, rv, len, true)
+          local l2 = hits[1] and math.max(0.3, hits[1].t + 0.3) or len
+          local t1 = K.TI + 0.06 + R() * 0.08
+          frag(A.frags, p0 + dv * 0.2, rv, l2, t1, 0.26, 0.06)
+          if hits[1] then mark(hits[1].it, t1 + 0.15) end
+        end
+      end
+    elseif K.scab then
+      -- 碎甲：拍扁的炸药饼、穿过装甲的冲击波、内壁烧红崩落成一大锥
+      A.pan = nb(V3(0.4, 0.4, 0.4), CFrame.lookAt(p0 + n * 0.08, p0 + n * 1.08) * CFrame.Angles(0, math.pi / 2, 0), RGB(232, 214, 150), Enum.PartType.Cylinder)
+      A.wave = nb(V3(0.05, 1, 1), CF(p0), RGB(200, 230, 255), Enum.PartType.Cylinder)
+      local inner = p0 + dv * 0.3 * M
+      A.inner = inner
+      A.scab = nb(V3(0.16, 1.3, 1.3), CFrame.lookAt(inner, inner + dv) * CFrame.Angles(0, math.pi / 2, 0), ORANGE, Enum.PartType.Cylinder)
+      for _ = 1, math.floor(nF * 1.6 + 0.5) do
+        local rv = coneDir(R, dv, half * 2.4)
+        local len = (1.0 + R() * 1.3) * M
+        local hits = W.trace(d, yaw, inner, rv, len, true)
+        local l2 = hits[1] and math.max(0.3, hits[1].t + 0.3) or len
+        local t1 = K.TI + 0.42 + R() * 0.1
+        local dur = 0.24 + l2 / M * 0.06
+        frag(A.frags, inner, rv, l2, t1, dur, 0.09, RGB(255, 214, 130))
+        if hits[1] then mark(hits[1].it, t1 + dur * 0.5) end
+      end
+    else
+      -- 动能弹：孔道、杆头、（全口径）装甲塞子；破片从穿出来的地方喷；穿甲爆破弹走一米多炸开
+      A.chan = nb(V3(K.w, K.w, 0.1), CF(p0), RGB(255, 200, 120))
+      A.chanGlow = nb(V3(K.w, K.w, 0.1), CF(p0), RGB(255, 140, 60))
+      if K.plug then A.plug = nb(V3(0.14, 1.0, 1.0), CF(p0), RGB(255, 160, 80), Enum.PartType.Cylinder) end
+      local deep = A.core * (K.deep or 1)
+      A.deep = deep
+      local function tOf(dist) return K.TI + K.P * (1 - (1 - math.clamp(dist / deep, 0, 1)) ^ (1 / 2.4)) end
+      for _, h in ipairs(W.trace(d, yaw, p0 + dv * 0.1, dv, deep, true)) do mark(h.it, tOf(h.t)) end
+      local ex = p0 + dv * (K.small and 0.15 or 0.35)
+      local nS = K.wide and math.floor(nF * 1.25 + 0.5) or nF
+      if sub == "aphe" then nS = math.floor(nF * 0.6 + 0.5) end
+      for i = 1, nS do
+        local rv = coneDir(R, dv, half * (K.wide and 1.6 or (sub == "fs" and 0.8 or 1.1)))
+        local len = (1.2 + R() * 1.3) * M * (K.small and 0.5 or 1)
+        local hits = W.trace(d, yaw, ex, rv, len, true)
+        local l2 = hits[1] and math.max(0.3, hits[1].t + 0.4) or len
+        local t1 = K.TI + 0.06 + (i - 1) * (0.35 / nS) + R() * 0.04
+        local dur = 0.22 + l2 / M * 0.06
+        frag(A.frags, ex, rv, l2, t1, dur, (K.wide and 0.1 or 0.06) * (0.8 + R() * 0.6))
+        if hits[1] then mark(hits[1].it, t1 + dur * 0.45) end
+      end
+      if K.burst then
+        local bd = math.min(deep, K.burst * M)
+        A.bp, A.tb = p0 + dv * bd, tOf(bd)
+        A.fb = nb(V3(1, 1, 1), CF(A.bp), WHITE, Enum.PartType.Ball)
+        for _ = 1, 18 do
+          local rv = coneDir(R, dv, 175)
+          local len = (1.0 + R() * 1.0) * M
+          local hits = W.trace(d, yaw, A.bp, rv, len, true)
+          local l2 = hits[1] and math.max(0.3, hits[1].t + 0.3) or len
+          local dur = 0.18 + l2 / M * 0.05
+          local t1 = A.tb + R() * 0.05
+          frag(A.frags, A.bp, rv, l2, t1, dur, 0.07, RGB(255, 210, 110))
+          if hits[1] then mark(hits[1].it, t1 + dur * 0.5) end
+        end
+      end
+    end
+    for _, H in ipairs(hitP) do
+      if not H.at then H.at = W.inside(d, yaw, p0, H.it, 0.6) and K.TI or (K.TI + K.P * 0.8) end
+    end
+    killFx(A, m, d, yaw, hitP, R, (A.tb or (K.TI + K.P)) + 0.35)
+    A.info = T("wt.xr." .. sub, m.pen or "?", m.arm or "?")
+    A.info2 = m.kill and T((m.why == "ammo") and "wt.killAmmo" or ((m.why == "fire") and "wt.killFire" or "wt.kill")) or nil
+    return A
+  end
+
+  local function xkStep(t, dt)
+    local A = xa
+    local K, p0, dv, n = A.K, A.p0, A.dv, A.n
+    local TIk, Pk = A.TI, A.P
+    local ti = t - TIk
+    -- ① 飞进来，尾巴拖一道曳光
+    if ti < 0 then
+      local sp = p0 - dv * (12 * (1 - t / TIk) + K.len * 0.5)
+      A.shell.CFrame = CFrame.lookAt(sp, sp + dv)
+      A.shell.Transparency = 0
+      if seg(A.trail, p0 - dv * 12, sp - dv * K.len * 0.5, 0.06) then A.trail.Transparency = 0.25 end
+    elseif seg(A.trail, p0 - dv * 12, p0, 0.06) then
+      A.trail.Transparency = math.clamp(0.25 + ti * 0.5, 0.25, 1)
+    end
+    if ti >= 0 then
+      -- ② 打上：白闪、贴着装甲的一圈、弹坑烧红；窗口亮一下、框变橙
+      local fq = ti / 0.3
+      A.flash.Transparency = (fq < 1) and fq or 1
+      A.flash.Size = V3(1, 1, 1) * lerp(0.4, (K.small and 1.4) or (K.blast and 5) or 2.8, ease(fq))
+      local rq = ti / 0.55
+      local r = lerp(0.3, (K.blast and 9) or (K.scab and 6) or (K.small and 2) or 4.5, ease(rq))
+      A.ring.Size = V3(0.05, r, r)
+      A.ring.Transparency = (rq < 1) and lerp(0.2, 1, rq) or 1
+      local cq = math.clamp(ti / 2.2, 0, 1)
+      A.crater.Color = heat(cq, WHITE, ORANGE, EMBER, 0.2)
+      A.crater.Transparency = lerp(0, 0.35, cq)
+      vp.BackgroundColor3 = RGB(190, 222, 255):Lerp(VP_BG, math.clamp(ti / 0.25, 0, 1))
+      if xStroke then xStroke.Color = RGB(255, 190, 110):Lerp(XR_LINE, math.clamp(ti / 1.2, 0, 1)) end
+      if K.blast or K.scab then A.shell.Transparency = 1 end
+    end
+    -- 往回溅的火花
+    for _, B in ipairs(A.back) do
+      local bt = t - B.t
+      if bt >= 0 then
+        local q = bt / 0.6
+        if q < 1 then
+          B.p.CFrame = CF(p0 + B.v * ease(q) + V3(0, -0.4 * q * q, 0))
+          B.p.Size = V3(1, 1, 1) * lerp(B.s, B.s * 0.4, q)
+          B.p.Color = heat(q, WHITE, ORANGE, EMBER, 0.35)
+          B.p.Transparency = lerp(0, 0.7, q)
+        else B.p.Transparency = 1 end
+      end
+    end
+    -- ③ 钻进去：杆头往里走（越往里越慢），长杆被啃短；孔道一路烧红再冷下去；全口径弹顶着一块装甲塞子
+    if A.chan and ti >= 0 then
+      local q = math.clamp(ti / Pk, 0, 1)
+      local tipD = A.deep * ease(q)
+      local tip = p0 + dv * math.max(tipD, 0.05)
+      local L = K.len * (1 - (K.erode or 0) * q)
+      A.shell.CFrame = CFrame.lookAt(tip - dv * L * 0.5, tip)
+      A.shell.Size = V3(K.w, K.w, math.max(L, 0.1))
+      if q < 1 then
+        A.shell.Color, A.shell.Transparency = K.col:Lerp(WHITE, 0.5), 0
+      else
+        local cq = math.clamp((ti - Pk) / 1.4, 0, 1)
+        A.shell.Color, A.shell.Transparency = heat(cq, WHITE, ORANGE, EMBER, 0.25), lerp(0, 0.2, cq)
+      end
+      if A.tb and t >= A.tb then A.shell.Transparency = 1 end   -- 穿甲爆破弹：炸了就没了
+      local hq = math.clamp(ti / 2, 0, 1)
+      if seg(A.chan, p0, tip, K.w * 0.8) then A.chan.Transparency, A.chan.Color = 0.1, heat(hq, RGB(255, 230, 170), ORANGE, EMBER, 0.3) end
+      if seg(A.chanGlow, p0, tip, K.w * 2.6) then A.chanGlow.Transparency = lerp(0.55, 1, math.clamp(ti / 1.6, 0, 1)) end
+      if A.plug then
+        local pq = math.clamp(ti / (Pk * 0.6), 0, 1)
+        local pp = p0 + dv * (math.min(tipD, A.deep * 0.45) + 0.12)
+        A.plug.CFrame = CFrame.lookAt(pp, pp + dv) * CFrame.Angles(0, math.pi / 2, 0) * CFrame.Angles(pq * 1.4, 0, 0)
+        A.plug.Color, A.plug.Transparency = heat(math.clamp(ti / 1.8, 0, 1), RGB(255, 220, 160), ORANGE, EMBER, 0.3), 0
+      end
+    end
+    -- ④ 破片
+    fragStep(A.frags, t)
+    -- ⑤ 穿甲爆破弹在车里炸开 / 杀爆在车外炸开 / 碎甲拍饼、冲击波、内壁崩落
+    if A.tb and A.fb then
+      local bt = t - A.tb
+      if bt >= 0 then
+        local q = bt / 0.8
+        if q < 1 then
+          A.fb.Size = V3(1, 1, 1) * lerp(0.5, 2.6 * W.M, ease(q))
+          A.fb.Color = heat(q, WHITE, ORANGE, EMBER, 0.25)
+          A.fb.Transparency = lerp(0, 0.9, q ^ 1.4)
+          vp.BackgroundColor3 = RGB(255, 190, 120):Lerp(VP_BG, math.clamp(q * 3, 0, 1))
+        else A.fb.Transparency = 1 end
+      end
+    end
+    if K.blast and ti >= 0 then
+      local q = ti / 0.9
+      if q < 1 then
+        A.fb.Size = V3(1, 1, 1) * lerp(0.8, A.fbR * 2, ease(q))
+        A.fb.Color = heat(q, WHITE, ORANGE, RGB(70, 60, 55), 0.25)
+        A.fb.Transparency = lerp(0, 0.85, q ^ 1.3)
+      else A.fb.Transparency = 1 end
+      local sq = (ti - 0.25) / 2.5
+      if sq > 0 and sq < 1 then
+        A.smoke.Size = V3(1, 1, 1) * lerp(1.5, A.fbR * 2.6, ease(sq))
+        A.smoke.CFrame = CF(p0 + n * (1.2 + 2 * sq) + V3(0, 2.4 * sq, 0))
+        A.smoke.Transparency = lerp(0.5, 1, sq)
+      elseif sq >= 1 then A.smoke.Transparency = 1 end
+    end
+    if K.scab and ti >= 0 then
+      local pq = math.clamp(ti / 0.15, 0, 1)
+      local pr = lerp(0.4, 1.9, ease(pq))
+      A.pan.Size = V3(lerp(0.4, 0.12, pq), pr, pr)
+      A.pan.Transparency = (ti < 0.22) and 0 or 1
+      local wq = (ti - 0.2) / 0.22
+      if wq >= 0 and wq < 1 then
+        local wp = p0 + dv * (0.3 * W.M * wq)
+        A.wave.CFrame = CFrame.lookAt(wp, wp + dv) * CFrame.Angles(0, math.pi / 2, 0)
+        A.wave.Size = V3(0.06, 1.6 + 1.4 * wq, 1.6 + 1.4 * wq)
+        A.wave.Transparency = 0.2 + 0.6 * wq
+      else A.wave.Transparency = 1 end
+      local sq = (ti - 0.4) / 0.3
+      if sq >= 0 then
+        A.scab.Transparency = (sq < 1) and lerp(0, 1, sq) or 1
+        A.scab.Color = heat(math.clamp(sq, 0, 1), WHITE, ORANGE, EMBER, 0.4)
+      end
+    end
+    -- ⑥ 打到的乘员 / 模块：到的那一刻红白闪、胀一下，再定成最后的颜色
+    for _, H in ipairs(A.hitP) do
+      local ht = t - H.at
+      if ht >= 0 then
+        if ht < 0.7 then
+          H.p.Color = (math.floor(ht * 14) % 2 == 0) and RGB(255, 255, 255) or RGB(255, 40, 30)
+          H.p.Transparency = 0
+          H.p.Size = H.size * (1 + 0.3 * (1 - ht / 0.7))
+        elseif not H.done then
+          H.done = true
+          H.p.Color, H.p.Transparency, H.p.Size = H.col, H.tr, H.size
+        end
+      end
+    end
+    -- ⑦ 弹药殉爆、起火
+    if A.boom and t >= A.boomT then
+      local q = (t - A.boomT) / 1.2
+      if q < 1 then
+        A.boom.Size = V3(1, 1, 1) * lerp(1, A.boomR, ease(q))
+        A.boom.Color = heat(q, WHITE, ORANGE, EMBER, 0.3)
+        A.boom.Transparency = lerp(0.05, 1, q ^ 1.5)
+        vp.BackgroundColor3 = RGB(255, 170, 90):Lerp(VP_BG, math.clamp(q * 3, 0, 1))
+      else A.boom.Transparency = 1 end
+    end
+    if A.fire and t >= A.fireT then
+      for i, F in ipairs(A.fire) do
+        local fl = 0.75 + 0.22 * math.sin(t * (9 + i * 3.7) + i) + 0.14 * math.sin(t * 23 + i * 2)
+        F.p.Size = V3(1, 1, 1) * F.s * fl
+        F.p.CFrame = CF(F.c + V3(0, (fl - 0.6) * 0.9, 0))
+        F.p.Transparency = 0.25
+      end
+    end
+    -- 字幕
+    if ti >= 0 and not A.said then A.said = true xInfo.Text, xInfo.TextColor3, xInfo.Visible = A.info, INFO, true end
+    if A.info2 and not A.said2 and t >= (A.boomT or (TIk + Pk)) + 0.15 then A.said2 = true xInfo.Text, xInfo.TextColor3 = A.info2, KILL end
+    xSlow.Visible = t < TIk + Pk + 0.5
+    -- 镜头：从斜侧面推近到命中点、跟一点弹芯，打完拉回来看整辆车、慢慢绕；打上那一下一震
+    xrSpin += dt * ((t < TIk + Pk) and math.rad(7) or math.rad(16))
+    local back = ease((t - (TIk + Pk + 0.3)) / 1.1)
+    local focus = A.chan and (p0 + dv * math.min((A.deep or 0) * 0.35 * ease(math.max(ti, 0) / Pk), 3)) or p0
+    local tgt = focus:Lerp(xrC, back)
+    local dist = lerp(lerp(xrDist * 0.95, xrDist * 0.5, ease(t / TIk)), xrDist, back)
+    local eye = tgt + CFrame.Angles(0, xrSpin, 0) * xrDir * dist + V3(0, dist * 0.32, 0)
+    if ti >= 0 and ti < 0.45 then
+      local k = (1 - ti / 0.45) ^ 2 * ((K.blast and 0.5) or (K.small and 0.12) or 0.3)
+      eye += V3(math.sin(t * 91) * k, math.sin(t * 73 + 1) * k, math.sin(t * 57 + 2) * k)
+    end
+    vcam.CFrame = CFrame.lookAt(eye, tgt)
+  end
+
   local function showXray(m)
     local d = VD.get and VD.get(m.veh) or VD[m.veh]
     local x = m.xr
@@ -501,7 +866,8 @@ function WtHud.init(G)
     local st = states(entModel(m.id), d)
     local hitK = {}
     for _, p in ipairs(m.parts or {}) do hitK[p.k] = true end
-    local anim = x.jet and (m.r == "pen" or m.kill) and true or false   -- 射流打穿：放慢放动画
+    local sub = (not x.jet) and KS[x.sub or ""] and x.sub or nil   -- 动能弹 / 穿甲爆破 / 杀爆 / 碎甲：各自的慢放（xkBuild）
+    local anim = (x.jet or sub) and (m.r == "pen" or m.kill) and true or false   -- 打穿了才放慢放动画
     local hitP = {}   -- 动画里打到的乘员 / 模块：先画成没事的样子，射流 / 破片到了才变色
     for _, it in ipairs(lay.list) do
       local s = st[it] or 2
@@ -529,8 +895,12 @@ function WtHud.init(G)
     -- 弹道：外面一段、弹芯往里一段（橙），破片一锥（黄）；射流打穿的换成慢放动画
     local p0 = V3(x.p[1], x.p[2], x.p[3])
     local dv = V3(x.d[1], x.d[2], x.d[3]).Unit
-    if anim then
+    if anim and x.jet then
       xa = xaBuild(m, x, d, yaw, p0, dv, hitP)
+      xa.step = xaStep
+    elseif anim then
+      xa = xkBuild(m, x, d, yaw, p0, dv, hitP, sub)
+      xa.step = xkStep
     else
       line(p0 - dv * 9, p0, RGB(255, 120, 40), 0.16)
       if m.r == "pen" or m.kill then
@@ -556,7 +926,7 @@ function WtHud.init(G)
     xTitle.Text = T("wt.xrTitle", nm, m.dist or 0)
     xr.Visible = true
     xrUntil = os.clock() + (anim and (m.kill and 7 or 6.2) or (m.kill and 5.5 or 4.5))
-    if xa then G.try_(xaStep, 0, 0) end   -- 先摆好第一帧（不然头一帧是没藏好的件）
+    if xa then G.try_(xa.step, 0, 0) end   -- 先摆好第一帧（不然头一帧是没藏好的件）
     local _ = base
   end
 
@@ -787,7 +1157,7 @@ function WtHud.init(G)
         world:ClearAllChildren()
         xa = nil
       elseif xa then
-        G.try_(xaStep, t - xa.t0, dt)
+        G.try_(xa.step or xaStep, t - xa.t0, dt)
       else
         xrSpin += dt * math.rad(16)
         local d = CFrame.Angles(0, xrSpin, 0) * xrDir

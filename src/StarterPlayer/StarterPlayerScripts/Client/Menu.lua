@@ -203,8 +203,8 @@ function Menu.init(G)
       end
       local okW, WMeta = pcall(function() return require(RS:WaitForChild("ImportedWpn", 3)) end)   -- 导弹合集（CC BY-NC-SA）
       if okW and type(WMeta) == "table" and WMeta.credit then table.insert(lines, (string.gsub(WMeta.credit, "（https?://[^）]*）", ""))) end
-      -- 地图：钢城的楼、雪山的房子和山体（元数据里各带 credit），雪山的树、云、天空（SnowCredits）
-      for _, name in ipairs({ "CityMeta", "SnowMeta", "SnowPeaksMeta" }) do
+      -- 地图：钢城的楼、雪山的房子、合掌村、山体（元数据里各带 credit），雪山的树、云、天空（SnowCredits）
+      for _, name in ipairs({ "CityMeta", "SnowMeta", "VillageMeta", "SnowPeaksMeta" }) do
         local ok, M = pcall(function() return require(RS:WaitForChild(name, 3)) end)
         if ok and type(M) == "table" then
           local keys = {}

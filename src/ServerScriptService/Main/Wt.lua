@@ -251,11 +251,33 @@ function Wt.init(G)
     G.wtPush(e)
   end
 
-  -- 击穿以后：弹芯 / 射流 + 一锥破片；HE 在里面炸。p、dir 底座系
-  local function inside(e, a, p, dir, resid, out, flags, src, seed)
+  -- 各弹种打进车里的效果不一样（用户：「不光不同动画还要不同效果」）——弹种见 xrSub：
+  --   core 弹芯 / 射流走多深（× 表里的长度）、cd 弹芯伤害倍数、half 破片锥半角倍数、n 破片数倍数、sd 每片伤害倍数、amk 打到弹药架的殉爆倍数、fk 起火倍数
+  --   fs 长杆：钻得深、破片锥窄而密；ds 脱壳穿甲：短一点、锥宽一点；ap 全口径：顶进来一块装甲塞子、破片锥宽而重；
+  --   aphe 穿甲爆破：钻进去一米多就炸（一团里的乘员、模块都伤，殉爆、起火多）；heat / tandem 射流：细、破片少，但油料弹药一碰就着；
+  --   ac 机炮机枪：小；hesh 碎甲：不用打穿，装甲内壁崩下来一大锥碎片（没有弹芯）
+  local SUBFX = {
+    fs = { core = 1.15, cd = 1.0, half = 0.8, n = 1.15, sd = 0.9, amk = 1.0, fk = 1.0 },
+    ds = { core = 0.9, cd = 1.0, half = 1.1, n = 1.0, sd = 1.0, amk = 1.0, fk = 1.0 },
+    ap = { core = 0.7, cd = 1.3, half = 1.6, n = 1.25, sd = 1.15, amk = 1.1, fk = 1.0, plug = true },
+    aphe = { core = 0.55, cd = 1.2, half = 1.2, n = 0.6, sd = 1.0, amk = 1.25, fk = 1.3, burst = 1.2 },
+    heat = { core = 1.0, cd = 1.1, half = 0.6, n = 0.6, sd = 0.85, amk = 1.3, fk = 1.7 },
+    tandem = { core = 1.0, cd = 1.15, half = 0.7, n = 0.75, sd = 0.9, amk = 1.3, fk = 1.7 },
+    ac = { core = 0.8, cd = 0.7, half = 0.9, n = 1.0, sd = 0.7, amk = 0.8, fk = 0.8 },
+    he = { core = 1, cd = 1, half = 1, n = 1, sd = 1, amk = 1, fk = 1.3 },
+    hesh = { core = 0, cd = 0, half = 2.4, n = 1.6, sd = 1.25, amk = 0.9, fk = 1.0, scab = true },
+  }
+  local FX0 = { core = 1, cd = 1, half = 1, n = 1, sd = 1, amk = 1, fk = 1 }
+  G.wtSubFx = SUBFX   -- 测试用
+
+  -- 击穿以后：弹芯 / 射流 + 一锥破片；HE 在里面炸。p、dir 底座系；sub 弹种（xrSub）
+  local function inside(e, a, p, dir, resid, out, flags, src, seed, sub)
     local d, S = e.def, e.wt
     local yaw = e.ty or 0
-    local hitAmmo = function(c, k)
+    local fx = SUBFX[sub or ""] or FX0
+    local hitAmmo = function(c, k, fk)
+      fk = fk or fx.fk
+      k = k * fx.amk
       if c.it.k == "ammo" or c.it.k == "ammoH" then
         local VD = require(RS:WaitForChild("VehDefs"))
         local left, full = 0, 0
@@ -270,40 +292,65 @@ function Wt.init(G)
         if math.random() < k * frac then flags.ammo, flags.ammoK = true, c.it.k
         elseif frac > 0 and math.random() < k * frac * 0.9 then flags.ammoFire = flags.ammoFire or c.it.k end   -- 没炸：发射药烧起来（弹药架起火，11-26）
       end
-      if (c.it.k == "engine" and math.random() < 0.28 * (k / 0.5)) or ((c.it.k == "fuelL" or c.it.k == "fuelR") and math.random() < 0.4 * (k / 0.5)) then
+      if (c.it.k == "engine" and math.random() < 0.28 * (k / 0.5) * fk) or ((c.it.k == "fuelL" or c.it.k == "fuelR") and math.random() < 0.4 * (k / 0.5) * fk) then
         flags.fire = true
       end
     end
-    local o = p + dir * 0.1
-    local coreLen = (a.core or 0) * M * math.clamp(0.55 + resid / 350, 0.55, 1.5)
+    -- 碎甲弹：从装甲内壁（命中点往里一点）崩出来
+    local o = p + dir * (fx.scab and 0.25 * M or 0.1)
+    local coreLen = (a.core or 0) * M * math.clamp(0.55 + resid / 350, 0.55, 1.5) * fx.core
     local paths = { core = {}, spall = {} }
     if coreLen > 0 then
       local hits = W.trace(d, yaw, o, dir, coreLen, true)
       for _, h in ipairs(hits) do
         local c = S.byK[h.it.k]
-        hurt(e, c, (h.it.kind == "crew") and CREW_DMG.core or MOD_DMG.core, out, src)
+        hurt(e, c, ((h.it.kind == "crew") and CREW_DMG.core or MOD_DMG.core) * fx.cd, out, src)
         hitAmmo(c, 0.7)
       end
       paths.core = { coreLen }
+      -- 全口径穿甲弹顶进来的装甲塞子：跟着弹头走一小段，撞上的第一个吃一大下
+      if fx.plug then
+        local ph = W.trace(d, yaw, o, dir, math.min(coreLen, 1.2 * M), true)[1]
+        if ph then hurt(e, S.byK[ph.it.k], ((ph.it.kind == "crew") and CREW_DMG.core or MOD_DMG.core) * 0.6, out, src) end
+      end
     end
-    if (a.n or 0) > 0 then
-      local rays = W.cone(dir, a.spall or 18, a.n, seed)
+    local nSp = math.floor((a.n or 0) * fx.n + 0.5)
+    if nSp > 0 then
+      local rays = W.cone(dir, (a.spall or 18) * fx.half, nSp, seed)
       for i, rv in ipairs(rays) do
         local len = (1.4 + (i % 4) * 0.35) * M
         local hits = W.trace(d, yaw, o, rv, len, true)
         local h = hits[1]
         if h then
           local c = S.byK[h.it.k]
-          hurt(e, c, (h.it.kind == "crew") and CREW_DMG.spall or MOD_DMG.spall, out, src)
+          hurt(e, c, ((h.it.kind == "crew") and CREW_DMG.spall or MOD_DMG.spall) * fx.sd, out, src)
           hitAmmo(c, 0.22)
           if hits[2] and math.random() < 0.35 then   -- 有的破片穿过第一个还能伤后面一个
             local c2 = S.byK[hits[2].it.k]
-            hurt(e, c2, ((hits[2].it.kind == "crew") and CREW_DMG.spall or MOD_DMG.spall) * 0.5, out, src)
+            hurt(e, c2, ((hits[2].it.kind == "crew") and CREW_DMG.spall or MOD_DMG.spall) * 0.5 * fx.sd, out, src)
           end
         end
       end
     end
-    if a.blast and a.t == "he" then   -- 杀爆弹打穿了在里面炸：一团里的都伤
+    -- 穿甲爆破弹：钻进去 burst 米（弹芯没那么长就在弹芯头上）炸开——一团里的乘员、模块都伤，弹药架、油箱离得近的容易着
+    if fx.burst and coreLen > 0 then
+      local R = 1.6 * M
+      local c0 = o + dir * math.min(coreLen, fx.burst * M)
+      for _, c in ipairs(S.crew) do
+        local dd = (W.center(d, yaw, c.it) - c0).Magnitude
+        if dd < R then hurt(e, c, CREW_DMG.blast * 1.6 * (1 - 0.5 * dd / R), out, src) end
+      end
+      for _, c in ipairs(S.mods) do
+        local dd = (W.center(d, yaw, c.it) - c0).Magnitude
+        if dd < R and not c.it.ext then hurt(e, c, MOD_DMG.blast * (1 - 0.5 * dd / R), out, src) hitAmmo(c, 0.45) end
+      end
+      -- 弹体炸成破片，四面八方（同客户端 X 光那一圈）
+      for _, rv in ipairs(W.cone(dir, 175, 14, seed + 7)) do
+        local h = W.trace(d, yaw, c0, rv, 1.8 * M, true)[1]
+        if h then hurt(e, S.byK[h.it.k], (h.it.kind == "crew") and CREW_DMG.spall or MOD_DMG.spall, out, src) end
+      end
+    end
+    if a.blast and a.t == "he" and not fx.scab then   -- 杀爆弹打穿了在里面炸：一团里的都伤（碎甲弹不算：它靠内壁崩落）
       local R = a.blast * M * 0.6
       local c0 = o + dir * 0.8 * M
       for _, c in ipairs(S.crew) do
@@ -367,6 +414,28 @@ function Wt.init(G)
     G.fx({ k = "wtHole", id = e.id, lp = a3(lp), ln = a3(ln), ld = a3(ld), r = r, z = tur or nil })
   end
 
+  -- X 光回放的弹种（客户端 WtHud 按它放不同的慢放；用户待办「不同弹种击中的 X 光效果不一样」）：表里写了 sub 就用它，没写按参数推：
+  --   heat 破甲 / tandem 串联破甲 / he 杀爆 / hesh 碎甲 / ac 机炮机枪的小弹 / ds 脱壳穿甲（每公里掉 50 毫米以上的老弹）/
+  --   fs 长杆尾翼稳定脱壳穿甲（弹芯长）/ ap 全口径穿甲 / aphe 穿甲爆破（带炸药，穿进去延时爆）
+  local SUB_KEY = { br412d = "aphe" }   -- 59 式的钝头穿甲弹：苏式 BR-412 一族带炸药
+  local ammoKey = nil
+  local function xrSub(a)
+    if a.sub then return a.sub end
+    if not ammoKey then
+      ammoKey = {}
+      for k, v in pairs(W.AMMO or {}) do ammoKey[v] = k end
+      for k, v in pairs(W.WPN or {}) do ammoKey[v] = k end
+    end
+    local key = ammoKey[a]
+    if key and SUB_KEY[key] then return SUB_KEY[key] end
+    if a.t == "ce" then return a.tandem and "tandem" or "heat" end
+    if a.t == "he" or a.t == "hesh" then return a.t end
+    if (a.p0 or 0) < 120 then return "ac" end
+    if (a.fall or 0) >= 50 then return "ds" end
+    if (a.core or 0) >= 2.8 then return "fs" end
+    return "ap"
+  end
+
   -- 炮弹、火箭弹、导弹直接打在车上：返回 "ric"（调用方按原来那套弹开）、true（这一发管完了，别再按血量扣）、nil（不是这套管的车）
   function G.wtShellHit(e, s, res)
     local S = e and e.wt
@@ -383,6 +452,9 @@ function Wt.init(G)
     local ang = math.deg(math.acos(math.clamp(-dq:Dot(n), -1, 1)))
     local mm = W.armor(d, zone, face, a.t) * weak
     local eff = W.effective(mm, ang, a.t)
+    local sub = xrSub(a)
+    -- 碎甲弹：炸药饼拍在装甲上起爆，靠冲击波崩内壁——倾角影响小得多（斜着打也拍得开），能崩下来就算「打穿」（没有弹芯，只有内壁碎片）
+    if sub == "hesh" then eff = mm * (1 + 0.35 * (1 / math.max(math.cos(math.rad(math.min(ang, 80))), 0.17) - 1)) end
     local ek = (s.kind == "shell") and G.eraShell and G.eraShell(e, s, res.Position)   -- 爆反挡了这一发（Era.lua 已经引爆了那块）
     if not ek and s.kind ~= "shell" and G.eraBlast then   -- 火箭弹、导弹：顺着来向找爆反块
       local m = G.eraBlast(res.Position, s.w, s.vel)
@@ -393,7 +465,7 @@ function Wt.init(G)
     local out = {}
     local seed = math.floor((res.Position.X * 13 + res.Position.Z * 7 + now() * 97) % 100000) + 1
     local xr = { p = { p.X, p.Y, p.Z }, d = { dir.X, dir.Y, dir.Z }, ty = yaw, seed = seed, half = a.spall or 18, n = a.n or 0,
-      core = 0, zone = zone, face = face }
+      core = 0, zone = zone, face = face, sub = sub, tan = a.tandem or nil, bl = a.blast }
     local rp = W.ricochet(a.t, ang)
     if rp > 0 and math.random() < rp then
       hole(e, res, vel, a.t == "ce" and "np" or "ric", zone)
@@ -430,8 +502,8 @@ function Wt.init(G)
     hole(e, res, vel, "pen", zone)
     external(e, p, 60, out, s.src)
     local flags = {}
-    inside(e, a, p, dir, pen - eff, out, flags, s.src, seed)
-    xr.core = (a.core or 0) * math.clamp(0.55 + (pen - eff) / 350, 0.55, 1.5)
+    inside(e, a, p, dir, pen - eff, out, flags, s.src, seed, sub)
+    xr.core = (a.core or 0) * math.clamp(0.55 + (pen - eff) / 350, 0.55, 1.5) * (SUBFX[sub] or FX0).core
     if a.t == "ce" then   -- 金属射流：从命中点顺着来向钻进车里（客户端 WtHud 画一道白热的射流、一圈火花；X 光里画成亮青白线）
       xr.jet = true
       xr.big = a.jet or nil   -- 专门的金属射流弹：X 光动画里射流更粗、熔珠更多

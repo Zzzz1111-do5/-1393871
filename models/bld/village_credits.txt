@@ -1,0 +1,12 @@
+雪山合掌村的写实建筑（models/bld/village.glb）——都是 Sketchfab 上 CC-BY-4.0 授权的模型（http://creativecommons.org/licenses/by/4.0/），
+改动：按真高缩放、换成 Roblox 的格、按材质切块（有的减了面）、贴图缩到最长边 1024；游戏里按地块的大小可能再整体缩放。
+
+· 合掌造农家（大）：Japanese house "minka"，作者 kolya5561（https://sketchfab.com/models/1b757cde000240cb84d571032946bfe6），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、只取模型里三座房子中的一座（House001）、按材质切块、贴图缩到 1024
+· 合掌造农家（中）：Shirakawago Village Set House 1，作者 Lokomotto (THEOJANG)（https://sketchfab.com/models/f94da738aefc4674ab2062df5c01cd43），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、去掉屋檐上半透明的草束贴片、按材质切块、贴图缩到 1024
+· 合掌造小屋：Japanese house "minka"，作者 kolya5561（https://sketchfab.com/models/1b757cde000240cb84d571032946bfe6），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、只取模型里三座房子中的一座（House）、按材质切块、贴图缩到 1024
+· 合掌造农家（三层）：Japanese house "minka"，作者 kolya5561（https://sketchfab.com/models/1b757cde000240cb84d571032946bfe6），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、只取模型里三座房子中的一座（House002）、按材质切块、贴图缩到 1024
+· 小祠：Japanese Shrine，作者 Mateja Veljkovic（https://sketchfab.com/models/c74108c3e1c64c5c8dfd83e652a3af4a），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 钟楼：Japanese Bell Tower，作者 AO-INTERACTIVE（https://sketchfab.com/models/e4094bc0739d4b41866b39914ec123e3），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 茅草顶神社本殿：Shinto shrine，作者 Venera Zappalà (Vera)（https://sketchfab.com/models/3b89ad3251bb4b82963c77f7746cad71），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、去掉自带的草地地面、按材质切块、贴图缩到 1024
+· 石鸟居：Torii gate at Kinosaki, Japan，作者 HoangHiepVu（https://sketchfab.com/models/3ed35b9d45014164a25484043aadd8d1），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、减面到 18000 个三角形、按材质切块、贴图缩到 1024
+· 石灯笼：Japanese Stone Lantren，作者 adibnh（https://sketchfab.com/models/4fb985f5f88449f98b0a20f8d183f31f），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、减面到 8000 个三角形、按材质切块、贴图缩到 1024

@@ -7,14 +7,14 @@
 #   做法（每座楼）：
 #     1. 照游戏里的摆法取三角形：每块网格按自己的包围盒缩放到元数据的 s、中心放到 c（Roblox 的 MeshPart 就是这样按 Size 撑满的；
 #        有几块元数据和网格对不上——Blender 的 bound_box 把游离点也算进去了——游戏里是被撑大的，雪也照撑大以后的样子盖）
-#     2. 从上往下把三角形栅格化成高度网格（真实约 0.1 米一格，大楼放粗），只留最上面那层；坡度 60° 以内（合掌造约 60° 照样厚厚一层）、
-#        离地 0.8 米以上的格子挂得住雪；按高度连续（相邻格高差小于约 70° 坡）分成一块块「承雪面」（屋面、平台、墙头、烟囱顶、窗台……）
+#     2. 从上往下把三角形栅格化成高度网格（真实约 0.1 米一格，大楼放粗），只留最上面那层；坡度 64° 以内（合掌造约 60° 照样厚厚一层）、
+#        离地 0.8 米以上的格子挂得住雪；按高度连续（相邻格高差小于约 70° 坡再加 0.2 米）分成一块块「承雪面」（屋面、平台、墙头、烟囱顶、窗台……）
 #     3. 每块承雪面：边上的格子看外侧——外侧低（檐口、山墙边、墙头边）是「垂边」：雪在里面圆润地收薄、檐口外探出 0.15 米、往下包一点；
 #        外侧高（贴着更高的墙、烟囱、老虎窗）是「靠墙」：雪不收薄，满厚伸进墙里一点（藏在墙里，不留缝）；
-#        厚度（法向）：缓坡 0.7 米、60° 时约 0.45 米，换成竖直方向的厚度；屋脊、天沟处按雪面平滑（脊上圆、沟里填满）
+#        厚度（法向）：缓坡 0.75 米、60° 时约 0.55 米，换成竖直方向的厚度；屋脊、天沟处按雪面平滑（脊上圆、沟里填满）
 #     4. 网格：顶面按等值线（marching squares）裁在雪的边缘，底面贴着屋面（低 3 厘米，藏在屋面里；探出的部分往下包），
 #        边上一圈裙边连起顶面、底面——每块都是封闭的实心雪壳，不是飘着的一张纸；雪只在最上层屋面之上（加上伸进墙里那一点），不长进楼里面
-#     5. 二次误差（QEM）边折叠简化到每座 ≲ 6000 个三角形（按承雪面积、周长分配），法线按 55° 分棱，UV 按法线方向投影（Roblox 的 MeshPart 材质按 UV 贴）
+#     5. 二次误差（QEM）边折叠简化到每座 ≲ 6000 个三角形（按承雪面积、周长分配），法线按 68° 分棱，UV 按法线方向投影（Roblox 的 MeshPart 材质按 UV 贴）
 #   游戏里：World.building 摆完楼本身的块以后，雪山地图（Map.SNOW）或 opt.snowcap 时把 Imported.Bld.<键>.B_<键>__snow 照 SnowCapMeta 摆上，
 #     材质 Snow、颜色 RGB(240, 244, 248)；没导入 snowcaps.glb 时什么都不做
 import argparse, heapq, json, math, os, re, struct, sys, time
@@ -28,11 +28,12 @@ S = 2.8   # 1 米 = 2.8 格
 P = dict(
     g=0.10,        # 高度网格一格（真实 0.1 米）；一座楼承雪面超过 MAXCELL 格就放粗
     hmin=0.8,      # 离地这么高以下的面不盖（地上本来就是雪地形）
-    slope=60.0,    # 坡度上限（度）
-    t0=0.70,       # 缓坡（≤ 25°）上雪的法向厚度
-    t60=0.45,      # 60° 坡上雪的法向厚度
-    tzmax=1.05,    # 竖直方向的厚度上限
+    slope=64.0,    # 坡度上限（度）：合掌造的屋顶约 60°（模型量出来有的六十一二度），照样厚厚一层
+    t0=0.75,       # 缓坡（≤ 25°）上雪的法向厚度
+    t60=0.55,      # 60° 坡上雪的法向厚度
+    tzmax=1.3,     # 竖直方向的厚度上限
     edge=0.62,     # 垂边处顶面高出屋面 = 厚度 × edge（再往外是探出的圆头）
+    nose=0.3,      # 圆头外沿还剩 edge × nose 的厚度，再竖直往下接裙边
     rr=0.38,       # 垂边往里多远收圆（圆角半径）
     ov=0.15,       # 檐口外探出多少
     drop=0.14,     # 探出的雪往下包多少（盖住封檐板上沿）
@@ -315,49 +316,81 @@ def plate_fields(Hw, inP, g, Q):
     ii, jj = np.meshgrid(np.arange(nx), np.arange(nz), indexing='ij')
     Hnear = Hw[qi, qj]
     Hext = np.where(inP, Hw, Hnear + gx[qi, qj] * (ii - qi) * g + gz[qi, qj] * (jj - qj) * g)
-    # 承雪面外侧：比它高的是墙（雪满厚伸进去一点），低的 / 空的是垂边（收圆、探出）
-    wallC = ~inP & (Hw > Hnear + Q['wall'])
+    Hext = np.where(inP, Hw, ndimage.gaussian_filter(Hext, 0.8))   # 外推的取最近一格，斜边上一格格跳：抹平（承雪面里不动）
+    # 承雪面外侧：比它高的是墙（雪满厚伸进去一点），低的 / 空的是垂边（收圆、探出）；
+    #   台阶脚下拿掉的那一格（和承雪面一样高、挨着更高的面）也算墙：雪满厚顶到台阶
+    higher = ~inP & (Hw > Hnear + Q['wall'])
+    wallC = higher | (~inP & (Hw >= Hnear - 0.05 * S) & ndimage.binary_dilation(higher, iterations=2))
     dropC = ~inP & ~wallC
-    A = inP | (wallC & ((dout - 0.5) * g <= Q['ovw']))
-    eout = (dout - 0.5) * g                                   # 在承雪面外多远（到边）
-    R = A | (dropC & (eout <= Q['ov']))
+    # 到承雪面边的有符号距离（里正外负），平滑一下：边缘、裙边的高度不起锯齿
+    sdP = np.where(inP, ndimage.distance_transform_edt(inP) - 0.5, -(dout - 0.5)) * g
+    sdP = ndimage.gaussian_filter(sdP, 1.6)   # 斜着的边在网格上是台阶：抹平（雪的拐角本来也是圆的）
+    eout = np.maximum(-sdP, 0)
     # 坡度（两侧差分取大的：屋脊上不因为左右抵消变成平的）→ 法向厚度 → 竖直厚度
-    Hf = Hext
-    sx = np.maximum(np.abs(np.roll(Hf, -1, 0) - Hf), np.abs(Hf - np.roll(Hf, 1, 0))) / g
-    sz = np.maximum(np.abs(np.roll(Hf, -1, 1) - Hf), np.abs(Hf - np.roll(Hf, 1, 1))) / g
-    # 只看承雪面里的坡度：垂边外侧那一格的差分会把落差算进去
-    gsl = np.where(inP, np.hypot(np.minimum(sx, 4), np.minimum(sz, 4)), np.nan)
-    gsl = np.where(np.isnan(gsl), np.hypot(gx, gz)[qi, qj], gsl)
+    sx = np.maximum(np.abs(np.roll(Hext, -1, 0) - Hext), np.abs(Hext - np.roll(Hext, 1, 0))) / g
+    sz = np.maximum(np.abs(np.roll(Hext, -1, 1) - Hext), np.abs(Hext - np.roll(Hext, 1, 1))) / g
+    gsl = np.where(inP, np.hypot(np.minimum(sx, 4), np.minimum(sz, 4)), np.hypot(gx, gz)[qi, qj])
     ang = np.degrees(np.arctan(gsl))
     tn = Q['t0'] + (Q['t60'] - Q['t0']) * smoothstep(25, 60, ang)
     tz = np.minimum(tn / np.cos(np.radians(np.minimum(ang, 70))), Q['tzmax'])
     tz = ndimage.gaussian_filter(tz, 1.5)
-    # 雪面：屋面 + 厚度，高斯平滑（脊上圆、沟里填），不低于屋面 + 0.35 倍厚度
+    # 雪面：屋面 + 厚度，高斯平滑（脊上圆、沟里填；只用承雪面和紧挨着的外推，窄缝两边的外推不掺进来）
     sig = max(0.6, Q['smooth'] / g)
-    U = ndimage.gaussian_filter(Hext + tz, sig, mode='nearest')
-    th = np.maximum(U - Hext, 0.35 * tz)
+    m = (sdP >= -2 * g).astype(np.float64)
+    U = ndimage.gaussian_filter(m * (Hext + tz), sig) / np.maximum(ndimage.gaussian_filter(m, sig), 1e-6)
+    th = np.clip(U - Hext, 0.35 * tz, 1.6 * tz)
     # 收圆：到最近的垂边多远（靠墙的边不算边）
-    dD = (ndimage.distance_transform_edt(~dropC) - 0.5) * g if dropC.any() else np.full(inP.shape, big)
+    if dropC.any():
+        dD = ndimage.gaussian_filter((ndimage.distance_transform_edt(~dropC) - 0.5) * g, 1.6)
+    else:
+        dD = np.full(inP.shape, big)
     rr = Q['rr']
-    din = np.clip(dD, 0, rr)
-    rho_in = Q['edge'] + (1 - Q['edge']) * np.sqrt(np.clip(1 - (1 - din / rr) ** 2, 0, 1))
-    rho_out = Q['edge'] * np.sqrt(np.clip(1 - (np.maximum(eout, 0) / Q['ov']) ** 2, 0, 1))
-    rho = np.where(dropC, rho_out, rho_in)
+    rho_in = Q['edge'] + (1 - Q['edge']) * np.sqrt(np.clip(1 - (1 - np.clip(dD, 0, rr) / rr) ** 2, 0, 1))
+    # 探出的圆头：从垂边处的 edge 圆到外沿的 edge × nose（外沿再竖直往下接裙边：外沿不是一条薄边，有点厚度）
+    nose = Q['nose']
+    rho_out = Q['edge'] * (nose + (1 - nose) * np.sqrt(np.clip(1 - (np.minimum(eout, Q['ov']) / Q['ov']) ** 2, 0, 1)))
+    rho = np.where((sdP < 0) & dropC, rho_out, rho_in)
+    # 每格离得最近的边是垂边（1）还是墙（0），平滑一下：外沿（等值线上）的高度按它算，不按网格插值（圆头那一段太陡，插出来高高低低）
+    _, (oi, oj) = ndimage.distance_transform_edt(inP, return_indices=True)
+    Tdrop = ndimage.gaussian_filter(np.where(inP, dropC[oi, oj], dropC).astype(np.float64), 1.0)
     # 窄的（墙头、栏杆扶手）：雪堆的高不超过宽（半宽 = 附近离边最远的那格，宽的面靠边处不受影响）
     rc = int(math.ceil(0.6 * S / g))
-    halfw = ndimage.maximum_filter(np.maximum(ndimage.distance_transform_edt(A) - 0.5, 0) * g, size=2 * rc + 1)
-    th = np.minimum(th, 0.1 * S + 1.4 * halfw + Q['ov'])
+    halfw = ndimage.maximum_filter(np.maximum(sdP, 0), size=2 * rc + 1)
+    th = np.minimum(th, 0.05 * S + 1.2 * halfw)
     St = Hext + th * rho
     Hb = np.where(inP, Hw - Q['sink'], Hext - Q['sink'])
     Hb = np.where(dropC, Hext - Q['sink'] - (Q['drop'] - Q['sink']) * smoothstep(0, Q['ov'], eout), Hb)
     St = np.maximum(St, Hb + 0.4 * Q['drop'])
-    # 等值面：雪区 R 的有符号距离（稍微平滑，边缘不起锯齿）
-    phi = np.where(R, ndimage.distance_transform_edt(R) - 0.5, -(ndimage.distance_transform_edt(~R) - 0.5))
-    phi = ndimage.gaussian_filter(phi, 0.7)
-    return phi, St, Hb
+    # 外沿（等值线）上的顶高、底高：垂边 = 外推的屋面 + 圆头剩下的那点厚，底面往下包 drop；墙边 = 满厚
+    Sc = Hext + th * (Tdrop * Q['edge'] * nose + (1 - Tdrop) * rho_in)
+    Bc = Hext - Q['sink'] - (Q['drop'] - Q['sink']) * Tdrop
+    Sc = np.maximum(Sc, Bc + 0.4 * Q['drop'])
+    # 等值面：边外 ov 处；外推出来的地方（窄缝里两边不一样高）和邻格断开的格去掉（低的那边），网格就不会有竖着的帘子
+    phi = sdP + Q['ov']
+    R = phi >= 0
+    tau = g * math.tan(math.radians(72)) + 0.5 * Q['drop']
+    for _ in range(4):
+        cut = np.zeros_like(R)
+        for ax in (0, 1):
+            a = [slice(None)] * 2
+            b = [slice(None)] * 2
+            a[ax], b[ax] = slice(None, -1), slice(1, None)
+            a, b = tuple(a), tuple(b)
+            both = R[a] & R[b] & (np.abs(Hb[a] - Hb[b]) > tau)
+            lowa = Hb[a] < Hb[b]
+            # 去掉不在承雪面里、低的那一格（都在承雪面里的不会断：分块时已经按台阶拆开了）
+            ka = both & ~inP[a] & (lowa | inP[b])
+            kb = both & ~inP[b] & (~lowa | inP[a])
+            cut[a] |= ka
+            cut[b] |= kb
+        if not cut.any():
+            break
+        R &= ~cut
+        phi = np.where(cut, -0.3 * g, phi)
+    return phi, St, Hb, Sc, Bc, tau
 
 
-def mesh_plate(phi, St, Hb, x0, z0, g):
+def mesh_plate(phi, St, Hb, Sc, Bc, x0, z0, g, tau):
     """phi ≥ 0 的区域（marching squares 裁边）→ 封闭网格：顶面（St）+ 底面（Hb）+ 一圈裙边；返回 (V, F)"""
     nx, nz = phi.shape
     ins = phi >= 0
@@ -378,8 +411,12 @@ def mesh_plate(phi, St, Hb, x0, z0, g):
         t = min(max(t, 0.02), 0.98)
         x = x0 + (i + 0.5 + t * (i2 - i)) * g
         z = z0 + (j + 0.5 + t * (j2 - j)) * g
-        st = St[i, j] + t * (St[i2, j2] - St[i, j])
-        hb = Hb[i, j] + t * (Hb[i2, j2] - Hb[i, j])
+        if abs(Bc[i2, j2] - Bc[i, j]) > tau:   # 外面那格是别处外推来的（断开的）：高度照里面这格
+            ii, jj = (i, j) if a >= 0 else (i2, j2)
+            st, hb = Sc[ii, jj], Bc[ii, jj]
+        else:
+            st = Sc[i, j] + t * (Sc[i2, j2] - Sc[i, j])
+            hb = Bc[i, j] + t * (Bc[i2, j2] - Bc[i, j])
         pts.append((x, z, st, hb))
         cross[k] = len(pts) - 1
         return cross[k]
@@ -403,7 +440,8 @@ def mesh_plate(phi, St, Hb, x0, z0, g):
         inn = [ins[c] for c in cs]
         if inn[0] and inn[2] and not inn[1] and not inn[3] or inn[1] and inn[3] and not inn[0] and not inn[2]:
             m = sum(phi[c] for c in cs) / 4
-            if m < 0:   # 鞍点：断开，两个角各一个小三角
+            k0 = 0 if inn[0] else 1
+            if m < 0 or abs(Hb[cs[k0]] - Hb[cs[k0 + 2]]) > 1.5 * tau:   # 鞍点：断开（对角两格高低差太多也断开），两个角各一个小三角
                 for k in range(4):
                     if inn[k]:
                         a, b = cs[(k - 1) % 4], cs[(k + 1) % 4]
@@ -422,8 +460,10 @@ def mesh_plate(phi, St, Hb, x0, z0, g):
         for k in range(1, len(poly) - 1):
             tri.append((poly[0], poly[k], poly[k + 1]))
     T2 = np.concatenate([tA.reshape(-1, 3), np.array(tri, dtype=np.int64).reshape(-1, 3)]) if len(tri) else tA.reshape(-1, 3)
-    pts = np.array(pts, dtype=np.float64)
+    pts = np.array(pts, dtype=np.float64).reshape(-1, 4)
     n2 = len(pts)
+    if n2 == 0 or len(T2) == 0:
+        return np.zeros((0, 3)), np.zeros((0, 3), dtype=np.int64)
     # 上面的绕向：(x, z) 平面里顺时针 = 法线朝 +Y；按每个三角形的有向面积翻
     ax, az = pts[T2[:, 0], 0], pts[T2[:, 0], 1]
     cr = (pts[T2[:, 1], 0] - ax) * (pts[T2[:, 2], 1] - az) - (pts[T2[:, 1], 1] - az) * (pts[T2[:, 2], 0] - ax)
@@ -606,10 +646,10 @@ def qem(V, F, target, log=None):
 
 
 # ---------------------------------------------------------------- 一座楼
-def building_cap(key, T, Q, log):
+def building_cap(key, T, Q, log, dbg=None):
     """一座楼的三角形（格）→ (V, F) 雪壳网格（格）与统计"""
     t0 = time.time()
-    q = {k: (v * S if k not in ('slope', 'edge') else v) for k, v in Q.items()}
+    q = {k: (v * S if k not in ('slope', 'edge', 'nose') else v) for k, v in Q.items()}
     q['amin'] = Q['amin'] * S * S
     lo, hi = T.reshape(-1, 3).min(0), T.reshape(-1, 3).max(0)
     pad = q['ov'] + q['ovw'] + 6 * q['g'] + q['smooth'] * 3
@@ -626,22 +666,40 @@ def building_cap(key, T, Q, log):
             break
         g *= math.sqrt(ncell / MAXCELL) * 1.02
     q['g'] = g
-    # 去掉单格的噪点（坡面上偶尔一格是陡的小三角形）：先补 1 格的洞
+    # 屋面上的小起伏（茅草上的绳子、瓦垄、搭接的木瓦）有些小三角形比 64° 陡：周围 0.3 米都挂得住雪、高度又和周围接得上的，算挂得住（雪盖过去）
     cover = H > -np.inf
-    near = ndimage.binary_closing(patch, structure=np.ones((3, 3)), iterations=1) & cover & (H >= q['hmin'])
-    patch = patch | (near & (NY >= cos_lim * 0.6))
-    # 按高度连续分块
-    tau = g * math.tan(math.radians(70))
+    rad = max(1, int(round(0.3 * S / g)))
+    disk = np.add.outer(np.arange(-rad, rad + 1) ** 2, np.arange(-rad, rad + 1) ** 2) <= rad * rad
+    near = ndimage.binary_closing(patch, structure=disk) & cover & (H >= q['hmin']) & ~patch & (NY >= 0.15)
+    if near.any():
+        wgt = ndimage.convolve(patch.astype(np.float64), disk.astype(np.float64), mode='constant')
+        Havg = ndimage.convolve(np.where(patch, H, 0.0), disk.astype(np.float64), mode='constant') / np.maximum(wgt, 1e-9)
+        patch = patch | (near & (wgt >= 0.4 * disk.sum()) & (np.abs(H - Havg) <= 0.25 * S))
+    # 按高度连续分块（相邻格高差 ≤ 70° 坡 + 0.2 米算连着）；同一块里还有台阶（别处绕过来连上的）就把台阶脚下低的那一格拿掉、再分，
+    #   直到块里没有台阶：网格只连高度连续的格子，台阶处高低两边各自收边（不会有一道雪帘子从高处挂到低处）
+    tau = g * math.tan(math.radians(70)) + 0.2 * S   # 再加 0.2 米：陡坡上一格的高差已经快到 70° 了，绳子、瓦垄这点小台阶雪照样盖过去
     N = nx * nz
     idx = np.arange(N).reshape(nx, nz)
-    m1 = patch[:-1, :] & patch[1:, :] & (np.abs(H[:-1, :] - H[1:, :]) <= tau)
-    m2 = patch[:, :-1] & patch[:, 1:] & (np.abs(H[:, :-1] - H[:, 1:]) <= tau)
-    rows = np.concatenate([idx[:-1, :][m1], idx[:, :-1][m2]])
-    cols = np.concatenate([idx[1:, :][m1], idx[:, 1:][m2]])
-    G = coo_matrix((np.ones(len(rows), dtype=np.int8), (rows, cols)), shape=(N, N))
-    ncomp, lab = connected_components(G, directed=False)
-    lab = lab.reshape(nx, nz)
-    lab[~patch] = -1
+    Hs = np.where(patch, H, 0.0)   # 不在承雪面里的填 0（−inf 相减出 nan）
+    for _ in range(8):
+        m1 = patch[:-1, :] & patch[1:, :] & (np.abs(Hs[:-1, :] - Hs[1:, :]) <= tau)
+        m2 = patch[:, :-1] & patch[:, 1:] & (np.abs(Hs[:, :-1] - Hs[:, 1:]) <= tau)
+        rows = np.concatenate([idx[:-1, :][m1], idx[:, :-1][m2]])
+        cols = np.concatenate([idx[1:, :][m1], idx[:, 1:][m2]])
+        G = coo_matrix((np.ones(len(rows), dtype=np.int8), (rows, cols)), shape=(N, N))
+        ncomp, lab = connected_components(G, directed=False)
+        lab = lab.reshape(nx, nz)
+        lab[~patch] = -1
+        c1 = (lab[:-1, :] >= 0) & (lab[:-1, :] == lab[1:, :]) & ~m1
+        c2 = (lab[:, :-1] >= 0) & (lab[:, :-1] == lab[:, 1:]) & ~m2
+        if not c1.any() and not c2.any():
+            break
+        drop = np.zeros_like(patch)
+        drop[:-1, :] |= c1 & (Hs[:-1, :] < Hs[1:, :])
+        drop[1:, :] |= c1 & (Hs[1:, :] <= Hs[:-1, :])
+        drop[:, :-1] |= c2 & (Hs[:, :-1] < Hs[:, 1:])
+        drop[:, 1:] |= c2 & (Hs[:, 1:] <= Hs[:, :-1])
+        patch &= ~drop
     sizes = np.bincount(lab[patch], minlength=ncomp)
     amin_cells = q['amin'] / (g * g)
     plates = [k for k in np.argsort(-sizes) if sizes[k] >= max(amin_cells, 3)]
@@ -655,8 +713,10 @@ def building_cap(key, T, Q, log):
         j0, j1 = max(sl[1].start - wpad, 0), min(sl[1].stop + wpad, nz)
         inP = lab[i0:i1, j0:j1] == k
         Hw = H[i0:i1, j0:j1]
-        phi, St, Hb = plate_fields(Hw, inP, g, q)
-        V, F = mesh_plate(phi, St, Hb, x0 + i0 * g, z0 + j0 * g, g)
+        phi, St, Hb, Sc, Bc, tcut = plate_fields(Hw, inP, g, q)
+        V, F = mesh_plate(phi, St, Hb, Sc, Bc, x0 + i0 * g, z0 + j0 * g, g, tcut)
+        if dbg is not None:
+            dbg.append(dict(x0=x0 + i0 * g, z0=z0 + j0 * g, g=g, inP=inP, Hw=Hw, phi=phi, St=St, Hb=Hb, V=V, F=F))
         if len(F) == 0:
             continue
         a_m2 = inP.sum() * g * g / (S * S)
@@ -677,7 +737,7 @@ def building_cap(key, T, Q, log):
 
 
 # ---------------------------------------------------------------- 法线、UV、写 GLB
-def finish(V, F, crease=55.0):
+def finish(V, F, crease=68.0):
     """按角分棱的法线（每个角的法线 = 这个点周围和这个面夹角小于 crease 的面的面积加权平均）、按法线方向投影的 UV；拆点"""
     p0, p1, p2 = V[F[:, 0]], V[F[:, 1]], V[F[:, 2]]
     fn = np.cross(p1 - p0, p2 - p0)

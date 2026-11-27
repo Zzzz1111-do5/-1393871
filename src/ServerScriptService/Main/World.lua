@@ -938,6 +938,14 @@ pcall(function()
     for k, v in pairs(sm) do if BM[k] == nil then BM[k] = v end end
   end
 end)
+-- 雪山中间的合掌村（VillageMeta，models/bld/village.glb；用户 11-27：村子照白川乡合掌村复刻）：合掌造 gs_*、神社鸟居灯笼钟楼 jp_*，同上并进来
+pcall(function()
+  local vm = RS:FindFirstChild("VillageMeta") and require(RS.VillageMeta)
+  if type(vm) == "table" then
+    BM = BM or {}
+    for k, v in pairs(vm) do if BM[k] == nil then BM[k] = v end end
+  end
+end)
 pcall(function() TURN = require(RS:WaitForChild("ImportTurn", 5)).TURN end)
 World.BM = BM
 
