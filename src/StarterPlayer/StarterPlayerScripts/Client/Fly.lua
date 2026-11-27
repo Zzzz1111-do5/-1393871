@@ -915,7 +915,10 @@ function Fly.init(G)
       local _, _, _, r00, r01, r02, r10, r11, r12, r20, r21, r22 = cf:GetComponents()
       st.fm = FM.new(st.fmD, { r00, r01, r02, r10, r11, r12, r20, r21, r22 }, st.vel.X / AD.M, st.vel.Y / AD.M, st.vel.Z / AD.M, st.thr)
       st.fm.live = false
+      -- 对空雷达（Radars.lua）：同 FM 按科技树的版本取（F-16A 是 APG-66、苏-30SM 是 N011M）；不退回 like（苏-27 借苏-35S 的模型，雷达是 N001）
+      st.rd = AD.radarOf and AD.radarOf(d.id, tk) or d.radar
     end
+    if G.radarReset then G.radarReset(st) end   -- 雷达每架次重置：开着、量程最大（上一架关了雷达，这一架照旧开着）
     -- 遥控无人机（服务器 vs.uav）：人在地上端着战术平板，画面是平板（Tablet.lua）；默认前视光电，右键 / V 换外部视角，Z 变焦
     st.uav = vs.uav == true and d.drone == true
     st.dcam, st.zoom, st.zoomS = st.uav and "nose" or nil, 1, 1
@@ -1126,7 +1129,7 @@ function Fly.init(G)
       if root and em ~= st.em and em:GetAttribute("Team") ~= myTeam and not em:GetAttribute("Wreck") and (em:GetAttribute("Hp") or 1) > 0 then
         local ok = (w.kind == "aam") and kind == "air" or ((w.kind == "agm" or w.kind == "bomb") and GROUND_KINDS[kind])
         -- 雷达弹（战雷，用户 11-24 夜）：只能锁自己雷达看得见的（Radar.lua：扫描范围、距离、置零、地杂波）
-        if ok and w.seeker == "radar" and st.d.radar and G.radarSees and not G.radarSees(st, em) then ok = false end
+        if ok and w.seeker == "radar" and st.rd and G.radarSees and not G.radarSees(st, em) then ok = false end
         if ok then
           local to = root.CFrame.Position - p0
           local dist = to.Magnitude
@@ -1310,12 +1313,76 @@ function Fly.init(G)
     end
     return best
   end
+  -- 雷达弹照战雷手动锁（用户 11-27 定的）：不再「选了雷达弹就自动锁最近的」——雷达屏上的目标 R / Alt+T 选中（st.rdSel，屏上「|—|」），
+  --   Alt+F 锁定进单目标跟踪（STT，st.lock）、再按一下解锁；锁着时 R / Alt+T 换成屏上的下一个。红外弹、空地弹、炸弹照旧自动挑
+  --   手机还没有锁定键（第 7 步加：点亮点选、按钮锁）：R 选中就锁
+  local function radarManual(w) return st ~= nil and st.rd ~= nil and w ~= nil and w.kind == "aam" and w.seeker == "radar" end
+  local function toastT(k, ...) if G.toast then G.toast(T(k, ...), "info") end end
+  -- 锁这一架（进单目标跟踪）；锁不上返回 false、原因（Lang 键）、参数
+  local function radarLockOn(w, em)
+    local ok, why, _, _, dist = G.radarSees(st, em)
+    if why == "off" then return false, "rd.isOff" end
+    if not ok or not (G.radarHas and G.radarHas(st, em)) then return false, "rd.cantSee" end
+    local lim = math.min(st.rd.lock, w.range or 3200)
+    if dist > lim then return false, "rd.lockFar", string.format("%.1f", lim / AD.M / 1000) end
+    local c = nil
+    for _, c2 in ipairs(candidates(w)) do if c2.em == em then c = c2 end end
+    if not c then return false, "rd.cantSee" end
+    if not inTrack(w, c) then return false, "rd.lockOff" end
+    st.lock, st.lockT, st.rdSel = c, 0, em
+    return true
+  end
+  G.flyRadarLockOn = function(em)   -- 直接锁这一架（同 Alt+F 锁选中的；第 5 步近战自动截获、测试用）：锁上返回 true
+    local _, w = storeW()
+    if not st or not radarManual(w) then return false end
+    return radarLockOn(w, em)
+  end
   function G.flyNextTarget()
     if not st then return end
     local _, w = storeW()
     if not w or w.kind == "gun" or w.kind == "rkt" then return end
+    if radarManual(w) then
+      local cur = (st.lock and st.lock.em) or st.rdSel
+      local nx = G.radarNext and G.radarNext(st, cur)
+      if not nx then
+        if not st.lock then toastT((G.radarOn and not G.radarOn()) and "rd.isOff" or "rd.noTgt") end
+        return
+      end
+      local ok, why, arg = true, nil, nil
+      if st.lock then   -- 锁着：换成下一个（锁不上就留着原来的）
+        if nx ~= st.lock.em then ok, why, arg = radarLockOn(w, nx) end
+      else
+        st.rdSel = nx
+        if G.mobile then ok, why, arg = radarLockOn(w, nx) end
+      end
+      if not ok then toastT(why, arg) end
+      return
+    end
     local c = pickTarget(w, st.lock and st.lock.id)
     st.lock, st.lockT = c, 0
+  end
+  -- Alt+F（Radar.lua 转过来）：锁着就解锁（还选着它），没锁就锁选中的（没选中的挑屏上离机头最近的）
+  function G.flyRadarLock()
+    if not st or not st.pilot or not st.rd then return end
+    local _, w = storeW()
+    if not radarManual(w) then toastT("rd.needRw") return end
+    if st.lock then
+      st.rdSel = st.lock.em
+      st.lock, st.lockT = nil, 0
+      toastT("rd.unlock")
+      return
+    end
+    local em = st.rdSel or (G.radarNext and G.radarNext(st, nil))
+    if not em then toastT((G.radarOn and not G.radarOn()) and "rd.isOff" or "rd.noTgt") return end
+    st.rdSel = em
+    local ok, why, arg = radarLockOn(w, em)
+    if not ok then toastT(why, arg) end
+  end
+  -- 选中这一架（手机点雷达屏上的亮点用，第 7 步接）：要在雷达屏上
+  function G.flyPickTarget(em)
+    if not st or not st.rd or not (G.radarHas and G.radarHas(st, em)) then return false end
+    st.rdSel = em
+    return true
   end
 
   -- 武器能不能用：开战以后；试驾（训练场，模型的 TestDrive 属性）什么时候都能打靶——真游戏开着匹配，机库里试驾时这一局还在「匹配中」
@@ -1408,12 +1475,15 @@ function Fly.init(G)
     local kb = not st.uav and not G.mobile
     local mAim = kb and mouseAim   -- 战雷式：鼠标给方向（教官飞），按方向键时直接操纵
     local up, dn
+    -- 按住 Alt 的方向键归雷达（有雷达的飞机：Alt+↑↓←→ 挪天线，Radar.lua），不动油门；Alt+Q / Alt+E 也不打舵（下面）
+    local altRd = st.rd ~= nil and (key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt))
+    local kUp, kDn = key(Enum.KeyCode.Up) and not altRd, key(Enum.KeyCode.Down) and not altRd
     if kb then
-      up = key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or key(Enum.KeyCode.Up) or (touch and touch.up)
-      dn = key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or key(Enum.KeyCode.Down) or (touch and touch.down)
+      up = key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or kUp or (touch and touch.up)
+      dn = key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or kDn or (touch and touch.down)
     else
-      up = key(Enum.KeyCode.W) or key(Enum.KeyCode.Up) or key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or (touch and touch.up)
-      dn = key(Enum.KeyCode.S) or key(Enum.KeyCode.Down) or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or (touch and touch.down)
+      up = key(Enum.KeyCode.W) or kUp or key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or (touch and touch.up)
+      dn = key(Enum.KeyCode.S) or kDn or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or (touch and touch.down)
     end
     st.thr = clamp(st.thr + ((up and 1 or 0) - (dn and 1 or 0)) * 55 * dt, 0, d.ab and 130 or 100)
     -- 自动收油门（真飞机拉平时自动油门收到慢车）：接地太快贴着跑道飘的时候不按 W 就自己往回收（按住 W 是复飞）
@@ -1433,7 +1503,7 @@ function Fly.init(G)
       end
       st.kP = ramp(st.kP or 0, (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0))
       st.kR = ramp(st.kR or 0, rollIn)
-      st.kY = ramp(st.kY or 0, (key(Enum.KeyCode.E) and 1 or 0) - (key(Enum.KeyCode.Q) and 1 or 0))
+      st.kY = ramp(st.kY or 0, altRd and 0 or ((key(Enum.KeyCode.E) and 1 or 0) - (key(Enum.KeyCode.Q) and 1 or 0)))   -- Alt+Q 是雷达量程、Alt+E 雷达模式
       pitchIn, rollIn, yawIn = st.kP, st.kR, st.kY
     end
     if G.mobile and controls then   -- 手机：摇杆直接当驾驶杆（往前推是低头）
@@ -2092,12 +2162,17 @@ function Fly.init(G)
 
   ---------------------------------------------------------------- 输入
 
+  local RADAR_ALT = {}   -- 按住 Alt 时归雷达的键（R / T / F / Q 现在用；E 模式、Z 扫描方式、C 回中、方向键挪天线留给第 4、5 步）
+  for _, kc in ipairs({ "R", "T", "F", "Q", "E", "Z", "C", "Up", "Down", "Left", "Right" }) do RADAR_ALT[Enum.KeyCode[kc]] = true end
   UIS.InputBegan:Connect(function(io, gp)
     if gp or not st then return end
     local k = io.KeyCode
     -- 用户：空格键脱离载具（在天上就跳伞）；战雷式（不当步兵）没有跳伞、下飞机——空格是机轮刹车（地上），回机库长按 H（Hud.lua）
     if k == Enum.KeyCode.Space and not (G.hangarActive and G.hangarActive()) then G.R.Drive:FireServer({ op = "exit" }) return end
     if not st.pilot then return end
+    -- Alt 组合键只给雷达（有雷达的固定翼；战雷的默认键 Alt+R 开关、Alt+T 选目标、Alt+F 锁定，Radar.lua 接）：原来 Alt+T 同时切迎角限制、
+    --   Alt+R 同时换目标、Alt+F 同时发导弹。W / S / A / D 不拦（座舱里按住 Alt 转头时还得能拉杆）；Alt+中键标目标点按 UserInputType 判断，不受影响
+    if st.rd and RADAR_ALT[k] and (key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt)) then return end
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
       if G.interiorHover and G.interiorHover() then return end   -- 座舱里对着屏幕边的按键：左键是按键，不开炮（Interior.lua）
       st.firing = true
@@ -2167,6 +2242,8 @@ function Fly.init(G)
     if gp or not st or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
     if st.uav or st.eo then   -- 平板前视光电：滚轮细调倍率（1× ~ 12×）
       st.zoom = clamp(st.zoom * (1 + 0.18 * io.Position.Z), 1, 40)
+    elseif st.pilot and st.rd and (key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt)) then   -- Alt+滚轮归雷达（第 4 步挪天线俯仰），不动油门
+      if G.radarWheel then G.radarWheel(io.Position.Z) end
     elseif st.pilot and st.d.kind == "jet" then   -- 战雷：滚轮是油门（一格 5%，推过 100% 就是加力）
       st.thr = clamp(st.thr + io.Position.Z * 5, 0, st.d.ab and 130 or 100)
     end
@@ -2855,9 +2932,10 @@ function Fly.init(G)
             local vc = (d0 - st.lock.dist) / dt / AD.M
             st.lock.vc = st.lock.vc and (st.lock.vc + (vc - st.lock.vc) * math.min(1, dt * 3)) or vc
           end
-          -- 雷达弹（战雷）：雷达得一直看得见它——它侧着飞把你放在 3 / 9 点（置零）、钻进地杂波、出了雷达的扫描范围，超过 1 秒丢锁
+          -- 雷达弹（战雷）：雷达得一直看得见它——它侧着飞把你放在 3 / 9 点（置零）、钻进地杂波、出了雷达的万向架，超过 1 秒丢锁
+          --   （单目标跟踪时天线跟着目标转：方位按万向架 ±az，不按搜索的扫描宽度）
           local rOk, rWhy = true, nil
-          if w.seeker == "radar" and st.d.radar and G.radarSees then rOk, rWhy = G.radarSees(st, st.lock.em) end
+          if w.seeker == "radar" and st.rd and G.radarSees then rOk, rWhy = G.radarSees(st, st.lock.em, true) end
           st.lock.radarWhy = (not rOk) and rWhy or nil
           if rOk then
             st.lock.radarLostT = 0
@@ -2888,7 +2966,7 @@ function Fly.init(G)
         end
       end
       if not st.lock then
-        st.lock = pickTarget(w)
+        if not radarManual(w) then st.lock = pickTarget(w) end   -- 雷达弹照战雷手动锁（R / Alt+T 选、Alt+F 锁），不自动挑
         st.lockT = 0
       end
     else

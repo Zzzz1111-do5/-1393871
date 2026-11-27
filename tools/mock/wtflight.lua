@@ -5,8 +5,9 @@
 --      原来那套 MWT 式的（右上机型卡、准星两边高度速度、六边形武器键）收起来；机头 ⊕；顶上航向罗盘；圆形小地图在右上
 --   ② 右侧雷达屏：在屏幕右半边，写 SRC PD、扫描范围、量程；Alt+Q 换量程、Alt+R 关掉（写 OFF，雷达弹看不见目标）再开
 --   ③ 选红外弹（霹雳-10）、前方一架敌机：大圈小圈锁定前白、锁上红；锁定框写距离、接近速度、高度差
---   ④ 雷达告警圆盘：敌机雷达锁着我（服务器 rwrLock）→ 标型号、虚线；导弹打过来（rwr）→「MSL」
---   ⑤ 数据链：自己打出去的霹雳-15 在雷达屏上一个点、到目标一条线（导引头开机前虚线、开机后实线）
+--   ④ 雷达告警圆盘：敌机雷达锁着我（服务器 rwrLock）→ 标型号、虚线；导弹打过来（rwr）→「MSL」；敌机的雷达按它的科技树版本取
+--      （苏-30SM：歼-16 + TreeKey ru_su30sm 的 N011M 标「30」，不是歼-16 的「J16」）
+--   ⑤ 数据链：自己打出去的霹雳-15（照战雷手动锁：R 选目标、Alt+F 锁定）在雷达屏上一个点、到目标一条线（导引头开机前虚线、开机后实线）
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
@@ -78,7 +79,8 @@ check(scope and T.visible(scope) and scope.Position.X.Scale == 1 and scope.Ancho
 local mode = find("RadarMode")
 check(mode and mode.Text == "SRC PD", "写 SRC PD（搜索、脉冲多普勒）：" .. tostring(mode and mode.Text))
 local zone, rng = find("RadarZone"), find("RadarRange")
-check(zone and zone.Text == string.format("%d°×%d°", st.d.radar.az * 2, st.d.radar.el * 2), "扫描范围（方位 × 俯仰）：" .. tostring(zone and zone.Text))
+local rdj = st.rd   -- 歼-20 的 KLJ-5（Radars.lua）：方位按默认扫描方式的宽度，俯仰按万向架
+check(rdj ~= nil and zone and zone.Text == string.format("%d°×%d°", AD.Radars.half(rdj) * 2, rdj.elU + rdj.elD), "扫描范围（方位 × 俯仰）：" .. tostring(zone and zone.Text))
 local r0 = rng and rng.Text
 local function altKey(code)
   T.key(Enum.KeyCode.LeftAlt, true)
@@ -144,6 +146,15 @@ if fe then
     for _, d in ipairs(rwr:GetDescendants()) do if d:IsA("TextLabel") and d.Visible and d.Text == "MSL" then msl = true end end
   end
   check(msl, "导弹打过来：「MSL」")
+  -- 敌机的雷达按科技树版本取：苏-30SM（借歼-16 的型号）机头对着我 → 告警器上标 N011M 的代号「30」
+  local su = G.spawnAircraft("def", "j16", R.CFrame.lookAt(st.cf.Position - st.cf.RightVector * 1200, st.cf.Position), nil, nil)
+  if su then su.model:SetAttribute("TreeKey", "ru_su30sm") end
+  R.run(0.3)
+  local tags = {}
+  for _, d in ipairs(rwr:GetDescendants()) do if d:IsA("TextLabel") and d.Visible and d.Text ~= "" then tags[d.Text] = d end end
+  check(tags["30"] ~= nil and tags["J16"] == nil, "苏-30SM 扫到我：标「30」（N011M），不是歼-16 的「J16」")
+  check(tags["30"] and tags["30"].Position.X.Offset < 75, "在圆盘左边（它在我左边）")
+  if su then G.removeEnt(su) end
 end
 
 print("⑤ 数据链：自己打出去的霹雳-15（真的打：服务器发弹、导引头开机时 shotAct）")
@@ -158,12 +169,18 @@ if pl15i and fe then
   local wid = st.wl[pl15i]
   local ww = AD.W[wid]
   fe.root.CFrame = st.cf * CF(30, 20, -3300)   -- 导引头开机距离（霹雳-15 2800 格）以外：先走数据链
-  st.lock, st.lockT = nil, 0
+  st.lock, st.lockT, st.rdSel = nil, 0, nil
   local locked = T.runUntil(function()
     fe.root.CFrame = C.fly.cf * CF(30, 20, -3300)   -- 自己在往前飞：敌机跟着摆在前方
+    if not st.lock and C.radarHas(st, fe.model) then   -- 照战雷手动锁：雷达屏上有了它，R 选中、Alt+F 锁定
+      T.tap(Enum.KeyCode.R)
+      T.key(Enum.KeyCode.LeftAlt, true)
+      T.tap(Enum.KeyCode.F)
+      T.key(Enum.KeyCode.LeftAlt, false)
+    end
     return st.lock ~= nil and st.lockT >= (ww.lockTime or 1)
   end, 8)
-  check(locked, "雷达锁上了前方 3300 格的敌机")
+  check(locked, "雷达锁上了前方 3300 格的敌机（R 选中、Alt+F 锁定）")
   if locked then
     R.as("client", function() C.R.Drive:FireServer({ op = "fire", w = wid, tgt = st.lock.id, aim = st.aimPt }) end)
     local fs = nil
@@ -189,6 +206,7 @@ if pl15i and fe then
     check(fs and not fs.act and white >= 2, "导引头开机前：虚线（" .. white .. " 段）")
     local act = T.runUntil(function() return fs.act == true end, 4)
     check(act, "飞近了、导引头开机：客户端收到 shotAct")
+    R.run(1 / 30)   -- 收到 shotAct 的那一步雷达屏已经先画过了（模拟器一步里先 RenderStepped 再收事件）：再走一帧看（改之前在 6b254ba 上这一项也数出 0 段）
     dot, red, white = scopeSegs()
     check(red >= 6, "开机以后：红色实线（" .. red .. " 段）")
   end

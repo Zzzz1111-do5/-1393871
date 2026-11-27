@@ -1,13 +1,18 @@
 -- 全面大战场（客户端）——战雷式机载雷达
 --   用户 11-24 夜：「战雷我记得不同带有雷达的载具会根据雷达型号有雷达扫描图的，为雷达锁定式导弹提供引导，所以也有 39 机动的这种说法」
---   每型飞机的雷达在 AirDefs 的 radar（pd 脉冲多普勒 / pulse 脉冲、搜索 / 锁定距离、方位俯仰扫描范围、置零门限）：
+--   用户 11-27：「飞机雷达按型号照战雷做、能用键控制雷达方向」
+--   每型、每个科技树版本的雷达在 ReplicatedStorage/Radars.lua（Fly.lua 开飞时按 AirDefs.radarOf(型号, TreeKey) 取到 st.rd：F-16A 是 APG-66、苏-30SM 是 N011M）：
 --   ① 搜索（SRC）：扫描线在方位里来回扫，扫到的敌机在雷达屏上亮一下、慢慢暗下去。看不见的：出了扫描范围、太远、
 --      置零（pd：目标相对地面的速度在视线上的分量太小——它侧着飞、把你放在 3 点 / 9 点方向）、地杂波（pulse：往下看、目标贴地）
---   ② 锁定（STT）：Fly.lua 拿雷达弹锁着一架时，扫描线停在它身上；它置零 / 出了范围超过 1 秒就丢锁（Fly.lua 管）
---   ③ 雷达屏（B 显）：左边中间一块方屏，横轴方位、竖轴距离；敌机一小横道，锁定的那架套方框；上面写雷达型号、模式，下面量程，
---      锁着的目标在置零时写「置零」
---   G.radarSees(st, em) → 看得见吗、看不见的原因（range / fov / notch / clutter）、方位°、俯仰°、距离（Fly.lua 挑目标、保持锁定用）
---   G.radarStep(st, dt, lockEm)：每帧扫描、画屏；G.radarOff()
+--   ② 锁定（STT，照战雷手动锁：用户 11-27 定的）：雷达屏上的目标 R / Alt+T 选中（两边竖线「|—|」，Fly.lua 的 st.rdSel），Alt+F 锁定、再按解锁
+--      （Fly.lua G.flyRadarLock）；锁着时扫描线停在它身上；它置零 / 出了范围超过 1 秒就丢锁（Fly.lua 管）
+--   ③ 雷达屏（B 显）：右边一块方屏，横轴方位（默认扫描方式的宽度，Radars.half）、竖轴距离；敌机一小横道，锁定的那架套方框；上面写模式，下面雷达型号、
+--      量程，锁着的目标在置零时写「置零」
+--   G.radarSees(st, em, gimbal) → 看得见吗、看不见的原因（off / range / fov / notch / clutter）、方位°、俯仰°、距离（Fly.lua 挑目标、保持锁定用；
+--      gimbal = true：单目标跟踪时天线跟着目标，方位按万向架 ±az，不按扫描宽度）
+--   G.radarStep(st, dt, lockEm)：每帧扫描、画屏；G.radarOff()；G.radarReset(st)：开飞（每架次）时雷达开、量程、扫描恢复默认
+--   G.airRadarContacts()：雷达屏上现在有的 { em, az, dist, locked }（航向罗盘、选目标）；G.radarHas(st, em)：在不在屏上；G.radarNext(st, cur)：下一个
+--   键（只给有雷达的固定翼，Fly.lua 让出了这些 Alt 组合键）：Alt+R 开关、Alt+Q 量程、Alt+T 选目标（同 R）、Alt+F 锁定 / 解锁；G.radarWheel(z)：Alt+滚轮（第 4 步挪天线）
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 
@@ -38,8 +43,10 @@ function Radar.init(G)
     return t.v
   end
 
-  local function sees(st, em)
-    local rd = st and st.d and st.d.radar
+  local RD = AD.Radars
+  local function halfOf(rd) return RD and RD.half(rd) or rd.az end
+  local function sees(st, em, gimbal)
+    local rd = st and st.rd
     if not rd then return true end   -- 没有对空雷达的飞机：照旧（老规则，按导引头的视场）
     local root = em and em.Parent and em:FindFirstChild("Root")
     if not root then return false, "gone" end
@@ -53,7 +60,8 @@ function Radar.init(G)
     local el = math.deg(math.asin(clamp(l.Y, -1, 1)))
     local vT = velOf(em, p, os.clock())
     if dist > rd.range then return false, "range", az, el, dist end
-    if math.abs(az) > rd.az or math.abs(el) > rd.el then return false, "fov", az, el, dist end
+    -- 方位：搜索按默认扫描方式的宽度（第 4 步有扫描中心以前），单目标跟踪按万向架；俯仰按万向架（往上 elU、往下 elD）
+    if math.abs(az) > (gimbal and rd.az or halfOf(rd)) or el > rd.elU or el < -rd.elD then return false, "fov", az, el, dist end
     if rd.kind == "pd" then
       -- 脉冲多普勒：地面回波的多普勒频移 = 自己的速度在这个方向上的分量；目标的 = （它的 − 自己的）在视线上的分量。
       --   两个差的正好是目标相对地面的速度在视线上的分量——太小（侧着飞）就和地杂波混在一起被滤掉：置零
@@ -73,9 +81,9 @@ function Radar.init(G)
   --   屏里竖的扫描波束来回扫；搜到的目标一短横（越久没扫到越暗），选中的两边加竖线，跟踪着的套方框、带一根速度线；
   --   自己打出去的主动雷达弹（数据链，用户：「飞机本身会和自己的导弹形成数据链互相提供信息」）：弹一个小点，到目标一条线——
   --   导引头还没开机（靠你的雷达给目标位置）是虚线、预计命中点一个小圈；开机了实线；数据链断了（你丢了锁、转开、雷达关了）只剩那个小圈
-  --   键：Alt+R 开关雷达、Alt+Q 换量程（量程外的不显示）、Alt+T 换目标（同 R）；屏下面一排按键提示
+  --   键：Alt+R 开关雷达、Alt+Q 换量程（量程外的不显示）、Alt+T 选目标（同 R）、Alt+F 锁定；屏下面一排按键提示（Lang rd.keys）
   local gui = Instance.new("ScreenGui")
-  gui.Name = "Radar"
+  gui.Name = "AirRadar"   -- 别叫 Radar：UI.lua 的小地图框叫 Radar（tools/test/ia_ui_layout.luau、ia_radar.luau 按名字找它）
   gui.ResetOnSpawn = false
   gui.IgnoreGuiInset = true
   gui.DisplayOrder = 5
@@ -205,7 +213,7 @@ function Radar.init(G)
   local tKeys = label(scope, "Keys", U2.new(0, 0, 1, 36), V2(0, 0), Enum.TextXAlignment.Left, 10)
   tKeys.Size = U2.fromOffset(W + 60, 14)
   tKeys.TextColor3 = RGB(200, 230, 205)
-  tKeys.Text = mobile and "" or "Alt+R 开关  Alt+Q 量程  Alt+T / R 换目标"
+  tKeys.Text = mobile and "" or T("rd.keys")
 
   ---------------------------------------------------------------- 每帧
 
@@ -213,6 +221,15 @@ function Radar.init(G)
   local S = { az = 0, dir = 1, on = true, scale = 1, el = 0, eld = 1 }
   local SCALES = { 1, 0.5, 0.25 }
   local lastSt = nil
+  local contacts = {}
+  -- 每架次重置（Fly.lua 开飞时调）：雷达开着、量程最大、扫描从正中开始，上一架的亮点清掉（原来 S 只在初始化时建一次：雷达关了换下一架还是关的）
+  function G.radarReset(st)
+    S.az, S.dir, S.on, S.scale, S.el, S.eld = 0, 1, true, 1, 0, 1
+    table.clear(seen)
+    table.clear(contacts)
+    lastSt = st
+    tKeys.Text = mobile and "" or T("rd.keys")   -- 换了语言下一架就换过来
+  end
   local function hostiles(st)
     local out = {}
     local f = workspace:FindFirstChild("Ents")
@@ -227,16 +244,17 @@ function Radar.init(G)
   end
   -- 雷达关着：看不见（Fly.lua 的雷达弹锁不上、锁着的一秒后丢）
   local sees0 = sees
-  sees = function(st, em)
-    if not S.on and st and st.d and st.d.radar then return false, "off" end
-    return sees0(st, em)
+  sees = function(st, em, gimbal)
+    if not S.on and st and st.rd then return false, "off" end
+    return sees0(st, em, gimbal)
   end
   G.radarSees = sees
   G.radarOn = function() return S.on end
 
-  -- 键：Alt+R 开关、Alt+Q 量程、Alt+T 换目标
+  -- 键（战雷的默认键：Alt+R 开关、Alt+T 选目标、Alt+F 锁定；Alt+Q 量程）。只在正开着这架有雷达的飞机时（下了飞机按 Alt+R 不再改 S.on）；
+  --   Fly.lua 按住 Alt 时把这些键让出来（不再串成 R 换目标、T 迎角限制、Q 方向舵、F 发导弹）
   UIS.InputBegan:Connect(function(io, gp)
-    if gp or not lastSt or not lastSt.pilot or not (lastSt.d and lastSt.d.radar) then return end
+    if gp or not lastSt or G.fly ~= lastSt or not lastSt.pilot or not lastSt.rd then return end
     if not (UIS:IsKeyDown(Enum.KeyCode.LeftAlt) or UIS:IsKeyDown(Enum.KeyCode.RightAlt)) then return end
     local k = io.KeyCode
     if k == Enum.KeyCode.R then
@@ -244,19 +262,47 @@ function Radar.init(G)
       if G.toast then G.toast(T(S.on and "wt.radarOn" or "wt.radarOff"), "info") end
     elseif k == Enum.KeyCode.Q then
       S.scale = S.scale % #SCALES + 1
-      local rd = lastSt.d.radar
+      local rd = lastSt.rd
       if G.toast then G.toast(T("wt.radarRange", string.format("%.0f", rd.range * SCALES[S.scale] / AD.M / 1000)), "info") end
     elseif k == Enum.KeyCode.T then
       if G.flyNextTarget then G.flyNextTarget() end
+    elseif k == Enum.KeyCode.F then
+      if G.flyRadarLock then G.flyRadarLock() end
     end
   end)
+  -- Alt+滚轮（Fly.lua 交过来，不再动油门）：第 4 步用来挪天线俯仰（真机油门杆上的天线俯仰轮），现在先不动
+  function G.radarWheel(z) end
 
-  local contacts = {}
-  function G.radarContacts() return contacts end   -- 航向罗盘上的小三角（WtFlight.lua）
+  -- 名字别跟 Hud.lua 的 G.radarContacts（小地图上的人和车，Coach.lua 的队友标记用）撞：原来这里覆盖了它，队友标记一直拿不到数据
+  function G.airRadarContacts() return contacts end   -- 航向罗盘上的小三角（WtFlight.lua）、选目标
+  -- 在不在雷达屏上（扫到过、还没暗掉）
+  function G.radarHas(st, em)
+    local r = em and seen[em]
+    return r ~= nil and S.on and st ~= nil and st == lastSt and st.rd ~= nil
+  end
+  -- 雷达屏上的下一个目标（从左往右轮；cur 不在屏上时挑离机头最近的）；屏上没有返回 nil
+  function G.radarNext(st, cur)
+    if not st or st ~= lastSt or not S.on then return nil end
+    local list = {}
+    for em, r in pairs(seen) do
+      if em.Parent then table.insert(list, { em = em, az = r.az, dist = r.dist }) end
+    end
+    if #list == 0 then return nil end
+    table.sort(list, function(a, b) if a.az ~= b.az then return a.az < b.az end return a.dist < b.dist end)
+    local ci = nil
+    for i, c in ipairs(list) do if c.em == cur then ci = i end end
+    if ci then return list[ci % #list + 1].em end
+    local best, bs = nil, math.huge
+    for _, c in ipairs(list) do
+      local s2 = math.abs(c.az) + c.dist / 4000
+      if s2 < bs then best, bs = c.em, s2 end
+    end
+    return best
+  end
 
   function G.radarStep(st, dt, lockEm)
     lastSt = st
-    local rd = st and st.d and st.d.radar
+    local rd = st and st.rd
     if not rd or not st.pilot or st.uav then
       gui.Enabled = false
       table.clear(contacts)
@@ -266,34 +312,35 @@ function Radar.init(G)
     local now = os.clock()
     local range = rd.range * SCALES[S.scale]
     local pd = rd.kind == "pd"
+    local half = halfOf(rd)   -- 屏上横轴、扫描线来回的宽度：默认扫描方式（第 4 步换成扫描中心 ± 这种扫描方式的半宽）
     -- 扫描线：锁着就停在目标上（TRK），不然在方位里来回扫；雷达关着不扫
     local stt = false
     local lockOk, lockWhy, lockAz, lockEl, lockDist = false, nil, nil, nil, nil
     if lockEm then
-      lockOk, lockWhy, lockAz, lockEl, lockDist = sees(st, lockEm)
+      lockOk, lockWhy, lockAz, lockEl, lockDist = sees(st, lockEm, true)
       if lockAz then stt = true end
     end
     if not S.on then
       stt = false
     elseif stt and lockOk then
-      S.az = clamp(lockAz, -rd.az, rd.az)
+      S.az = clamp(lockAz, -half, half)
       S.el = clamp(lockEl or 0, -rd.el, rd.el)
     else
-      S.az = S.az + S.dir * rd.az * 2 / 1.1 * dt
-      if S.az > rd.az then S.az, S.dir = rd.az, -1 elseif S.az < -rd.az then S.az, S.dir = -rd.az, 1 end
+      S.az = S.az + S.dir * half * 2 / 1.1 * dt
+      if S.az > half then S.az, S.dir = half, -1 elseif S.az < -half then S.az, S.dir = -half, 1 end
       S.el = S.el + S.eld * rd.el * 2 / 4.4 * dt   -- 天线俯仰慢慢上下扫（一来一回将近九秒）
       if S.el > rd.el * 0.8 then S.el, S.eld = rd.el * 0.8, -1 elseif S.el < -rd.el * 0.8 then S.el, S.eld = -rd.el * 0.8, 1 end
     end
     -- 扫到的（扫描线扫过它的方位附近）、看得见的、在量程里的：记下来；没扫到的照旧显示一会儿再暗下去
     local list = S.on and hostiles(st) or {}
     for _, em in ipairs(list) do
-      local ok, _, az, _, dist = sees(st, em)
+      local ok, _, az, _, dist = sees(st, em, em == lockEm)   -- 跟踪着的那架按万向架（出了扫描宽度也还跟着）
       if ok and az and dist <= range and (math.abs(az - S.az) < 7 or em == lockEm) then
         seen[em] = { t = now, az = az, dist = dist }
       end
     end
     -- 画
-    local function xOf(az) return clamp(0.5 + az / (2 * rd.az), 0.02, 0.98) end
+    local function xOf(az) return clamp(0.5 + az / (2 * half), 0.02, 0.98) end
     local function yOf(dist) return clamp(1 - dist / range, 0.02, 0.98) end
     scan.Visible = S.on
     scan.Position = U2.fromScale(xOf(S.az), 0)
@@ -305,6 +352,7 @@ function Radar.init(G)
       local age = now - r.t
       if age > 2.6 or not em.Parent or not S.on then
         seen[em] = nil
+        if st.rdSel == em then st.rdSel = nil end   -- 选中的那个暗掉了：不再选着它（Fly.lua 锁不了屏上没有的）
       else
         table.insert(contacts, { em = em, az = r.az, dist = r.dist, locked = em == lockEm })
         if n < #blips and em ~= lockEm then
@@ -312,7 +360,7 @@ function Radar.init(G)
           local b = blips[n]
           b.f.Position = U2.fromScale(xOf(r.az), yOf(r.dist))
           b.f.BackgroundTransparency = clamp(age / 2.6, 0, 0.85)
-          local sel = st.lock ~= nil and st.lock.em == em
+          local sel = st.rdSel == em or (st.lock ~= nil and st.lock.em == em)   -- 选中的（R / Alt+T）、别的弹锁着的
           b.l1.Visible, b.l2.Visible = sel, sel
           b.f.Visible = true
         end
@@ -396,11 +444,11 @@ function Radar.init(G)
     -- 字
     local mode = (stt and lockOk) and "TRK" or ((stt and not lockOk) and "TRK MEM" or "SRC")
     tMode.Text = S.on and (mode .. (pd and " PD" or "")) or "OFF"
-    tZone.Text = string.format("%d°×%d°", rd.az * 2, rd.el * 2)
+    tZone.Text = string.format("%d°×%d°", half * 2, rd.elU + rd.elD)
     tRange.Text = string.format("%.0f km", range / AD.M / 1000)
-    tAzL.Text, tAzR.Text = string.format("-%d°", rd.az), string.format("%d°", rd.az)
+    tAzL.Text, tAzR.Text = string.format("-%d°", half), string.format("%d°", half)
     tElT.Text, tElB.Text = string.format("%d°", math.floor(rd.el * 0.6)), string.format("-%d°", math.floor(rd.el * 0.6))
-    tName.Text = rd.name or ""
+    tName.Text = ((G.lang == "en") and rd.shortEn) or rd.short or rd.name or ""   -- 屏底只写短名（整名放在 186 像素宽的标签里会超出）
     tEmit.Text = S.on and "((o))" or "( . )"
     tEmit.TextColor3 = S.on and GRN or RGB(120, 140, 125)
     tWarn.Text = (stt and lockWhy == "notch") and T("air.radarNotch") or ((stt and lockWhy == "clutter") and T("air.radarClutter") or "")
@@ -410,6 +458,7 @@ function Radar.init(G)
   function G.radarOff()
     gui.Enabled = false
     table.clear(contacts)
+    table.clear(seen)
   end
   G.radarGui = gui   -- 测试用
 end

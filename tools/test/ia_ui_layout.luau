@@ -69,11 +69,20 @@ local function contained(box)
 	return box.left >= 0 and box.top >= 0 and box.right <= camera.ViewportSize.X and box.bottom <= camera.ViewportSize.Y
 end
 
+-- 小地图框（UI.lua 的 Frame「Radar」）。开飞机的雷达屏（Radar.lua）的 ScreenGui 原来也叫 Radar、按名字会先找到它，11-27 起改名 AirRadar；
+--   这里只认界面元素，不认 ScreenGui
+local function minimap(pg)
+	for _, d in pg:GetDescendants() do
+		if d.Name == "Radar" and d:IsA("GuiObject") then return d end
+	end
+	return nil
+end
+
 local function checkHud(client, player)
 	assert(client.S.alive, player.Name .. " 已部署")
 	local score = player.PlayerGui.Main.ScoreBar
 	local briefing = player.PlayerGui.Main.OperationBrief
-	local radar = player.PlayerGui:FindFirstChild("Radar", true)
+	local radar = minimap(player.PlayerGui)
 	assert(score.Visible and briefing.Visible and radar, player.Name .. " 战况与第一阶段简报可见")
 	assert(contained(rect(score)) and contained(rect(briefing)), player.Name .. " 战况与简报在画面内")
 	assert(not overlaps(rect(score), rect(radar)) and not overlaps(rect(briefing), rect(radar)), player.Name .. " 战况与简报避开雷达")

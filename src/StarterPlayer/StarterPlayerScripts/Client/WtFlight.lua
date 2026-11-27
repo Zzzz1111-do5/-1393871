@@ -429,7 +429,7 @@ function WtFlight.init(G)
         mk.l.TextColor3 = CARD[hh] and HUD or TXT
       end
     end
-    local contacts = G.radarContacts and G.radarContacts() or {}
+    local contacts = G.airRadarContacts and G.airRadarContacts() or {}   -- Radar.lua（Hud.lua 的 G.radarContacts 是小地图那份）
     local ni = 0
     for _, c in ipairs(contacts) do
       if ni < #tapeTri and math.abs(c.az) < TAPE_DEG then
@@ -474,8 +474,8 @@ function WtFlight.init(G)
     for _, em in ipairs(ents and ents:GetChildren() or {}) do
       if ti >= #rwrTags then break end
       local mdl = em:GetAttribute("Model")
-      local dd = mdl and AD.D[mdl]
-      local rd = dd and dd.radar
+      -- 敌机的雷达按它的科技树版本取（Radars.lua：F-16A 是 APG-66、苏-30SM 是 N011M），不是只看型号
+      local rd = mdl and AD.radarOf and AD.radarOf(mdl, em:GetAttribute("TreeKey"))
       local root = em:FindFirstChild("Root")
       if rd and root and em ~= st.em and em:GetAttribute("Team") ~= side and em:GetAttribute("Kind") == "air" and (em:GetAttribute("Hp") or 1) > 0 then
         local rc = root.CFrame
@@ -485,14 +485,16 @@ function WtFlight.init(G)
         local th = id and threats[id]
         local locking = th and th.lock and t < th.lock
         local l = rc:VectorToObjectSpace(to / math.max(dist, 1))
-        local inScan = dist <= rd.range and math.abs(deg(math.atan2(l.X, -l.Z))) <= rd.az and math.abs(deg(math.asin(clamp(l.Y, -1, 1)))) <= rd.el
+        -- 扫到我：在它的量程里、它默认扫描方式的方位宽度里（第 4 步以前没有扫描中心；不然苏-35S 的 ±120° 万向架一下子全扫得到）、俯仰万向架里
+        local elT = deg(math.asin(clamp(l.Y, -1, 1)))
+        local inScan = dist <= rd.range and math.abs(deg(math.atan2(l.X, -l.Z))) <= (AD.Radars and AD.Radars.half(rd) or rd.az) and elT <= rd.elU and elT >= -rd.elD
         if inScan or locking then
           ti += 1
           local rel = -to
           local bearing = math.atan2(rel.X, -rel.Z) - myYaw
           local missileHere = mslOn and (W.mslBy == id)
           local rr = R0 * (missileHere and 0.42 or (locking and 0.6 or 0.8))
-          local code = string.upper(string.sub(mdl, 1, 4))
+          local code = rd.rwr or string.upper(string.sub(mdl, 1, 4))   -- 告警器代号（Radars.lua 的 rwr：米格-29 写 29，不再是型号前四个字母 MIG2）
           if missileHere then
             place(ti, bearing, rr, ((t * 4) % 1 < 0.6) and "MSL" or "", RED, "solid")
           elseif locking then
