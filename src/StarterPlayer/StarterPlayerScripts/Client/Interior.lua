@@ -989,7 +989,13 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       if G.driveApplySight then G.driveApplySight() end
     end
     function A.zoomSet() A.zoom() end
-    function A.ammoIdx(i) A.ammo(AMMO4[(i or 0) + 1] or "SABOT") end
+    -- 弹种旋钮转一档：这一档没有弹（M1 一族的 105 / M829 系的炮没有 MPAT、CAN）就接着往下跳到有的那一档（不然卡在原地转不过去）
+    function A.ammoIdx(i)
+      i = i or 0
+      for j = 0, #AMMO4 - 1 do
+        if A.ammo(AMMO4[(i + j) % #AMMO4 + 1]) then return end
+      end
+    end
     function A.fcsSet(i) A.fcsMode((i or 0) + 1) end
     function A.battlesight() if G.driveBattlesight then G.driveBattlesight() end end
     function A.mrs()
@@ -1057,14 +1063,19 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       if G.sfx then pcall(G.sfx, on and "gearShift" or "dry") end
     end
     function A.lampTest() c.lampT = os.clock() + 3 end
+    -- 返回换没换：这门炮现在没有这一类的弹（没研究、没带、本来就打不了）就不换、返回 false（AMMO 键、弹种旋钮拿它跳过）
     function A.ammo(kind)
-      c.ammoKind = kind
       -- 炮长控制面板选的弹种也是火控的弹种（Drive.lua：这门炮能打的才换，换了要重新装填）
+      --   在现在能打的弹里挑同一类的（Ballistics.panelAmmo：T-90M 借 99A 的面板；M1 一族各型的炮跟面板写死的 SEPv2 那几发不一样）
       local BAL = require(game:GetService("ReplicatedStorage"):WaitForChild("Ballistics"))
       local st = G.drive
       local wid = st and st.d and st.d.weapons and st.d.weapons[st.wi or 1]
-      local key = BAL.panelAmmo and BAL.panelAmmo(kind, wid) or BAL.PANEL[kind]   -- 这门炮没有这种就挑同一类的（T-90M 借 99A 的面板）
-      if G.driveAmmo and key then G.driveAmmo(key) end
+      local list = G.driveAmmoList and G.driveAmmoList() or nil
+      local key = BAL.panelAmmo(kind, wid, list, st and st.fcs and st.fcs.am)
+      if not key then return false end
+      c.ammoKind = kind
+      if G.driveAmmo then G.driveAmmo(key) end
+      return true
     end
     function A.citvFov(f) c.citvFov = f end
     function A.citvSector(side, deg)   -- 自动扫描扇区的左（1）/ 右（2）边：相对炮塔的度数（右正）

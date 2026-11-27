@@ -87,7 +87,8 @@ local want = {
   de_leo2a0 = { "leo2a0", "leo2a6" }, de_leo2a5 = { "leo2a5", "leo2a6" },
   cn_96 = { "ztz96base", "ztz96" }, cn_96a = { "ztz96a", "ztz96" }, cn_99 = { "ztz99base", "ztz99a" }, cn_86 = { "type86", "bmp1" },
   ru_t90a = { "t90a", "t90m" }, us_m2 = { "m2a0", "m2a3" }, us_m2a2 = { "m2a2", "m2a3" },
-  us_m1a1 = { "m1a1base", "m1a1" },   -- 11-27 审查第 1 条：原来开老的 m1a1（M829A3、ARAT）
+  -- 11-27 审查第 1 条：原来开老的 m1a1（M829A3、ARAT）；二审：模型就是 M1A1 自己的，不写 model（写了科技树标「同族模型」）
+  us_m1a1 = { "m1a1base" },
 }
 local tb = {}
 for k, w in pairs(want) do

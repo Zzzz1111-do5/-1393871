@@ -8,6 +8,8 @@
 --   ⑤ 改装页：noEra 的没有；有爆反的同族变型退到同族那一套（TankMods.FOR），车重按自己的（TankMods.SPEC）
 --   11-27 审查以后加的：⑦ 弹种顺序 { 原厂穿甲, 破甲 / 多用途, 榴弹 / MPAT / 霰弹, 旧穿甲…, 射流 }；
 --   ⑧ 年代错位修正：科技树的 M1A1 开 m1a1base（老 m1a1 不动）、导弹单装药按 k、59 / 69 式的剪影、M60 火控第 1 代、没有稳定器的车、M2A3 的 M919……
+--   11-27 二审加的：④ 研究满以后（前三种弹里最强的）穿深同一族、科技树同一列按年代不往回掉；⑦ 车里炮长面板的弹种键（Ballistics.panelAmmo）；
+--   ⑧ M791 的穿深照战雷
 --   （第一人称车内退 like 在 fponly.lua；电脑车真按科技树挑得到在 wtreal.lua ②；单装药导弹真打爆反在 tankkit.lua ④——这几条要开服）
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3 = T.R, T.V3
@@ -36,7 +38,8 @@ local SPLIT = {
   -- 第 1 批：美国 M1 一族（M1A1 / M1A2 SEPv2 原来就有）
   { "us_m1", "m1", "m1a1", noEra = true, nv = "th1", gen = 2 },
   { "us_m1ip", "m1ip", "m1a1", noEra = true, nv = "th1", gen = 2 },
-  { "us_m1a1", "m1a1base", "m1a1", noEra = true, nv = "th1", gen = 2 },   -- 11-27 审查第 1 条：科技树的 M1A1 原来直接开老的 m1a1（M829A3、ARAT）
+  -- 11-27 审查第 1 条：科技树的 M1A1 原来直接开老的 m1a1（M829A3、ARAT）；ownModel：模型就是 M1A1 自己的，科技树不写 model（二审：写了会标「同族模型」）
+  { "us_m1a1", "m1a1base", "m1a1", noEra = true, nv = "th1", gen = 2, ownModel = true },
   { "us_m1a1hc", "m1a1hc", "m1a1", noEra = true, nv = "th1", gen = 2 },
   { "us_m1a2", "m1a2base", "m1a2", noEra = true, nv = "th1", gen = 4 },
   { "us_m1a2sep", "m1a2sep", "m1a2", noEra = true, nv = "th2", gen = 4 },
@@ -103,8 +106,11 @@ do
 end
 for _, s in ipairs(SPLIT) do
   local it = TT.get(s[1])
-  check(it ~= nil and it.veh == s[2] and it.play == s[2] and it.model == s[3] and it.base == nil and not it.stand and TT.byVeh[s[2]] == it,
-    string.format("%s：开 %s、模型借同族的 %s（科技树写「同族模型」）", s[1], tostring(it and it.play), tostring(it and it.model)))
+  local wantModel = s[3]
+  if s.ownModel then wantModel = nil end
+  check(it ~= nil and it.veh == s[2] and it.play == s[2] and it.model == wantModel and it.base == nil and not it.stand and TT.byVeh[s[2]] == it,
+    s.ownModel and string.format("%s：开 %s、模型是它自己的（%s 的原模型；科技树不写 model、不标「同族模型」：%s）", s[1], tostring(it and it.play), s[3], tostring(it and it.model))
+      or string.format("%s：开 %s、模型借同族的 %s（科技树写「同族模型」）", s[1], tostring(it and it.play), tostring(it and it.model)))
 end
 
 print("③ 每个型号的数据齐全")
@@ -198,6 +204,53 @@ for _, F in ipairs(FAMILY) do
   end
   check(#back == 0, F.name .. "：按年代默认弹穿深、炮塔正面装甲不往回掉" .. (#back > 0 and ("：" .. table.concat(back, "；")) or ""))
 end
+-- 研究满以后（科技树只研究得到前三种弹：WtMods 的 ammo2 / ammo3）前三种里最强的穿深也按年代不往回掉——11-27 二审：三种弹的炮第三种就是射流（研究得到）、
+--   四种以上的研究不到射流；M60A1 RISE 原来第三种放 M392，研究满是 M60 一族唯一拿不到射流的（760 → 430）。同一族、科技树同一列（研究线）上下都查
+local function best3(id)
+  local d = VD.get(id)
+  local w1 = d and d.weapons[1]
+  local list = w1 and B.GUN[w1]
+  if not list then return pen0(id) end
+  local b = 0
+  for i = 1, math.min(3, #list) do
+    local a = WD.AMMO[list[i]]
+    if a and a.p0 > b then b = a.p0 end
+  end
+  return b
+end
+local function noBack(ids)
+  local back, last, lastId = {}, -1, nil
+  for _, id in ipairs(ids) do
+    local p = best3(id) or 0
+    if p < last then table.insert(back, string.format("%s（%d）比 %s（%d）低", id, p, tostring(lastId), last))
+    else last, lastId = p, id end
+  end
+  return back
+end
+for _, F in ipairs(FAMILY) do
+  local back = noBack(F.ids)
+  local vals = {}
+  for _, id in ipairs(F.ids) do table.insert(vals, tostring(best3(id))) end
+  check(#back == 0, F.name .. "：研究满以后（前三种弹里最强的）穿深按年代不往回掉（" .. table.concat(vals, " / ") .. "）"
+    .. (#back > 0 and ("：" .. table.concat(back, "；")) or ""))
+end
+do
+  local bad = {}
+  for _, nat in ipairs(TT.NATIONS) do
+    local cols, order = {}, {}
+    for _, it in ipairs(TT.list[nat].ground) do
+      local d = VD.get(it.play)
+      if d and B.GUN[d.weapons[1]] then
+        if not cols[it.col] then cols[it.col] = {} table.insert(order, it.col) end
+        table.insert(cols[it.col], it.play)
+      end
+    end
+    for _, c in ipairs(order) do
+      for _, s in ipairs(noBack(cols[c])) do table.insert(bad, nat .. " 第 " .. c .. " 列 " .. s) end
+    end
+  end
+  check(#bad == 0, "科技树同一列（研究线）上下：研究满以后的坦克炮穿深不往回掉" .. (#bad > 0 and ("：" .. table.concat(bad, "；")) or ""))
+end
 
 print("⑤ 各族自己的")
 do
@@ -227,8 +280,10 @@ end
 do
   local m60, a1, rise, l1, l2a0, l2a5 = VD.get("m60"), VD.get("m60a1"), VD.get("m60a1rise"), VD.get("leo1a1a1"), VD.get("leo2a0"), VD.get("leo2a5")
   if m60 and a1 and rise and l1 and l2a0 and l2a5 then
-    check(m60.noStab == true and not a1.noStab and not rise.noStab and profTf("m60") < profTf("m60a1") and m60.accel > a1.accel,
-      "M60 没有稳定器（noStab）、M48 式短炮塔比 M60A1 薄、车轻加速快")
+    -- 稳定器只查 M60（没有）、RISE（有）：1962 年的 M60A1 真车也没有（AOS 1972 年才加装），照 1962 加 noStab 还是照战雷改成 M60A1 (AOS)
+    --   要用户定——这里不锁（二审：原来断言「M60A1 有」，等于把一条跟公开资料相反的数据保护起来）
+    check(m60.noStab == true and not rise.noStab and profTf("m60") < profTf("m60a1") and m60.accel > a1.accel,
+      "M60 没有稳定器（noStab）、RISE 有；M48 式短炮塔比 M60A1 薄、车轻加速快")
     check(B.GUN[rise.weapons[1]][1] == "m735" and m60.weapons[1] == a1.weapons[1], "M60A1 RISE 打 M735；M60 同 M60A1 打 M392")
     check(not m60.lrf and not rise.lrf and not l1.lrf and l2a0.lrf and VD.get("m60a3").lrf, "合像 / 体视测距的没有激光（M60、RISE、豹 1A1A1），豹 2A0、M60A3 有")
     check(l2a5.weapons[1] == "gun120l44" and VD.get("leo2a6").weapons[1] == "gun120l55" and B.GUN[l2a0.weapons[1]][1] == "dm13l44",
@@ -266,6 +321,10 @@ do
     check(m2a3.weapons[1] == "m242m919" and not has(m2a3.weapons, "ac30") and has(m2a3.weapons, "tow2") and WD.WPN.m242m919 ~= nil
       and pen0("m2a3") > pen0("m2a2") and w3.rate == w1.rate and w3.mag == w1.mag and w3.reserve == w1.reserve and w3.speed > w1.speed,
       string.format("M2A3：M242 25 毫米 + M919（穿深 %d > M791 %d 毫米，出膛 %.0f 格/秒），射速、载弹同 M2 / M2A2", pen0("m2a3"), pen0("m2a2"), w3.speed))
+    -- 二审：M791 原来每公里掉 16（2 公里 44 毫米），M919 照战雷——2 公里处 M2A3 比 M2A2 强 64%（战雷约 32%）；M791 也照战雷（1 公里 66～67、2 公里 55～56）
+    local p1, p2, q2 = WD.pen(VD.W.m242, 1000), WD.pen(VD.W.m242, 2000), WD.pen(VD.W.m242m919, 2000)
+    check(math.abs(p1 - 66) <= 1.5 and math.abs(p2 - 55.5) <= 1.5 and q2 / p2 > 1.2 and q2 / p2 < 1.45,
+      string.format("M791：1 公里 %.0f、2 公里 %.0f 毫米（照战雷）；2 公里处 M919 %.0f，强 %.0f%%", p1, p2, q2, (q2 / p2 - 1) * 100))
     check(Lang.zh["veh.ztz96"] == "96B 式主战坦克", "ztz96 改名叫 96B（它本来就是 96B）：" .. tostring(Lang.zh["veh.ztz96"]))
   end
 end
@@ -292,7 +351,8 @@ do
   local WANT = {
     gun105m1 = "m774,m456,m735,jet105", gun105ip = "m833,m456,m774,jet105", gun120a1 = "m829,m830,m829a1,jet120",
     gun120hc = "m829a1,m830,m829,jet120", gun120a2 = "m829a1,m830,m830a1,jet120", gun120sep = "m829a2,m830,m830a1,jet120",
-    gun120sep3 = "m829a4,m830a1,m1028,m829a3,jet120", gun105m60r = "m735,m456,m392,jet105",
+    gun120sep3 = "m829a4,m830a1,m1028,m829a3,jet120",
+    gun105m60r = "m735,m456,jet105",   -- 二审：同 M60 / M60A1 / M60A3 三种弹、射流第三种研究得到（原来第三种 M392、射流第四：研究满拿不到）
   }
   for wid, s in pairs(WANT) do
     local got = table.concat(B.GUN[wid] or {}, ",")
@@ -317,6 +377,28 @@ do
     end
   end
   check(#bad == 0, "拆出来的坦克炮都照这个顺序" .. (#bad > 0 and ("：" .. table.concat(bad, "；")) or ""))
+end
+-- 车里炮长面板的弹种键（Ballistics.panelAmmo；面板上写死的是 SEPv2 那几发：M829A3 / M830 / M830A1 / M1028）：在这门炮现在能打的弹
+--   （Drive 按研究过的 ModAmmo 截短的那份）里挑同一类的，一种都没有返回 nil（按了不换）——二审：原来退回写死的那发、Drive 不认就轮到下一种，
+--   SEPv3 研究了第二种弹，在 M829A4 上按 SABOT 换成了 M830A1（车里真按键的在 fponly.lua ④）
+do
+  local function pa(kind, wid, n, cur)
+    local list = B.GUN[wid]
+    local cut = {}
+    for i = 1, math.min(n or #list, #list) do cut[i] = list[i] end
+    return B.panelAmmo(kind, wid, cut, cur)
+  end
+  check(pa("SABOT", "gun120sep3", 2, "m829a4") == "m829a4" and pa("HEAT", "gun120sep3", 2) == nil and pa("MPAT", "gun120sep3", 2) == "m830a1"
+    and pa("CAN", "gun120sep3", 2) == nil and pa("CAN", "gun120sep3", 3) == "m1028",
+    "面板 · SEPv3 研究了第二种弹：SABOT 还是 M829A4（M829A3 排第四研究不到）、HEAT 不换（没有破甲弹）、MPAT → M830A1、CAN 研究了第三种才有")
+  check(pa("SABOT", "gun105m1", 3, "m456") == "m774" and pa("HEAT", "gun105m1", 3) == "m456" and pa("MPAT", "gun105m1", 3) == nil and pa("CAN", "gun105m1", 3) == nil,
+    "面板 · M1（105 毫米）：SABOT → M774、HEAT → M456，MPAT / CAN 不换（这门炮没有）")
+  check(pa("SABOT", "gun120a1", 3, "m830") == "m829" and pa("SABOT", "gun120a1", 3, "m829") == "m829a1" and pa("SABOT", "gun120a1", 3, "m829a1") == "m829"
+    and pa("SABOT", "gun120a1", 1, "m829") == "m829",
+    "面板 · 科技树 M1A1：SABOT 先选 M829，已经是 M829 再按换第三种 M829A1（研究了才有）")
+  check(pa("SABOT", "gun120") == "m829a3" and pa("HEAT", "gun120") == "m830" and pa("MPAT", "gun120") == "m830a1" and pa("CAN", "gun120") == "m1028"
+    and pa("ap", "gun125r") == "bm60" and pa("heat", "gun125r") == "bk31" and pa("he", "gun125r") == "of26" and pa("ap", "gun125") == "dtc10",
+    "面板 · SEPv2 四个键各对一种；T-90M 借 99A 的面板：穿甲 3BM60、破甲 3BK31、榴弹 3OF26")
 end
 
 print("⑧ 年代错位、拟真修正")
@@ -351,9 +433,11 @@ do
   -- c. 火控代见 ⑤（M60、M60A1 第 1 代）
   -- d. 没有稳定器的：M60（1960）、59 式、豹 1 头一批（1965）；从它们拷出来、真车有稳定器的变型写了 noStab = false
   local leo1, l1a1, l1a5, t59, t69 = VD.get("leo1"), VD.get("leo1a1a1"), VD.get("leo1a5"), VD.get("type59"), VD.get("type69")
-  check(TT.get("de_leo1").play == "leo1" and TT.get("de_leo1").year == 1965 and leo1.noStab == true and t59.noStab == true
-    and not l1a1.noStab and not l1a5.noStab and not t69.noStab and not VD.get("m60a1").noStab and not VD.get("gepard1a1").noStab,
-    "没有稳定器：59 式、豹 1（1965 年头一批）；69-II、豹 1A1A1、豹 1A5、M60A1 有")
+  -- 1962 年的 M60A1 不在这里锁（见 ⑤：真车 AOS 稳定器 1972 年才有，照 1962 还是照战雷 M60A1 (AOS) 要用户定）
+  check(TT.get("de_leo1").play == "leo1" and TT.get("de_leo1").year == 1965 and leo1.noStab == true and t59.noStab == true and VD.get("m60").noStab == true
+    and not l1a1.noStab and not l1a5.noStab and not t69.noStab and not VD.get("m60a1rise").noStab and not VD.get("m60a3").noStab
+    and not VD.get("gepard1a1").noStab,
+    "没有稳定器：59 式、豹 1（1965 年头一批）、M60；69-II、豹 1A1A1、豹 1A5、M60A1 RISE、M60A3 有")
 end
 
 local dt = os.clock() - t0

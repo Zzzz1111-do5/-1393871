@@ -169,7 +169,7 @@ for _, it in pairs(TT.byKey) do
   local g = WM.fcsGen(it)
   if g then
     okGen = okGen + 1
-    -- WtMods.GEN_FIX 照真车改过的不算（11-27：M60 / M60A1 有 M17 合像测距仪 + M13 弹道计算机，第 1 代）
+    -- WtMods.GEN_FIX 照真车改过的不算（11-27：M60 / M60A1 有 M17 合像测距仪 + 机械弹道计算机——M60A1 是 M16，一说 M19E1；M13 是 M48 的——第 1 代）
     if it.year < 1965 and not WM.GEN_FIX[it.key] then check(g == 0, it.key .. " 1965 年以前没有火控计算机") end
   end
 end

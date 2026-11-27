@@ -1847,6 +1847,11 @@ function Drive.init(G)
     if G.sfx then pcall(G.sfx, "uiClick") end
   end
   G.driveAmmo = function(key) if st then cycleAmmo(key) end end   -- 车里炮长控制面板的弹种键（Interior.lua）也走这里
+  -- 现在这门炮能打的弹（研究过的前 ModAmmo 种、带了的）：车里面板的弹种键在这里面挑同一类的（Ballistics.panelAmmo），没有就不换
+  G.driveAmmoList = function()
+    local wid = st and weaponId()
+    return wid and ammoList(wid) or nil
+  end
   -- 战斗瞄准距离：这个弹种调过的（调整页）或者弹种自己的（穿甲 1200、破甲 / 多用途 900……）
   local function bsRange(am)
     local f = st and st.fcs

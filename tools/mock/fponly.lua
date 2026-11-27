@@ -4,7 +4,8 @@
 --   ② 坐进 99A 按 F2：不进车里（还是车外）；坐进 M1A2 按 F2：进车里（11-27 起车外的 C 归车长望远镜，进车内用 F2～F5 / T；车里的 C 照旧换乘员位、最后回车外）
 --   ③ 开歼-20 按 V：不进座舱
 --   ④ 11-27 审查第 2 条：拆出来的同族变型（VehDefs 的 like：M1、IPM1、科技树的 M1A1、M1A1 HC → m1a1，M1A2、SEP、SEPv3 → m1a2）
---      白名单、车内都退到 like 那一型（原来拆开以后这 7 项进不了车里）；坐进 SEPv3、M1 按 F2 进的是 M1A2 / M1A1 那套车内
+--      白名单、车内都退到 like 那一型（原来拆开以后这 7 项进不了车里）；坐进 SEPv3、M1 按 F2 进的是 M1A2 / M1A1 那套车内；
+--      二审：车里炮长面板的弹种键按这门炮现在能打的弹挑同一类的（SEPv3 研究了第二种弹按 SABOT 还是 M829A4；M1 的 MPAT / CAN 不换）
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
@@ -96,6 +97,47 @@ for _, c in ipairs({ { "m1a2sep3", "m1a2", "M1A2 SEPv3" }, { "m1", "m1a1", "M1" 
   local s = C.interiorState and C.interiorState()
   local key = s and s.cur and s.cur.key
   check(C.interiorOn and C.interiorOn() and key == c[2], c[3] .. " 按 F2：进车里，用的是 " .. tostring(key) .. " 的车内（应为 " .. c[2] .. "）")
+  -- 二审：炮长面板的弹种键（SABOT / HEAT / MPAT / CAN 写死的是 SEPv2 那几发）在这门炮现在能打的弹里挑同一类的，没有就不换——
+  --   原来退回写死的那发、Drive 不认就轮到下一种：SEPv3 研究了第二种弹，在 M829A4 上按 SABOT 换成了 M830A1
+  local A = s and s.cur and s.cur.env and s.cur.env.act
+  local st = C.drive
+  if A and A.ammo and st and st.fcs and st.em then
+    local f = st.fcs
+    local function press(kind) local r = nil R.as("client", function() r = A.ammo(kind) end) R.run(0.1) return r end
+    if c[1] == "m1a2sep3" then
+      st.em:SetAttribute("ModAmmo", 2)   -- 研究了「第二种弹」（服务器出车时写；沙盒出的车没写 = 都能打）
+      f.am = "m829a4"
+      local rS = press("SABOT")
+      local amS = f.am
+      local rH = press("HEAT")
+      local amH = f.am
+      press("MPAT")
+      local amM = f.am
+      local rC = press("CAN")
+      local amC = f.am
+      R.as("client", function() A.ammoIdx(3) end)   -- 弹种旋钮从 MPAT 转一档到 CAN：没有 CAN（第三种没研究）就接着跳到 SABOT
+      R.run(0.1)
+      local amK = f.am
+      check(rS == true and amS == "m829a4" and rH == false and amH == "m829a4" and amM == "m830a1" and rC == false and amC == "m830a1" and amK == "m829a4",
+        string.format("SEPv3 研究了第二种弹：SABOT 还是 M829A4（%s）、HEAT 不换（%s，没有破甲弹）、MPAT → %s、CAN 不换（%s）、旋钮转到 CAN 跳到 %s",
+          tostring(amS), tostring(amH), tostring(amM), tostring(amC), tostring(amK)))
+      st.em:SetAttribute("ModAmmo", nil)
+    else
+      st.em:SetAttribute("ModAmmo", 3)
+      f.am = "m456"
+      local rM = press("MPAT")
+      local amM = f.am
+      local rC = press("CAN")
+      local amC = f.am
+      press("SABOT")
+      local amS = f.am
+      check(rM == false and rC == false and amM == "m456" and amC == "m456" and amS == "m774",
+        string.format("%s（105 毫米）：MPAT / CAN 不换（%s / %s，这门炮没有）、SABOT → %s", c[3], tostring(amM), tostring(amC), tostring(amS)))
+      st.em:SetAttribute("ModAmmo", nil)
+    end
+  else
+    check(false, c[3] .. "：拿不到车里面板的动作（interiorState().cur.env.act）")
+  end
   for _ = 1, 6 do
     if not (C.interiorOn and C.interiorOn()) then break end
     T.tap(Enum.KeyCode.C)
