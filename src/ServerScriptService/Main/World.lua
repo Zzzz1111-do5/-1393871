@@ -1747,8 +1747,10 @@ local function carrierHull(m, base)
         local mp = s0:Clone()
         mp.Anchored = true
         mp.CanCollide, mp.CanQuery, mp.CanTouch = false, false, false
-        mp.Size = V(p.s[1], p.s[2], p.s[3]) * sc
-        mp.CFrame = base * CF(p.c[1] * sc, p.c[2] * sc, p.c[3] * sc) * TURN
+        -- CarrierMeta 的块中心、大小已经是游戏里的格（生成时按 scale 换算过，甲板面 Y = 30.5），不再缩放
+        --   （原来照楼房导入抄来的 `* sc`，这里没有 sc：导入了福建舰原模型就报 nil 算术错）
+        mp.Size = V(p.s[1], p.s[2], p.s[3])
+        mp.CFrame = base * CF(p.c[1], p.c[2], p.c[3]) * TURN
         mp.Color = RGB(p.col[1], p.col[2], p.col[3])
         mp.Material = MAT[p.mat] or MAT.Metal
         mp.Parent = m
