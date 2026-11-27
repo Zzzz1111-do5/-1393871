@@ -72,6 +72,29 @@ function Settings.init(G)
     blur.Enabled = false
     blur.Parent = Lighting
   end)
+  -- 模糊淡进淡出（11-27「动画做出丝滑感」：原来一下子 0 → 14）：开 0.2 秒、关 0.12 秒；关完了把效果关掉。系统开了「减少动态效果」就直接开关
+  local TweenService = game:GetService("TweenService")
+  local BLUR_IN = TweenInfo.new(0.2, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+  local BLUR_OUT = TweenInfo.new(0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+  local blurTok = 0
+  local function blurTo(on)
+    if not blur then return end
+    blurTok += 1
+    local still = G.reducedMotion and G.reducedMotion()
+    if on then
+      if not blur.Enabled then blur.Size = still and 14 or 0 end
+      blur.Enabled = true
+      if not still then TweenService:Create(blur, BLUR_IN, { Size = 14 }):Play() end
+    else
+      if not blur.Enabled then return end
+      if still then blur.Enabled = false return end
+      local tok = blurTok
+      TweenService:Create(blur, BLUR_OUT, { Size = 0 }):Play()
+      task.delay(BLUR_OUT.Time, function()
+        if blurTok == tok then blur.Enabled = false blur.Size = 14 end
+      end)
+    end
+  end
 
   G.uiRefit = G.uiRefit or {}   -- 界面比例变了要重新排的（TechUI 的机库、这一页）
   local function apply()
@@ -545,7 +568,7 @@ function Settings.init(G)
   local function close()
     if gui.Enabled then hideOthers(false) end
     gui.Enabled = false
-    if blur then blur.Enabled = false end
+    blurTo(false)
     if openDrop then openDrop:Destroy() openDrop = nil end
     if sendAt then sendAt = os.clock() end   -- 关的时候马上发（不用等 0.4 秒）
   end
@@ -570,7 +593,7 @@ function Settings.init(G)
     fit()
     if not gui.Enabled then hideOthers(true) end
     gui.Enabled = true
-    if blur then blur.Enabled = true end
+    blurTo(true)
   end
   G.closeSettings = close
   function G.settingsShown() return gui.Enabled end

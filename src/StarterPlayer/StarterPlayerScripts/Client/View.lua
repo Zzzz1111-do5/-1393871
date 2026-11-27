@@ -94,6 +94,30 @@ function View.init(G)
   KINDS.c4 = function(m) return { b = { p(m, V(1.1, 0.5, 0.7), CF(), RGB(176, 156, 112)), CF() }, l = { p(m, V(0.2, 0.2, 0.2), CF(), RGB(255, 40, 40), Enum.Material.Neon), CF(0, 0.3, 0) } } end
   KINDS.mine = function(m) return { b = { p(m, V(0.4, 1.4, 1.4), CF(), RGB(86, 96, 64), Enum.Material.Metal, Enum.PartType.Cylinder), CFrame.Angles(0, 0, math.pi / 2) } } end
 
+  -- 别人的东西（飞机、车）的速度（锁定圈、提前量、接近率用；服务器不发速度）：服务器一秒只挪 Root 十来次，
+  --   原来各处每帧算两帧的位置差，算出来是「0、0、一大截、0……」，平滑系数又是按帧给的——锁定圈、提前量跟着一跳一跳，帧率不同手感也不同。
+  --   现在只在位置真的变了才算（这次变和上次变之间挪了多少 / 隔了多久），再按时间常数 0.15 秒平滑（1 − e^(−Δt/0.15)）；
+  --   0.6 秒没挪过就当停了（同 G.follow）。rec：调用方自己留的一张表（第一次给空表）；maxV：一次挪得比这还快当成传送、不算。返回平滑后的速度
+  local VEL_TAU = 0.15
+  function G.velTrack(rec, p, now, maxV)
+    local lp = rec.p
+    if not lp then
+      rec.p, rec.t, rec.v = p, now, Vector3.zero
+      return rec.v
+    end
+    if p ~= lp then
+      local g = now - rec.t
+      if g > 1e-3 then
+        local raw = (p - lp) / g
+        if raw.Magnitude < (maxV or 2000) then rec.v = rec.v:Lerp(raw, 1 - math.exp(-g / VEL_TAU)) end
+      end
+      rec.p, rec.t = p, now
+    elseif now - rec.t > 0.6 then
+      rec.v = Vector3.zero
+    end
+    return rec.v
+  end
+
   local views = {}   -- [entModel] = { model, parts, cf, kind, t, … }
   G.views = views
   local byId = {}    -- [实体编号] = view（开炮后坐要按编号找）

@@ -349,6 +349,17 @@ function WtBattle.init(G)
       end
     end
   end
+  -- 新的一条（11-27「把各种动画效果做出丝滑感」）：原来一下子冒出来、下面几行一下子跳一格——
+  --   现在旧的几行往下滑一格、新的那行从左上滑进第一行（0.15 秒，Quad Out）
+  local TweenService = game:GetService("TweenService")
+  local SLIDE = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+  local function slideFeed()
+    if G.reducedMotion and G.reducedMotion() then return end
+    for i, R in ipairs(feedRows) do
+      R.f.Position = (i == 1) and UD2(0, -18, 0, -22) or UD2(0, 0, 0, (i - 2) * 22)
+      TweenService:Create(R.f, SLIDE, { Position = UD2(0, 0, 0, (i - 1) * 22) }):Play()
+    end
+  end
   -- 火炮支援的落点：地上一圈红（本队看得见；敌人只看得见炮弹落下来）
   local artyMarks = {}
   local function artyMark(e)
@@ -408,6 +419,7 @@ function WtBattle.init(G)
     table.insert(feedList, 1, { txt = feedLine(m), t = os.clock(), mine = m.vid == me.UserId or m.k == me.DisplayName })
     while #feedList > FEED_N do table.remove(feedList) end
     redrawFeed()
+    slideFeed()
   end)
   G.wtFeedRows = function() return feedList end   -- 测试用
 

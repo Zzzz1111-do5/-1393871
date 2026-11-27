@@ -106,6 +106,7 @@ function WtHud.init(G)
     if (m.r == "np" or m.r == "ric") and m.pen and m.arm then sub = T("wt.mm", m.arm, m.pen) .. ((sub ~= "") and ("   " .. sub) or "") end
     hitSub.Text = sub
     hitBox.Visible = true
+    if G.uiPop then G.uiPop(hitBox, 1.15) end   -- 一下子大一点再缩回去（0.12 秒，11-27「动画做出丝滑感」）
     hitUntil = os.clock() + (m.kill and 3.6 or 2.6)
   end
 
@@ -129,6 +130,7 @@ function WtHud.init(G)
     hitTop.TextColor3 = big and KILL or PEN
     hitSub.Text = airBits(m)
     hitBox.Visible = true
+    if G.uiPop then G.uiPop(hitBox, 1.15) end
     hitUntil = os.clock() + (big and 3 or 1.6)
   end
 

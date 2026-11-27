@@ -158,6 +158,8 @@ function WtMap.init(G)
     if y == 0 then text(vehList, L("这一局还没出车", "Nothing spawned yet"), UDim2.new(1, 0, 0, 20), nil, TH.S.small, TH.C.MUTE) end
   end
 
+  local TweenService = game:GetService("TweenService")
+  local DIM_T = TweenInfo.new(0.15, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
   local function setOpen(on)
     if on == open then return end
     open = on
@@ -166,6 +168,13 @@ function WtMap.init(G)
       layout()
       fill()
       if G.mapMount then G.mapMount(holder, UDim2.fromScale(1, 1)) end
+      -- 打开（11-27「动画做出丝滑感」）：原来一下子盖满屏——背后暗下来（0.15 秒）、左栏和地图从 0.96 弹到 1（0.18 秒）
+      if G.uiPop and not (G.reducedMotion and G.reducedMotion()) then
+        dim.BackgroundTransparency = 1
+        TweenService:Create(dim, DIM_T, { BackgroundTransparency = 0.25 }):Play()
+        G.uiPop(left, 0.96, true)
+        G.uiPop(mapBox, 0.96, true)
+      end
     else
       local P = G.hudParts
       if G.mapMount and P then G.mapMount(P.miniClip or P.miniBox, UDim2.fromScale(1, 1)) end

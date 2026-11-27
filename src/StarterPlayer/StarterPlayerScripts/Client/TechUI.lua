@@ -1206,6 +1206,9 @@ function TechUI.init(G)
   function G.hangarSet(show)
     local want = show and G.hangarActive() and not (G.wtSpectating and G.wtSpectating())   -- C ⑮：观战的时候机库收起（WtCam.lua）
     if hangar.Visible ~= want then
+      -- 出击（机库收起、人已经出生了）：镜头从机库一下切到战场——盖 0.1 秒黑再 0.25 秒淡开（UI.lua G.sceneFade；
+      --   11-27「动画做出丝滑感」，顺便把进战场那一下的加载、阴影重画藏在黑里）。阵亡回机库 DeathFx 自己有淡黑淡开
+      if hangar.Visible and not want and G.sceneFade and G.S and G.S.alive then G.sceneFade(0.1, 0.25) end
       hangar.Visible = want
       if Stage then
         shownKey = nil
@@ -1378,11 +1381,30 @@ function TechUI.init(G)
     end
     if H.handleT then H.handleT.Text = (on and "︾  " or "︽  ") .. L("科技树", "Tech tree") .. (on and "  ︾" or "  ︽") end
   end
+  -- 关上：原来一下子没了（打开是从下往上滑出来的）——现在先把机库排好，再往下滑出去（0.2 秒，Quart In）、滑完再藏
+  --   （11-27「动画做出丝滑感」；先排机库再开始滑：排机库那一帧卡一下不会吃掉动画的开头）。滑的时候又点开：停下来滑回去
+  local TSc = game:GetService("TweenService")
+  local SLIDE_OUT = TweenInfo.new(0.2, Enum.EasingStyle.Quart, Enum.EasingDirection.In)
+  local closing, closeTok, panelHome = false, 0, nil
+  H.treeClosing = function() return closing end
   closeTree = function()
-    if not panel.Visible then return end
-    panel.Visible = false
+    if not panel.Visible or closing then return end
     treeShown(false)
     if hangar.Visible then refreshHangar() end
+    if (G.reducedMotion and G.reducedMotion()) or not panelHome or not hangar.Visible then
+      panel.Visible = false
+      return
+    end
+    closing = true
+    closeTok += 1
+    local tok = closeTok
+    pcall(function() TSc:Create(panel, SLIDE_OUT, { Position = panelHome + UDim2.new(0, 0, 0, 520) }):Play() end)
+    task.delay(SLIDE_OUT.Time, function()
+      if closeTok ~= tok or not closing then return end
+      closing = false
+      panel.Visible = false
+      panel.Position = panelHome
+    end)
   end
   H.closeTree = closeTree
   closeB.MouseButton1Click:Connect(closeTree)
@@ -2126,14 +2148,20 @@ function TechUI.init(G)
   -- 点底下的「科技树」：从下往上弹出来（同战雷），停在顶栏下面、底下那一条上面
   local TS = game:GetService("TweenService")
   local panelPos = panel.Position
+  panelHome = panelPos
   openTree = function()
     view.nat = tree.nat
-    local was = panel.Visible
+    local back = closing   -- 正在往下滑着关：从现在的位置滑回去
+    if closing then
+      closing = false
+      closeTok += 1
+    end
+    local was = panel.Visible and not back
     panel.Visible = true
     treeShown(true)
     refreshTree()
     if not was then
-      panel.Position = panelPos + UDim2.new(0, 0, 0, 520)
+      if not back then panel.Position = panelPos + UDim2.new(0, 0, 0, 520) end
       pcall(function() TS:Create(panel, TweenInfo.new(0.28, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), { Position = panelPos }):Play() end)
     end
   end
