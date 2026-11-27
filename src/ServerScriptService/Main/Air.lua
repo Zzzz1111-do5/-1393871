@@ -852,7 +852,7 @@ function Air.init(G)
     local p = e.root.CFrame.Position
     G.fx({ k = "flares", id = e.id, p = p, v = e.vel or V(), n = n })
     for _, s in ipairs(G.shots) do
-      if s.tgt == e and s.w and (s.w.kind == "aam") then
+      if s.tgt == e and s.w and (s.w.kind == "aam" or (s.w.kind == "sam" and s.w.seeker == "ir")) then   -- 红外地空弹（箭-1 的 9M31）也看热诱弹
         -- 红外弹看热诱弹（三成被骗）；雷达弹看箔条（每组诱饵弹里都有：战雷那样）——只有开了导引头的才会被骗（数据链阶段不看），
         --   同时在置零（侧着飞）的话更容易（战雷里「置零 + 箔条」是躲雷达弹的标准动作）
         local chance

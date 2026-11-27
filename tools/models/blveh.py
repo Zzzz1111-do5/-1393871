@@ -3,10 +3,10 @@
 #   用法：/opt/blender/blender -b --factory-startup -P tools/models/blveh.py -- <模型键> <原模型 .glb> <输出 .glb> <分组结果 .json>
 #   配置 tools/models/blveh.json[<模型键>]：
 #     rotZ 绕竖轴转几度（车头朝 −Z）、length 真车全长（米，含炮管不算；按车体长缩放）、groups { 组名: [原节点名…] }（Turret / Gun / Tow / Body；
-#     没点名的归 Body）、wheels [原节点名…]（每个一组 Wnn，自己转）、decimate { 原节点名: 保留比例 }、texMax 贴图最大边长、drop [不要的节点]
+#     没点名的归 Body）、wheels [原节点名…]（每个一组 Wnn，自己转；写 "@W01" 是 split 拆到 W01 组的所有块）、decimate { 原节点名: 保留比例 }、texMax 贴图最大边长、drop [不要的节点]
 #     scale 原模型单位 → 米直接乘（给了就不按 length 缩）；lengthRef [节点…]：按这几块的前后长度缩到 length（不给按车体 + 车轮）
 #     dedupe true：重合的三角形只留一份（游戏里扒的模型常有两三层一模一样的面，Roblox 里会闪）；dedupeFirst [节点…] 先留谁的
-#     split [{ from: [节点…], to: 组名, box: [x0, x1, y0, y1, z0, z1], label: 块名前缀 }]：整个连通块（按位置焊接 1 毫米）落在框里的面拆出来归 to 组
+#     split [{ from: [节点…] | "*"（所有网格）, to: 组名, box: [x0, x1, y0, y1, z0, z1], label: 块名前缀 }]：整个连通块（按位置焊接 1 毫米）落在框里的面拆出来归 to 组
 #       （给了 center: true：连通块包围盒的中心落在框里就算——车体炮塔混在一块的模型，炮塔外壳的块往下伸到甲板以下，整块框不住）
 #       （给了 label：拆出来的单独成块、块名用这个前缀，比如铠甲的搜索雷达 Radar，kinds 里给它 k）
 #       （炮管和车体烘焙成一块的）；框是原模型 glTF 坐标（Y 上，原模型的车头朝哪就是哪）
@@ -82,7 +82,11 @@ for rule in CFG.get('split', []):
     bx = rule['box']
     lo = Vector((bx[0], -bx[5], bx[2]))   # glTF (x, y, z) → Blender (x, −z, y)
     hi = Vector((bx[1], -bx[4], bx[3]))
-    for name in rule['from']:
+    # from 写 "*"：所有还没被前面的规则拆走的网格物体都试（11-27 87 式侦察警戒车这种上千个小物体、节点名是乱码、按名字点不过来的模型；
+    #   先写的规则先挑：炮管先拆进 Gun，后面框住整个炮塔的规则就不会再把炮管拿走）
+    names = [o.name for o in bpy.data.objects if o.type == 'MESH' and len(o.data.polygons) and o.name not in split_group] \
+        if rule['from'] == '*' else rule['from']
+    for name in names:
         o = bpy.data.objects.get(name)
         if not o:
             continue
@@ -162,6 +166,8 @@ rot = Matrix.Rotation(math.radians(CFG.get('rotZ', 0)), 4, 'Z')
 for o in objs:
     o.data.transform(rot)
 WHEEL_SETS = [w if isinstance(w, list) else [w] for w in CFG.get('wheels', [])]
+# "@<组名>"：split 拆到这个组的所有块（from "*" 拆出来的一个轮子是好几十个物体，名字点不过来）
+WHEEL_SETS = [[m for n in ws for m in ([k for k, g in split_group.items() if g == n[1:]] if n.startswith('@') else [n])] for ws in WHEEL_SETS]
 wheel_of = {n: i for i, ws in enumerate(WHEEL_SETS) for n in ws}
 # 分组：每块原网格 → 组（按框拆出来的归拆到的组）
 group_of = {}

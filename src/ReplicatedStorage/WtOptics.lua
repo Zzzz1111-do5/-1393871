@@ -44,6 +44,8 @@ O.TREE_NV = {
   jp_type74 = "ir", jp_type74g = "ii", jp_type10 = "th3",
   ru_t72 = "ir", ru_t72a = "ii", ru_t72b = "ii", ru_t90a = "th2", ru_t72b3 = "th2", ru_t90m = "th3", ru_t64a = "ir", ru_t64b = "ii", ru_t80b = "ii",
   ru_t80u = "ii", ru_t80bvm = "th2", ru_bmp1 = "ir", ru_bmp2 = "ir", ru_bmp2m = "th2", ru_pantsir = "th2",
+  -- 11-27 补的：BRDM-2 炮手的 PP-61AM、箭-1 的光学瞄准具都没有夜视；87 式炮长瞄准镜带微光夜视
+  ru_brdm2 = "none", ru_strela1 = "none", jp_type87rcv = "ii",
 }
 -- 没走科技树的车（沙盒、电脑车）按型号
 O.VEH_NV = {
@@ -51,6 +53,7 @@ O.VEH_NV = {
   t72a = "ii", t64b = "ii", t80b = "ii", t72b = "ii", t80u = "ii", ztz96 = "ii", type74g = "ii",
   m60a3 = "th1", leo1a5 = "th1", leo2a4 = "th1", m1a1 = "th1", ztz99a = "th2", m1a2 = "th2", leo2a6 = "th2", t72b3 = "th2", bmp2m = "th2",
   t80bvm = "th2", m2a3 = "th2", leo2a7v = "th3", type10 = "th3", t90m = "th3", leclerc = "th2",
+  brdm2 = "none", strela1 = "none", type87rcv = "ii",
 }
 local EAST = { cn = true, ru = true }
 function O.nvByYear(year, nat)

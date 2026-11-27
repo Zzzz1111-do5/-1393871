@@ -6650,5 +6650,414 @@
     "gun_01Shape_mat_0.003_0"
    ]
   }
+ },
+ "type87rcv": {
+  "_说明": "87 式侦察警戒车（Mikhail_Zelenov，Sketchfab c99364afb13d4e3d8f4fb83c66dd8c12「Type87 ARV」，CC-BY-4.0，作者自己在 Blender 里做的：物体名是 Blender 默认的 Circle / Plane / Cube 和俄文乱码）；用户 11-27「德国目前没飞机 包括很多缺的载具全部做一下」——日本地面树「轻型 / 歼击车」一列原来空着。原模型 888 个小物体、三张 PBR 材质，车头朝 glTF +Z（Blender −Y）转半圈；单位是米但整车偏小（不含炮全长 4.4 米、真车 5.99 米含炮），统一放大 1.18 倍（含炮长 5.8、高 2.83、宽 2.64）；按框拆（from *）：先拆炮管和并列机枪进 Gun、再拆炮塔（含后面两根天线）、六个车轮（左右两边的轮胎在同一个物体里，按连通块分开）；炮塔转轴给在炮塔壳的中心（自动找的最低一圈偏到一边），炮耳轴给在防盾里",
+  "uid": "c99364afb13d4e3d8f4fb83c66dd8c12",
+  "title": "87 式侦察警戒车",
+  "credit": "87 式侦察警戒车：Type87 ARV，作者 Mikhail_Zelenov（https://sketchfab.com/3d-models/type87-arv-c99364afb13d4e3d8f4fb83c66dd8c12），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "creditEn": "This work is based on \"Type87 ARV\" (https://sketchfab.com/3d-models/type87-arv-c99364afb13d4e3d8f4fb83c66dd8c12) by Mikhail_Zelenov licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：转半圈朝 −Z、放大 1.18 倍到真车尺寸、按部件分组（车体 / 炮塔 / 炮管 / 六个车轮）、贴图缩到 1024",
+  "alias": [
+   "type87rcv"
+  ],
+  "rotZ": 180,
+  "scale": 1.18,
+  "texMax": 1024,
+  "tur": [
+   1.499,
+   1.66,
+   0.486
+  ],
+  "gun": [
+   1.444,
+   1.848,
+   1.15
+  ],
+  "split": [
+   {
+    "from": "*",
+    "to": "Gun",
+    "box": [
+     1.0,
+     1.9,
+     1.7,
+     2.0,
+     1.18,
+     2.8
+    ],
+    "center": true
+   },
+   {
+    "from": "*",
+    "to": "Turret",
+    "box": [
+     0.45,
+     2.6,
+     1.7,
+     3.0,
+     -0.65,
+     1.45
+    ],
+    "center": true
+   },
+   {
+    "from": "*",
+    "to": "Turret",
+    "box": [
+     0.45,
+     2.6,
+     2.2,
+     3.1,
+     -1.6,
+     -0.65
+    ],
+    "center": true
+   },
+   {
+    "from": "*",
+    "to": "W01",
+    "box": [
+     0.48,
+     0.84,
+     0.15,
+     0.85,
+     0.7,
+     1.68
+    ],
+    "center": true
+   },
+   {
+    "from": "*",
+    "to": "W02",
+    "box": [
+     2.16,
+     2.52,
+     0.15,
+     0.85,
+     0.7,
+     1.68
+    ],
+    "center": true
+   },
+   {
+    "from": "*",
+    "to": "W03",
+    "box": [
+     0.48,
+     0.84,
+     0.15,
+     0.85,
+     -0.49,
+     0.49
+    ],
+    "center": true
+   },
+   {
+    "from": "*",
+    "to": "W04",
+    "box": [
+     2.16,
+     2.52,
+     0.15,
+     0.85,
+     -0.49,
+     0.49
+    ],
+    "center": true
+   },
+   {
+    "from": "*",
+    "to": "W05",
+    "box": [
+     0.48,
+     0.84,
+     0.15,
+     0.85,
+     -1.68,
+     -0.7
+    ],
+    "center": true
+   },
+   {
+    "from": "*",
+    "to": "W06",
+    "box": [
+     2.16,
+     2.52,
+     0.15,
+     0.85,
+     -1.68,
+     -0.7
+    ],
+    "center": true
+   }
+  ],
+  "wheels": [
+   "@W01",
+   "@W02",
+   "@W03",
+   "@W04",
+   "@W05",
+   "@W06"
+  ]
+ },
+ "brdm2": {
+  "_说明": "BRDM-2 装甲侦察车（Protdj / zhek，Sketchfab 065dc054914f40fdbfb25ad62d6696b7「BRDM 2 armored reconnaissance vehicle」，CC-BY-4.0，作者 ArtStation 上的作品）；用户 11-27「德国目前没飞机 包括很多缺的载具全部做一下」、待办「各系各分支补 1 级车」——俄罗斯地面树「轻型 / 歼击车」一列原来空着、坦克也没有 1 级。原模型按米、车头朝 −Z（Blender +Y），不转；比真车小一点（轴距 2.77 米、真车 2.84），放大 1.03 倍；四块网格：车体、附件（炮塔、KPVT 14.5 毫米机枪都在里面）、玻璃、车轮（两块）。按框拆（from *）：先拆机枪（炮管、防盾、并列 PKT）进 Gun，再拆锥形炮塔，四个车轮只从车轮网格里按连通块拆（轮胎、轮辋、螺母；车体上的纵梁不跟着转）；炮塔转轴给在锥形炮塔的圆心；车腹四个小辅助轮收着、跟车体走；车轮网格减面（9.3 万 → 约 3.7 万）",
+  "uid": "065dc054914f40fdbfb25ad62d6696b7",
+  "title": "BRDM-2 装甲侦察车",
+  "credit": "BRDM-2 装甲侦察车：BRDM 2 armored reconnaissance vehicle，作者 zhek（Protdj，https://sketchfab.com/3d-models/brdm-2-armored-reconnaissance-vehicle-065dc054914f40fdbfb25ad62d6696b7），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "creditEn": "This work is based on \"BRDM 2 armored reconnaissance vehicle\" (https://sketchfab.com/3d-models/brdm-2-armored-reconnaissance-vehicle-065dc054914f40fdbfb25ad62d6696b7) by zhek (Protdj) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：放大 1.03 倍到真车轴距、按部件分组（车体 / 炮塔 / 机枪 / 四个车轮）、车轮减面、贴图缩到 1024",
+  "alias": [
+   "brdm2"
+  ],
+  "rotZ": 0,
+  "scale": 1.03,
+  "texMax": 1024,
+  "gun": [
+   0.0,
+   1.535,
+   -0.02
+  ],
+  "decimate": {
+   "wheels.005_wheel_0": 0.4,
+   "wheels.005_wheel_0.001": 0.4
+  },
+  "split": [
+   {
+    "from": "*",
+    "to": "Gun",
+    "box": [
+     -0.35,
+     0.35,
+     1.48,
+     1.7,
+     -1.25,
+     0.1
+    ],
+    "center": true
+   },
+   {
+    "from": "*",
+    "to": "Turret",
+    "box": [
+     -0.7,
+     0.7,
+     1.43,
+     1.85,
+     -0.36,
+     0.95
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "wheels.005_wheel_0",
+     "wheels.005_wheel_0.001"
+    ],
+    "to": "W01",
+    "box": [
+     0.5,
+     1.25,
+     -0.55,
+     0.55,
+     -1.75,
+     -0.45
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "wheels.005_wheel_0",
+     "wheels.005_wheel_0.001"
+    ],
+    "to": "W02",
+    "box": [
+     -1.25,
+     -0.5,
+     -0.55,
+     0.55,
+     -1.75,
+     -0.45
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "wheels.005_wheel_0",
+     "wheels.005_wheel_0.001"
+    ],
+    "to": "W03",
+    "box": [
+     0.5,
+     1.25,
+     -0.55,
+     0.55,
+     1.0,
+     2.3
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "wheels.005_wheel_0",
+     "wheels.005_wheel_0.001"
+    ],
+    "to": "W04",
+    "box": [
+     -1.25,
+     -0.5,
+     -0.55,
+     0.55,
+     1.0,
+     2.3
+    ],
+    "center": true
+   }
+  ],
+  "wheels": [
+   "@W01",
+   "@W02",
+   "@W03",
+   "@W04"
+  ],
+  "tur": [
+   0.002,
+   1.4,
+   0.276
+  ]
+ },
+ "strela1": {
+  "_说明": "9K31「箭-1」防空车（9P31 发射车，BRDM-2 底盘；xFORTUNAx，Sketchfab 63cabb6bcc324921b023e46a8a102504「9K31 Strela-1 SAM (9P31 on BRDM-2, Animated)」，CC-BY-4.0：车体是 zhek 的 BRDM-2（同一个作者授权 CC-BY，简介里写明了），发射架、导弹是 xFORTUNAx 自己在 Blender 里做的）；用户 11-27「德国目前没飞机 包括很多缺的载具全部做一下」——俄罗斯地面树「自行防空」一列只有六级的铠甲。原模型按米（真实尺寸 5.75 × 2.45 × 3.39 米）、车头朝 −Z，不转不缩；节点分好了：转台（turret_base）、俯仰架（cradle：框架、四个发射箱、四枚 9M31）、尾焰（不要）；转轴、俯仰轴照原模型的空节点（S1_turret_pivot、S1_cradle_pivot）；四个车轮按框拆，车轮网格减面",
+  "uid": "63cabb6bcc324921b023e46a8a102504",
+  "title": "9K31「箭-1」防空车",
+  "credit": "9K31「箭-1」防空车：9K31 Strela-1 SAM (9P31 on BRDM-2, Animated)，作者 xFORTUNAx（https://sketchfab.com/3d-models/9k31-strela-1-sam-9p31-on-brdm-2-animated-63cabb6bcc324921b023e46a8a102504；车体用的是 zhek 的「BRDM 2 armored reconnaissance vehicle」），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "creditEn": "This work is based on \"9K31 Strela-1 SAM (9P31 on BRDM-2, Animated)\" (https://sketchfab.com/3d-models/9k31-strela-1-sam-9p31-on-brdm-2-animated-63cabb6bcc324921b023e46a8a102504) by xFORTUNAx (hull: \"BRDM 2 armored reconnaissance vehicle\" by zhek) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)",
+  "changes": "Blender 转换（tools/models/blveh.py）：按部件分组（车体 / 转台 / 俯仰的发射架和导弹 / 四个车轮）、去掉尾焰、车轮减面、贴图缩到 1024",
+  "alias": [
+   "strela1"
+  ],
+  "rotZ": 0,
+  "scale": 1.0,
+  "texMax": 1024,
+  "drop": [
+   "Object_58"
+  ],
+  "tur": [
+   0.0,
+   1.98,
+   0.308
+  ],
+  "gun": [
+   0.0,
+   3.02,
+   0.308
+  ],
+  "groups": {
+   "Turret": [
+    "Object_60"
+   ],
+   "Gun": [
+    "Object_23",
+    "Object_25",
+    "Object_27",
+    "Object_29",
+    "Object_31",
+    "Object_33",
+    "Object_35",
+    "Object_37",
+    "Object_39",
+    "Object_41",
+    "Object_43",
+    "Object_45",
+    "Object_47",
+    "Object_49",
+    "Object_52",
+    "Object_54",
+    "Object_56"
+   ]
+  },
+  "decimate": {
+   "Object_16": 0.4,
+   "Object_17": 0.5,
+   "Object_19": 0.4
+  },
+  "split": [
+   {
+    "from": [
+     "Object_16",
+     "Object_17",
+     "Object_19"
+    ],
+    "to": "W01",
+    "box": [
+     0.5,
+     1.35,
+     0.0,
+     1.15,
+     -1.95,
+     -0.45
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_16",
+     "Object_17",
+     "Object_19"
+    ],
+    "to": "W02",
+    "box": [
+     -1.35,
+     -0.5,
+     0.0,
+     1.15,
+     -1.95,
+     -0.45
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_16",
+     "Object_17",
+     "Object_19"
+    ],
+    "to": "W03",
+    "box": [
+     0.5,
+     1.35,
+     0.0,
+     1.15,
+     1.05,
+     2.5
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_16",
+     "Object_17",
+     "Object_19"
+    ],
+    "to": "W04",
+    "box": [
+     -1.35,
+     -0.5,
+     0.0,
+     1.15,
+     1.05,
+     2.5
+    ],
+    "center": true
+   }
+  ],
+  "wheels": [
+   "@W01",
+   "@W02",
+   "@W03",
+   "@W04"
+  ]
  }
 }

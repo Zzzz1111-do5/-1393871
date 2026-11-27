@@ -36,8 +36,8 @@ local t = G.treeOf(P)
 for _, nat in ipairs(TT.NATIONS) do
   local st = TT.starter(nat, "ground")
   local lo = math.huge
-  for _, it in ipairs(TT.list[nat].ground) do if it.col <= 3 then lo = math.min(lo, it.rank) end end   -- 坦克那几列（主战、第二条线、轻型）
-  check(st ~= nil and st.rank == lo and st.col <= 3 and TT.owned(t, st.key) and TT.researched(t, st.key),
+  for _, it in ipairs(TT.list[nat].ground) do if it.col <= 3 and not it.scout then lo = math.min(lo, it.rank) end end   -- 坦克那几列（主战、第二条线、轻型；侦察车不算）
+  check(st ~= nil and st.rank == lo and st.col <= 3 and not st.scout and TT.owned(t, st.key) and TT.researched(t, st.key),
     string.format("%s：送 %s（等级 %s，这个系坦克最低 %s）", nat, tostring(st and st.name), tostring(st and st.rank), tostring(lo)))
   for _, br in ipairs({ "air", "heli" }) do
     local s2 = TT.starter(nat, br)

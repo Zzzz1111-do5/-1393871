@@ -56,6 +56,13 @@ VehDefs.W = {
     vs = { inf = 1, light = 1, armor = 0.22, air = 1.4, ship = 0.35, fort = 0.6 }, fx = "ac", cal = 0.2 },
   ac35 = { kind = "shell", dmg = 46, speed = 1300, drop = 0.15, splash = 5, rate = 0.07, mag = 120, reload = 5, reserve = 600, range = 2400,
     vs = { inf = 0.8, light = 0.8, armor = 0.1, air = 2.4, ship = 0.25, fort = 0.35 }, fx = "ac", cal = 0.2 },
+  -- 87 式侦察警戒车的厄利空 KBA 25 毫米机关炮（日本制钢所特许生产；用户 11-27「很多缺的载具全部做一下」：日本「轻型」一列）：
+  --   双路供弹，最高射速约 600 发 / 分；脱壳穿甲曳光弹初速 1335 米 / 秒（1 公里约 50 毫米）——速度按真弹换算成格（ac30 还是旧的游戏值）
+  ac25 = { kind = "shell", dmg = 52, speed = 3738, drop = 0.15, splash = 3.5, rate = 0.1, mag = 100, reload = 6, reserve = 300, range = 2400,
+    vs = { inf = 1, light = 1, armor = 0.2, air = 1.3, ship = 0.3, fort = 0.55 }, fx = "ac", cal = 0.18 },
+  -- BRDM-2 的 KPVT 14.5 毫米重机枪（BPU-1 单人炮塔，一节弹链 50 发、车里一共 500 发，约 600 发 / 分；B-32 穿甲燃烧弹 500 米约 32 毫米）
+  kpvt = { kind = "gun", dmg = 62, rate = 0.1, mag = 50, reload = 6, reserve = 450, range = 1600, spread = 0.4,
+    vs = { inf = 1, light = 0.8, armor = 0.08, air = 0.6, ship = 0.1, fort = 0.25 }, fx = "lmg" },
   -- 铠甲-S1 的两门 2A38M 双管 30 毫米高炮（一门一分钟两千五百发，两门一起打）：打飞机为主，地面也能扫
   ac30aa = { kind = "shell", dmg = 44, speed = 1320, drop = 0.15, splash = 4.5, rate = 0.03, mag = 350, reload = 6, reserve = 1050, range = 2600,
     vs = { inf = 0.9, light = 0.8, armor = 0.12, air = 2.3, ship = 0.25, fort = 0.35 }, fx = "ac", cal = 0.2 },
@@ -63,6 +70,11 @@ VehDefs.W = {
   --   的速度、转弯飞（Armor.lua）；12 枚，打完回基地补
   s57e6 = { kind = "sam", dmg = 520, rate = 1.6, mag = 12, reload = 0, reserve = 0, range = 6000,
     vs = { inf = 0.3, light = 0.4, armor = 0.1, air = 1, ship = 0.2, fort = 0.1 }, fx = "msl" },
+  -- 9K31「箭-1」的 9M31 地空导弹（用户 11-27「全部做一下」：俄罗斯「自行防空」一列）：红外导引头（热诱弹骗得了，Air.lua flare），
+  --   发射架上四枚、车里不带备弹（打完回基地补）；也要 Q 锁住一架飞机才发（光学瞄准 + 导引头截获，游戏里同铠甲的防空火控）；
+  --   射程按游戏的比例尺（57E6 真车约 20 公里 → 6000；9M31 约 4.2 公里，比针-V 还近）；飞行参数在 AirDefs.W.s9m31
+  s9m31 = { kind = "sam", dmg = 380, rate = 3, mag = 4, reload = 0, reserve = 0, range = 2000,
+    vs = { inf = 0.3, light = 0.3, armor = 0.05, air = 1, ship = 0.2, fort = 0.1 }, fx = "msl" },
   vulcan = { kind = "shell", dmg = 26, speed = 1200, drop = 0.2, splash = 2.5, rate = 0.035, mag = 300, reload = 6, reserve = 1200, range = 1600,
     vs = { inf = 1, light = 0.6, armor = 0.05, air = 2.0, ship = 0.15, fort = 0.25 }, fx = "ac", cal = 0.14 },
   -- 车顶 GAU-8 加特林附件（坦克改装，TankMods.OPT.gau8）：30 毫米，一秒二十发，2048 发
@@ -370,6 +382,30 @@ D.jltv = wheeled({ cat = "apc", L = 17, W = 7.0, H = 7.2, hullH = 5.2, clear = 1
   gun = { pivot = V(0, 0.6, -0.6), len = 4.4, cal = 0.18 }, sight = V(0, 1.4, -0.8),
   smoke = { banks = { { at = V(1.4, 0.4, -0.6), yaw = 35 }, { at = V(-1.4, 0.4, -0.6), yaw = -35 } }, n = 2 },
   weapons = { "hmg" }, seats = 4 })
+-- 87 式侦察警戒车（用户 11-27「德国目前没飞机 包括很多缺的载具全部做一下」：日本地面树「轻型 / 歼击车」一列原来空着；
+--   原模型 Mikhail_Zelenov 的 Type87 ARV，tools/models/blveh.json type87rcv）：小松的 6×6 轮式侦察车（82 式指挥通信车的底盘，前两轴转向），
+--   15 吨、五十铃 10PBI 柴油机 305 马力（20 马力 / 吨）、公路 100 公里 / 时；双人炮塔一门 KBA 25 毫米机关炮 + 74 式 7.62 毫米并列机枪，
+--   炮塔两侧各三具烟幕弹发射筒；五人车组（车长、炮长、驾驶员、前后两名观察员，观察员能下车）。真车全长 5.99 米（含炮）、宽 2.48、高 2.8；
+--   尺寸、车轴、炮塔转轴、炮耳轴、瞄准镜、烟幕弹照模型量的（ImportedMeta type87rcv）。炮塔转速、俯仰范围没查到公开数字：按同类双人炮塔估
+D.type87rcv = wheeled({ cat = "apc", L = 15.2, W = 7.4, H = 7.6, hullH = 5.5, clear = 1.8, speed = 77.8, accel = 4.5, rev = 15.6, turn = 44,
+  axles = { -3.85, 0.07, 4.0 }, steer = 2, wr = 1.63, ww = 1.1, wx = 2.7,
+  turret = { pivot = V(0.08, 5.49, -1.54), size = V(4.9, 1.7, 4.9), style = "ifv", trav = 40, elev = { -10, 45 } },
+  gun = { pivot = V(0.18, 0.62, -2.19), len = 4.9, cal = 0.16 }, coax = V(0.85, 0.86, -2.8),
+  sight = V(-1.8, 1.1, -1.5),
+  smoke = { banks = { { at = V(2.4, 0.4, 1.7), yaw = 50 }, { at = V(-2.4, 0.4, 1.7), yaw = -50 } }, n = 3 },
+  sightZoom = { day = { 4, 8 }, th = { 4 } },
+  weapons = { "ac25", "coax" }, seats = 3 })
+-- BRDM-2 装甲侦察车（用户 11-27 同上：俄罗斯地面树「轻型 / 歼击车」一列原来空着、坦克也没有 1 级；原模型 zhek（Protdj），
+--   tools/models/blveh.json brdm2）：1963 年起装备，7 吨、GAZ-41 汽油机 140 马力（20 马力 / 吨）、公路 95 公里 / 时，能浮渡（水上喷水推进 10 公里 / 时）；
+--   车腹两边各两个辅助小轮（越壕时放下，游戏里收着）；BPU-1 单人锥形炮塔：KPVT 14.5 毫米重机枪 + PKT 7.62 毫米并列机枪，手摇转塔、俯仰 −5°～+30°；
+--   装甲首上 14 毫米、侧面 7 毫米。四人车组（车长、驾驶员、炮手、观察员）。尺寸、车轴、炮塔转轴、机枪耳轴照模型量的（ImportedMeta brdm2）
+D.brdm2 = wheeled({ cat = "apc", L = 15.5, W = 6.6, H = 6.6, hullH = 5.7, clear = 1.2, speed = 73.9, accel = 4.4, rev = 15.6, turn = 46, amphib = true, boat = true,
+  axles = { -3.27, 4.73 }, steer = 1, wr = 1.55, ww = 1.0, wx = 2.42,
+  turret = { pivot = V(0.01, 5.58, 0.73), size = V(3.6, 1.0, 3.6), style = "ifv", trav = 24, elev = { -5, 30 } },
+  gun = { pivot = V(-0.01, 0.39, -0.85), len = 3.4, cal = 0.1 },
+  sight = V(-0.45, 0.75, -0.9),
+  sightZoom = { day = { 2.6 } },   -- PP-61AM 潜望瞄准镜 2.6 倍，没有夜视
+  weapons = { "kpvt", "coax" }, seats = 2 })
 
 ---------------------------------------------------------------- 防空
 
@@ -399,6 +435,14 @@ D.pantsir = wheeled({ cat = "aa", L = 28.8, W = 8.4, H = 11.4, hullH = 7.5, clea
   gun = { pivot = V(0, 1.33, 0.53), len = 7.2, cal = 0.2 }, sight = V(0, 3.1, -2.6),
   smoke = { banks = { { at = V(2.4, 0.4, -1.6), yaw = 35 }, { at = V(-2.4, 0.4, -1.6), yaw = -35 } }, n = 4 },
   weapons = { "ac30aa", "s57e6" } })
+-- 9K31「箭-1」防空车（9P31 发射车；用户 11-27「很多缺的载具全部做一下」：俄罗斯地面树「自行防空」一列只有六级的铠甲；
+--   原模型 xFORTUNAx（车体是 zhek 的 BRDM-2），tools/models/blveh.json strela1）：1968 年起装备，BRDM-2 底盘（7 吨、140 马力、95 公里 / 时、能浮渡），
+--   炮塔换成转台 + 俯仰的四联装 9M31 发射架（光学瞄准，红外导引头）；三人车组。转轴、俯仰轴照原模型的空节点（ImportedMeta strela1）
+D.strela1 = wheeled({ cat = "aa", L = 16.1, W = 6.9, H = 9.5, hullH = 5.6, clear = 1.2, speed = 73.9, accel = 4.2, rev = 15.6, turn = 46, amphib = true, boat = true,
+  axles = { -3.39, 4.91 }, steer = 1, wr = 1.6, ww = 1.0, wx = 2.52,
+  turret = { pivot = V(0, 5.55, 0.86), size = V(3.7, 1.8, 3.7), style = "launcher", trav = 40, elev = { -5, 80 } },
+  gun = { pivot = V(0, 2.91, 0), len = 3.0, cal = 0 }, sight = V(0, 2.4, -1.4),
+  weapons = { "s9m31" } })
 D.ld2000 = wheeled({ cat = "aa", L = 30, W = 8.6, H = 10.4, hullH = 5.8, clear = 1.9, speed = 66.1, accel = 8, rev = 19.4, turn = 34, truck = true,
   axles = { -10.6, -6.6, 3.4, 7.2 }, steer = 2, wr = 1.65, ww = 1.15, wx = 3.5,
   turret = { pivot = V(0, 5.8, 4.6), size = V(4.0, 2.6, 4.0), style = "vulcan", trav = 90, elev = { -5, 85 }, radar = true },
@@ -449,7 +493,8 @@ D.patriot = wheeled({ cat = "aa", L = 28, W = 8.4, H = 10, hullH = 4.4, clear = 
 
 -- 没有激光测距机的（用户 11-25「全部都做」⑤：战雷历史模式里这种车按 R 是车长估距——要等两秒、有误差）：
 --   豹 1（体视测距仪，豹 1A5 才换激光）、M60A1（合像测距仪，M60A3 才有激光）、BMP-1；其余的车都有激光测距
-local NO_LRF = { leo1 = true, m60a1 = true, bmp1 = true, t64a = true }   -- T-64A：TPD-2-49 合像测距瞄准镜（T-64B 才有激光）
+local NO_LRF = { leo1 = true, m60a1 = true, bmp1 = true, t64a = true,   -- T-64A：TPD-2-49 合像测距瞄准镜（T-64B 才有激光）
+  brdm2 = true, strela1 = true, type87rcv = true }   -- 11-27 补的：BRDM-2 的 PP-61AM、箭-1 的光学瞄准具、87 式的潜望瞄准镜都没有激光测距
 -- 每个型号补上默认值、名字
 for id, d in pairs(D) do
   d.id = id

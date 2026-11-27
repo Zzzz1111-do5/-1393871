@@ -312,6 +312,7 @@ local VEH = {
   t72ural = { "T-72 乌拉尔 主战坦克", "T-72 Ural MBT" }, t72a = { "T-72A 主战坦克", "T-72A MBT" }, t72b = { "T-72B 主战坦克", "T-72B MBT" },
   t80u = { "T-80U 主战坦克", "T-80U MBT" }, t80b = { "T-80B 主战坦克", "T-80B MBT" }, t80bvm = { "T-80BVM 主战坦克", "T-80BVM MBT" },
   type59 = { "59 式中型坦克", "Type 59 Medium Tank" }, type69 = { "69-II 式中型坦克", "Type 69-II Medium Tank" },
+  type87rcv = { "87 式侦察警戒车", "Type 87 RCV" }, brdm2 = { "BRDM-2 装甲侦察车", "BRDM-2 Scout Car" }, strela1 = { "9K31「箭-1」防空车", "9K31 Strela-1 SAM" },
   t64a = { "T-64A 主战坦克", "T-64A MBT" }, t64b = { "T-64B 主战坦克", "T-64B MBT" }, type74 = { "74 式主战坦克", "Type 74 MBT" }, type74g = { "74 式改主战坦克", "Type 74 (G) MBT" },
   gepard1a1 = { "猎豹 1A1 自行高炮", "Gepard 1A1 SPAAG" }, gepard1a2 = { "猎豹 1A2 自行高炮", "Gepard 1A2 SPAAG" },
   bmp1 = { "BMP-1 步兵战车", "BMP-1 IFV" }, bmp2 = { "BMP-2 步兵战车", "BMP-2 IFV" }, bmp2m = { "BMP-2M 步兵战车", "BMP-2M IFV" },
@@ -1053,6 +1054,10 @@ add("vw.gun125r", "125 毫米炮（2A46M-5）", "125 mm 2A46M-5")
 add("vw.gun100", "100 毫米炮（2A70）", "100 mm 2A70")
 add("vw.ac30aa", "30 毫米高炮（2A38M ×2）", "30 mm 2A38M ×2")
 add("vw.s57e6", "57E6 地空导弹", "57E6 SAM")
+add("vw.s9m31", "9M31 地空导弹（箭-1）", "9M31 SAM (Strela-1)")
+add("aw.s9m31", "9M31 地空导弹", "9M31 SAM")
+add("vw.ac25", "25 毫米机关炮（KBA）", "25 mm KBA autocannon")
+add("vw.kpvt", "14.5 毫米重机枪（KPVT）", "14.5 mm KPVT HMG")
 add("veh.samNeedLock", "先按 Q 用雷达锁住一架飞机，再发射导弹", "Lock an aircraft with the radar (Q) before launching")
 add("aw.s57e6", "57E6 地空导弹", "57E6 SAM")
 add("vw.gun120", "120 毫米炮", "120 mm gun")

@@ -97,6 +97,11 @@ AirDefs.W = {
   --   弹长 3.2 米、助推器直径 0.17 米，两级、无线电指令制导（kind sam：热诱弹不骗它）
   s57e6 = { kind = "sam", dmg = 520, splash = 18, speed = 900, range = 6000, turn = 50, burn = 5, life = 13, vs = VS_AAM,
     shape = { L = 9.0, d = 0.48, fin = 0.8 } },
+  -- 9K31「箭-1」的 9M31 地空导弹（11-27，地面车 strela1 发射；车上的弹药数在 VehDefs.W.s9m31）：1.8 米、0.12 米、30 公斤，
+  --   非制冷硫化铅红外导引头（seeker ir：Air.lua 的热诱弹骗得了它），最大速度约 420 米 / 秒、射程约 4.2 公里——比针-V 慢、近、转得笨；
+  --   发动机、过载、掉速直接写在这里（不进下面的 MOTOR 表）
+  s9m31 = { kind = "sam", seeker = "ir", dmg = 380, splash = 11, speed = 350, range = 2000, turn = 35, burn = 3, g = 14, bleed = 0.2, smoke = "med",
+    life = 7, vs = VS_AAM, shape = { L = 5.0, d = 0.34, fin = 0.7 } },
 
   akd10 = { kind = "agm", dmg = 900, splash = 10, speed = 380, range = 2400, lockTime = 1.2, cone = 25, turn = 40, burn = 6, life = 9, vs = VS_AGM,
     shape = { L = 5.0, d = 0.5, fin = 0.7 } },

@@ -148,6 +148,9 @@ local LIST = {
       { "jp_type74", "74式主战坦克", "Type 74", 1975, 2, 1, 8.0, veh = "type74" },
       { "jp_type74g", "74式改", "Type 74 (G)", 1993, 4, 1, 8.7, veh = "type74g" },
       { "jp_type10", "10式主战坦克", "Type 10", 2012, 6, 2, 11.3, veh = "type10" },
+      -- 11-27（用户「德国目前没飞机 包括很多缺的载具全部做一下」）：「轻型 / 歼击车」一列原来空着，补 87 式侦察警戒车（Sketchfab 真模型，
+      --   tools/models/blveh.json type87rcv）；四级这样有两辆，研究六级的 10 式要两辆都研究完
+      { "jp_type87rcv", "87式侦察警戒车", "Type 87 RCV", 1987, 4, 3, 7.3, veh = "type87rcv", scout = true },
     },
     [A] = {
       { "jp_f15j", "F-15J 鹰", "F-15J", 1981, 3, 1, 12.3, veh = "f15" },
@@ -163,7 +166,7 @@ local LIST = {
   },
   ru = {
     [G] = {
-      { "ru_t72", "T-72 乌拉尔", "T-72 Ural", 1973, 2, 1, 8.0, veh = "t72ural", model = "t72b3", free = true },   -- T-55 / T-62 没有原模型（删了）：T-72 白送
+      { "ru_t72", "T-72 乌拉尔", "T-72 Ural", 1973, 2, 1, 8.0, veh = "t72ural", model = "t72b3", free = true },   -- T-55 / T-62 没有原模型（删了；11-27 又找了一遍：Sketchfab 上能下的不是扒的就是粗模）
       { "ru_t72a", "T-72A", "T-72A", 1979, 3, 1, 8.7, veh = "t72a", model = "t72b3" },
       { "ru_t72b", "T-72B", "T-72B", 1985, 4, 1, 9.7, veh = "t72b", model = "t72b3" },
       { "ru_t90a", "T-90A", "T-90A", 2004, 5, 1, 10.7, base = "t90m" },
@@ -177,6 +180,12 @@ local LIST = {
       { "ru_bmp1", "BMP-1", "BMP-1", 1966, 1, 4, 6.7, veh = "bmp1" },
       { "ru_bmp2", "BMP-2", "BMP-2", 1980, 3, 4, 7.7, veh = "bmp2" },
       { "ru_bmp2m", "BMP-2M", "BMP-2M", 2000, 5, 4, 9.3, veh = "bmp2m", model = "bmp2" },
+      -- 11-27（用户「很多缺的载具全部做一下」、待办「各系各分支补 1 级车」）：「轻型 / 歼击车」一列原来空着、坦克几列没有 1 级——
+      --   补 BRDM-2（1 级，Sketchfab 真模型，blveh.json brdm2）。它是装甲侦察车、不是坦克（scout）：起步车照旧是 T-64A
+      --   （用户 11-26「每个系从只给一辆最基础的坦克开始」——一挺 14.5 毫米机枪的侦察车打不动任何坦克，新玩家开它没法玩）。
+      --   「自行防空」补 9K31 箭-1（2 级，blveh.json strela1），接在铠甲前面
+      { "ru_brdm2", "BRDM-2", "BRDM-2", 1963, 1, 3, 5.7, veh = "brdm2", scout = true },
+      { "ru_strela1", "9K31「箭-1」", "9K31 Strela-1", 1968, 2, 5, 7.0, veh = "strela1" },
       { "ru_pantsir", "铠甲-S1", "Pantsir-S1", 2012, 6, 5, 10.7, veh = "pantsir" },
     },
     [A] = {   -- 用户 11-26 给的原模型：米格-29、苏-25、苏-35S、T-50、苏-57（bohmerang / Immersive3A）；苏-27 系借苏-35S 的模型（原来借歼-11 的，机身上是中国机徽）
@@ -202,6 +211,7 @@ local LIST = {
 --   按规则现算、不逐项写死（上面行里的 free = true 不再看）——以后加了更老的车，白送的自动换成它：
 --   各列打头（没有前置）的车里，最低一级、年份最老的那一辆（再一样按战斗等级低的、列表里靠前的）；
 --   地面树只在坦克那几列（主战、第二条线、轻型）里挑，一辆坦克都没有才看步战车、防空车；
+--   轻型那一列里的侦察车（scout：BRDM-2、87 式侦察警戒车）不算坦克，不挑它；
 --   直升机树、固定翼哪一列都行（11-26 纯运输直升机删了：起步的是最老、级别最低的那架——米-8MT、UH-1N、AH-1S、直-8、虎式）
 local STARTER_COLS = { ground = { [1] = true, [2] = true, [3] = true } }
 local function pickStarter(list, br)
@@ -209,7 +219,7 @@ local function pickStarter(list, br)
   for pass = 1, 2 do
     local best, bi
     for i, it in ipairs(list) do
-      if it.prev == nil and (pass == 2 or not pref or pref[it.col]) then
+      if it.prev == nil and (pass == 2 or not pref or (pref[it.col] and not it.scout)) then
         local better = not best
         if best then
           if it.rank ~= best.rank then better = it.rank < best.rank
@@ -237,7 +247,7 @@ for _, nat in ipairs(TT.NATIONS) do
     local out, lastInCol = {}, {}
     for _, row in ipairs(LIST[nat][br]) do
       local it = { key = row[1], name = row[2], en = row[3], year = row[4], rank = row[5], col = row[6], br = row[7],
-        veh = row.veh, base = row.base, model = row.model, nat = nat, branch = br }
+        veh = row.veh, base = row.base, model = row.model, scout = row.scout, nat = nat, branch = br }
       it.play = it.veh or it.base   -- 出车开哪一型
       it.stand = it.veh == nil      -- 暂用别的型号（模型和性能都借）
       -- model：性能是这一型自己的（VehDefs 里有它的炮、弹、装甲、机动），只是还没有它自己的模型，借同族那一型的真模型
