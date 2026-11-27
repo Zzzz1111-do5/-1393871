@@ -211,9 +211,10 @@ local nTry = 0
 local rpOwn = R.RaycastParams.new()
 rpOwn.FilterDescendantsInstances = { e.model, me.Character }
 local why = {}
+-- 从车头正前方（-Z，车是朝 -Z 摆的）开始，左右交替往两边找：炮塔不用转半圈（59 式转一圈要二十多秒）
 for _, rr in ipairs({ 1400, 1260, 1540, 1120, 1700 }) do
   for k = 0, 71 do
-    local a = k / 72 * math.pi * 2
+    local a = math.pi + (k % 2 == 0 and 1 or -1) * math.floor((k + 1) / 2) * (math.pi / 36)
     local x, z = spot.x + math.sin(a) * rr, spot.z + math.cos(a) * rr
     if Map.isLand(x, z) and Map.slope(x, z) < 0.3 then
       nTry = nTry + 1
@@ -300,14 +301,22 @@ local function aimAt(p)
     st.camPitch = math.atan(dv.Y, math.sqrt(dv.X * dv.X + dv.Z * dv.Z))
   end)
 end
-for _ = 1, 30 do aimAt(tgt.root.CFrame.Position + V3(0, 1, 0)) R.run(0.1) end
+-- 等炮塔转过来（最多 20 秒）：标记打到靶车上就停
+local function underTgt(inst)
+  local q = inst
+  while q and q ~= R.services.Workspace do if q == tgt.model then return true end q = q.Parent end
+  return false
+end
+for _ = 1, 200 do
+  aimAt(tgt.root.CFrame.Position + V3(0, 1, 0))
+  R.run(0.1)
+  local g = C.driveGunHit and C.driveGunHit()
+  if g and g.inst and underTgt(g.inst) then break end
+end
+R.run(0.3)
 local gh = C.driveGunHit and C.driveGunHit()
 if C.driveGunErr then print("    gunImpact 出错：" .. tostring(C.driveGunErr)) end
-local onTgt = false
-if gh and gh.inst then
-  local q = gh.inst
-  while q and q ~= R.services.Workspace do if q == tgt.model then onTgt = true break end q = q.Parent end
-end
+local onTgt = gh ~= nil and gh.inst ~= nil and underTgt(gh.inst)
 check(gh ~= nil and onTgt, string.format("炮管标记打在靶车上（落点 %s 米、打到 %s）", gh and string.format("%.0f", gh.R) or "-", gh and gh.inst and gh.inst:GetFullName() or "nil"))
 check(gh ~= nil and gh.blocked == false, "没有被挡")
 -- 炮口前面一道矮墙，还瞄着靶车：炮口被挡
