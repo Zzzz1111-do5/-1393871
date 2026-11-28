@@ -529,7 +529,9 @@ function View.init(G)
   end
   G.stepToss = stepToss
   -- 残骸烧的三段（用户 11-28「然后有浓烈的烟雾我持续冒」，见 stepVeh 里那段）：车身火、黑烟每秒几颗；超过 WRECK_THICK 处的烟柱细一档
-  local WRECK_FIRE, WRECK_BLACK, WRECK_THIN, WRECK_THICK = { 30, 14, 5 }, { 8, 7, 5 }, 2.5, 10
+  --   11-28 晚（用户「现在感觉有点卡」）：浓烟柱是一颗颗几十格大的半透明烟团，几处叠在一起每个像素要画几十层——同时冒浓烟的从 10 处减到 6 处
+  --   （机器跟不上、自动画质降下来时 3 处），每秒的颗数、细一档的烟都少一点；烟团的大小 WreckFx heavyBurn 也收了一成多
+  local WRECK_FIRE, WRECK_BLACK, WRECK_THIN, WRECK_THICK = { 26, 12, 5 }, { 7, 6, 5 }, 2, 6
   G.wreckBurnRates = { fire = WRECK_FIRE, black = WRECK_BLACK, thin = WRECK_THIN, thick = WRECK_THICK }   -- 测试用
   -- 残骸车身黑烟的 Rate：远近两个发射器（WreckFx.lua 的 G.wreckBlackRate：镜头近的喷小一号那根，另一根 0）
   local function setBlack(M, r)
@@ -1175,8 +1177,9 @@ function View.init(G)
     -- 冒浓烟的残骸最多 WRECK_THICK 处（最近打掉的优先），再早的细一档（stepVeh 按 v.smokeThin 换 Rate）
     local wr = {}
     for _, v in pairs(views) do if v.wreckT then wr[#wr + 1] = v end end
-    if #wr > WRECK_THICK then table.sort(wr, function(a, b) return a.wreckT > b.wreckT end) end
-    for i, v in ipairs(wr) do v.smokeThin = (i > WRECK_THICK) or nil end
+    local nThick = ((G.perfK or 1) < 0.8) and math.min(3, WRECK_THICK) or WRECK_THICK
+    if #wr > nThick then table.sort(wr, function(a, b) return a.wreckT > b.wreckT end) end
+    for i, v in ipairs(wr) do v.smokeThin = (i > nThick) or nil end
   end
 
   function G.stepView(dt)

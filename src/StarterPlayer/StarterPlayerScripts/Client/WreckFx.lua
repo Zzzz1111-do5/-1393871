@@ -639,7 +639,7 @@ function WreckFx.init(G)
     local acc = V(0, 2.4, 0)
     if VL.wind().Magnitude < 0.5 then acc = V(2.6, 2.4, 1.2) end   -- 地图没设风：照旧写死顺风歪过去
     -- 烟柱（11-28 用户「浓烈的烟雾我持续冒」）：粗一点、高一点（活 5.5～8.5 秒、往上冲得快一点，四五十米高的一根），越往上越大越淡、顺风歪
-    local s0, s1, s2 = strong and 7 or 5, strong and 18 or 13, strong and 50 or 36
+    local s0, s1, s2 = strong and 7 or 5, strong and 16 or 12, strong and 42 or 31   -- 11-28 晚：最上面 50 → 42 格（卡：烟团越大要画的像素越多）
     for _, e in ipairs({ b or false, bn or false }) do
       if e then
         local kk = (e == bn) and 0.7 or 1
@@ -786,11 +786,12 @@ function WreckFx.init(G)
         if d < shR then G.shake(0.9 * (1 - d / shR)) end
       end
       heavyBurn(M, true)
-      -- 车身大火先小一点（第一秒火球、碎块、舱口火柱都在喷），两秒半以后照 View.lua 的节奏烧到 30
+      -- 车身大火先小一点（第一秒火球、碎块、舱口火柱都在喷），两秒半以后照 View.lua 的节奏烧到头一分钟那一档（G.wreckBurnRates.fire[1]）
       if M.fire then
         M.fire.Rate = 10
         task.delay(2.5, function()
-          if M.fire and M.fire.Parent and not v.burnt1 and M.fire.Rate < 30 then M.fire.Rate = 30 end
+          local full = (G.wreckBurnRates and G.wreckBurnRates.fire[1]) or 26
+          if M.fire and M.fire.Parent and not v.burnt1 and M.fire.Rate < full then M.fire.Rate = full end
         end)
       end
     elseif why == "fire" then

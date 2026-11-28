@@ -1103,8 +1103,11 @@ function WtTank.init(G)
       o.f.Position = UD2(0, SC.cx + x * SC.k, 0, SC.cy + z * SC.k)
       local s = have[o.it.role] and seat[o.it.role] or 0
       local col = (s == 2) and C_OK or ((s == 1) and C_HURT or C_DEAD)
-      o.head.BackgroundColor3, o.body.BackgroundColor3 = col, col
-      o.x.Visible = s == 0
+      if o.pc ~= col then
+        o.pc = col
+        o.head.BackgroundColor3, o.body.BackgroundColor3 = col, col
+        o.x.Visible = s == 0
+      end
     end
     -- 模块
     local wm = em and em:GetAttribute("WtM") or ""
@@ -1115,8 +1118,12 @@ function WtTank.init(G)
       local col, tr = M_OK, 0.8
       if s == 1 then col, tr = M_HURT, 0.2 elseif s == 0 then col, tr = M_DEAD, 0.1 end
       if t < m.flash and (t * 8) % 1 < 0.5 then col, tr = WHITE, 0 end
-      m.f.BackgroundColor3, m.f.BackgroundTransparency = col, tr
-      m.s.Color, m.s.Transparency = col, (s == 2) and 0.55 or 0
+      local st = (s == 2) and 0.55 or 0
+      if m.pc ~= col or m.pt ~= tr or m.ps ~= st then   -- 没变就不写（11 个模块每帧 4 个属性；界面属性写一次就要重排）
+        m.pc, m.pt, m.ps = col, tr, st
+        m.f.BackgroundColor3, m.f.BackgroundTransparency = col, tr
+        m.s.Color, m.s.Transparency = col, st
+      end
     end
     local fire = em and em:GetAttribute("WtF") == true
     SC.fire.Visible = fire
