@@ -1423,6 +1423,15 @@ function Fly.init(G)
       dn = key(Enum.KeyCode.S) or key(Enum.KeyCode.Down) or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or (touch and touch.down)
     end
     st.thr = clamp(st.thr + ((up and 1 or 0) - (dn and 1 or 0)) * 55 * dt, 0, d.ab and 130 or 100)
+    -- 超速保护（用户 11-27「j6为什么这么容易坠机」：歼-6 低空加力平飞就快到撕翼速度，带着加力一俯冲就超、机翼被撕掉）：
+    --   鼠标瞄准（教官飞）时，到了极限速度九成三先把加力关掉、九成七收到慢车，降回八成八再放开——玩家自己再推油门照样能推上去（下一帧又收）
+    if mAim and not st.ground and st.fmD and st.fmD.vne then
+      local vneG = d.vne or (st.fmD.vne * AD.M * 1.03)
+      if st.spd > vneG * 0.97 then st.vneCut = 0
+      elseif st.spd > vneG * 0.93 then st.vneCut = math.min(st.vneCut or 100, 100)
+      elseif st.vneCut and st.spd < vneG * 0.88 then st.vneCut = nil end
+      if st.vneCut then st.thr = math.min(st.thr, st.vneCut) end
+    end
     -- 自动收油门（真飞机拉平时自动油门收到慢车）：接地太快贴着跑道飘的时候不按 W 就自己往回收（按住 W 是复飞）
     if not up and os.clock() - (st.floatT or -9) < 0.3 then st.thr = math.max(0, st.thr - 55 * dt) end
     if st.out then st.thr = 0 end   -- 油烧干了：发动机熄火，只能滑翔
@@ -1860,16 +1869,16 @@ function Fly.init(G)
         local over = spd > vne or n > gLim
         if over and not st.ground then
           st.overT = (st.overT or 0) + dt
-          if st.overT > 0.8 and not st.overSent then
+          if st.overT > ((spd > vne) and 1.5 or 0.8) and not st.overSent then   -- 超速给 1.5 秒（过载照旧 0.8 秒）
             st.overSent = true
             G.R.Act:FireServer("wtaOver", (spd > vne) and "speed" or "g")
           end
         else
           st.overT = math.max(0, (st.overT or 0) - dt * 2)
         end
-        if (spd > vne * 0.95 or n > gLim * 0.9) and os.clock() > (st.overWarnT or 0) and G.toast then
-          st.overWarnT = os.clock() + 3
-          G.toast(T((spd > vne * 0.95) and "wta.warnSpeed" or "wta.warnG"), "bad")
+        if (spd > vne * 0.92 or n > gLim * 0.9) and os.clock() > (st.overWarnT or 0) and G.toast then   -- 九成二就警告（原来九成五，来不及）
+          st.overWarnT = os.clock() + 2
+          G.toast(T((spd > vne * 0.92) and "wta.warnSpeed" or "wta.warnG"), "bad")
         end
       end
       st.sink = 0
@@ -1920,8 +1929,12 @@ function Fly.init(G)
     if st.fm and st.fm.live then st.fmCF, st.fmVel = cf, st.vel end   -- 飞行物理这一帧的结果（下一帧看别处改没改过）
     -- 起落架（用户：起飞自动把起落架收了）：离地爬过 15 米、还在往上爬就自动收一次；这次起飞只收一次，之后按 G 放下就听玩家的；
     --   地上一直放着，落地重置
+    --   对标战雷（用户 11-27「你看一下战雷有没有自动收起落架这些 对标」）：战雷里起落架是自己按 G 收放的（没有自动收），襟翼有自动管理——
+    --   这里自动收起落架留着（用户早先要的），设置「起飞后自动收起落架」能关；襟翼照战雷自动（下面）
     if st.ground then
       st.gearWant, st.gearAuto = 1, false
+    elseif G.autoGearOff then
+      st.gearAuto = true   -- 关了：这一趟不再自动收
     elseif not st.gearAuto and st.gearWant > 0.5 and st.vel and st.vel.Y > 0.5 then
       local p0 = cf.Position
       if p0.Y - d.gearH - math.max(ground(p0.X, p0.Z), 0) > 15 * AD.M then
@@ -1943,7 +1956,12 @@ function Fly.init(G)
     st.gear = approach(st.gear, st.gearWant, dt / 2.5)
     st.c.gear = st.gear
     st.c.thr = st.thr
-    st.c.flap = (st.gear > 0.5 and st.spd < d.stall * 1.6) and 1 or 0
+    -- 襟翼（战雷的自动襟翼）：放着起落架、慢的时候放着陆襟翼（全放）；收着起落架、速度不快（2.2 倍失速以下）拉 2.5 g 以上放战斗襟翼（三成，
+    --   多一点升力好转弯）；快了自己收（不会被吹坏）
+    local wantFlap = 0
+    if st.gear > 0.5 and st.spd < d.stall * 1.6 then wantFlap = 1
+    elseif not st.ground and d.kind == "jet" and (st.gLoad or 1) > 2.5 and st.spd < d.stall * 2.2 then wantFlap = 0.33 end
+    st.c.flap = wantFlap
     st.flapK = approach(st.flapK or 0, st.c.flap, dt / 2)   -- 襟翼放下 / 收起要两秒（升力、阻力按它）
     st.c.can = (st.ground and st.thr < 5 and st.spd < 3) and 1 or 0
     -- 折翼（用户：飞机机翼折叠没有动画）：原来直接 0 / 1 一下就折好；现在约 4 秒折起 / 展开（真机十几秒，游戏里缩短），
@@ -2596,6 +2614,9 @@ function Fly.init(G)
     -- 航炮开火不再抖机身（用户 11-27「机炮开打的时候屏幕不要往前拉 就正常就行 也别搞后坐力」）：st.recoil 只留给界面用
     -- 镜头
     local pos = st.cf.Position
+    -- 按 L 跟踪自己的导弹（MslCam.lua，用户 11-27「l没法看导弹视角」）：那边每帧摆镜头，这一帧飞行镜头算完照旧还给它——
+    --   两边都在每帧写镜头，谁后写谁赢：原来飞行镜头在 RenderStepped 里后写，跟踪导弹的镜头一闪就被盖掉
+    local mslHold = (G.mslFollowing ~= nil and G.mslFollowing()) and { cam.CFrame, cam.FieldOfView } or nil
     if st.eo then
       -- 光电吊舱：机腹下面（固定翼）/ 机头下面的光电球（直升机），视线稳定在世界方向上，不画镜头抖动
       local eye = (d.kind == "jet") and (st.cf * CF(0, -d.H * 0.5 - 0.6, -d.L * 0.12)).Position or (st.cf * CF(0, -d.H * 0.3, -d.L * 0.5 - 0.8)).Position
@@ -2738,6 +2759,7 @@ function Fly.init(G)
     st.fov += (fovT - st.fov) * math.min(1, dt * ((st.uav and 10) or 4))
     -- 开火、打中都不再晃镜头、收视场角（用户 11-27「机炮开打的时候屏幕不要往前拉 就正常就行 也别搞后坐力」）
     cam.FieldOfView = st.fov
+    if mslHold then cam.CFrame, cam.FieldOfView = mslHold[1], mslHold[2] end   -- 跟踪导弹：镜头还给 MslCam
     -- 瞄准点：镜头中间（固定翼：鼠标瞄准方向）打出去碰到的地方
     local ex = { G.viewFolder }
     if me.Character then table.insert(ex, me.Character) end

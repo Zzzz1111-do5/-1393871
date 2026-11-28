@@ -29,7 +29,7 @@ function Settings.init(G)
   ---------------------------------------------------------------- 设置项和默认值
   -- airAim 固定翼操纵（mouse 战雷鼠标瞄准 / kb 纯键盘）、camRoll 纯键盘时镜头跟着机身滚转几成（0 地平线水平）
   local DEF = { sens = 1, aim = 1, invY = false, fov = 70, fovAir = 70, shake = true, vol = 1, voice = true, ui = 1, gamma = 0, lang = "",
-    airAim = "mouse", camRoll = 0 }
+    airAim = "mouse", camRoll = 0, autoGear = true }
   local P = {}
   for k, v in pairs(DEF) do P[k] = v end
 
@@ -111,7 +111,7 @@ function Settings.init(G)
     if gammaCC then pcall(function() gammaCC.Brightness = P.gamma gammaCC.Contrast = math.abs(P.gamma) * 0.4 gammaCC.Enabled = math.abs(P.gamma) > 1e-3 end) end
     if P.lang == "zh" or P.lang == "en" then G.lang = P.lang end
     -- 空战：操纵方式、镜头滚转（Fly.lua 读；飞着的时候改了马上换）
-    G.airMouseAim, G.camRollK = P.airAim ~= "kb", P.camRoll
+    G.airMouseAim, G.camRollK, G.autoGearOff = P.airAim ~= "kb", P.camRoll, P.autoGear == false
     if G.flyMouseAim then pcall(G.flyMouseAim, G.airMouseAim, true) end
     if G.uiScaleK ~= P.ui then
       G.uiScaleK = P.ui
@@ -303,6 +303,8 @@ function Settings.init(G)
     { cat = "air", key = "camRoll", kind = "drop", zh = "纯键盘时镜头跟着滚转", en = "Camera roll (keyboard)",
       opts = { { 0, L("不跟（地平线水平）", "None (level horizon)") }, { 0.3, L("跟三成", "30%") }, { 1, L("完全跟着机身", "Full") } },
       note = L("鼠标瞄准时地平线一直是平的", "With mouse aim the horizon always stays level") },
+    { cat = "air", key = "autoGear", kind = "check", zh = "起飞后自动收起落架", en = "Auto-retract landing gear after takeoff",
+      note = L("战雷里要自己按 G；襟翼照战雷自动", "War Thunder leaves gear to you (G); flaps are automatic") },
     { cat = "snd", key = "vol", kind = "slider", zh = "总音量", en = "Master volume", lo = 0, hi = 1, step = 0.05, fmt = pct },
     { cat = "snd", key = "voice", kind = "check", zh = "车组语音", en = "Crew voice", note = L("装填完毕、发现敌人、被击中……", "Loaded, enemy spotted, hit…") },
     { cat = "code", key = "code", kind = "code", zh = "兑换码", en = "Redeem code" },
