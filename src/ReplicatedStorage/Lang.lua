@@ -496,7 +496,7 @@ add("gs.estR", "≈{1} 米", "≈{1} m")
 add("gs.hdg", "方位 {1}°", "Bearing {1}°")
 add("gs.binoR", "R 估距", "R range")
 add("gs.bino", "望远镜", "BINO")
-add("gs.binoHint", "车长望远镜 · R 估距 · G 侦察 · C 收起 · Shift / 右键 进炮长瞄准镜", "Binoculars · R range · G spot · C close · Shift / RMB gunner sight")
+add("gs.binoHint", "车长望远镜 · 滚轮 缩放 · R 估距 · G 侦察 · C 收起 · Shift / 右键 进炮长瞄准镜", "Binoculars · Wheel zoom · R range · G spot · C close · Shift / RMB gunner sight")
 add("drv.optic", "光电", "OPT")
 add("drv.smoke", "烟幕", "SMK")
 add("drv.xray", "透视", "X-RAY")   -- 手机上按住透视自己的车（电脑上按住 X）

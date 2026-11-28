@@ -133,7 +133,7 @@ function S.stadiaMils(h, rHundreds, unit)
 end
 
 -- 车长望远镜（用户 11-27「再做一个望远镜」）：8 倍、视场约 8.75°（真的军用望远镜 8×30），6000 制密位分划（苏式 BPC 那种）
-S.BINOC = { mag = 8, unit = 6000, lat = { step = 5, label = 10, ext = 40 }, vstep = 5, vext = 20, stadia = 2.7 }   -- 北约的车用 6400 制（GunSight 按 kit.east 换）
+S.BINOC = { mag = 8, mags = { 2, 4, 6, 8, 10, 12 }, unit = 6000, lat = { step = 5, label = 10, ext = 40 }, vstep = 5, vext = 20, stadia = 2.7 }   -- 北约的车用 6400 制（GunSight 按 kit.east 换）；mags：滚轮换的倍率（用户 11-28「望远镜要能缩放」，举起来默认 mag）
 
 -- 方位刻度（瞄准镜顶上）：镜头朝向（偏航，逆时针、从 −Z 起，弧度）→ 航向（顺时针从北，度，0 ~ 360）
 function S.heading(yaw)

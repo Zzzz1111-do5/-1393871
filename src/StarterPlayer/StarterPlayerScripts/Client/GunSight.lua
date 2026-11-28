@@ -104,41 +104,54 @@ function GunSight.new(G, sightFrame, gui)
   root.Size = UDim2.fromScale(1, 1)
   root.ZIndex = 6
   root.Parent = sightFrame
-  -- 光学感（用户 11-27「这个做的没有3a游戏的感觉啊」）：四角很轻的暗角（18 圈细环叠成平滑渐变，中间六成完全不暗）、
-  --   进镜对焦（从糊到清楚 0.28 秒）、开炮那一下画面一糊（炮口冲击、镜子震）
-  local NVIG = 18
+  -- 镜框的黑色渐变框（用户 11-28「开镜目前周围没有那个开镜的黑色渐变框」；原来只有四角很轻的暗角，11-27「这个做的没有3a游戏的感觉啊」）：
+  --   同战雷开镜：中间一大块完全清楚，往四边越来越暗，贴着屏幕边那一道和四个角是纯黑。
+  --   做法：一层层圆角矩形的描边（UIStroke 画在框外面），从清楚区的边往外一圈比一圈不透明（S 形曲线，看不出一道道环）；
+  --   最外一圈描得很粗、纯黑，盖到屏幕边和四个角。窗口大小变了才重排。分划、读数的 ZIndex 在它上面（压着黑边的那截分划线跟着隐进黑里）
+  --   进镜对焦（从糊到清楚 0.28 秒）、开炮那一下画面一糊（炮口冲击、镜子震）照旧
+  local NVIG = 22
   local VIG = {}
-  for i = 1, NVIG do
+  local function vigRing(tr, name)
     local f = Instance.new("Frame")
-    f.Name = "Vig"
+    f.Name = name or "Vig"
     f.BackgroundTransparency = 1
     f.AnchorPoint = V2(0.5, 0.5)
     f.Position = UDim2.fromScale(0.5, 0.5)
     f.ZIndex = 5
     f.Parent = root
     local cr = Instance.new("UICorner")
-    cr.CornerRadius = UDim.new(0.5, 0)
     cr.Parent = f
     local sk = Instance.new("UIStroke")
     sk.Color = Color3.new(0, 0, 0)
     sk.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    sk.Transparency = 1 - 0.42 * ((NVIG - i + 1) / NVIG) ^ 1.8
+    sk.Transparency = tr
     sk.Parent = f
-    VIG[i] = { f = f, s = sk }
+    return { f = f, s = sk, c = cr }
   end
+  for i = 1, NVIG do
+    local u = (i - 0.5) / NVIG   -- 0 清楚区的边 → 1 渐变带最外
+    VIG[i] = vigRing(1 - 0.97 * (u * u * (3 - 2 * u)) ^ 1.15)
+  end
+  local vigEdge = vigRing(0, "VigEdge")
   local vigSig = nil
   local function layoutVig(vp)
     local sig = vp.X .. "x" .. vp.Y
     if sig == vigSig then return end
     vigSig = sig
-    local Rd = math.sqrt(vp.X * vp.X + vp.Y * vp.Y) / 2 * 1.02
-    local step = Rd * 0.38 / NVIG
+    local H = vp.Y
+    local band, edge, rc = H * 0.2, H * 0.015, H * 0.18   -- 渐变带宽、贴边纯黑那一道、清楚区的圆角
+    local inset = band + edge
+    local wc, hc = math.max(vp.X - 2 * inset, 2), math.max(H - 2 * inset, 2)
+    local step = band / NVIG
     for i, v in ipairs(VIG) do
-      local outer = Rd - (i - 1) * step
-      local d = 2 * (outer - step)
-      v.f.Size = UDim2.fromOffset(d, d)
+      local k = (i - 1) * step
+      v.f.Size = UDim2.fromOffset(wc + 2 * k, hc + 2 * k)
+      v.c.CornerRadius = UDim.new(0, rc + k)
       v.s.Thickness = step
     end
+    vigEdge.f.Size = UDim2.fromOffset(wc + 2 * band, hc + 2 * band)
+    vigEdge.c.CornerRadius = UDim.new(0, rc + band)
+    vigEdge.s.Thickness = math.max(vp.X, H)
   end
   local focus = Instance.new("BlurEffect")
   focus.Name = "SightFocus"
@@ -667,7 +680,22 @@ function GunSight.new(G, sightFrame, gui)
   ccB.Parent = Lighting
   local banim = { t0 = -99, look = nil, pan = 0, lastT = nil }
   local binoSig, lensSig = nil, nil
-  o.binoFov = 70 / SD.BINOC.mag
+  -- 倍率：举起来默认 SD.BINOC.mag（8 倍），滚轮在 mags 里一格一格换（用户 11-28「望远镜要能缩放」）；换了以后 Drive 把视场缓过去，
+  --   分划按现在的视场重画（密位刻度、估距的格子跟着放大缩小，读数照样对）；下次举起来还是上次的倍率
+  local BMAGS = SD.BINOC.mags or { SD.BINOC.mag }
+  o.binoMag = SD.BINOC.mag
+  o.binoFov = 70 / o.binoMag
+  function o.binoZoom(dir)
+    local at = 1
+    for i, v in ipairs(BMAGS) do if v == o.binoMag then at = i end end
+    local m = BMAGS[math.clamp(at + (dir or 0), 1, #BMAGS)]
+    if m ~= o.binoMag then
+      o.binoMag = m
+      o.binoFov = 70 / m
+      if G.sfx then pcall(G.sfx, "uiClick") end
+    end
+    return o.binoMag
+  end
 
   function o.binoShow(on, kit)
     bino.Visible = on and true or false
@@ -769,7 +797,7 @@ function GunSight.new(G, sightFrame, gui)
     if info.est then rtxt = T("wtt.est")
     elseif info.R then rtxt = T("gs.estR", info.R)
     else rtxt = T("gs.binoR") end
-    binoT.Text = string.format("%s    %s    ×%d", rtxt, T("gs.hdg", math.floor(hdg + 0.5) % 360), B.mag)
+    binoT.Text = string.format("%s    %s    ×%d", rtxt, T("gs.hdg", math.floor(hdg + 0.5) % 360), o.binoMag or B.mag)
     binoH.Text = T("gs.binoHint")
   end
 

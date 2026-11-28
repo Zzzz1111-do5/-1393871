@@ -133,7 +133,34 @@ check(shown(find("Tape")) and visibleKids(find("Tape"), "L") >= 8 and visibleKid
 -- 光学感（用户 11-27「没有3a游戏的感觉」）：四角暗角一圈圈细环、进镜对焦的模糊放完撤掉
 local nVig = 0
 for _, f in ipairs(find("GunSight") and find("GunSight"):GetChildren() or {}) do if f.Name == "Vig" and f.Visible then nVig = nVig + 1 end end
-check(nVig >= 16, "炮长镜四角暗角（" .. nVig .. " 圈细环）")
+check(nVig >= 16, "炮长镜四周的黑色渐变框（" .. nVig .. " 圈细环）")
+-- 用户 11-28「开镜目前周围没有那个开镜的黑色渐变框」：最外一圈纯黑描到屏幕边、四个角；最里一圈几乎透明，中间一大块完全清楚
+do
+  local gs = find("GunSight")
+  local edge = gs and gs:FindFirstChild("VigEdge")
+  local sk = edge and edge:FindFirstChildOfClass("UIStroke")
+  local vp = cam.ViewportSize
+  local inner, outer = nil, nil
+  for _, f in ipairs(gs and gs:GetChildren() or {}) do
+    if f.Name == "Vig" then
+      local k = f:FindFirstChildOfClass("UIStroke")
+      if k and (not inner or f.Size.X.Offset < inner.f.Size.X.Offset) then inner = { f = f, s = k } end
+      if k and (not outer or f.Size.X.Offset > outer.f.Size.X.Offset) then outer = { f = f, s = k } end
+    end
+  end
+  check(edge ~= nil and sk ~= nil and sk.Transparency == 0 and edge.Size.X.Offset < vp.X and sk.Thickness >= vp.X,
+    "贴着屏幕边、四个角是纯黑（" .. tostring(sk and sk.Transparency) .. "）")
+  check(inner ~= nil and outer ~= nil and inner.s.Transparency > 0.95 and outer.s.Transparency < 0.1,
+    string.format("往外越来越黑：最里一圈透明度 %.2f、最外一圈 %.2f", inner and inner.s.Transparency or -1, outer and outer.s.Transparency or -1))
+  check(inner ~= nil and inner.f.Size.X.Offset > vp.X * 0.5 and inner.f.Size.Y.Offset > vp.Y * 0.4,
+    string.format("中间清楚的一块够大（%.0f × %.0f，屏幕 %.0f × %.0f）", inner and inner.f.Size.X.Offset or -1, inner and inner.f.Size.Y.Offset or -1, vp.X, vp.Y))
+end
+-- 用户 11-28「坦克不要有视野拉近自动开镜了」：瞄准镜里最低倍再往后滚，不退回第三人称（同战雷：进 / 出只用 Shift / 右键）
+local UISv = R.services.UserInputService
+local function wheel(z) R.as("client", function() UISv.InputChanged:Fire({ UserInputType = Enum.UserInputType.MouseWheel, Position = V3(0, 0, z) }, false) end) end
+for _ = 1, 6 do wheel(-1) end
+settle(0.3)
+check(st.sight == true and st.zoom == 1, "瞄准镜里滚到最低倍再往后滚：还在瞄准镜里（倍率档 " .. tostring(st.zoom) .. "）")
 local focusB = R.services.Lighting:FindFirstChild("SightFocus")
 check(focusB ~= nil and (not focusB.Enabled or focusB.Size < 0.1), "进镜对焦放完：模糊撤掉（" .. tostring(focusB and focusB.Size) .. "）")
 if SHOT then dofile(MOCK_DIR .. "/uidump.lua")(T, me, SHOT .. "/gunsight_type59.json", true) end
@@ -300,6 +327,19 @@ settle(2.5)
 check(st.fcs.R ~= nil and math.abs(st.fcs.R - tdist) <= tdist * 0.12, string.format("估出来 %s 米（靶车 %.0f 米，差 12%% 以内）", tostring(st.fcs.R), tdist))
 local bi = find("BinoInfo")
 check(bi ~= nil and bi.Text:find("≈", 1, true) ~= nil, "望远镜下面写着估的距离：" .. tostring(bi and bi.Text))
+-- 用户 11-28「望远镜要能缩放」：滚轮换倍率（视场缓过去、分划按新视场重画、读数写 ×N）；滚到头还在望远镜里，不跳进炮长瞄准镜
+wheel(1)
+settle(0.8)
+check(st.binoc == true and math.abs(cam.FieldOfView - 7) < 0.3 and bi.Text:find("×10", 1, true) ~= nil,
+  string.format("往前滚一格：10 倍（视场 %.2f°，%s）", cam.FieldOfView, bi.Text))
+for _ = 1, 8 do wheel(-1) end
+settle(1)
+check(st.binoc == true and not st.sight and math.abs(cam.FieldOfView - 35) < 0.6 and bi.Text:find("×2", 1, true) ~= nil,
+  string.format("往后滚到底：2 倍、还在望远镜里（视场 %.2f°）", cam.FieldOfView))
+check(visibleKids(find("BinoRet"), "L") >= 10, "2 倍下分划照样画（" .. visibleKids(find("BinoRet"), "L") .. " 根线）")
+for _ = 1, 3 do wheel(1) end
+settle(1)
+check(math.abs(cam.FieldOfView - 70 / 8) < 0.3, string.format("滚回 8 倍（视场 %.2f°）", cam.FieldOfView))
 if SHOT then dofile(MOCK_DIR .. "/uidump.lua")(T, me, SHOT .. "/gunsight_binoc.json", true) end
 T.tap(Enum.KeyCode.C)
 local fsB = C.sceneFadeState and C.sceneFadeState()
@@ -321,6 +361,13 @@ R.as("client", function() C.driveSetSight(false) end)
 settle(0.3)
 
 print("⑧ 第三人称：炮管标记在真落点、炮口被挡画叉")
+-- 用户 11-28「坦克不要有视野拉近自动开镜了」：第三人称拉到最近再往前滚，不进瞄准镜（原来坦克世界那样滚进去）
+check(not st.sight, "现在是第三人称")
+for _ = 1, 12 do wheel(1) end
+settle(0.3)
+check(not st.sight and (C.tpZoom or 1) <= 0.001, "拉到最近再往前滚：还是第三人称，不自动开镜（镜头臂 " .. tostring(C.tpZoom) .. "）")
+for _ = 1, 2 do wheel(-1) end
+settle(0.3)
 -- 车外瞄着 500 米外的靶车：炮塔转过去以后，这一发的落点（Drive gunImpact）打在靶车上（原来顺着带超高角的炮管直线放，远处比车顶还高）
 local function aimAt(p)
   R.as("client", function()

@@ -2225,22 +2225,27 @@ function Drive.init(G)
     if io.KeyCode == Enum.KeyCode.X and G.ownXrayHold then xrayUp() end   -- 松开 X：透视收起，原来在瞄准镜 / 望远镜里的回去
   end)
   -- 滚轮（用户 11-25「画面缩放升高的时候 先往后 再往上……参考坦克世界的画面缩放逻辑」）：
-  --   第三人称往后滚，镜头先往后拉（臂长 0.6 → 1.6 倍），拉到头再往上升（绕着转的点抬高十几米，站得高看得远）；
-  --   往前滚拉近，拉到最近再往前滚一格进瞄准镜；瞄准镜里滚轮换倍率，最低倍再往后滚退回第三人称（同坦克世界的狙击模式）
+  --   第三人称往后滚，镜头先往后拉（臂长 0.6 → 1.6 倍），拉到头再往上升（绕着转的点抬高十几米，站得高看得远）；往前滚拉近，拉到最近就停；
+  --   瞄准镜里滚轮换倍率，到最高 / 最低倍就停；望远镜里滚轮也换倍率（GunSight.binoZoom）。
+  --   用户 11-28「坦克不要有视野拉近自动开镜了」：原来拉到最近再滚一格进瞄准镜、最低倍再往后滚退回第三人称（坦克世界的狙击模式）——
+  --   都去掉了，同战雷：进 / 出瞄准镜只用 Shift / 右键
   G.tpZoom = G.tpZoom or 0.2
   UIS.InputChanged:Connect(function(io)
     if not st or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
     if G.settingsShown and G.settingsShown() then return end
     if st.arty and G.artyWheel then G.artyWheel(io.Position.Z) return end   -- 炮兵视角：镜头升降
+    local up = io.Position.Z > 0
+    if st.binoc then   -- 车长望远镜：滚轮换倍率（用户 11-28「望远镜要能缩放」）
+      GS.binoZoom(up and 1 or -1)
+      return
+    end
     if st.sight then
       syncZooms()
-      if io.Position.Z < 0 and st.zoom <= 1 and not (G.interiorOn and G.interiorOn()) then toggleSight() return end
-      st.zoom = math.clamp(st.zoom + ((io.Position.Z > 0) and 1 or -1), 1, #ZOOMS)
+      st.zoom = math.clamp(st.zoom + (up and 1 or -1), 1, #ZOOMS)
       return
     end
     if G.interiorOn and G.interiorOn() then return end   -- 车里：滚轮归车内视角
-    if io.Position.Z > 0 then
-      if G.tpZoom <= 0.001 then toggleSight() return end
+    if up then
       G.tpZoom = math.max(0, G.tpZoom - 0.1)
     else
       G.tpZoom = math.min(1, G.tpZoom + 0.1)
