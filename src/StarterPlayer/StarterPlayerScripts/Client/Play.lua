@@ -528,7 +528,7 @@ function Play.init(G)
       local hrp = char and char:FindFirstChild("HumanoidRootPart")
       if hrp then
         local d = (V(p.X, 0, p.Z) - V(hrp.Position.X, 0, hrp.Position.Z)).Magnitude
-        tipText.Text = math.floor(d) .. (G.lang == "zh" and " 格" or " studs") .. ((d < w.minR or d > w.maxR) and ("  " .. T("ui.mortarRange", w.minR, w.maxR)) or "")
+        tipText.Text = math.floor(d) .. G.L(" 格", " studs") .. ((d < w.minR or d > w.maxR) and ("  " .. T("ui.mortarRange", w.minR, w.maxR)) or "")
       end
     end
   end

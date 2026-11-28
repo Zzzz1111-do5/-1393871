@@ -4,7 +4,7 @@
 --   每型、每个科技树版本的雷达在 ReplicatedStorage/Radars.lua（Fly.lua 开飞时按 AirDefs.radarOf(型号, TreeKey) 取到 st.rd：F-16A 是 APG-66、苏-30SM 是 N011M）
 --   ① 扫描区：各型自己的扫描方式（rd.scans：方位半宽 × 行数，第一个是默认，Alt+Z 换）；波束按真机的扫描速度（rd.rate：机械扫描约 60°/秒、相控阵快，
 --      用户 11-27 定的）在扫描区里一行一行来回扫——扫一帧 = 行数 × 2 × 半宽 / 速度（APG-68 ±60°×2 行 4 秒、×4 行 8 秒；KLJ-5 1.6 秒）。
---      **地平稳定**：方位按航向的水平投影、俯仰按地平线（真机给天线俯仰也是按地平线）；扫描中心可挪（「能用键控制雷达方向」）：Alt+←→ 方位
+--      **地平稳定**：方位按航向的水平投影、俯仰按地平线（真机给天线俯仰也是按地平线）；扫描中心可挪（「能用键控制雷达方向」）：←→ 方位
 --      （|中心| ≤ 万向架 − 半宽：±60° 宽扫时挪不动，苏-35S 的转台能挪到 ±60°）、Alt+↑↓ / Alt+滚轮 俯仰、Alt+C 或双击雷达屏回中
 --   ② 发现：**波束真扫过才算**——目标在这一帧波束扫过的那段里（方位 ± 波束半宽，俯仰离这一行不到半行 + 0.5°），再过 sees()：万向架（机体坐标
 --      ±az、+elU / −elD，扫描区挪到外面的那段看不见）、量程（窄扇区 × far；脉冲多普勒往下看 × ldK）、置零（pd：目标对地速度在视线上的分量 < notch——
@@ -12,7 +12,7 @@
 --   ③ 模式（Alt+E 循环，这部雷达没有的跳过，RD.modes）：RWS 搜索 → TWS 边扫边跟（rd.tws > 0：最多 rd.tws 批航迹，扫到就更新、两次之间按速度外推，
 --      两帧没扫到就丢；AWG-9 只能用 twsScans 那两种扫描；R / Alt+T 在航迹里换指定目标；**对指定航迹打主动雷达弹不用 STT**：Fly.lua 的弹锁着指定航迹，
 --      每次航迹更新报一次 lockOn（带 tws = 一帧几秒），服务器的数据链等一帧、对方告警器不报锁定，导弹开导引头时才报）→ ACM 近战（rd.acm：
---      平显视场 / 竖扫 / 瞄准线 / 可挪 / 头盔，机体坐标；Alt+Z 换子模式，可挪的用 Alt+方向键挪、头盔的跟着镜头看的方向；RD.ACQ 格（真机 10 海里）
+--      平显视场 / 竖扫 / 瞄准线 / 可挪 / 头盔，机体坐标；Alt+Z 换子模式，可挪的用 ←→ / Alt+↑↓ 挪、头盔的跟着镜头看的方向；RD.ACQ 格（真机 10 海里）
 --      以内第一个扫到的自动进 STT，不管选的是什么弹）→ 回 RWS
 --   ④ STT 单目标跟踪（st.rdLock）：Alt+F 锁雷达屏上选中的（照战雷手动锁，用户 11-27 定的；Fly.lua G.flyRadarLock 查锁定距离）、近战自动截获；
 --      天线跟着目标（只看万向架）；看不见了（置零 / 地杂波 / 出了万向架 / 太远）先按记忆外推 RD.MEM 秒（屏上 STT MEM），还是没有就丢锁
@@ -32,7 +32,7 @@
 --   G.radarStt(st, em) / G.radarUnlock(st)：进 / 出单目标跟踪；G.radarTrackOf(st, em)：TWS 航迹；G.radarTwsSel(st)：指定的航迹（Fly.lua 的雷达弹锁它）；
 --   G.radarState()：模式、扫描区、波束、一帧几秒（测试；以后同步给服务器、座舱雷达页用）；G.radarAcmZone()：近战扫描区（WtFlight 画在平显上）
 --   键（只给有雷达的固定翼，Fly.lua 让出了这些 Alt 组合键）：Alt+R 开关、Alt+Q 量程、Alt+E 模式、Alt+Z 扫描方式 / 近战子模式、
---   Alt+方向键 / Alt+滚轮 挪天线、Alt+C 回中、Alt+T 选目标（同 R）、Alt+F 锁定 / 解锁
+--   ←→ 方位、Alt+↑↓ / Alt+滚轮 俯仰挪天线（11-28 起左右不用按 Alt）、Alt+C 回中、Alt+T 选目标（同 R）、Alt+F 锁定 / 解锁
 local Players = game:GetService("Players")
 local RS = game:GetService("ReplicatedStorage")
 
@@ -562,7 +562,7 @@ function Radar.init(G)
       Z.key, Z.tag, Z.body = "acm" .. S.sub, k, true
       local A, h = g.az, (g.el1 - g.el0) / 2
       local cAz, cEl = 0, (g.el0 + g.el1) / 2
-      if g.slew then   -- 可挪：Alt+方向键 / 滚轮挪（夹在万向架里）
+      if g.slew then   -- 可挪：←→、Alt+↑↓ / 滚轮挪（夹在万向架里）
         S.slewAz = clamp(S.slewAz, -math.max(0, rd.az - A), math.max(0, rd.az - A))
         S.slewEl = clamp(S.slewEl, -rd.elD - g.el0, rd.elU - g.el1)
         cAz, cEl = S.slewAz, cEl + S.slewEl
@@ -655,10 +655,11 @@ function Radar.init(G)
     local cf = st.cf
     local p0 = cf.Position
     local f, r = hzBasis(cf)
-    -- 按住 Alt 的方向键：挪扫描中心（近战「可挪」挪它的扫描区）
-    if G.fly == st and altDown() then
+    -- 挪扫描中心（近战「可挪」挪它的扫描区）：← / → 左右偏转——用户 11-28「飞机雷达偏转改成左右建控制吧」：不用再按 Alt
+    --   （开飞机时左右方向键原来没用）；俯仰照旧 Alt+↑↓ / Alt+滚轮（↑ / ↓ 不按 Alt 是油门）；聊天框里打字时不挪
+    if G.fly == st and not UIS:GetFocusedTextBox() then
       local dx = (UIS:IsKeyDown(Enum.KeyCode.Right) and 1 or 0) - (UIS:IsKeyDown(Enum.KeyCode.Left) and 1 or 0)
-      local dy = (UIS:IsKeyDown(Enum.KeyCode.Up) and 1 or 0) - (UIS:IsKeyDown(Enum.KeyCode.Down) and 1 or 0)
+      local dy = altDown() and ((UIS:IsKeyDown(Enum.KeyCode.Up) and 1 or 0) - (UIS:IsKeyDown(Enum.KeyCode.Down) and 1 or 0)) or 0
       if S.mode == "acm" then
         S.slewAz += dx * SLEW.az * dt
         S.slewEl += dy * SLEW.el * dt
@@ -988,7 +989,7 @@ function Radar.init(G)
     else
       tAlt.Text = ""
     end
-    tName.Text = ((G.lang == "en") and rd.shortEn) or rd.short or rd.name or ""   -- 屏底只写短名（整名放在 186 像素宽的标签里会超出）
+    tName.Text = (G.isZh() and (rd.short or rd.name)) or rd.shortEn or rd.short or rd.name or ""   -- 雷达型号：中文写中文短名，别的语言写英文短名   -- 屏底只写短名（整名放在 186 像素宽的标签里会超出）
     tEmit.Text = S.on and "((o))" or "( . )"
     tEmit.TextColor3 = S.on and GRN or RGB(120, 140, 125)
     tWarn.Text = (lk and lk.mem and lk.why == "notch") and T("air.radarNotch") or ((lk and lk.mem and lk.why == "clutter") and T("air.radarClutter") or "")

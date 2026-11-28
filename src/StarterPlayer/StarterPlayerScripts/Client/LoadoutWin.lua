@@ -29,7 +29,7 @@ function LoadoutWin.init(G)
   local me = Players.LocalPlayer
   local RGB, U2, V2, V3 = Color3.fromRGB, UDim2, Vector2.new, Vector3.new
   local CF = CFrame.new
-  local function L(zh, en) return (G.lang == "en") and en or zh end
+  local function L(zh, en) return G.L(zh, en) end   -- 多语言（11-28）
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local TEXT, MUTE, FAINT, GOOD, BAD, AMBER = TH.C.TEXT, TH.C.MUTE, TH.C.FAINT, TH.C.GOOD, TH.C.BAD, TH.C.WARN
   local WHITE, INK = RGB(255, 255, 255), RGB(0, 0, 0)
@@ -958,7 +958,7 @@ function LoadoutWin.init(G)
     cur = { it = it, a = a, D = D, cols = cols, team = me:GetAttribute("Side") or "atk" }
     table.clear(perfCache)
     hero.az, hero.el = AZ0, EL0
-    local nm = (G.lang == "en") and it.en or it.name
+    local nm = G.L(it.name, it.en)
     title.Text = string.format('<font color="%s">%s</font>  %s', hex(MUTE), L("挂载 - ", "Loadout - "), tostring(nm))
     local rk = it.rank and ({ "Ⅰ", "Ⅱ", "Ⅲ", "Ⅳ", "Ⅴ", "Ⅵ", "Ⅶ", "Ⅷ" })[it.rank] or ""
     local nSt = #a.st

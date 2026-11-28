@@ -20,7 +20,7 @@ function WtSpawn.init(G)
   local TT = require(RS:WaitForChild("TechTree"))
   local me = Players.LocalPlayer
   local RGB, U2, V2 = Color3.fromRGB, UDim2, Vector2.new
-  local function L(zh, en) return (G.lang == "en") and en or zh end
+  local function L(zh, en) return G.L(zh, en) end   -- 多语言（11-28）
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
   local AMBER, TEXT, MUTE, FAINT, GOOD, BAD, GOLD = TH.C.WARN, TH.C.TEXT, TH.C.MUTE, TH.C.FAINT, TH.C.GOOD, TH.C.BAD, TH.C.WARN

@@ -28,9 +28,9 @@ function TechUI.init(G)
   local BAL = require(RS:WaitForChild("Ballistics"))
   local VM = require(script.Parent:WaitForChild("VehModels"))   -- 装甲查看器里的车模
   local RunService = game:GetService("RunService")
-  local zh = G.lang == "zh"
-  local function L(a, b) return zh and a or b end
-  local function nm(it) return zh and it.name or it.en end
+  local zh = G.isZh()   -- 多语言（11-28）：中文（简 / 繁）
+  local function L(a, b) return G.L(a, b) end   -- 多语言（11-28）：按现在的语言查
+  local function nm(it) return G.L(it.name, it.en) end
   -- 型号的名字（Lang 的 veh.<型号>；没有就写型号）：暂用 / 同族模型那一行写借的是哪一型
   local function vname(id)
     local t = id and G.T and G.T("veh." .. id)
@@ -334,7 +334,7 @@ function TechUI.init(G)
         br.Name = "Sel"
         corners(br, TH.C.TEXT, 8, 2, 4)
       end
-      local nt = text(b, zh and N.name or N.en, UDim2.new(1, 0, 0, 16), UDim2.new(0, 0, 0, fh + 2), TH.S.tiny, on and TH.C.TEXT or TH.C.MUTE, Enum.TextXAlignment.Center)
+      local nt = text(b, G.L(N.name, N.en), UDim2.new(1, 0, 0, 16), UDim2.new(0, 0, 0, fh + 2), TH.S.tiny, on and TH.C.TEXT or TH.C.MUTE, Enum.TextXAlignment.Center)
       nt.TextStrokeTransparency = 0.6
       b.MouseButton1Click:Connect(function() onPick(nat) end)
     end
@@ -520,7 +520,7 @@ function TechUI.init(G)
       { "NavSpec", L("观战", "SPECTATE"), "SPECTATE", function() if G.wtSpecStart then G.wtSpecStart() end end },
     }
     for _, n in ipairs(navs) do
-      local b = navBtn(top, n[2], zh and n[3] or nil, UDim2.new(0, NW, 0, THh), UDim2.new(0, x, 0, TY))
+      local b = navBtn(top, n[2], G.L(n[3], nil), UDim2.new(0, NW, 0, THh), UDim2.new(0, x, 0, TY))
       b.Name = n[1]
       table.insert(leftEls, { b, x - LX })
       b.MouseButton1Click:Connect(n[4])
@@ -912,7 +912,7 @@ function TechUI.init(G)
       local fl = frame(b, UDim2.new(0, mobile and 22 or 26, 0, mobile and 14 or 16), UDim2.new(0, 8, 0.5, mobile and -7 or -8), TH.C.BG, 0)
       fl.Name = "Flag"
       drawFlag(fl, nat)
-      local t = text(b, zh and N.name or N.en, UDim2.new(1, -(mobile and 34 or 40), 1, 0), UDim2.new(0, mobile and 34 or 40, 0, 0), mobile and TH.S.small or TH.S.body, on and TH.C.TEXT or TH.C.MUTE)
+      local t = text(b, G.L(N.name, N.en), UDim2.new(1, -(mobile and 34 or 40), 1, 0), UDim2.new(0, mobile and 34 or 40, 0, 0), mobile and TH.S.small or TH.S.body, on and TH.C.TEXT or TH.C.MUTE)
       t.Font = on and TH.F.bold or TH.F.body
       if on then frame(b, UDim2.new(1, -8, 0, 2), UDim2.new(0, 4, 1, -2), TH.C.TEXT, 0) end
       b.MouseButton1Click:Connect(function() onPick(nat) end)
@@ -1142,8 +1142,8 @@ function TechUI.init(G)
       local y = (i - 1) * 58
       local r = frame(cRows, UDim2.new(1, 0, 0, 52), UDim2.new(0, 0, 0, y), RGB(20, 23, 26), 0.1)
       r.Name = "Sk_" .. s.key
-      text(r, zh and s.zh or s.en, UDim2.new(0, 120, 0, 20), UDim2.new(0, 10, 0, 6), 14, WHITE)
-      text(r, zh and s.dz or s.de, UDim2.new(0, 200, 0, 16), UDim2.new(0, 10, 0, 28), 11, DIM)
+      text(r, G.L(s.zh, s.en), UDim2.new(0, 120, 0, 20), UDim2.new(0, 10, 0, 6), 14, WHITE)
+      text(r, G.L(s.dz, s.de), UDim2.new(0, 200, 0, 16), UDim2.new(0, 10, 0, 28), 11, DIM)
       local cur = (cs.sk and cs.sk[s.key]) or 0
       for p = 1, WC.MAXLV do   -- 5 格：点了的亮
         local pip = frame(r, UDim2.new(0, 18, 0, 8), UDim2.new(1, -230 + (p - 1) * 24, 0.5, -4), (p <= cur) and GOLD or RGB(50, 54, 58), 0)
@@ -1334,7 +1334,7 @@ function TechUI.init(G)
     if it then
       local N = TT.NAT[it.nat]
       H.selName.Text = nm(it)
-      H.selSub.Text = (zh and N.name or N.en) .. " · " .. L("等级 ", "Rank ") .. TT.RANKS[it.rank].roman .. " · BR " .. TT.brText(it.br) .. " · " .. tostring(it.year)
+      H.selSub.Text = (G.L(N.name, N.en)) .. " · " .. L("等级 ", "Rank ") .. TT.RANKS[it.rank].roman .. " · BR " .. TT.brText(it.br) .. " · " .. tostring(it.year)
       local cs = tree.crew and tree.crew[tree.nat] and tree.crew[tree.nat][tostring(selSlot)] or { xp = 0 }
       local cfree = WC.free(cs)
       H.selCrew.Text = L("乘员 ", "Crew level ") .. WC.level(cs.xp) .. L(" 级", "") .. ((cfree > 0) and (" · " .. L("技能点 ", "points ") .. cfree) or "")
@@ -1761,7 +1761,7 @@ function TechUI.init(G)
     local done = md.done or {}
     local nDone, nAll = WM.count(it, done)
     mTitle.Text = nm(it) .. L("  ·  改装", "  ·  Modifications")
-    mSub.Text = L("已装 ", "Installed ") .. nDone .. " / " .. nAll .. (md.cur and (L("   ·   正在研究：", "   ·   Researching: ") .. ((WM.get(it, md.cur) or {})[zh and "zh" or "en"] or "")) or "")
+    mSub.Text = L("已装 ", "Installed ") .. nDone .. " / " .. nAll .. (md.cur and (L("   ·   正在研究：", "   ·   Researching: ") .. (function(m) return m and G.L(m.zh or m.en or "", m.en or m.zh or "") or "" end)(WM.get(it, md.cur))) or "")
     local classes = {}
     for _, c in ipairs(WM.CLS) do
       for _, m in ipairs(WM.list(it)) do if m.cls == c then classes[c] = true end end
@@ -1806,8 +1806,8 @@ function TechUI.init(G)
           cs.Transparency = (isCur or isDone) and 0.2 or 0.6
           cs.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
           cs.Parent = cell
-          text(cell, zh and m.zh or m.en, UDim2.new(1, -12, 0, 18), UDim2.new(0, 8, 0, 6), 13, (can or isDone) and WHITE or FAINT)
-          local dsc = text(cell, zh and m.dz or m.de, UDim2.new(1, -12, 1, -48), UDim2.new(0, 8, 0, 26), 11, (can or isDone) and DIM or FAINT)
+          text(cell, G.L(m.zh, m.en), UDim2.new(1, -12, 0, 18), UDim2.new(0, 8, 0, 6), 13, (can or isDone) and WHITE or FAINT)
+          local dsc = text(cell, G.L(m.dz, m.de), UDim2.new(1, -12, 1, -48), UDim2.new(0, 8, 0, 26), 11, (can or isDone) and DIM or FAINT)
           dsc.TextWrapped, dsc.TextTruncate, dsc.TextYAlignment = true, Enum.TextTruncate.AtEnd, Enum.TextYAlignment.Top
           local cost = WM.cost(it, m)
           local st = isDone and L("已装上", "Installed") or (isCur and (L("研究中 ", "Researching ") .. (md.rp or 0) .. " / " .. cost))
@@ -2128,7 +2128,7 @@ function TechUI.init(G)
         local fin = {}
         for _, mkey in ipairs(m.fin or {}) do
           local mm = WM.get(it, mkey)
-          if mm then table.insert(fin, zh and mm.zh or mm.en) end
+          if mm then table.insert(fin, G.L(mm.zh, mm.en)) end
         end
         if #fin > 0 then s ..= L("（研究完：", " (done: ") .. table.concat(fin, L("、", ", ")) .. L("）", ")") end
         table.insert(parts, s)
@@ -2169,7 +2169,8 @@ function TechUI.init(G)
       return t
     end
     line(nm(it), TH.S.title, WHITE, 26).Font = TH.F.title
-    line((zh and it.en or it.name) .. " · " .. it.year, 13, DIM)
+    -- 第二行：中文界面写英文名、英文界面写中文名（原样）；别的语言写英文名（车名不翻译）
+    line(((zh and it.en) or ((G.lang == "en") and it.name) or it.en) .. " · " .. it.year, 13, DIM)
     line(L("等级 ", "Rank ") .. TT.RANKS[it.rank].roman .. "（" .. TT.RANKS[it.rank].years .. "）· " .. L("战斗等级 ", "BR ") .. TT.brText(it.br), 13, DIM)
     local stt = status(it)
     local stName = ({ own = L("已买下", "Owned"), res = L("已研究，可以买", "Researched"), cur = L("正在研究", "Researching"),
@@ -2240,7 +2241,7 @@ function TechUI.init(G)
   end
   refreshTree = function()
     local N = TT.NAT[view.nat]
-    tTitle.Text = L("科技树", "Tech tree") .. "  ·  " .. (zh and N.name or N.en)
+    tTitle.Text = L("科技树", "Tech tree") .. "  ·  " .. (G.L(N.name, N.en))
     clear(tFlag)
     drawFlag(tFlag, view.nat)
     flagStrip(tFlags, view.nat, function(nat)
@@ -2262,7 +2263,7 @@ function TechUI.init(G)
       b.LayoutOrder = i
       b.AutoButtonColor, b.BackgroundTransparency = false, 1
       b.Size = UDim2.new(0, 100, 1, 0)
-      b.Text, b.Font, b.TextSize = zh and B0.name or B0.en, on and TH.F.bold or TH.F.body, TH.S.sub
+      b.Text, b.Font, b.TextSize = G.L(B0.name, B0.en), on and TH.F.bold or TH.F.body, TH.S.sub
       b.TextColor3 = on and TH.C.TEXT or TH.C.MUTE
       b.Parent = tBr
       if on then frame(b, UDim2.new(1, -24, 0, 3), UDim2.new(0, 12, 1, -4), AMBER, 0) end
@@ -2303,7 +2304,7 @@ function TechUI.init(G)
     -- 列头：车种名
     for c = 1, nCols do
       local cn = B.cols[c] or { "", "" }
-      local h = text(scroll, zh and cn[1] or cn[2], UDim2.new(0, colW[c] - 8, 0, HH - 6), UDim2.new(0, colX[c] + 4, 0, 2), TH.S.body, TH.C.MUTE, Enum.TextXAlignment.Center)
+      local h = text(scroll, G.L(cn[1], cn[2]), UDim2.new(0, colW[c] - 8, 0, HH - 6), UDim2.new(0, colX[c] + 4, 0, 2), TH.S.body, TH.C.MUTE, Enum.TextXAlignment.Center)
       h.Font = TH.F.bold
       h.ZIndex = 2
     end

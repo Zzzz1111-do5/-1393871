@@ -75,8 +75,9 @@ function Faction.init(G)
   local lst = Instance.new("UIStroke")
   lst.Color, lst.Transparency, lst.Thickness, lst.ApplyStrokeMode = LINE, 0.8, 1, Enum.ApplyStrokeMode.Border
   lst.Parent = langBtn
-  langBtn.Activated:Connect(function()
-    G.lang = (G.lang == "zh") and "en" or "zh"
+  langBtn.Activated:Connect(function()   -- 11-28 多语言：按 Lang.LIST 的顺序换下一种（十种）
+    G.lang = G.Lang.nextOf(G.lang)
+    if G.setPref then G.setPref("lang", G.lang) end   -- 记进设置（存档；设置页的下拉框也跟着）
     if G.refresh then G.refresh() end
   end)
 
@@ -171,7 +172,7 @@ function Faction.init(G)
     if not show then return end
     head.Text = T("faction.title")
     sub.Text = T("faction.sub")
-    langBtn.Text = T("ui.lang")
+    langBtn.Text = G.Lang.nameOf(G.lang) .. "  ▸"
     local total = math.max(1, (S.rAtk or 0) + (S.rDef or 0))
     for side, K in pairs(cards) do
       K.en.Text = T("faction." .. side .. ".en")

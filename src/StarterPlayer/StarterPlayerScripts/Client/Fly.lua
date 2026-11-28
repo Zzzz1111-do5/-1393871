@@ -1528,7 +1528,7 @@ function Fly.init(G)
     local kb = not st.uav and not G.mobile
     local mAim = kb and mouseAim   -- 战雷式：鼠标给方向（教官飞），按方向键时直接操纵
     local up, dn
-    -- 按住 Alt 的方向键归雷达（有雷达的飞机：Alt+↑↓←→ 挪天线，Radar.lua），不动油门；Alt+Q / Alt+E 也不打舵（下面）
+    -- 按住 Alt 的 ↑↓ 归雷达（有雷达的飞机：Alt+↑↓ 天线俯仰；←→ 不按 Alt 就是方位偏转，Radar.lua），不动油门；Alt+Q / Alt+E 也不打舵（下面）
     local altRd = st.rd ~= nil and (key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt))
     local kUp, kDn = key(Enum.KeyCode.Up) and not altRd, key(Enum.KeyCode.Down) and not altRd
     if kb then

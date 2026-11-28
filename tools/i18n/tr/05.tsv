@@ -1,0 +1,107 @@
+SPD km/h⟫速度 km/h⟫속도 km/h⟫СКОР км/ч⟫GESCHW. km/h⟫VIT km/h⟫VEL km/h⟫VEL km/h
+ALT m⟫高度 m⟫고도 m⟫ВЫС м⟫HÖHE m⟫⟫⟫
+Flares⟫フレア⟫플레어⟫Ловушки⟫Täuschkörper⟫Leurres⟫Bengalas⟫Flares
+EO POD⟫光学ポッド⟫광학 포드⟫ОЭ КОНТЕЙНЕР⟫EO-BEHÄLTER⟫NACELLE EO⟫CONTENEDOR EO⟫CASULO EO
+Weapon away. Keep the pod on the target.⟫投下済み。ポッドを目標に向け続けろ。⟫투하 완료. 포드를 계속 목표에 유지하라.⟫Оружие сброшено. Держите контейнер на цели.⟫Waffe ab. Halte den Behälter auf dem Ziel.⟫Arme larguée. Gardez la nacelle sur la cible.⟫Arma fuera. Mantén el contenedor en el objetivo.⟫Arma lançada. Mantenha o casulo no alvo.
+Target tracked. Click to release.⟫目標を追尾中。クリックで投下。⟫목표 추적 중. 클릭하면 투하.⟫Цель сопровождается. Щёлкните для пуска.⟫Ziel verfolgt. Klicken zum Auslösen.⟫Cible suivie. Cliquez pour larguer.⟫Objetivo seguido. Haz clic para soltar.⟫Alvo rastreado. Clique para lançar.
+Slew to search. Wheel to zoom.⟫マウスで捜索、ホイールでズーム。⟫마우스로 탐색, 휠로 줌.⟫Ведите мышью для поиска, колесо — зум.⟫Schwenken zum Suchen, Rad zum Zoomen.⟫Orientez pour chercher, molette pour zoomer.⟫Mueve para buscar, rueda para hacer zoom.⟫Mova para procurar, roda para zoom.
+RNG⟫距離⟫거리⟫ДАЛЬН⟫ENTF⟫DIST⟫DIST⟫DIST
+[P] exit pod · mouse slew · wheel zoom\n[Z] wide / narrow · [V] white-hot / black-hot / TV\n[R] next target · click release / fire · autopilot holds level⟫[P] ポッド終了 · マウス 旋回 · ホイール ズーム\n[Z] 広角 / 狭角 · [V] 白熱 / 黒熱 / TV\n[R] 次の目標 · クリック 投下 / 射撃 · 自動操縦が水平飛行を維持⟫[P] 포드 종료 · 마우스 회전 · 휠 줌\n[Z] 광각 / 협각 · [V] 백열 / 흑열 / TV\n[R] 다음 목표 · 클릭 투하 / 사격 · 자동조종이 수평 비행 유지⟫[P] — выйти · мышь — поворот · колесо — зум\n[Z] — широкое / узкое поле · [V] — белый / чёрный горячий / ТВ\n[R] — следующая цель · щелчок — пуск / огонь · автопилот держит горизонт⟫[P] Behälter verlassen · Maus schwenken · Rad Zoom\n[Z] weit / eng · [V] weiß-heiß / schwarz-heiß / TV\n[R] nächstes Ziel · Klick auslösen / feuern · Autopilot hält Horizontalflug⟫[P] quitter la nacelle · souris orienter · molette zoom\n[Z] large / étroit · [V] blanc chaud / noir chaud / TV\n[R] cible suivante · clic larguer / tirer · le pilote automatique maintient le vol en palier⟫[P] salir del contenedor · ratón girar · rueda zoom\n[Z] amplio / estrecho · [V] blanco caliente / negro caliente / TV\n[R] siguiente objetivo · clic soltar / disparar · el piloto automático mantiene el vuelo nivelado⟫[P] sair do casulo · mouse girar · roda zoom\n[Z] amplo / estreito · [V] branco quente / preto quente / TV\n[R] próximo alvo · clique lançar / atirar · o piloto automático mantém o voo nivelado
+FUEL {1}%⟫燃料 {1}%⟫연료 {1}%⟫ТОПЛ {1}%⟫KRAFTST. {1}%⟫CARB. {1}%⟫COMB. {1}%⟫COMB. {1}%
+Fuel {1}%⟫燃料 {1}%⟫연료 {1}%⟫Топливо {1}%⟫Kraftstoff {1}%⟫Carburant {1}%⟫Combustible {1}%⟫Combustível {1}%
+BINGO FUEL⟫燃料不足⟫연료 부족⟫ТОПЛИВО НА ИСХОДЕ⟫KRAFTSTOFF KNAPP⟫CARBURANT BAS⟫COMBUSTIBLE BAJO⟫COMBUSTÍVEL BAIXO
+FLAMEOUT⟫燃料切れ⟫연료 고갈⟫ДВИГАТЕЛЬ ЗАГЛОХ⟫TRIEBWERK AUS⟫EXTINCTION MOTEUR⟫MOTOR APAGADO⟫MOTOR APAGADO
+Drop tanks empty, jettisoned⟫増槽が空になり投棄した⟫보조 연료탱크가 비어 투하함⟫Подвесные баки пусты и сброшены⟫Zusatztanks leer, abgeworfen⟫Réservoirs vides, largués⟫Tanques vacíos, soltados⟫Tanques vazios, alijados
+Drop tanks jettisoned⟫増槽を投棄した⟫보조 연료탱크 투하⟫Подвесные баки сброшены⟫Zusatztanks abgeworfen⟫Réservoirs largués⟫Tanques soltados⟫Tanques alijados
+800 L drop tank⟫800 L 増槽⟫800 L 보조 연료탱크⟫Подвесной бак 800 л⟫800-l-Zusatztank⟫Réservoir largable de 800 L⟫Tanque externo de 800 L⟫Tanque externo de 800 L
+370 gal drop tank⟫370 ガロン増槽⟫370갤런 보조 연료탱크⟫Подвесной бак 370 галлонов⟫370-gal-Zusatztank⟫Réservoir largable de 370 gal⟫Tanque externo de 370 gal⟫Tanque externo de 370 gal
+External fuel tank⟫外部燃料タンク⟫외부 연료탱크⟫Внешний топливный бак⟫Außentank⟫Réservoir externe⟫Tanque de combustible externo⟫Tanque de combustível externo
+230 gal external tank⟫230 ガロン外部タンク⟫230갤런 외부 연료탱크⟫Внешний бак 230 галлонов⟫230-gal-Außentank⟫Réservoir externe de 230 gal⟫Tanque externo de 230 gal⟫Tanque externo de 230 gal
+Drop Tank⟫増槽⟫보조 연료탱크⟫Подвесной бак⟫Zusatztank⟫Réservoir largable⟫Tanque externo⟫Tanque externo
+INTERNAL FUEL⟫機内燃料⟫내부 연료⟫ВНУТРЕННЕЕ ТОПЛИВО⟫INTERNER KRAFTSTOFF⟫CARBURANT INTERNE⟫COMBUSTIBLE INTERNO⟫COMBUSTÍVEL INTERNO
+About {1} min cruise⟫巡航約 {1} 分⟫순항 약 {1}분⟫Около {1} мин крейсерского полёта⟫Etwa {1} min Reiseflug⟫Environ {1} min de croisière⟫Unos {1} min de crucero⟫Cerca de {1} min de cruzeiro
+(tanks +{1} min)⟫（増槽 +{1} 分）⟫(보조 탱크 +{1}분)⟫(баки +{1} мин)⟫(Tanks +{1} min)⟫(réservoirs +{1} min)⟫(tanques +{1} min)⟫(tanques +{1} min)
+Weight {1} (vs. half fuel, no tanks)⟫重量 {1}（機内燃料半分・増槽なしと比較）⟫중량 {1}(내부 연료 절반, 보조 탱크 없음 대비)⟫Масса {1} (против половины топлива без баков)⟫Gewicht {1} (gegenüber halbem Kraftstoff ohne Tanks)⟫Masse {1} (par rapport à moitié carburant, sans réservoirs)⟫Peso {1} (frente a medio combustible, sin tanques)⟫Peso {1} (comparado com meio combustível, sem tanques)
+Fuel⟫燃料⟫연료⟫Топливо⟫Kraftstoff⟫Carburant⟫Combustible⟫Combustível
+Top speed⟫最高速度⟫최고 속도⟫Макс. скорость⟫Höchstgeschwindigkeit⟫Vitesse max.⟫Velocidad máx.⟫Velocidade máx.
+Extra endurance⟫航続時間の延長⟫추가 체공 시간⟫Доп. продолжительность⟫Zusätzliche Flugdauer⟫Autonomie en plus⟫Autonomía extra⟫Autonomia extra
+{1} min⟫{1} 分⟫{1}분⟫{1} мин⟫{1} min⟫{1} min⟫{1} min⟫{1} min
++{1}% fuel⟫+{1}% 燃料⟫+{1}% 연료⟫+{1}% топлива⟫+{1}% Kraftstoff⟫+{1}% de carburant⟫+{1}% de combustible⟫+{1}% de combustível
+Choose aircraft⟫機種を選択⟫기종 선택⟫Выберите самолёт⟫Flugzeug wählen⟫Choisissez un appareil⟫Elige aeronave⟫Escolha a aeronave
+Aircraft Terminal⟫航空機ターミナル⟫항공기 터미널⟫Терминал авиации⟫Flugzeugterminal⟫Terminal aérien⟫Terminal de aeronaves⟫Terminal de aeronaves
+Helicopter Terminal⟫ヘリコプターターミナル⟫헬리콥터 터미널⟫Терминал вертолётов⟫Hubschrauberterminal⟫Terminal d'hélicoptères⟫Terminal de helicópteros⟫Terminal de helicópteros
+Pick an aircraft, then set its loadout and fuel⟫機体を選び、搭載と燃料を設定⟫기체를 고르고 무장과 연료를 설정⟫Выберите самолёт, затем вооружение и топливо⟫Wähle ein Flugzeug, dann Bewaffnung und Kraftstoff⟫Choisissez un appareil, puis son armement et son carburant⟫Elige una aeronave y luego su armamento y combustible⟫Escolha uma aeronave e depois o armamento e o combustível
+CANCEL⟫キャンセル⟫취소⟫ОТМЕНА⟫ABBRECHEN⟫ANNULER⟫CANCELAR⟫CANCELAR
+Carrier⟫艦載機⟫함재기⟫Палубный⟫Trägergestützt⟫Embarqué⟫Embarcado⟫Embarcado
+Stealth⟫ステルス⟫스텔스⟫Малозаметный⟫Tarnkappe⟫Furtif⟫Furtivo⟫Furtivo
+Gun⟫機関砲⟫기관포⟫Пушка⟫Kanone⟫Canon⟫Cañón⟫Canhão
+{1} hardpoints⟫ハードポイント {1} 箇所⟫하드포인트 {1}개⟫Точек подвески: {1}⟫{1} Aufhängungen⟫{1} points d'emport⟫{1} puntos de anclaje⟫{1} pontos de fixação
+{1} min cruise⟫巡航 {1} 分⟫순항 {1}분⟫{1} мин крейсерского⟫{1} min Reiseflug⟫{1} min de croisière⟫{1} min de crucero⟫{1} min de cruzeiro
+LMB⟫左クリック⟫좌클릭⟫ЛКМ⟫LMT⟫Clic G⟫Clic izq.⟫Botão esq.
+RMB⟫右クリック⟫우클릭⟫ПКМ⟫RMT⟫Clic D⟫Clic der.⟫Botão dir.
+Space⟫スペース⟫스페이스⟫Пробел⟫Leertaste⟫Espace⟫Espacio⟫Espaço
+Mouse⟫マウス⟫마우스⟫Мышь⟫Maus⟫Souris⟫Ratón⟫Mouse
+Aim⟫照準⟫조준⟫Прицел⟫Zielen⟫Viser⟫Apuntar⟫Mirar
+Reload⟫リロード⟫재장전⟫Перезарядка⟫Nachladen⟫Recharger⟫Recargar⟫Recarregar
+Enter / use⟫乗車 / 操作⟫탑승 / 사용⟫Сесть / использовать⟫Einsteigen / benutzen⟫Monter / utiliser⟫Subir / usar⟫Entrar / usar
+All keys⟫全キー⟫모든 키⟫Все клавиши⟫Alle Tasten⟫Toutes les touches⟫Todas las teclas⟫Todas as teclas
+Redeploy (objective far away, no death)⟫再配置（目標が遠いので戦死扱いにならない）⟫재배치(목표가 멀어 전사로 치지 않음)⟫Возрождение (цель далеко, смерть не засчитывается)⟫Neu einsetzen (Ziel weit weg, zählt nicht als Tod)⟫Redéploiement (objectif loin, pas de mort comptée)⟫Redesplegar (objetivo lejano, no cuenta como muerte)⟫Reimplantar (objetivo distante, não conta como morte)
+Brake⟫ブレーキ⟫브레이크⟫Тормоз⟫Bremse⟫Frein⟫Freno⟫Freio
+Hold: back to hangar⟫長押し：格納庫へ戻る⟫길게 누르기: 격납고로⟫Удерживайте: в ангар⟫Halten: zurück in den Hangar⟫Maintenir : retour au hangar⟫Mantener: volver al hangar⟫Segurar: voltar ao hangar
+Hold H: back to hangar⟫H 長押し：格納庫へ戻る⟫H 길게 누르기: 격납고로⟫Удерживайте H: в ангар⟫H halten: zurück in den Hangar⟫Maintenez H : retour au hangar⟫Mantén H: volver al hangar⟫Segure H: voltar ao hangar
+Back in the hangar⟫格納庫に戻った⟫격납고로 돌아옴⟫Вы в ангаре⟫Zurück im Hangar⟫De retour au hangar⟫De vuelta en el hangar⟫De volta ao hangar
+Drive⟫前進 / 後退⟫전진 / 후진⟫Движение⟫Fahren⟫Avancer / reculer⟫Avanzar / retroceder⟫Avançar / recuar
+Steer⟫操舵⟫조향⟫Поворот⟫Lenken⟫Diriger⟫Girar⟫Virar
+Sight⟫照準器⟫조준경⟫Прицел⟫Visier⟫Viseur⟫Mira⟫Mira
+Throttle⟫スロットル⟫스로틀⟫Газ⟫Schub⟫Gaz⟫Acelerador⟫Acelerador
+Beach it to unload⟫砂浜に乗り上げて降ろす⟫해변에 올라가 하역⟫Выйдите на берег для выгрузки⟫Auf den Strand fahren zum Entladen⟫Échouez-le pour débarquer⟫Varar en la playa para descargar⟫Encalhe na praia para descarregar
+Throttle up (full = afterburner)⟫スロットルを上げる（最大でアフターバーナー）⟫스로틀 올림(최대 = 애프터버너)⟫Газ вперёд (максимум = форсаж)⟫Schub erhöhen (voll = Nachbrenner)⟫Mettre les gaz (plein = postcombustion)⟫Más acelerador (a fondo = poscombustión)⟫Mais potência (máxima = pós-combustão)
+Taxi steer⟫地上滑走の操舵⟫지상 활주 조향⟫Руление⟫Rollen lenken⟫Diriger au roulage⟫Dirección en rodaje⟫Direção no táxi
+Hold S to lift off at {1} km/h⟫S 長押しで {1} km/h で離陸⟫S를 누르고 있으면 {1} km/h에서 이륙⟫Удерживайте S для отрыва на {1} км/ч⟫S halten zum Abheben bei {1} km/h⟫Maintenez S pour décoller à {1} km/h⟫Mantén S para despegar a {1} km/h⟫Segure S para decolar a {1} km/h
+Nose down / up⟫機首下げ / 上げ⟫기수 내림 / 올림⟫Нос вниз / вверх⟫Nase runter / hoch⟫Piquer / cabrer⟫Morro abajo / arriba⟫Nariz para baixo / cima
+Steer (aim)⟫方向（照準）⟫방향(조준)⟫Направление (прицел)⟫Richtung (Zielen)⟫Direction (visée)⟫Dirección (mira)⟫Direção (mira)
+Speed up / down⟫加速 / 減速⟫가속 / 감속⟫Быстрее / медленнее⟫Schneller / langsamer⟫Accélérer / ralentir⟫Acelerar / frenar⟫Acelerar / desacelerar
+Back up⟫後退⟫후진⟫Назад⟫Zurücksetzen⟫Reculer⟫Retroceder⟫Dar ré
+Roll⟫ロール⟫롤⟫Крен⟫Rollen⟫Roulis⟫Alabeo⟫Rolagem
+Missile⟫ミサイル⟫미사일⟫Ракета⟫Rakete⟫Missile⟫Misil⟫Míssil
+Throttle down⟫スロットルを絞る⟫스로틀 내림⟫Газ назад⟫Schub verringern⟫Réduire les gaz⟫Menos acelerador⟫Menos potência
+Rotor spinning up — wait for 100%⟫ローター回転上昇中 — 100% まで待機⟫로터 회전 상승 중 — 100%까지 대기⟫Винт раскручивается — ждите 100%⟫Rotor läuft hoch — warte auf 100 %⟫Le rotor accélère — attendez 100 %⟫El rotor se acelera: espera al 100%⟫O rotor está acelerando: espere 100%
+Up / down⟫上昇 / 下降⟫상승 / 하강⟫Вверх / вниз⟫Hoch / runter⟫Monter / descendre⟫Subir / bajar⟫Subir / descer
+Forward / back⟫前 / 後⟫앞 / 뒤⟫Вперёд / назад⟫Vor / zurück⟫Avant / arrière⟫Adelante / atrás⟫Frente / trás
+Turn⟫旋回⟫선회⟫Поворот⟫Drehen⟫Tourner⟫Girar⟫Virar
+Nose heading⟫機首方向⟫기수 방향⟫Курс носа⟫Nasenrichtung⟫Cap du nez⟫Rumbo del morro⟫Rumo do nariz
+Kill⟫撃破⟫처치⟫Убийство⟫Kill⟫Élimination⟫Baja⟫Abate
+Headshot⟫ヘッドショット⟫헤드샷⟫В голову⟫Kopfschuss⟫Tir à la tête⟫Disparo a la cabeza⟫Tiro na cabeça
+Vehicle destroyed⟫車両撃破⟫차량 격파⟫Техника уничтожена⟫Fahrzeug zerstört⟫Véhicule détruit⟫Vehículo destruido⟫Veículo destruído
+Emplacement destroyed⟫陣地破壊⟫진지 파괴⟫Огневая точка уничтожена⟫Stellung zerstört⟫Emplacement détruit⟫Emplazamiento destruido⟫Posição destruída
+Objective captured⟫拠点占領⟫거점 점령⟫Цель захвачена⟫Ziel eingenommen⟫Objectif capturé⟫Objetivo capturado⟫Objetivo capturado
+DOUBLE KILL!⟫ダブルキル！⟫더블 킬!⟫ДВОЙНОЕ УБИЙСТВО!⟫DOPPELKILL!⟫DOUBLÉ !⟫¡DOBLE BAJA!⟫ABATE DUPLO!
+TRIPLE KILL!⟫トリプルキル！⟫트리플 킬!⟫ТРОЙНОЕ УБИЙСТВО!⟫DREIFACHKILL!⟫TRIPLÉ !⟫¡TRIPLE BAJA!⟫ABATE TRIPLO!
+QUAD KILL!⟫クアドラキル！⟫쿼드라 킬!⟫ЧЕТВЕРНОЕ УБИЙСТВО!⟫VIERFACHKILL!⟫QUADRUPLÉ !⟫¡CUÁDRUPLE BAJA!⟫ABATE QUÁDRUPLO!
+{1} KILLS!⟫{1} キル！⟫{1} 킬!⟫{1} УБИЙСТВ!⟫{1} KILLS!⟫{1} ÉLIMINATIONS !⟫¡{1} BAJAS!⟫{1} ABATES!
+UNSTOPPABLE⟫止められない⟫막을 수 없다⟫НЕУДЕРЖИМЫЙ⟫UNAUFHALTSAM⟫INARRÊTABLE⟫IMPARABLE⟫IMPARÁVEL
+KILLING MACHINE⟫殺戮マシーン⟫살육 기계⟫МАШИНА СМЕРТИ⟫TÖTUNGSMASCHINE⟫MACHINE À TUER⟫MÁQUINA DE MATAR⟫MÁQUINA MORTÍFERA
+KING OF THE BATTLEFIELD⟫戦場の王⟫전장의 왕⟫КОРОЛЬ ПОЛЯ БОЯ⟫KÖNIG DES SCHLACHTFELDS⟫ROI DU CHAMP DE BATAILLE⟫REY DEL CAMPO DE BATALLA⟫REI DO CAMPO DE BATALHA
+{1} kill streak⟫{1} 連続キル⟫{1}연속 킬⟫Серия из {1} убийств⟫{1}er-Killserie⟫Série de {1} éliminations⟫Racha de {1} bajas⟫Sequência de {1} abates
+Tilt fwd / brake⟫前傾 / ブレーキ⟫앞으로 기울기 / 제동⟫Наклон вперёд / торможение⟫Nach vorn kippen / bremsen⟫Incliner / freiner⟫Inclinar / frenar⟫Inclinar / frear
+Sidestep⟫横移動⟫옆으로 이동⟫Боком⟫Seitwärts⟫Latéral⟫Lateral⟫Lateral
+Turn nose⟫機首旋回⟫기수 회전⟫Поворот носа⟫Nase drehen⟫Tourner le nez⟫Girar el morro⟫Girar o nariz
+Rockets / missiles⟫ロケット / ミサイル⟫로켓 / 미사일⟫НАР / ракеты⟫Raketen / Flugkörper⟫Roquettes / missiles⟫Cohetes / misiles⟫Foguetes / mísseis
+Close tablet⟫タブレットを閉じる⟫태블릿 닫기⟫Закрыть планшет⟫Tablet schließen⟫Fermer la tablette⟫Cerrar la tableta⟫Fechar o tablet
+Engine order⟫速力指令⟫속력 지시⟫Машинный телеграф⟫Maschinentelegraf⟫Chadburn⟫Telégrafo de máquinas⟫Telégrafo de máquinas
+Rudder⟫舵⟫키⟫Руль⟫Ruder⟫Barre⟫Timón⟫Leme
+Anti-ship missile⟫対艦ミサイル⟫대함 미사일⟫ПКР⟫Seezielflugkörper⟫Missile antinavire⟫Misil antibuque⟫Míssil antinavio
+Leave ship⟫下船⟫하선⟫Покинуть корабль⟫Von Bord gehen⟫Quitter le navire⟫Abandonar el buque⟫Deixar o navio
+Leave⟫離れる⟫떠나기⟫Покинуть⟫Verlassen⟫Quitter⟫Salir⟫Sair
+Point at target⟫着弾点を指す⟫목표 지점 지정⟫Наведите на цель⟫Auf das Ziel zeigen⟫Pointer la cible⟫Apuntar al objetivo⟫Apontar para o alvo
+Zoom⟫拡大⟫확대⟫Зум⟫Zoom⟫Zoom⟫Zoom⟫Zoom
+Look around⟫見回す⟫둘러보기⟫Осмотреться⟫Umsehen⟫Regarder autour⟫Mirar alrededor⟫Olhar em volta
+Jump out (parachute)⟫脱出（パラシュート）⟫탈출(낙하산)⟫Прыгнуть (парашют)⟫Abspringen (Fallschirm)⟫Sauter (parachute)⟫Saltar (paracaídas)⟫Saltar (paraquedas)
+ALL KEYS · {1}⟫全キー · {1}⟫모든 키 · {1}⟫ВСЕ КЛАВИШИ · {1}⟫ALLE TASTEN · {1}⟫TOUTES LES TOUCHES · {1}⟫TODAS LAS TECLAS · {1}⟫TODAS AS TECLAS · {1}
+F1 to close⟫F1 で閉じる⟫F1 닫기⟫F1 — закрыть⟫F1 zum Schließen⟫F1 pour fermer⟫F1 para cerrar⟫F1 para fechar
+GENERAL⟫共通⟫공통⟫ОБЩЕЕ⟫ALLGEMEIN⟫GÉNÉRAL⟫GENERAL⟫GERAL
+Tab scoreboard · M map · H redeploy (no death) · N night vision · V 1st / 3rd person · F1 all keys⟫Tab 戦況 · M マップ · H 再配置（戦死扱いなし）· N 暗視 · V 一人称 / 三人称 · F1 全キー⟫Tab 전황 · M 지도 · H 재배치(전사 아님) · N 야간 투시 · V 1인칭 / 3인칭 · F1 모든 키⟫Tab — счёт · M — карта · H — возрождение (без смерти) · N — ПНВ · V — 1-е / 3-е лицо · F1 — все клавиши⟫Tab Punktestand · M Karte · H neu einsetzen (kein Tod) · N Nachtsicht · V 1. / 3. Person · F1 alle Tasten⟫Tab scores · M carte · H redéploiement (sans mort) · N vision nocturne · V 1re / 3e personne · F1 toutes les touches⟫Tab marcador · M mapa · H redesplegar (sin muerte) · N visión nocturna · V 1.ª / 3.ª persona · F1 todas las teclas⟫Tab placar · M mapa · H reimplantar (sem morte) · N visão noturna · V 1ª / 3ª pessoa · F1 todas as teclas
+On foot⟫徒歩⟫도보⟫Пешком⟫Zu Fuß⟫À pied⟫A pie⟫A pé
+Tanks & APCs⟫戦車・装甲車⟫전차·장갑차⟫Танки и БТР⟫Panzer & SPz⟫Chars et blindés⟫Tanques y blindados⟫Tanques e blindados
+Hovercraft⟫ホバークラフト⟫호버크래프트⟫Судно на воздушной подушке⟫Luftkissenboot⟫Aéroglisseur⟫Aerodeslizador⟫Hovercraft
+Drones⟫ドローン⟫드론⟫Дроны⟫Drohnen⟫Drones⟫Drones⟫Drones

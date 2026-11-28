@@ -196,8 +196,8 @@ function Drive.init(G)
       seg(R, sx * 96, 0, 120, 2)
       for i = 1, 5 do seg(R, sx * (36 + i * 20), 5, 2, 8) end
     end
-    local zh = G.lang ~= "en"
-    for c, lab in ipairs({ zh and "穿" or "AP", zh and "榴" or "HE" }) do
+    local zh = G.isZh()   -- 多语言（11-28）：中文（简 / 繁）
+    for c, lab in ipairs({ G.L("穿", "AP"), G.L("榴", "HE") }) do
       local x = -200 + (c - 1) * 34
       seg(R, x, -105, 2, 120)
       num(R, lab, x, -175, 13)
@@ -533,7 +533,7 @@ function Drive.init(G)
     rangeText.TextTransparency, modeText.TextTransparency, zoomText.TextTransparency, ammoText.TextTransparency, fcsText.TextTransparency = SB, SB, SB, SB, SB
     fcsText.TextColor3, multiBar.BackgroundColor3, multiBar.BackgroundTransparency = retCol, retCol, SB
     readyBox.BackgroundColor3, readyStroke.Color = retCol, retCol
-    modeText.Text = T("sight." .. m) .. ((thermal and NVd.short) and ("  ·  " .. ((G.lang == "en") and NVd.short[2] or NVd.short[1])) or "")
+    modeText.Text = T("sight." .. m) .. ((thermal and NVd.short) and ("  ·  " .. G.L(NVd.short[1], NVd.short[2])) or "")
     for _, g in ipairs(dots) do g.BackgroundColor3 = (m == "nv") and RGB(200, 255, 200) or Color3.new(1, 1, 1) end
   end
 
@@ -2620,7 +2620,7 @@ function Drive.init(G)
       do   -- 光电模式；热像写上是第几代（WtOptics，原来在镜上方那行字里，11-27 那行收了）
         local mm = MODES[st.mode]
         local NVd = OPT.NV[(st.kit and st.kit.nv) or ""] or {}
-        local gen = ((mm == "whot" or mm == "bhot") and NVd.short) and ("  ·  " .. ((G.lang == "en") and NVd.short[2] or NVd.short[1])) or ""
+        local gen = ((mm == "whot" or mm == "bhot") and NVd.short) and ("  ·  " .. G.L(NVd.short[1], NVd.short[2])) or ""
         hintV.Text = T("drv.hintOptic", T("sight." .. mm) .. gen)
       end
       hintM.Text = T("drv.hintSmoke", vs.smoke or 0)

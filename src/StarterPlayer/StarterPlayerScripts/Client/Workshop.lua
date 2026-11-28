@@ -36,7 +36,7 @@ function Workshop.init(G)
   local me = Players.LocalPlayer
   local UD2, V2 = UDim2.new, Vector2.new
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local zh = G.lang == "zh"
+  local zh = G.isZh()   -- 多语言（11-28）：中文（简 / 繁）
   local compact = G.mobile == true or (UIS.TouchEnabled and not UIS.KeyboardEnabled)
   -- 排版（Root 画布上的像素）：M 边距、HY / HH 抬头、TOP 两栏的上沿、LW / RW 两栏宽、BH / BM 底部条的高和离下边多远、GAP 间距、DW 悬停资料卡宽、
   --   PLATE 底部条上面那一行（名牌、左右对称）、HIT 能点的东西最少多高（手机 44 ≈ 34pt）
@@ -474,8 +474,8 @@ function Workshop.init(G)
     if G.hangarWsMode then G.hangarWsMode(true) end
     local N = TT.NAT[it.nat] or { name = it.nat, en = it.nat }
     local R0 = TT.RANKS[it.rank] or { roman = tostring(it.rank) }
-    ui.name.Text = zh and it.name or it.en
-    ui.sub.Text = T("ws.sub", zh and N.name or N.en, R0.roman, TT.brText(it.br))
+    ui.name.Text = G.L(it.name, it.en)
+    ui.sub.Text = T("ws.sub", G.L(N.name, N.en), R0.roman, TT.brText(it.br))
     placeSave()
     saveUI("idle")
     buildTabs(air)

@@ -19,8 +19,8 @@ function Settings.init(G)
   local me = Players.LocalPlayer
   local TH = G.Theme
   local UD2, V2 = UDim2.new, Vector2.new
-  local zh = G.lang ~= "en"
-  local function L(a, b) return zh and a or b end
+  local zh = G.isZh()
+  local function L(a, b) return G.L(a, b) end   -- 中英对照：按现在的语言（G.L，多语言查译文包）
   local function act(...)
     local args = table.pack(...)
     pcall(function() G.R.Act:FireServer(table.unpack(args, 1, args.n)) end)
@@ -109,7 +109,7 @@ function Settings.init(G)
     if master then pcall(function() master.Volume = P.vol end) end
     -- 灰度是 0（默认）就把这层调色关掉（11-27 M3 丝滑：亮度、对比都是 0 也开着是白画一遍全屏后期）
     if gammaCC then pcall(function() gammaCC.Brightness = P.gamma gammaCC.Contrast = math.abs(P.gamma) * 0.4 gammaCC.Enabled = math.abs(P.gamma) > 1e-3 end) end
-    if P.lang == "zh" or P.lang == "en" then G.lang = P.lang end
+    G.lang = (G.Lang.valid(P.lang) and P.lang) or G.langSys or G.lang   -- 「跟随系统」= 进游戏时按系统语言挑的那种
     -- 空战：操纵方式、镜头滚转（Fly.lua 读；飞着的时候改了马上换）
     G.airMouseAim, G.camRollK, G.autoGearOff = P.airAim ~= "kb", P.camRoll, P.autoGear == false
     G.sensAirK, G.sensVehK = P.sensAir, P.sensVeh   -- 开飞机 / 开车时再乘一档（用户 11-28「玩家要能调灵敏度」）
@@ -286,7 +286,11 @@ function Settings.init(G)
   local function deg(v) return string.format("%d°", v) end
   local ITEMS = {
     { cat = "main", key = "lang", kind = "drop", zh = "语言（Language）", en = "Language",
-      opts = { { "", L("跟随系统", "System") }, { "zh", "简体中文" }, { "en", "English" } },
+      opts = (function()   -- 11-28 多语言：跟随系统 + Lang.LIST 的十种（每种用它自己的写法）
+        local o = { { "", L("跟随系统", "System") } }
+        for _, l in ipairs(G.Lang.LIST) do o[#o + 1] = { l.code, l.name } end
+        return o
+      end)(),
       note = L("多数界面重新进入游戏后才换", "Most screens switch after rejoining") },
     { cat = "main", key = "ui", kind = "drop", zh = "界面比例", en = "Interface scale",
       opts = { { 0.85, L("紧凑（85%）", "Compact (85%)") }, { 1, L("标准（100%）", "Standard (100%)") }, { 1.15, L("大（115%）", "Large (115%)") }, { 1.3, L("特大（130%）", "Extra large (130%)") } },
@@ -548,7 +552,8 @@ function Settings.init(G)
     if q ~= "" then
       local y = 0
       for _, it in ipairs(ITEMS) do
-        if it.kind ~= "code" and (string.find(string.lower(it.zh), q, 1, true) or string.find(string.lower(it.en), q, 1, true)) then
+        if it.kind ~= "code" and (string.find(string.lower(it.zh), q, 1, true) or string.find(string.lower(it.en), q, 1, true)
+          or string.find(string.lower(L(it.zh, it.en)), q, 1, true)) then   -- 多语言（11-28）：当前语言的译文也能搜
           local f = buildRow(searchPg, y, it)
           table.insert(searchRefresh, f)
           f()

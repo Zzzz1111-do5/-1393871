@@ -14,7 +14,7 @@ function WtMap.init(G)
   local TH = require(RS:WaitForChild("Theme"))
   local me = Players.LocalPlayer
   local RGB = Color3.fromRGB
-  local function L(zh, en) return (G.lang == "en") and en or zh end
+  local function L(zh, en) return G.L(zh, en) end   -- 多语言（11-28）
   local open = false
 
   local gui = Instance.new("ScreenGui")

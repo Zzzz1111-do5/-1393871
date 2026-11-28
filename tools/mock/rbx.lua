@@ -1188,7 +1188,23 @@ local guiObj = {
   ClipsDescendants = { T.bool, false }, Rotation = { T.number, 0 }, Active = { T.bool, false },
   SizeConstraint = { E("SizeConstraint"), Enum.SizeConstraint.RelativeXY }, Selectable = { T.bool, false }, Interactable = { T.bool, true },
 }
-def("GuiObject", "Instance", guiObj, { noCreate = true, events = { MouseEnter = true, MouseLeave = true, InputBegan = true, InputEnded = true, InputChanged = true } })
+-- 界面元素在屏幕上的方框（近似：UDim2 + AnchorPoint 一层层往上算，屏幕 1280×720；不管 UIListLayout、UIScale）——设置页的下拉框按按钮的位置摆列表
+local function guiRect(o)
+  local par = rawget(o, "_parent")
+  local px, py, pw, ph = 0, 0, R.vpW or 1280, R.vpH or 720
+  if par and isA(par._cls, "GuiObject") then px, py, pw, ph = guiRect(par) end
+  local S, P, A = o.Size, o.Position, o.AnchorPoint   -- 走 __index（没设过的拿默认值）
+  local w = S.X.Scale * pw + S.X.Offset
+  local h = S.Y.Scale * ph + S.Y.Offset
+  local x = px + P.X.Scale * pw + P.X.Offset - A.X * w
+  local y = py + P.Y.Scale * ph + P.Y.Offset - A.Y * h
+  return x, y, w, h
+end
+def("GuiObject", "Instance", guiObj, { noCreate = true, events = { MouseEnter = true, MouseLeave = true, InputBegan = true, InputEnded = true, InputChanged = true },
+  ro = {
+    AbsolutePosition = function(o) local x, y = guiRect(o) return newV2(x, y) end,
+    AbsoluteSize = function(o) local _, _, w, h = guiRect(o) return newV2(w, h) end,
+  } })
 def("Frame", "GuiObject", {})
 def("CanvasGroup", "GuiObject", { GroupTransparency = { T.number, 0 }, GroupColor3 = { T.Color3, newC3(1, 1, 1) } })   -- 雷达：按圆角裁剪里面的东西
 -- 挂载编辑器：ViewportFrame 里放一个 WorldModel（BulkMoveTo 同 Workspace）

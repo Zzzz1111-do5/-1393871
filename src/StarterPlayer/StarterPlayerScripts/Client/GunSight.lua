@@ -291,11 +291,11 @@ function GunSight.new(G, sightFrame, gui)
     local s = math.clamp(P.vp.Y / 720, 0.8, 1.6)
     local x0, y0, h = -P.hw * 0.36, -P.hh * 0.5, P.hh * 0.3   -- 中心左上方（左上角是提示框、比分条下面是目标那行字）
     local dxc = 34 * s
-    local zh = G.lang ~= "en"
+    local zh = G.isZh()   -- 多语言（11-28）：中文（简 / 繁）
     for ci, col in ipairs(ts.cols) do
       local x = x0 + (ci - 1) * dxc
       c.line(x, y0, x, y0 + h, 1)
-      local name = ({ ap = zh and "穿" or "AP", heat = zh and "破" or "HEAT", mpat = zh and "多" or "MP", he = zh and "榴" or "HE" })[col.cls] or col.cls
+      local name = ({ ap = G.L("穿", "AP"), heat = G.L("破", "HEAT"), mpat = G.L("多", "MP"), he = G.L("榴", "HE") })[col.cls] or col.cls
       c.text(x, y0 - 12, name, 12)
       local lastY = -1e9
       for _, tk in ipairs(col.ticks) do

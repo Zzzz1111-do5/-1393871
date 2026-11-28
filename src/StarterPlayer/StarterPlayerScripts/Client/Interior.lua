@@ -31,7 +31,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   local cam = workspace.CurrentCamera
   local function clamp(x, a, b) return x < a and a or (x > b and b or x) end
   local function sm(t) t = clamp(t, 0, 1) return t * t * (3 - 2 * t) end
-  local function T(zh, en) return (G.lang == "en") and en or zh end
+  local function T(zh, en) return G.L(zh, en) end   -- 多语言（11-28）
 
   -- 真模型部件（Sketchfab CC-BY 原模型，Optics.lua：导入的 GLB 或开局后台现生成的网格）：电台、灭火瓶、120 / 125 毫米弹、乘员头盔
   Kit.props = function(key) return G.opticParts and G.opticParts(key) or nil end

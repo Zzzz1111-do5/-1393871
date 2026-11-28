@@ -19,7 +19,7 @@ function KillFx.init(G)
   local TH = G.Theme
   local RGB = Color3.fromRGB
   local V2, UD2 = Vector2.new, UDim2.new
-  local L = function(zh, en) return (G.lang == "en") and en or zh end
+  local L = function(zh, en) return G.L(zh, en) end   -- 多语言（11-28）
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
   local WHITE, AMBER, GOLD, GREEN = RGB(255, 255, 255), TH.C.WARN, RGB(255, 206, 92), TH.C.GOOD
   local HEADC = RGB(255, 214, 90)
@@ -209,7 +209,9 @@ function KillFx.init(G)
     for _, k in ipairs(m.tags or {}) do
       local txt = TAGS[k]
       if txt then
-        local w = 14 + #txt * (G.lang == "en" and 7 or 5)
+        -- 宽度按字数估：中日韩一个字约 14 像素、拉丁 / 西里尔字母约 7（原来按字节数：俄文一个字母两字节、估宽了一倍）
+        local cjk = G.isZh() or G.lang == "ja" or G.lang == "ko"
+        local w = 14 + (utf8.len(txt) or #txt) * (cjk and 14 or 7)
         local chip = frame(tagRow, UD2(0, w, 0, 20), UD2(0, x, 0, 0), RGB(0, 0, 0), 0.4)
         TH.corner(chip, 2)
         local st = Instance.new("UIStroke")

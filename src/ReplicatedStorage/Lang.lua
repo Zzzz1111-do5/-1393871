@@ -1,5 +1,7 @@
--- Roblox全面大战场——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
---   客户端按 LocalizationService.RobloxLocaleId 判断：zh 开头用中文，其余英文；设置里能手动切
+-- Roblox全面大战场——界面文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
+--   中文、英文写在这个文件里（add）；11-28 用户「多语言做一下」：另外八种——繁體中文、日本語、한국어、Русский、Deutsch、Français、
+--   Español、Português——的译文在 ReplicatedStorage.LangPacks.<代码>（tools/i18n 生成，见 tools/i18n/README.md），缺的退回英文（繁中退回简体）
+--   客户端按 LocalizationService.RobloxLocaleId 挑（Lang.pick）；设置里能手动换
 --   Lang.t(lang, key, ...)：{1} {2} … 换成参数；参数是表 { k = "编号", … } 时先翻译它（服务器发「据点 A」「步枪兵」这种）
 local Lang = {}
 
@@ -635,10 +637,10 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住右键（或 C）拖动自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门 · 滚轮 油门（地上收到底按住倒退）· B 减速板 · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 / 炸弹（雷达弹：R 选雷达屏上的目标、Alt+F 锁定，对方侧着飞会丢锁） · 1-6 选弹 · R 换目标 · Alt+R 雷达开关 · Alt+Q 雷达量程 · Alt+E 雷达模式（RWS / TWS / ACM）· Alt+Z 扫描方式 · Alt+方向键 / Alt+滚轮 挪雷达天线 · Alt+C 天线回中 · Alt+T 选雷达目标 · Alt+F 雷达锁定 / 解锁 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
-  "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold RMB (or C) and drag to look around · M keyboard flight · Shift/Ctrl/mouse wheel throttle (hold Ctrl at idle on the ground to back up) · B airbrake · LMB gun (fires along the nose; the small circle ahead of enemy planes is the lead) · F missile / bomb (radar missiles: R picks a target on the radar screen, Alt+F locks it; beaming breaks the lock) · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · Alt+arrows / Alt+wheel aim the radar antenna · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
-add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 滚轮 油门 · B 减速板 · 按住右键拖动自由看（看的方向不跟着飞机转，松开回到身后） · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 · 1-6 选弹 · R 换目标 · Alt+R 雷达开关 · Alt+Q 雷达量程 · Alt+E 雷达模式（RWS / TWS / ACM）· Alt+Z 扫描方式 · Alt+方向键 / Alt+滚轮 挪雷达天线 · Alt+C 天线回中 · Alt+T 选雷达目标 · Alt+F 雷达锁定 / 解锁 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
-  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · hold RMB and drag to look around (view stays put while the plane maneuvers) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · Alt+arrows / Alt+wheel aim the radar antenna · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
+add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住右键（或 C）拖动自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门 · 滚轮 油门（地上收到底按住倒退）· B 减速板 · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 / 炸弹（雷达弹：R 选雷达屏上的目标、Alt+F 锁定，对方侧着飞会丢锁） · 1-6 选弹 · R 换目标 · Alt+R 雷达开关 · Alt+Q 雷达量程 · Alt+E 雷达模式（RWS / TWS / ACM）· Alt+Z 扫描方式 · ←/→ 雷达左右偏转 · Alt+↑↓ / Alt+滚轮 雷达天线俯仰 · Alt+C 天线回中 · Alt+T 选雷达目标 · Alt+F 雷达锁定 / 解锁 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
+  "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold RMB (or C) and drag to look around · M keyboard flight · Shift/Ctrl/mouse wheel throttle (hold Ctrl at idle on the ground to back up) · B airbrake · LMB gun (fires along the nose; the small circle ahead of enemy planes is the lead) · F missile / bomb (radar missiles: R picks a target on the radar screen, Alt+F locks it; beaming breaks the lock) · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · ←/→ slew the radar left / right · Alt+↑↓ / Alt+wheel radar antenna elevation · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 滚轮 油门 · B 减速板 · 按住右键拖动自由看（看的方向不跟着飞机转，松开回到身后） · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 · 1-6 选弹 · R 换目标 · Alt+R 雷达开关 · Alt+Q 雷达量程 · Alt+E 雷达模式（RWS / TWS / ACM）· Alt+Z 扫描方式 · ←/→ 雷达左右偏转 · Alt+↑↓ / Alt+滚轮 雷达天线俯仰 · Alt+C 天线回中 · Alt+T 选雷达目标 · Alt+F 雷达锁定 / 解锁 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
+  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · hold RMB and drag to look around (view stays put while the plane maneuvers) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · ←/→ slew the radar left / right · Alt+↑↓ / Alt+wheel radar antenna elevation · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
 add("air.helpHeli", "鼠标准心 定方向（同战雷）：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· W 升 / S 降（松开自动定高）· A/D 侧飞 · Q/E 转机头 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
   "Aim sets the direction (like War Thunder): aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · W up / S down (holds altitude when released) · A/D sidestep · Q/E turn the nose · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
@@ -1244,22 +1246,87 @@ add("dir.5", "西南", "SW")
 add("dir.6", "西", "W")
 add("dir.7", "西北", "NW")
 
+-- 语言列表（设置里的顺序；name 用这种语言自己的写法）
+Lang.LIST = {
+  { code = "zh", name = "简体中文" }, { code = "zh-TW", name = "繁體中文" }, { code = "en", name = "English" },
+  { code = "ja", name = "日本語" }, { code = "ko", name = "한국어" }, { code = "ru", name = "Русский" },
+  { code = "de", name = "Deutsch" }, { code = "fr", name = "Français" }, { code = "es", name = "Español" }, { code = "pt", name = "Português" },
+}
+local VALID = {}
+for _, l in ipairs(Lang.LIST) do VALID[l.code] = true end
+function Lang.valid(code) return VALID[code] == true end
+function Lang.nameOf(code)
+  for _, l in ipairs(Lang.LIST) do if l.code == code then return l.name end end
+  return tostring(code)
+end
+function Lang.nextOf(code)   -- 界面上的语言键：按 LIST 的顺序换下一种
+  for i, l in ipairs(Lang.LIST) do if l.code == code then return Lang.LIST[i % #Lang.LIST + 1].code end end
+  return Lang.LIST[1].code
+end
+function Lang.isZh(lang) return lang == "zh" or lang == "zh-TW" end
+-- Roblox 的 LocaleId（zh-cn、zh-tw、ja-jp、pt-br……）→ 这里的语言
+local LOCALE = { ["zh-cn"] = "zh", ["zh-cjv"] = "zh", ["zh-hans"] = "zh", ["zh-sg"] = "zh",
+  ["zh-tw"] = "zh-TW", ["zh-hk"] = "zh-TW", ["zh-mo"] = "zh-TW", ["zh-hant"] = "zh-TW",
+  ja = "ja", ko = "ko", ru = "ru", de = "de", fr = "fr", es = "es", pt = "pt" }
 function Lang.pick(localeId)
-  if type(localeId) == "string" and string.sub(string.lower(localeId), 1, 2) == "zh" then return "zh" end
-  return "en"
+  if type(localeId) ~= "string" then return "en" end
+  local id = string.lower(localeId)
+  if LOCALE[id] then return LOCALE[id] end
+  local two = string.sub(id, 1, 2)
+  if two == "zh" then return "zh" end
+  return LOCALE[two] or "en"
+end
+-- 别的语言的译文包：{ k = { [键] = 译文 }, p = { [英文原文] = 译文 } }（繁中的 p 按简体原文查）；第一次用到时 require，没有记 false
+local packs = {}
+local function pack(lang)
+  local pk = packs[lang]
+  if pk == nil then
+    pk = false
+    local ok, r = pcall(function()
+      local here = script and script.Parent
+      local folder = here and here:FindFirstChild("LangPacks")
+      local ms = folder and folder:FindFirstChild(lang)
+      return ms and require(ms)
+    end)
+    if ok and type(r) == "table" then pk = r end
+    packs[lang] = pk
+  end
+  return pk or nil
+end
+Lang.pack = pack
+-- 代码里的中英对照（G.L(中, 英)）：中文、英文原样；繁中按简体查、别的语言按英文查，查不到退回原文
+function Lang.pair(lang, zh, en)
+  if lang == "zh" then return zh end
+  if lang == "en" or lang == nil then return en end
+  local P = pack(lang)
+  local p = P and P.p
+  if lang == "zh-TW" then return (p and zh and p[zh]) or zh end
+  return (p and en and p[en]) or en
 end
 
 -- 地图专用的说法（据点名、阵营名……）：键后面加「@地图」（"point.A@desert"）；客户端换地图时设 Lang.mapId（init.client.lua）
 Lang.mapId = nil
 local function tr(lang, key)
-  local T = (lang == "zh") and ZH or EN
   local mid = Lang.mapId
+  if lang == "zh" or lang == "en" or lang == nil then
+    local T = (lang == "zh") and ZH or EN
+    if mid and type(key) == "string" then
+      local k2 = key .. "@" .. mid
+      local v = T[k2] or ZH[k2]
+      if v then return v end
+    end
+    return T[key] or ZH[key] or EN[key] or tostring(key)
+  end
+  -- 别的语言：译文包里的；没有的繁中退回简体、别的退回英文
+  local P = pack(lang)
+  local K = P and P.k
+  local FB = (lang == "zh-TW") and ZH or EN
   if mid and type(key) == "string" then
     local k2 = key .. "@" .. mid
-    local v = T[k2] or ZH[k2]
+    local v = (K and K[k2]) or FB[k2] or ZH[k2]
     if v then return v end
   end
-  return T[key] or ZH[key] or EN[key] or tostring(key)
+  return (K and K[key]) or FB[key] or EN[key] or ZH[key] or tostring(key)
 end
 
 function Lang.t(lang, key, ...)
@@ -1826,7 +1893,7 @@ add("wt.mslAct", "导弹导引头已开机", "Missile seeker active")
 add("wt.dlLost", "数据链中断", "Datalink lost")
 -- 机载雷达（Radar.lua / Fly.lua，用户 11-27「飞机雷达按型号照战雷做、能用键控制雷达方向」）：照战雷手动锁——R / Alt+T 选目标、Alt+F 锁定；模式字样用真机缩写（中英一样）
 add("rd.keys", "Alt + R 开关 · Q 量程 · E 模式 · Z 扫描", "Alt + R on/off · Q range · E mode · Z scan")   -- 屏下两行（各 316 像素宽）
-add("rd.keys2", "Alt + T 选目标 · F 锁定 · 方向键 / 滚轮 天线 · C 回中", "Alt + T target · F lock · arrows/wheel aim · C center")
+add("rd.keys2", "←→ 左右偏转 · Alt + T 选目标 · F 锁定 · ↑↓ / 滚轮 俯仰 · C 回中", "←→ slew · Alt + T target · F lock · ↑↓/wheel elev · C center")   -- 11-28：左右偏转不用按 Alt
 add("rd.scanT", "扫描 ±{1}° · {2} 行（一帧 {3} 秒）", "Scan ±{1}° · {2} bar (frame {3} s)")
 add("rd.modeT", "{1}：{2}", "{1}: {2}")
 add("rd.m.rws", "搜索（边搜索边测距）", "range-while-search")

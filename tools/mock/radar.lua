@@ -11,7 +11,7 @@
 --   ⑥ 每架次重置、按科技树版本取雷达：关了雷达、换了量程，下一架照旧开着、量程最大；F-16A（TreeKey us_f16a）是 APG-66、
 --      苏-30SM（歼-16 + ru_su30sm）是 N011M、不带 TreeKey 的 F-16 是 APG-68(V)5、苏-27（借苏-35S 的模型）是 N001
 --   ⑦ 扫描区（F-16C 的 APG-68，机械扫描 60°/秒）：一帧的时间对得上真机（±60°×2 行 4 秒）；波束扫过才出亮点；扫描区外（机头上方 30°）扫一整帧也没有，
---      按住 Alt+↑ 把天线抬上去就扫到；Alt+C 回中、Alt+滚轮一格 2°、Alt+Z 换扫描方式（提示一帧几秒）；±30° 扫描 Alt+← 最多挪到 −30°、屏上两条竖线跟着；
+--      按住 Alt+↑ 把天线抬上去就扫到；Alt+C 回中、Alt+滚轮一格 2°、Alt+Z 换扫描方式（提示一帧几秒）；±30° 扫描按住 ←（11-28 起不用按 Alt）最多挪到 −30°、屏上两条竖线跟着；
 --      扫描区外、万向架里的新目标锁不上，已经 STT 的出了扫描区照旧跟着
 --   ⑧ 边扫边跟（TWS）：Alt+E 进 TWS，两架都成航迹（屏上两个小方块）；Alt+T 指定一条，雷达弹不用 STT 就锁上它、对方告警器不报锁定；
 --      离上次航迹更新超过 1.3 秒（老的数据链有效期）再打，数据链照旧通（等一帧）；发射时对方不报导弹、导引头开机才报；对比：Alt+F STT 了对方马上报锁定
@@ -389,14 +389,29 @@ check(math.abs(RSt().ctrEl - 2) < 1e-6, string.format("Alt+滚轮一格：天线
 altKey(Enum.KeyCode.Z)
 check(RSt().scan == 2 and #T.texts(C.T("rd.scanT", "60", "4", "8.0")) > 0, "Alt+Z 换扫描方式：±60° · 4 行，提示一帧 8.0 秒")
 altKey(Enum.KeyCode.Z)
-T.key(Enum.KeyCode.LeftAlt, true)
+-- 用户 11-28「飞机雷达偏转改成左右建控制吧」：左右偏转直接按 ← / →（不用按 Alt；↑ / ↓ 不按 Alt 还是油门）
+local thrLR = sF.thr
+T.key(Enum.KeyCode.Right, true)
+R.run(0.25)
+T.key(Enum.KeyCode.Right, false)
+check(RSt().ctrAz > 8 and RSt().ctrAz < 12.5 and math.abs(sF.thr - thrLR) < 1e-6,
+  string.format("不按 Alt 按住 → 0.25 秒：扫描中心往右挪到 %.1f°（40°/秒，模拟器按帧算多一点），油门没动", RSt().ctrAz))
 T.key(Enum.KeyCode.Left, true)
-R.run(1)
+R.run(1.5)
 T.key(Enum.KeyCode.Left, false)
-T.key(Enum.KeyCode.LeftAlt, false)
 R.run(1 / 30)
 local zl, zr = gui:FindFirstChild("ScanZoneL", true), gui:FindFirstChild("ScanZoneR", true)
-check(RSt().scan == 3 and math.abs(RSt().ctrAz + 30) < 1e-6, string.format("±30° 扫描：按住 Alt+← 1 秒挪到 %.0f°（40°/秒，最多 ±(60 − 30)°）", RSt().ctrAz))
+check(RSt().scan == 3 and math.abs(RSt().ctrAz + 30) < 1e-6, string.format("±30° 扫描：按住 ← 1.5 秒挪到 %.0f°（40°/秒，最多 ±(60 − 30)°）", RSt().ctrAz))
+T.key(Enum.KeyCode.LeftAlt, true)
+T.key(Enum.KeyCode.Right, true)
+R.run(0.25)
+T.key(Enum.KeyCode.Right, false)
+T.key(Enum.KeyCode.LeftAlt, false)
+check(RSt().ctrAz > -22 and RSt().ctrAz < -17.5, string.format("按着 Alt 的 → 照旧能挪（%.1f°）", RSt().ctrAz))
+T.key(Enum.KeyCode.Left, true)
+R.run(0.5)
+T.key(Enum.KeyCode.Left, false)
+R.run(1 / 30)
 check(math.abs(zl.Position.X.Scale) < 0.01 and math.abs(zr.Position.X.Scale - 0.5) < 0.01,
   string.format("屏上扫描区的两条竖线在 −60°、0°（%.2f、%.2f）", zl.Position.X.Scale, zr.Position.X.Scale))
 placeFoe(-45, 0, 6000)

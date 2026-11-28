@@ -850,7 +850,7 @@ function UI.init(G)
       t.u.BackgroundTransparency = (pg == page) and 0 or 1
       t.u.BackgroundColor3 = WHITE
     end
-    langBtn.Text = T("ui.lang")
+    langBtn.Text = G.Lang.nameOf(G.lang) .. "  ▸"
     sideBtn.Text = T("ui.switchSide")
     menuBtn.Text = T("menu.open")
     -- 阵营一行
@@ -985,8 +985,9 @@ function UI.init(G)
     if c then pcall(function() m:PivotTo(CFrame.new(c) * CFrame.Angles(0, math.sin(os.clock() * 0.5) * 0.3, 0)) end) end
   end)
 
-  langBtn.Activated:Connect(function()
-    G.lang = (G.lang == "zh") and "en" or "zh"
+  langBtn.Activated:Connect(function()   -- 11-28 多语言：按 Lang.LIST 的顺序换下一种（十种）
+    G.lang = G.Lang.nextOf(G.lang)
+    if G.setPref then G.setPref("lang", G.lang) end   -- 记进设置（存档；设置页的下拉框也跟着）
     G.refresh()
   end)
 

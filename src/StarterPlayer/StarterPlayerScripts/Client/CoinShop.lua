@@ -16,7 +16,7 @@ function CoinShop.init(G)
   if not okM then MPS = nil end
   local me = Players.LocalPlayer
   local RGB, U2, V2 = Color3.fromRGB, UDim2, Vector2.new
-  local function L(zh, en) return (G.lang == "en") and en or zh end
+  local function L(zh, en) return G.L(zh, en) end   -- 多语言（11-28）
   local TEXT, MUTE, FAINT, GOOD, AMBER = TH.C.TEXT, TH.C.MUTE, TH.C.FAINT, TH.C.GOOD, TH.C.WARN
   local GOLD, GOLD_D = RGB(236, 184, 64), RGB(150, 104, 22)
   local packs = Config.CoinPacks or {}

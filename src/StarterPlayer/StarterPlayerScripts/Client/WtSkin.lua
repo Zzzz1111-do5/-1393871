@@ -14,8 +14,8 @@ function WtSkin.init(G)
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local BOLD, MED = Enum.Font.BuilderSansMedium, Enum.Font.BuilderSans
   local WHITE, DIM, GOLD = RGB(236, 240, 242), RGB(150, 158, 164), RGB(255, 210, 120)
-  local zh = true
-  pcall(function() zh = not (G.lang and G.lang() == "en") end)
+  local zh = true   -- 多语言（11-28）：中文（简 / 繁）
+  if G.isZh then zh = G.isZh() end
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "WtSkin"
@@ -86,7 +86,7 @@ function WtSkin.init(G)
           f.Parent = b
         end
       end
-      local l = label(b, zh and C.zh or C.en, UD2(1, 0, 0, 16), UD2(0, 0, 1, -18), 11, WHITE, MED)
+      local l = label(b, G.L(C.zh, C.en), UD2(1, 0, 0, 16), UD2(0, 0, 1, -18), 11, WHITE, MED)
       l.TextXAlignment = Enum.TextXAlignment.Center
       l.TextStrokeTransparency = 0.3
       b.MouseButton1Click:Connect(function() cur.c = k send() end)

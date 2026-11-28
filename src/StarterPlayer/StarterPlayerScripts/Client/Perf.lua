@@ -14,8 +14,8 @@ function Perf.init(G)
   local me = Players.LocalPlayer
   local okS, Stats = pcall(function() return game:GetService("Stats") end)
   if not okS then Stats = nil end
-  local zh = G.lang == "zh"
-  local function L(a, b) return zh and a or b end
+  local zh = G.isZh()   -- 多语言（11-28）：中文（简 / 繁）
+  local function L(a, b) return G.L(a, b) end   -- 多语言（11-28）
   -- 模块名 → 面板上的名字
   local NAMES = {
     drive = L("开车", "drive"), fly = L("飞机", "fly"), sail = L("开船", "sail"), view = L("实体画面", "view"), play = L("步兵操作", "play"),

@@ -18,7 +18,7 @@ function AaFcs.init(G)
   local V = Vector3.new
   local UD2 = UDim2.new
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local function L(cn, en) return (G.lang == "en") and en or cn end
+  local function L(cn, en) return G.L(cn, en) end   -- 多语言（11-28）
   local AD = nil
   pcall(function() AD = require(RS:WaitForChild("AirDefs", 5)) end)
 
