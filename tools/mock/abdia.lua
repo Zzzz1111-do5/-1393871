@@ -3,8 +3,9 @@
 --   ① 军推没有马赫环、没有火焰（只有加力才有）；没有硬边的环 / 管子零件（以前「一节一节的马赫环」）
 --   ② 满加力：每台发动机一串，第一颗亮核离喷口 0.3～1 个喷口直径 D，间距 0.9～1.4 D，比焰身窄，越往后越淡
 --   ③ 半加力比满加力少、淡；夜里比白天多
---   ④ 立体、不卡通（用户 11-28「飞机尾喷的效果非常烂而且不是立体的」「这个特效太卡通了吧」）：焰身、焰芯、马赫环都是柔边的发光粒子
---      （锁在喷口上、朝着镜头的柔光点——哪个角度看都有厚度、边是虚的），没有朝镜头的光带、没有硬边的发光零件；二元喷口（F-22）横着多撒一点
+--   ④ 像战雷、不卡通（用户 11-28「飞机尾喷的效果非常烂而且不是立体的」「这个特效太卡通了吧」「飞机尾焰也跟战雷区别很大」）：
+--      焰身、焰芯、马赫环都是贴了柔边圆点贴图的光带（整张贴图拉在带子上、不滚动：正中最亮、四边虚），焰身带子的正中在喷口出口
+--      （前半截藏在喷口里）；喷口一团朝镜头的柔光（正后方看也亮）；没有硬边的发光零件
 --   ⑤ 推力矢量喷口（歼-20）抬头偏转：一串钻石跟着焰身一起偏
 --   ⑥ 离镜头 700 格外不画马赫环、焰芯（外面两层还在）
 --   零件拼的（没有原模型）、原模型（喷口位置按 ImportedAir 的 noz）、二元喷口（F-22）都走一遍；out= 每种状态导出一份 JSON，
@@ -171,26 +172,24 @@ for _, spec in ipairs({ { "j20", false, "歼-20（零件拼的）" }, { "j20", t
     check(okA, label .. "：越往后越淡")
   end
   check(partsNamed(M, "^MachRing$") == 0 and partsNamed(M, "^AbTube$") == 0, label .. "：没有硬边的环 / 管子零件")
-  -- ④ 立体、不卡通：柔边发光粒子（锁在喷口上、朝着镜头），没有光带、没有硬边的发光零件
-  local soft, flat, hard = true, 0, 0
+  -- ④ 像战雷、不卡通：柔边贴图的光带 + 喷口柔光，没有硬边的发光零件
+  local soft, nStrip, hard, glowOk = true, 0, 0, false
   for _, d in ipairs(M.model:GetDescendants()) do
-    if d.ClassName == "Beam" and d.Name:match("^Ab") then flat = flat + 1 end
     if d:IsA("BasePart") and (d.Name == "AbFlame" or d.Name == "AbDiamond") then hard = hard + 1 end
-    if d.ClassName == "ParticleEmitter" and (d.Name == "AbBody" or d.Name == "AbCore" or d.Name == "AbDiamond") then
-      if d.LightEmission < 0.4 or not d.LockedToPart or not d.Texture:find("implosion", 1, true) then soft = false end   -- 发光（一半以上叠加）
+    if d.ClassName == "Beam" and (d.Name == "AbFlame" or d.Name == "AbCore" or d.Name == "AbDiamond") then
+      nStrip = nStrip + 1
+      if not d.Texture:find("implosion", 1, true) or d.TextureSpeed ~= 0 or d.TextureMode ~= R.Enum.TextureMode.Stretch or not d.FaceCamera then soft = false end
     end
+    if d.ClassName == "ParticleEmitter" and d.Name == "AbGlow" and d.Enabled and d.LockedToPart then glowOk = true end
   end
-  check(soft and flat == 0 and hard == 0, string.format("%s：焰身、焰芯、马赫环都是柔边发光粒子（光带 %d、硬边零件 %d）", label, flat, hard))
+  check(soft and nStrip > 0 and hard == 0, string.format("%s：焰身、焰芯、马赫环都是柔边贴图的光带（%d 条，硬边零件 %d）", label, nStrip, hard))
+  check(glowOk, label .. "：喷口一团朝镜头的柔光（正后方看也亮）")
+  local L1 = day[1].info.layers.outer
+  check(L1.a0.Position.Z < 0 and L1.a1.Position.Z > 0, string.format("%s：焰身带子的正中在喷口出口（%.1f → %.1f 格，前半截藏在喷口里）", label, L1.a0.Position.Z, L1.a1.Position.Z))
   local nOn = 0
   for _, ch in ipairs(day) do if ch.on and ch.core then nOn = nOn + 1 end end
   check(nOn == #day, label .. "：每台都有焰身、焰芯（" .. nOn .. " / " .. #day .. " 台）")
-  local sp = day[1].info.body.SpreadAngle
-  if id == "f22" then
-    check(sp.X > sp.Y * 2, string.format("%s：二元喷口的火横着多撒（%.1f × %.1f）", label, sp.X, sp.Y))
-  else
-    check(math.abs(sp.X - sp.Y) < 0.01, string.format("%s：圆喷口的火四周一样（%.1f × %.1f）", label, sp.X, sp.Y))
-  end
-  check(day[1].Lv > day[1].D * 5, string.format("%s：满加力焰身 %.1f D（五个喷口直径以上）", label, day[1].Lv / day[1].D))
+  check(day[1].Lv > day[1].D * 3, string.format("%s：满加力焰身露出来 %.1f D（三个喷口直径以上）", label, day[1].Lv / day[1].D))
   -- ③ 半加力、夜里
   pose(M, { thr = 112 })
   dump(M, id, { thr = 112 }, tag .. "_half_day")

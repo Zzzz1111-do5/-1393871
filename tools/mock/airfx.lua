@@ -127,7 +127,7 @@ R.run(1)
 check(booms == 1, "一直在音障上面不再响")
 C.sfx = sfx0
 
-print("③ 尾喷（用户 11-28「飞机尾喷的效果非常烂而且不是立体的」「这个特效太卡通了吧」）：军推只有喷口里的热芯；加力是柔边发光粒子的焰身、焰芯 + 一串马赫环；喷口里发橙粉色；没有光带、蓝边管子、玻璃气泡")
+print("③ 尾喷（用户 11-28「飞机尾喷的效果非常烂而且不是立体的」「这个特效太卡通了吧」「飞机尾焰也跟战雷区别很大」）：军推只有喷口里的热芯；加力是几层柔边贴图光带叠的火 + 喷口柔光 + 一串马赫环；喷口里发橙粉色；没有蓝边管子、玻璃气泡")
 local function beams(name)
   local n = 0
   for _, d in ipairs(v.M.model:GetDescendants()) do if d.ClassName == "Beam" and d.Name == name and d.Enabled then n = n + 1 end end
@@ -157,18 +157,23 @@ end
 check(shim >= 1 and shimOk, string.format("喷口正中一小股热浪：顺着气流拉长的细丝、很淡、锁在喷口上（%d 股）", shim))
 st.thr, st.thrE = 100, 100
 R.run(0.3)
-local function emitting(name)   -- 开着的这种粒子有几个
+local function emitting(name)   -- 开着的这种光带 / 粒子有几个
   local n = 0
-  for _, d in ipairs(v.M.model:GetDescendants()) do if d.ClassName == "ParticleEmitter" and d.Name == name and d.Enabled then n = n + 1 end end
+  for _, d in ipairs(v.M.model:GetDescendants()) do if (d.ClassName == "Beam" or d.ClassName == "ParticleEmitter") and d.Name == name and d.Enabled then n = n + 1 end end
   return n
 end
-check(emitting("AbBody") == 0 and emitting("AbDiamond") == 0, "军推：没有加力火焰")
+-- ② 冲过了音障：速度贴着极限速度时飞控把油门压在 100 以下（开不了加力）——放回巡航速度再看尾焰
+st.spd = e.def.vMil * 0.8
+st.vel = st.vdir * st.spd
+st.vneCut = nil
+check(emitting("AbFlame") == 0 and emitting("AbDiamond") == 0, "军推：没有加力火焰")
 st.thr, st.thrE = 130, 130
 R.run(0.3)
 local nEng = #(v.M.plumes or {})
-check(nEng >= 1 and emitting("AbBody") >= nEng and emitting("AbCore") >= nEng and emitting("AbDiamond") >= nEng,
-  string.format("加力：每个喷口一股柔边发光的焰身、焰芯，一串马赫环（%d 台：焰身 %d、焰芯 %d、马赫环 %d 颗）", nEng, emitting("AbBody"), emitting("AbCore"), emitting("AbDiamond")))
-check(beams("AbFill") == 0 and beams("AbCore") == 0, "不再是朝镜头的光带（立体的）")
+check(nEng >= 1 and emitting("AbFlame") >= nEng and emitting("AbCore") >= nEng and emitting("AbGlow") >= nEng and emitting("AbDiamond") >= nEng,
+  string.format("加力：每个喷口几层柔边光带的火、焰芯、喷口柔光、一串马赫环（%d 台：焰身 %d、焰芯 %d、柔光 %d、马赫环 %d 颗）", nEng,
+    emitting("AbFlame"), emitting("AbCore"), emitting("AbGlow"), emitting("AbDiamond")))
+check(beams("AbFill") == 0, "不再是 11-24 那版没贴图的硬边光带")
 check(shown("AbTube") == 0 and shown("MachRing") == 0, "没有 11-23 那版的蓝边管子、马赫环")
 local fillLen = 0
 for _, I in ipairs(C.airModels and C.airModels.plumeInfo(v.M) or {}) do fillLen = math.max(fillLen, I.Lv or 0) end

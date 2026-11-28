@@ -88,20 +88,21 @@ local function tvcOpen(t)
   return 0.15 + 0.85 * math.min(1, (t - 100) / 25)
 end
 AM.tvcOpen = tvcOpen
--- 加力尾焰（用户 11-28「飞机尾喷的效果非常烂而且不是立体的」→「这个特效太卡通了吧」）——
---   原来是几条正对镜头的光带（Beam：焰身、焰芯、拖尾，马赫环也是三段光带折成的纺锤）：一张永远朝着镜头的纸，侧面、斜后方一看就是扁的；
---   试过一层层发光的椭球（真立体），但边是硬的、颜色是平的，像动画片。现在全用柔边的发光粒子（VfxLib 的 GLOW：白色柔边圆点，按颜色染）：
---   · 焰身（AbBody）：从喷口往后喷的一股光点，锁在喷口上、一眨眼走完焰长——出来那一下跟喷口差不多粗、往后慢慢细、淡掉，
---     颜色顺着烧（近喷口亮、往后橙红）；粒子永远朝着镜头，哪个角度看都是一团有厚度的、边是虚的、在跳的火
---   · 焰芯（AbCore）：喷口后面短短一截更亮的（先进的发动机是蓝的）
---   · 马赫环（AbDiamond）：焰身里一串固定位置的柔光团（照 F-16 / F-15 / F-22、F100 / J58 试车台的照片：第一颗离喷口约 0.6 D、
---     间距 1.1～1.3 D、往后略密、往后变小变淡，D = 喷口直径），顺着气流稍微拉长；夜里亮、白天淡；高空一颗颗拉开、变大（欠膨胀）
+-- 加力尾焰（用户 11-28「飞机尾喷的效果非常烂而且不是立体的」→「这个特效太卡通了吧」→「飞机尾焰也跟战雷区别很大」）——
+--   试过的：一条条没贴图的光带（硬边的纸，侧面一看是扁的）、一层层发光椭球（立体但边硬、颜色平，像动画片）、一股柔光粒子（一颗颗亮点，
+--   像喷火星，不像一股火）。现在照战雷的画法：几层贴了柔边圆点贴图（VfxLib 的 GLOW）的光带叠成一股火——
+--   · 每层一条朝镜头的光带，贴图整张拉在带子上：正中最亮、往两头和两边慢慢淡掉。带子的正中放在喷口出口，前半截藏在喷口里，
+--     露出来的后半截就是从喷口那么粗、往后收尖淡掉的火舌（边是虚的，没有硬边）
+--   · 三层：外层焰身（最长、最宽、最透）、中层（短一点、亮一点）、焰芯（短、最亮；先进的发动机是蓝的）——叠出近处亮、往外往后淡
+--   · 喷口一团朝镜头的柔光（AbGlow）：从正后方看（带子缩成一条线）也是一个亮的喷口
+--   · 马赫环（AbDiamond）：同样的柔边光带，短短一截两头尖的纺锤，正中最亮（照 F-16 / F-15 / F-22、F100 / J58 试车台的照片：
+--     第一颗离喷口约 0.6 D、间距 1.1～1.3 D、往后略密、变小变淡，D = 喷口直径）；夜里亮、白天淡；高空一颗颗拉开、变大（欠膨胀）
 --   · 三种样子（PLUME_STYLE，按机型 AB_STYLE；用户 11-28「他先进的飞机尾喷不是这样的 没有那么明显的马赫环 都是淡淡的」
 --     「然后部分飞机又是中心蓝色的火焰」「然后有的飞机那个马赫环是非常浓烈的」）：
---     blue 先进的发动机（四代半、五代：F-22、F-35、F-15、F-16、歼-20、歼-35、苏-57……）：淡淡的，中心一截蓝的，马赫环几乎看不出（夜里才看得出）；
+--     blue 先进的发动机（F-22、F-35、F-15、F-16、歼-20、歼-35、苏-57、隐身机）：淡淡的，焰芯蓝，马赫环几乎看不出（夜里才看得出）；
 --     strong 老式涡喷 / 早期涡扇（歼-6、歼-8、米格-29、F-14）：橙黄、又浓又长，马赫环一颗颗非常亮；classic 其余：橙黄、马赫环淡淡几颗
---   · 长短跟着加力（满加力约六个半喷口直径，夜里长一成）；军推以下不画（只有喷口里的热芯）；参数按档（加力 / 昼夜 / 高度 / 远近）变了才改；
---     离镜头 700 格外只留焰身、少喷一点；二元喷口（F-22）焰身稍扁一点（粒子是圆的：喷口宽的那边多撒）
+--   · 长短跟着加力（满加力外层露出来约四个喷口直径，夜里长一点）；军推以下不画（只有喷口里的热芯）；参数按档（加力 / 昼夜 / 高度 / 远近）
+--     变了才改；近处每帧长短抖一点（只挪尾巴那头的挂点）；离镜头 700 格外只留外面两层
 --   · 「发动机中心还有小小的热浪」：喷口正中往后一小股热气（HeatShimmer，见下面建零件那段）
 local DC = require(RS:WaitForChild("DayClock"))
 local Lighting = game:GetService("Lighting")
@@ -116,26 +117,33 @@ local function dayNow()   -- 0 夜里 ～ 1 白天（DayNight.lua 写的钟点�
 end
 local GLOW_TX = "rbxasset://textures/particles/explosion01_implosion_main.dds"   -- 白色柔边圆点（同 VfxLib 的 TX.GLOW）
 local NK, CK = NumberSequenceKeypoint.new, ColorSequenceKeypoint.new
--- 三种样子：body 焰身（tr 出来时的透明度、W 出来时多粗（占 D）、色、亮度）、core 焰芯（L 长、W 粗、色、透明度、亮度）、
---   dia 马赫环第一颗白天 / 夜里的不透明度、头尾颜色、W 粗（占 D）；len 整股火长短的倍数；blast 喷到地上吹起的尘土、映的光的倍数（AirFx）
+-- 三种样子：outer / mid / core 三层（L 露出来的长占外层的几成、W 宽（占 D）、tr 满加力时的透明度、c0 喷口那头的颜色、c1 尾巴的颜色、
+--   le 叠加发光的比例、br 亮度）、glow 喷口的柔光、dia 马赫环（A / An 第一颗白天 / 夜里的不透明度、头尾颜色、W 宽、br 亮度）、
+--   len 整股火长短的倍数、blast 喷到地上吹起的尘土 / 映的光的倍数（AirFx）
 local PLUME_STYLE = {
   classic = {
-    body = { tr = 0.5, W = 1.0, br = 1.2, le = 0.55, col = ColorSequence.new({ CK(0, RGB(255, 222, 170)), CK(0.3, RGB(255, 160, 80)), CK(0.7, RGB(250, 112, 52)), CK(1, RGB(210, 76, 44)) }) },
-    core = { L = 0.3, W = 0.62, tr = 0.32, br = 1.4, le = 0.7, col = ColorSequence.new(RGB(255, 236, 200), RGB(255, 190, 130)) },
-    dia = { A = 0.32, An = 0.5, col0 = RGB(255, 240, 210), col1 = RGB(255, 182, 124), W = 0.42 },
+    outer = { L = 1, W = 1.3, tr = 0.34, c0 = RGB(255, 168, 88), c1 = RGB(236, 92, 50), le = 0.75, br = 1.4 },
+    mid = { L = 0.62, W = 0.96, tr = 0.3, c0 = RGB(255, 208, 136), c1 = RGB(255, 132, 68), le = 0.8, br = 1.5 },
+    core = { L = 0.3, W = 0.62, tr = 0.2, c0 = RGB(255, 240, 214), c1 = RGB(255, 188, 128), le = 0.85, br = 1.8 },
+    glow = { W = 1.45, tr = 0.5, col = RGB(255, 190, 122), br = 1.4 },
+    dia = { A = 0.34, An = 0.52, col0 = RGB(255, 240, 210), col1 = RGB(255, 182, 124), W = 0.44, br = 1.3 },
     len = 1, blast = 1,
   },
   strong = {
-    body = { tr = 0.4, W = 1.06, br = 1.4, le = 0.6, mid = 0.45, col = ColorSequence.new({ CK(0, RGB(255, 232, 186)), CK(0.35, RGB(255, 168, 74)), CK(0.75, RGB(250, 114, 42)), CK(1, RGB(220, 80, 36)) }) },
-    core = { L = 0.34, W = 0.66, tr = 0.2, br = 1.8, le = 0.75, col = ColorSequence.new(RGB(255, 242, 212), RGB(255, 200, 136)) },
-    dia = { A = 0.88, An = 0.96, col0 = RGB(255, 250, 230), col1 = RGB(255, 198, 120), W = 0.56, br = 1.7 },
-    len = 1.12, blast = 1.35,
+    outer = { L = 1, W = 1.36, tr = 0.24, c0 = RGB(255, 170, 80), c1 = RGB(240, 92, 40), le = 0.75, br = 1.6 },
+    mid = { L = 0.66, W = 1.0, tr = 0.2, c0 = RGB(255, 214, 132), c1 = RGB(255, 136, 60), le = 0.8, br = 1.7 },
+    core = { L = 0.32, W = 0.66, tr = 0.12, c0 = RGB(255, 246, 220), c1 = RGB(255, 196, 128), le = 0.85, br = 2 },
+    glow = { W = 1.5, tr = 0.4, col = RGB(255, 196, 120), br = 1.6 },
+    dia = { A = 0.9, An = 0.96, col0 = RGB(255, 250, 230), col1 = RGB(255, 198, 120), W = 0.56, br = 1.8 },
+    len = 1.15, blast = 1.35,
   },
   blue = {
-    body = { tr = 0.72, W = 0.96, br = 1.0, le = 0.5, col = ColorSequence.new({ CK(0, RGB(150, 170, 255)), CK(0.25, RGB(226, 170, 200)), CK(0.6, RGB(255, 154, 112)), CK(1, RGB(244, 116, 84)) }) },
-    core = { L = 0.4, W = 0.56, tr = 0.44, br = 1.2, le = 0.5, col = ColorSequence.new(RGB(64, 112, 255), RGB(110, 136, 255)) },
-    dia = { A = 0.14, An = 0.28, col0 = RGB(255, 226, 240), col1 = RGB(250, 176, 168), W = 0.38 },
-    len = 0.85, blast = 0.8,
+    outer = { L = 1, W = 1.22, tr = 0.62, c0 = RGB(255, 162, 130), c1 = RGB(240, 112, 90), le = 0.7, br = 1.2 },
+    mid = { L = 0.6, W = 0.9, tr = 0.6, c0 = RGB(230, 172, 220), c1 = RGB(255, 150, 120), le = 0.7, br = 1.2 },
+    core = { L = 0.36, W = 0.6, tr = 0.34, c0 = RGB(92, 136, 255), c1 = RGB(150, 152, 255), le = 0.65, br = 1.4 },
+    glow = { W = 1.35, tr = 0.6, col = RGB(186, 184, 255), br = 1.2 },
+    dia = { A = 0.14, An = 0.28, col0 = RGB(255, 226, 240), col1 = RGB(250, 176, 168), W = 0.4, br = 1.1 },
+    len = 0.9, blast = 0.8,
   },
 }
 -- 哪种样子（没写的：隐身机 blue，别的 classic）
@@ -144,66 +152,64 @@ local AB_STYLE = { f22 = "blue", f35 = "blue", f15 = "blue", f16 = "blue", j20 =
 local DIA_N = 6   -- 每台发动机最多几颗马赫环
 AM.PLUME_STYLE, AM.AB_STYLE, AM.DIA_N = PLUME_STYLE, AB_STYLE, DIA_N
 function AM.plumeStyle(d) return AB_STYLE[d.id] or (d.stealth and "blue") or "classic" end
--- 一台发动机的尾焰按档摆：P 这台的整套（P.D 喷口直径、P.style、P.body / P.core 两股粒子、P.dia 马赫环）；on 开着加力；ab 0～1；
+-- 一台发动机的尾焰按档摆：P 这台的整套（P.D 喷口直径、P.style、P.layers 三层光带、P.glow 喷口柔光、P.dia 马赫环）；on 开着加力；ab 0～1；
 --   dk 0 夜里 ～ 1 白天；hk 0～1 高度；near 离镜头近
+local LAYERS = { "outer", "mid", "core" }
 local function plumePose(P, on, ab, dk, hk, near)
   local D = P.D
   local S = PLUME_STYLE[P.style] or PLUME_STYLE.classic
-  local Lv = D * (2.2 + 4.3 * ab) * (1.1 - 0.1 * dk) * S.len                     -- 焰身多长
+  local Lv = D * (1.6 + 2.4 * ab) * (1.08 - 0.08 * dk) * S.len                     -- 外层露出来多长
   P.Lv = Lv
-  local fade = 0.35 + 0.65 * ab                                                   -- 加力小的时候淡
-  -- 焰身：0.12～0.18 秒走完焰长的九成（后一成淡出去）
-  local B, Bs = P.body, S.body
-  B.Enabled = on
-  if on then
-    local life = 0.15
-    B.Lifetime = NumberRange.new(life * 0.87, life * 1.13)
-    B.Speed = NumberRange.new(Lv * 0.9 / life * 0.94, Lv * 0.9 / life * 1.06)
-    local w0 = D * Bs.W * (0.9 + 0.1 * ab)
-    B.Size = NumberSequence.new({ NK(0, w0), NK(0.5, w0 * 0.88), NK(1, w0 * 0.62) })   -- 往后淡、不怎么细（细了尾巴断成一颗颗火星）
-    local t0 = 1 - (1 - Bs.tr) * fade
-    local tm = t0 + (1 - t0) * (Bs.mid or 0.25)   -- 老式发动机：过了第一颗马赫环焰身暗下去，后面一颗颗亮核跳出来
-    B.Transparency = NumberSequence.new({ NK(0, t0), NK(0.28, tm), NK(0.75, tm + (1 - tm) * 0.55), NK(1, 1) })
-    B.Color = Bs.col
-    B.Brightness = Bs.br
-    B.LightEmission = Bs.le or 0.6   -- 一半叠加发光、一半照常盖上去：白天亮天空下颜色不被冲成白的
-    B.Rate = math.floor((near and (200 + 160 * ab) or (60 + 50 * ab)) + 0.5)
+  local fade = 0.35 + 0.65 * ab                                                     -- 加力小的时候淡
+  for _, name in ipairs(LAYERS) do
+    local B, Ls = P.layers[name], S[name]
+    local show = on and (near or name ~= "core")
+    B.on = show
+    B.bm.Enabled = show
+    if show then
+      local vis = Lv * Ls.L
+      B.vis = vis
+      B.a0.Position = V(0, 0, -vis * 0.9)   -- 带子的正中（贴图最亮）在喷口出口后面一点，前半截藏在喷口里
+      B.a1.Position = V(0, 0, vis * 1.1)
+      local w = D * Ls.W * (0.9 + 0.1 * ab)
+      B.bm.Width0, B.bm.Width1 = w, w
+      B.bm.Transparency = NumberSequence.new(1 - (1 - Ls.tr) * fade)
+      B.bm.Color = ColorSequence.new({ CK(0, Ls.c0), CK(0.5, Ls.c0), CK(1, Ls.c1) })
+      B.bm.LightEmission = Ls.le
+      B.bm.Brightness = Ls.br
+    end
   end
-  -- 焰芯：短、亮
-  local C, Cs = P.core, S.core
-  C.Enabled = on and near
-  if on and near then
-    local life = 0.1
-    C.Lifetime = NumberRange.new(life * 0.8, life * 1.2)
-    C.Speed = NumberRange.new(Lv * Cs.L / life * 0.9, Lv * Cs.L / life * 1.1)
-    local w0 = D * Cs.W
-    C.Size = NumberSequence.new({ NK(0, w0), NK(1, w0 * 0.45) })
-    local t0 = 1 - (1 - Cs.tr) * fade
-    C.Transparency = NumberSequence.new({ NK(0, t0), NK(0.6, t0 + (1 - t0) * 0.4), NK(1, 1) })
-    C.Color = Cs.col
-    C.Brightness = Cs.br
-    C.LightEmission = Cs.le or 0.7
-    C.Rate = 90
+  -- 喷口的柔光：从正后方看也亮
+  local Gs, Gl = S.glow, P.glow
+  Gl.Enabled = on
+  if on then
+    local t0 = 1 - (1 - Gs.tr) * fade
+    Gl.Size = NumberSequence.new(D * Gs.W)
+    Gl.Transparency = NumberSequence.new({ NK(0, t0), NK(1, t0 + (1 - t0) * 0.3) })
+    Gl.Color = ColorSequence.new(Gs.col)
+    Gl.Brightness = Gs.br
+    Gl.Rate = 40
   end
   -- 马赫环
-  local s = D * (1.05 + 0.2 * ab) * (1 + 0.6 * hk)                                -- 间距：满加力 1.25 D，高空拉长
-  local tau = (3 + 1.5 * (1 - dk)) * (0.45 + 0.55 * ab) * (1 - 0.35 * hk)          -- 往后几颗淡到 1/e
-  local A0 = (S.dia.A * dk + S.dia.An * (1 - dk)) * (0.35 + 0.65 * ab ^ 0.8)       -- 第一颗的不透明度
+  local s = D * (1.05 + 0.2 * ab) * (1 + 0.6 * hk)                                  -- 间距：满加力 1.25 D，高空拉长
+  local tau = (3 + 1.5 * (1 - dk)) * (0.45 + 0.55 * ab) * (1 - 0.35 * hk)            -- 往后几颗淡到 1/e
+  local A0 = (S.dia.A * dk + S.dia.An * (1 - dk)) * (0.35 + 0.65 * ab ^ 0.8)         -- 第一颗的不透明度
   for k1, dm in ipairs(P.dia) do
     local k = k1 - 1
     local z = D * 0.6 + s * k * (1 - 0.015 * k)
     local a = A0 * math.exp(-k / tau)
-    local show = on and near and a >= 0.05 and z <= Lv * 1.02                        -- 太淡的不画；排到焰尾为止
+    local show = on and near and a >= 0.05 and z <= Lv * 1.3                            -- 太淡的不画；排到焰尾再往后一点（照片上钻石比火舌长）
     dm.z, dm.a, dm.on = z, a, show
-    dm.pe.Enabled = show
+    dm.bm.Enabled = show
     if show then
-      dm.att.Position = V(0, 0, z)
+      local hl = D * 0.45 * (1 + 0.25 * hk)
+      dm.a0.Position, dm.a1.Position = V(0, 0, z - hl), V(0, 0, z + hl)
       local w = D * S.dia.W * (1 - 0.07 * k) * (1 + 0.25 * hk)
       dm.w = w
-      dm.pe.Size = NumberSequence.new(w)
-      dm.pe.Transparency = NumberSequence.new({ NK(0, 1 - a), NK(0.7, 1 - a * 0.8), NK(1, 1) })
-      dm.pe.Color = ColorSequence.new(S.dia.col0:Lerp(S.dia.col1, k / (DIA_N - 1)))
-      dm.pe.Brightness = (S.dia.br or 1.1) + 0.8 * (1 - dk)
+      dm.bm.Width0, dm.bm.Width1 = w, w
+      dm.bm.Transparency = NumberSequence.new(1 - a)
+      dm.bm.Color = ColorSequence.new(S.dia.col0:Lerp(S.dia.col1, k / (DIA_N - 1)))
+      dm.bm.Brightness = (S.dia.br or 1.2) + 0.8 * (1 - dk)
     end
   end
 end
@@ -211,9 +217,10 @@ end
 function AM.plumeInfo(M)
   local out = {}
   for _, P in ipairs(M.plumes or {}) do
-    local o = { D = P.D, style = P.style, on = P.body.Enabled, core = P.core.Enabled, Lv = P.Lv, src = P.src, body = P.body, coreE = P.core, dia = {} }
+    local o = { D = P.D, style = P.style, on = P.layers.outer.on == true, core = P.layers.core.on == true, Lv = P.Lv, src = P.src,
+      layers = P.layers, glow = P.glow, dia = {} }
     for _, dm in ipairs(P.dia) do
-      if dm.on then table.insert(o.dia, { z = dm.z, a = dm.a, w = dm.w, wp = dm.att.WorldPosition, pe = dm.pe }) end
+      if dm.on then table.insert(o.dia, { z = dm.z, a = dm.a, w = dm.w, wp = (dm.a0.WorldPosition + dm.a1.WorldPosition) / 2, bm = dm.bm }) end
     end
     table.insert(out, o)
   end
@@ -1074,44 +1081,48 @@ function AM.build(d, team, load)
         core.p.Transparency = 1
         table.insert(M.flames, core)
         if d.ab and not E.cold then
-          -- 加力尾焰：柔边发光粒子的焰身、焰芯、一串马赫环（见文件头「加力尾焰」）；挂在喷口出口的一个空零件上（推力矢量喷口跟着出口偏），
-          --   +Z 朝后；每帧 plumePose 按档改参数（状态没变一个属性都不碰）
+          -- 加力尾焰：几层柔边光带叠成的火、喷口的柔光、一串马赫环（见文件头「加力尾焰」）；挂在喷口出口的一个空零件上
+          --   （推力矢量喷口跟着出口偏），+Z 朝后；每帧 plumePose 按档改参数（状态没变一个属性都不碰）
           local r = E.r
           local src = newPart(m, V(0.2, 0.2, 0.2), RGB(255, 255, 255), MAT.SmoothPlastic, nil, 1)
           src.Name = "AbPlume"
           src.CastShadow = false
-          local function emitter(name, parent)
-            local pe = Instance.new("ParticleEmitter")
-            pe.Name = name
-            pe.Texture = GLOW_TX
-            pe.LockedToPart = true   -- 跟着飞机走（不锁就被几百格每秒的飞机甩成一长条）
-            pe.EmissionDirection = Enum.NormalId.Back   -- +Z：往机尾喷
-            pe.LightEmission, pe.LightInfluence = 1, 0
-            pe.Rotation = NumberRange.new(0, 360)
-            pe.RotSpeed = NumberRange.new(-120, 120)
-            pe.Rate = 0
-            pe.Enabled = false
-            pe.Parent = parent
-            return pe
+          local function strip(name, zOff)   -- 一条贴了柔边圆点的光带（整张贴图拉在带子上：正中最亮）
+            local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+            a0.Name, a1.Name = name .. "0", name .. "1"
+            a0.Parent, a1.Parent = src, src
+            local bm = Instance.new("Beam")
+            bm.Name = name
+            bm.Attachment0, bm.Attachment1 = a0, a1
+            bm.Texture = GLOW_TX
+            bm.TextureMode = Enum.TextureMode.Stretch
+            bm.TextureLength = 1
+            bm.TextureSpeed = 0
+            bm.FaceCamera = true
+            bm.Segments = 1
+            bm.LightInfluence = 0
+            bm.LightEmission = 1
+            bm.ZOffset = zOff or 0
+            bm.Enabled = false
+            bm.Parent = src
+            return { bm = bm, a0 = a0, a1 = a1 }
           end
           local P = { D = E.flat and r * 1.3 or r * 2, flat = E.flat, style = AM.plumeStyle(d), src = src, dia = {} }   -- 二元喷口按等面积的圆：2.1r × 0.85r
-          P.body = emitter("AbBody", src)
-          P.body.SpreadAngle = E.flat and Vector2.new(6, 1.5) or Vector2.new(2.5, 2.5)   -- 二元喷口：宽的那边多撒一点
-          P.core = emitter("AbCore", src)
-          P.core.SpreadAngle = Vector2.new(1.5, 1.5)
-          for k = 1, DIA_N do
-            local at = Instance.new("Attachment")
-            at.Name = "AbDia" .. k
-            at.Parent = src
-            local pe = emitter("AbDiamond", at)
-            pe.Orientation = Enum.ParticleOrientation.VelocityParallel   -- 顺着气流稍微拉长（柔光团，不是圆片）
-            pe.Squash = NumberSequence.new(0.9)
-            pe.Speed = NumberRange.new(0.05)
-            pe.Lifetime = NumberRange.new(0.08, 0.12)
-            pe.RotSpeed = NumberRange.new(0)
-            pe.Rate = 40
-            P.dia[k] = { att = at, pe = pe }
-          end
+          P.layers = { outer = strip("AbFlame", 0), mid = strip("AbFlame", 0.05), core = strip("AbCore", 0.1) }
+          local gl = Instance.new("ParticleEmitter")   -- 喷口的柔光：一直待在出口、朝着镜头
+          gl.Name = "AbGlow"
+          gl.Texture = GLOW_TX
+          gl.LockedToPart = true
+          gl.Speed = NumberRange.new(0)
+          gl.Lifetime = NumberRange.new(0.08, 0.12)
+          gl.Rotation = NumberRange.new(0, 360)
+          gl.RotSpeed = NumberRange.new(0)
+          gl.LightEmission, gl.LightInfluence = 1, 0
+          gl.Rate = 0
+          gl.Enabled = false
+          gl.Parent = src
+          P.glow = gl
+          for k = 1, DIA_N do P.dia[k] = strip("AbDiamond", 0.15) end
           add(src, base, "ab", hotItem({ plume2 = P }))
           M.plumes = M.plumes or {}
           table.insert(M.plumes, P)
@@ -1830,6 +1841,13 @@ function AM.pose(M, cf, c, now, world)
         if key ~= P.key then
           P.key = key
           plumePose(P, on, ab, dk, hk, near)
+        end
+        if on and near then   -- 近处：火舌长短抖一点（只挪尾巴那头的挂点）
+          local fl = 1 + 0.05 * math.sin((now or 0) * 37 + P.D) + 0.03 * math.sin((now or 0) * 61)
+          for _, name in ipairs(LAYERS) do
+            local B = P.layers[name]
+            if B.on then B.a1.Position = V(0, 0, B.vis * 1.1 * fl) end
+          end
         end
         tr = 1
       end

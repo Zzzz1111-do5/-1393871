@@ -478,6 +478,7 @@ local ENUMS = {
   RenderPriority = "First Input Camera Character Last",
   StartCorner = "TopLeft TopRight BottomLeft BottomRight",
   ParticleOrientation = "FacingCamera FacingCameraWorldUp VelocityParallel VelocityPerpendicular",
+  TextureMode = "Stretch Wrap Static",   -- 光带 / 拖尾的贴图怎么铺（11-28 尾焰）
   ParticleEmitterShape = "Box Sphere Cylinder Disc", ParticleEmitterShapeStyle = "Volume Surface", ParticleEmitterShapeInOut = "Outward Inward InAndOut",   -- 粒子出生的体积（11-27 特效）
   ActuatorRelativeTo = "Attachment0 Attachment1 World",
   ContextActionPriority = "Low Medium Default High",
@@ -1303,7 +1304,7 @@ def("Beam", "Instance", {
   Attachment0 = { T.Instance, nil }, Attachment1 = { T.Instance, nil }, Color = { T.ColorSequence, ColorSequence.new(newC3(1, 1, 1)) }, Transparency = { T.NumberSequence, NumberSequence.new(0.5) },
   Width0 = { T.number, 1 }, Width1 = { T.number, 1 }, LightEmission = { T.number, 0 }, FaceCamera = { T.bool, false }, Enabled = { T.bool, true }, Segments = { T.number, 10 },
   CurveSize0 = { T.number, 0 }, CurveSize1 = { T.number, 0 }, Texture = { T.string, "" }, TextureSpeed = { T.number, 1 }, TextureLength = { T.number, 1 }, ZOffset = { T.number, 0 },
-  LightInfluence = { T.number, 0 }, Brightness = { T.number, 1 },
+  LightInfluence = { T.number, 0 }, Brightness = { T.number, 1 }, TextureMode = { E("TextureMode"), Enum.TextureMode.Stretch },
 })
 def("SpecialMesh", "Instance", { MeshType = { E("MeshType"), Enum.MeshType.Head }, Scale = { T.Vector3, v3(1, 1, 1) }, Offset = { T.Vector3, v3() },
   MeshId = { T.string, "" }, TextureId = { T.string, "" }, VertexColor = { T.Vector3, v3(1, 1, 1) } })

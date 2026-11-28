@@ -12,6 +12,11 @@
 --       Trail 的宽度 / 透明度曲线一改，已经画出去的那一截也跟着变）；双脉冲第二次点火重新冒烟
 --   · 发动机一关（烧完、还没点火的抛射弹）：火舌灭、不再冒烟，已经冒出去的烟照样慢慢散；弹打中了 / 没了也一样（小零件留到烟散完）
 --   · 发射器一枚弹几个：飞过 500 格或者 1.2 秒换一个新的（旧的停在原地不挪，粒子到寿命才收——同 VfxLib 的规矩：长寿命的烟不跟着零件跑远）
+--   用户 11-28「尾烟还是不像战雷」：战雷的导弹尾烟又浓又白、在天上挂很久（看得清整条弹道），被太阳照着，越老越宽、越淡、越灰——
+--   · 挂得久：低烟 5 秒、一般 14 秒、浓烟 22 秒（原来 1.3 / 3.4 / 6.5 秒，烟还没看清就没了）
+--   · 粗：出来就一两米、头一两秒胀开，浓烟挂到最后十来米粗（原来不到一米、最多三米——一两公里外看只剩一根发丝）
+--   · 烟带两层（同一条中线）：里层浓、窄，外层宽、淡——里浓外淡叠出虚的边（原来一条硬边的平带子）
+--   · 烟团大一点、活得跟烟带一样久，撒在烟带四周，一团团慢慢胀开、转、往上飘一点：烟带外面一层翻滚的毛边
 --   贴图只用 Roblox 自带的（VfxLib.TX.SMOKE），不上传图片
 local MslSmoke = {}
 
@@ -27,12 +32,12 @@ function MslSmoke.new(G, FXF, VL)
   --   gap 每飞几格撒一团、nps 每秒最多几团、pl 烟团寿命、ps 烟团 出生 / 一会儿 / 最后 多大、ptr 烟团起始透明度（贴图本身 alpha 只到 0.33）；
   --   flame 火舌多长（× 弹径系数）
   local CLS = {
-    low = { w = 1.0, life = 1.3, tr0 = 0.62, grow = 2.2, gap = 9, nps = 50, pl = { 1.0, 1.7 }, ps = { 1.1, 2.6, 5.5 }, ptr = 0.5, flame = 2.4 },
-    med = { w = 1.8, life = 3.4, tr0 = 0.36, grow = 2.8, gap = 5, nps = 100, pl = { 2.6, 4.2 }, ps = { 1.8, 4.6, 10 }, ptr = 0.26, flame = 3.4 },
-    heavy = { w = 2.8, life = 6.5, tr0 = 0.14, grow = 3.4, gap = 3, nps = 150, pl = { 5, 8 }, ps = { 2.8, 7, 16 }, ptr = 0.1, flame = 4.4 },
+    low = { w = 1.8, life = 5, tr0 = 0.52, grow = 4, gap = 14, nps = 30, pl = { 3, 5 }, ps = { 2.4, 8, 16 }, ptr = 0.45, flame = 2.4 },
+    med = { w = 3.2, life = 14, tr0 = 0.16, grow = 6, gap = 9, nps = 80, pl = { 8, 12 }, ps = { 4, 15, 34 }, ptr = 0.22, flame = 3.4 },
+    heavy = { w = 4.5, life = 22, tr0 = 0.05, grow = 7, gap = 7, nps = 120, pl = { 14, 20 }, ps = { 5, 20, 46 }, ptr = 0.12, flame = 4.4 },
   }
   M.CLS = CLS
-  local WARM, FRESH, MID, OLD = RGB(255, 226, 190), RGB(240, 240, 236), RGB(224, 224, 222), RGB(198, 198, 198)
+  local WARM, FRESH, MID, OLD = RGB(255, 226, 190), RGB(244, 244, 240), RGB(228, 228, 226), RGB(196, 198, 204)   -- 老了偏灰、带一点冷色
 
   local function holder(name)
     local p = Instance.new("Part")
@@ -61,7 +66,7 @@ function MslSmoke.new(G, FXF, VL)
     return ColorSequence.new(kp)
   end
 
-  -- 一条烟带：c 档、k 宽度倍数、tk 透明度往上加（续航段淡一点）
+  -- 一条烟带：c 档、k 宽度倍数、tk 透明度往上加（续航段淡一点）；返回里层、外层两条
   local function smokeTrail(S, c, k, tk)
     local half = c.w * k / 2
     local a0, a1 = attachPair(S.h, half)
@@ -72,12 +77,26 @@ function MslSmoke.new(G, FXF, VL)
     tr.MinLength = 0.4
     local t0 = math.min(0.95, c.tr0 + (tk or 0))
     tr.Transparency = nsq(0, t0, 0.3, t0 + (1 - t0) * 0.35, 0.75, t0 + (1 - t0) * 0.78, 1, 1)
-    tr.WidthScale = nsq(0, 0.55, 0.1, 1, 1, c.grow)
+    tr.WidthScale = nsq(0, 0.45, 0.04, 1, 0.25, 1 + (c.grow - 1) * 0.55, 1, c.grow)   -- 头一两秒胀得最快（真的烟出来就翻开），后面慢慢胀
     tr.Color = csq(0, WARM, 0.05, FRESH, 0.45, MID, 1, OLD)
     tr.LightEmission, tr.LightInfluence = 0, 1   -- 烟受光照（夜里不自己发白）
     tr.Parent = S.h
-    M.stat.trails += 1
-    return tr
+    -- 外层：同一条中线、宽一倍、淡得多，活得稍短——里浓外淡叠出虚的边（一条硬边的平带子不像烟）
+    local b0, b1 = attachPair(S.h, half * 1.9)
+    local hl = Instance.new("Trail")
+    hl.Name = "MslSmokeHalo"
+    hl.Attachment0, hl.Attachment1 = b0, b1
+    hl.FaceCamera = true
+    hl.Lifetime = c.life * 0.9
+    hl.MinLength = 0.4
+    local th = math.min(0.97, 0.7 + 0.25 * t0)
+    hl.Transparency = nsq(0, 1, 0.06, th, 0.5, th + (1 - th) * 0.45, 1, 1)
+    hl.WidthScale = nsq(0, 0.45, 0.06, 1, 0.25, 1 + (c.grow * 1.25 - 1) * 0.55, 1, c.grow * 1.25)
+    hl.Color = csq(0, FRESH, 0.5, MID, 1, OLD)
+    hl.LightEmission, hl.LightInfluence = 0, 1
+    hl.Parent = S.h
+    M.stat.trails += 2
+    return tr, hl
   end
   -- 火舌：喷口往后一截，最长 len 格，宽 fw
   local function flameTrail(S, len, fw)
@@ -103,9 +122,9 @@ function MslSmoke.new(G, FXF, VL)
     pe.Texture = SMOKE_TEX
     pe.Rate = 0
     pe.Lifetime = NumberRange.new(c.pl[1], c.pl[2])
-    pe.Speed = NumberRange.new(0.3, 1.6)
+    pe.Speed = NumberRange.new(0.6, 2.4)
     pe.SpreadAngle = Vector2.new(180, 180)
-    pe.Drag = 0.8
+    pe.Drag = 0.8   -- 往外胀一点就停住（活十几秒也不会飘远）
     local acc = V(0, 0.5, 0)   -- 热烟往上浮一点
     if VL and VL.wind and VL.wind().Magnitude < 0.5 then acc += V(1.2, 0, 0.6) end   -- 地图没设风：补一点水平的
     pe.Acceleration = acc
@@ -113,7 +132,7 @@ function MslSmoke.new(G, FXF, VL)
     pe.Transparency = nsq(0, c.ptr, 0.5, c.ptr + (1 - c.ptr) * 0.42, 1, 1)
     pe.Color = csq(0, RGB(244, 242, 238), 1, RGB(206, 206, 204))
     pe.Rotation = NumberRange.new(0, 360)
-    pe.RotSpeed = NumberRange.new(-18, 18)
+    pe.RotSpeed = NumberRange.new(-8, 8)
     pe.LightEmission, pe.LightInfluence = 0, 1
     pe.EmissionDirection = Enum.NormalId.Top
     pcall(function()
@@ -141,17 +160,18 @@ function MslSmoke.new(G, FXF, VL)
     local S = s.sm
     if not S then
       if not on then return end
-      S = { h = holder("MslSmokeT"), trails = {}, last = nil }
+      S = { h = holder("MslSmokeT"), trails = {}, halos = {}, last = nil }
       s.sm = S
     end
     local p = cf.Position - cf.LookVector * back
     S.h.CFrame = CFrame.new(p)
-    live = live * math.exp(-dt / 3.5)
+    live = live * math.exp(-dt / 10)   -- 烟团活十几秒
     M.stat.live = live
     -- 发动机关了：火舌灭、烟带不再长，已经冒出去的慢慢散
     if not on then
       if S.flame then S.flame.Enabled = false end
       for _, tr in pairs(S.trails) do tr.Enabled = false end
+      for _, hl in pairs(S.halos) do hl.Enabled = false end
       if S.E then retireEmitter(S.E) S.E = nil end
       S.last, S.key, S.retire = nil, nil, nil
       return
@@ -159,14 +179,23 @@ function MslSmoke.new(G, FXF, VL)
     local key = cls .. "_" .. tostring(ph or 1)
     local tr = S.trails[key]
     if not tr then
-      tr = smokeTrail(S, c, (ph == "boost") and 1.15 or ((ph == "sus") and 0.7 or 1), (ph == "sus") and 0.18 or 0)
-      S.trails[key] = tr
+      local hl
+      tr, hl = smokeTrail(S, c, (ph == "boost") and 1.15 or ((ph == "sus") and 0.7 or 1), (ph == "sus") and 0.18 or 0)
+      S.trails[key], S.halos[key] = tr, hl
     end
     -- 换段（助推 → 续航、第二次点火）：旧的那条多开一帧再关（这一帧它也画到现在这一点，新旧两条接上，不断一截）
-    if S.retire then S.retire.Enabled = false S.retire = nil end
+    if S.retire then
+      S.retire.Enabled = false
+      for k, t2 in pairs(S.trails) do if t2 == S.retire and S.halos[k] then S.halos[k].Enabled = false end end
+      S.retire = nil
+    end
     if S.key and S.key ~= key and S.trails[S.key] then S.retire = S.trails[S.key] end
     S.key = key
-    for k, t2 in pairs(S.trails) do t2.Enabled = (k == key) or (t2 == S.retire) end
+    for k, t2 in pairs(S.trails) do
+      local on2 = (k == key) or (t2 == S.retire)
+      t2.Enabled = on2
+      if S.halos[k] then S.halos[k].Enabled = on2 end
+    end
     local fk = (ph == "boost") and 1.3 or ((ph == "sus") and 0.7 or 1)
     local dk = math.clamp((d or 0.8) / 0.8, 0.6, 2.2)
     if not S.flame then S.flame = flameTrail(S, c.flame * fk * dk, math.max(0.45, (d or 0.8) * 1.25)) end
@@ -218,6 +247,7 @@ function MslSmoke.new(G, FXF, VL)
       tr.Enabled = false
       life = math.max(life, tr.Lifetime)
     end
+    for _, hl in pairs(S.halos or {}) do hl.Enabled = false end
     Debris:AddItem(S.h, life + 0.5)
     retireEmitter(S.E)
   end

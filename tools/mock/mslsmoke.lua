@@ -5,6 +5,7 @@
 --   ② 低烟发动机比浓烟的细、淡、留得短、撒得少
 --   ③ 助推 → 续航：另起一条烟带（细一点、淡一点），旧的那条多开一帧接上
 --   ④ 发动机一关：火舌灭、烟带不长了、不再撒；⑤ 弹没了：烟留到散完才收（小零件过几秒才删）
+--   用户 11-28「尾烟还是不像战雷」：浓烟挂二十来秒、一般的十几秒；烟带两层（里浓外淡、外层宽一倍）叠出虚的边
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF = T.R, T.V3, T.CF
 local check = T.check
@@ -52,12 +53,18 @@ local n = M.stat.emitted - e0
 print(string.format("   撒了 %d 团（%d 帧里 %d 帧撒到）；发射器 %d 个；烟带 %d 条", n, frames, hit, M.stat.emitters - em0, count("Trail")))
 check(s.sm ~= nil and count("Trail") >= 2, "有烟带、火舌两条 Trail")
 check(hit >= frames - 2, "几乎每一帧都撒到（连着的，不再隔几十格一颗球）")
-check(n >= 500 and n <= 1300, "撒的总数有上限（" .. n .. "）")
+check(n >= 250 and n <= 1300, "撒的总数有上限（" .. n .. "；烟团大、活得久，撒得比原来稀）")
 check(M.stat.emitters - em0 >= 8, "飞过 500 格换一个发射器（" .. (M.stat.emitters - em0) .. " 个）")
 local E = s.sm and s.sm.E
 check(E ~= nil and math.abs(E.h.Size.Z - 28) < 1.5, string.format("发射器的小零件拉成这一帧那一段（%.1f 格）", E and E.h.Size.Z or -1))
 local tr = s.sm and s.sm.trails["heavy_1"]
-check(tr ~= nil and tr.Lifetime >= 6 and tr.LightInfluence == 1, "浓烟的烟带留六七秒、受光照（夜里不自己发白）")
+check(tr ~= nil and tr.Lifetime >= 18 and tr.LightInfluence == 1, string.format("浓烟的烟带挂 %.0f 秒（战雷那样看得清整条弹道）、受光照（夜里不自己发白）", tr and tr.Lifetime or 0))
+local hl = s.sm and s.sm.halos and s.sm.halos["heavy_1"]
+local wC = tr and (tr.Attachment1.Position - tr.Attachment0.Position).Magnitude or 0
+local wH = hl and (hl.Attachment1.Position - hl.Attachment0.Position).Magnitude or 0
+local tC = tr and tr.Transparency.Keypoints[1].Value or 1
+local tH = hl and hl.Transparency.Keypoints[2].Value or 0
+check(hl ~= nil and hl.Enabled and wH > wC * 1.6 and tH > tC + 0.3, string.format("外面一层宽、淡的烟（%.1f / %.1f 格，透明度 %.2f / %.2f）：里浓外淡、边是虚的", wH, wC, tH, tC))
 local fl = s.sm and s.sm.flame
 check(fl ~= nil and fl.MaxLength > 0 and fl.MaxLength < 12 and fl.LightEmission == 1, "火舌最长几格（不随速度拖长）、自己发光")
 
@@ -67,7 +74,7 @@ local e1 = M.stat.emitted
 fly(s2, 1680, 3, "low", 1, true, V3(0, 600, 0))
 local n2 = M.stat.emitted - e1
 local tl = s2.sm and s2.sm.trails["low_1"]
-check(tl ~= nil and tl.Lifetime < tr.Lifetime and tl.Transparency.Keypoints[1].Value > tr.Transparency.Keypoints[1].Value, "烟带留得短、更淡")
+check(tl ~= nil and tl.Lifetime < tr.Lifetime and tl.Transparency.Keypoints[1].Value > tr.Transparency.Keypoints[1].Value, string.format("烟带留得短（%.0f 秒）、更淡", tl and tl.Lifetime or 0))
 check(n2 < n * 0.5, string.format("撒得少（%d 团 / 浓烟 %d 团）", n2, n))
 
 print("③ 助推 → 续航")
@@ -87,12 +94,14 @@ print("④ 发动机一关")
 local e2 = M.stat.emitted
 fly(s, 1680, 0.5, "heavy", 1, false, p1)
 check(M.stat.emitted == e2, "不再撒烟团")
-check(not fl.Enabled and not tr.Enabled, "火舌灭了、烟带不再长")
+check(not fl.Enabled and not tr.Enabled and not hl.Enabled, "火舌灭了、烟带（两层）不再长")
 
 print("⑤ 弹没了：烟留到散完才收")
 local h = s.sm and s.sm.h
 M.stop(s)
 check(s.sm == nil and h ~= nil and h.Parent ~= nil, "零件先留着（烟还在飘）")
 R.run(8)
+check(h.Parent ~= nil, "八秒后还在（烟挂得久）")
+R.run(17)
 check(h.Parent == nil, "过了烟的寿命收掉")
 T.summary()
