@@ -1365,6 +1365,26 @@ function TechUI.init(G)
   end
   G.refreshLineup = refreshHangar   -- 不叫 G.refreshHangar：Hangar.lua（改挂载）的刷新函数叫这个名字，顶掉了它就坏了
   G.hangarSelect = function(i) selSlot = i refreshHangar() end   -- 测试用
+  -- 局内出击页（WtSpawn.lua，战雷的重生界面；用户 11-28「被击毁重新召唤载具要有这个界面」）借这边的阵容和规矩：
+  --   每一位的车、名字、战斗等级、这一局要多少 SP（spState）、禁选（还没出过地面车的飞机）、超出本局战斗等级、能不能出；选中第几位
+  G.techLineup = function()
+    local keys = lineupOf(tree.nat)
+    local _, cap = brCap()
+    local out = {}
+    for i = 1, 5 do
+      local key = keys[i]
+      local it = key and TT.get(key)
+      if it then
+        local spTx, spC, lock = spState(it)
+        local over = cap ~= nil and it.br > cap + 0.05
+        out[i] = { key = key, it = it, name = nm(it), br = TT.brText(it.br), sp = over and L("超出本局战斗等级", "Above battle BR") or spTx,
+          spC = over and BAD or spC, lock = lock == true, over = over, can = (not over) and spC ~= BAD and lock ~= true }
+      end
+    end
+    return out, selSlot
+  end
+  G.techSelectSlot = function(i) if selSlot ~= i then selSlot = i refreshHangar() end end
+  G.techPicOn = function(img, it) picOn(img, it) end
   me:GetAttributeChangedSignal("Coins"):Connect(function() if hangar.Visible then refreshTop() end end)
   me:GetAttributeChangedSignal("CoinsInf"):Connect(function() if hangar.Visible then refreshTop() end end)
 
@@ -1454,6 +1474,7 @@ function TechUI.init(G)
   local lastSig = nil
   function G.hangarSet(show)
     local want = show and G.hangarActive() and not (G.wtSpectating and G.wtSpectating())   -- C ⑮：观战的时候机库收起（WtCam.lua）
+      and not (G.wtSpawnOn and G.wtSpawnOn())   -- 局内出击页（WtSpawn.lua，战雷的重生界面）开着：机库不出来
     if hangar.Visible ~= want then
       -- 出击（机库收起、人已经出生了）：镜头从机库一下切到战场——盖 0.1 秒黑再 0.25 秒淡开（UI.lua G.sceneFade；
       --   11-27「动画做出丝滑感」，顺便把进战场那一下的加载、阴影重画藏在黑里）。阵亡回机库 DeathFx 自己有淡黑淡开

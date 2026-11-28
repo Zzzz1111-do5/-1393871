@@ -2,6 +2,8 @@
 --   跟战雷一样，然后人机的分数也要出现在记分板」）：python3 tools/mock/run.py tools/mock/match.lua
 --   ① 开服是「匹配中」，没人点开战不开打；② 点开战排上，到点开准备阶段，记成这一局的人、机库变成局内选车页（主按钮「出击」、匹配时点的那一辆选中，
 --      飞机卡禁选、没有「试驾」，客户端直接发 testDrive 服务器也不理——同战雷的出击页），点出击坐进去
+--   11-28 用户「被击毁重新召唤载具要有这个界面」（战雷截图）：局内选车改成战雷的出击页（WtSpawn.lua：顶上阵容卡、左栏出击设置、右边大地图、「加入战斗！」），
+--     机库不再出来
 --   ③ 开打后两队电脑车补满 teamSize（自己这队少一辆），车的战斗等级按我阵容里最高的那辆挑；④ 电脑车组进记分板，打掉车记击毁、得分、阵亡
 --   ⑤ 车没了回局内选车页（卡上写这一局的账）、「退出战斗」退出这一局；⑥ 一局打完回到匹配中；⑦ 每局开局拨回早上（一天 48 分钟）
 local T = dofile(MOCK_DIR .. "/common.lua")
@@ -62,11 +64,15 @@ local function goLabel()
     if d.ClassName == "TextLabel" and d.Name ~= "GoSub" and d.Text ~= "" then return d.Text end
   end
 end
-T.runUntil(function() return C.hangarGui and C.hangarGui.Visible and goLabel() == "出击" end, 5)
-check(C.hangarGui and C.hangarGui.Visible, "局内选车：机库（同一套外观）")
-check(goLabel() == "出击", "主按钮是「出击」（" .. tostring(goLabel()) .. "）")
-check(T.findNamed("LeaveMatch") ~= nil, "多一个「退出战斗」")
-check(T.findNamed("Line_" .. key) ~= nil, "阵容里有匹配时点的那一辆（Line_" .. tostring(key) .. "）")
+local function spawnGo() return T.findNamed("SpawnGo") end
+local function spawnOn() return C.wtSpawnOn and C.wtSpawnOn() == true end
+T.runUntil(function() return spawnOn() end, 5)
+check(spawnOn() and not C.hangarGui.Visible, "局内选车：战雷的出击页（机库不出来）")
+check(spawnGo() and spawnGo().Text:find("加入战斗！", 1, true) == 1, "主按钮是「加入战斗！（重生次数）」（" .. tostring(spawnGo() and spawnGo().Text) .. "）")
+check(T.findNamed("SpawnLeave") ~= nil, "底下有「退出战斗」")
+check(T.findNamed("Spawn_" .. key) ~= nil, "顶上阵容卡里有匹配时点的那一辆（Spawn_" .. tostring(key) .. "）")
+local holder = C.wtSpawnGui and C.wtSpawnGui:FindFirstChild("Holder", true)
+check(holder ~= nil and #holder:GetChildren() > 0, "右边是大地图（小地图那张挂过来了）")
 check(C.S.pickPref == key, "服务器记着匹配时点的那一辆（pickPref）")
 -- 用户 11-26「不要写先出击地面车 你直接禁止选飞机就行」：还没出过地面车，阵容里的飞机 / 直升机整张卡禁选、不写字
 local TTm = R.require(R.services.ReplicatedStorage:FindFirstChild("TechTree"))
@@ -77,16 +83,16 @@ for _, k in ipairs(G.treeLineup(P)) do
 end
 check(#T.texts("先出地面车") == 0, "卡上不再写「先出地面车」")
 if airKey then
-  local ac = T.findNamed("Line_" .. airKey)
+  local ac = T.findNamed("Spawn_" .. airKey)
   check(ac ~= nil and ac:GetAttribute("Locked") == true, "飞机卡禁选（" .. tostring(airKey) .. "）")
   T.press(ac)
   R.run(0.3)
   local go0 = nil
-  for _, d in ipairs(T.findNamed("HangarGo"):GetDescendants()) do if d.Name == "GoSub" then go0 = d.Text end end
+  for _, d in ipairs(spawnGo():GetDescendants()) do if d.Name == "GoSub" then go0 = d.Text end end
   check(go0 and go0:find(TTm.byKey[key] and TTm.byKey[key].name or "", 1, true) ~= nil, "点了飞机卡也不选它：主按钮还是那辆地面车（" .. tostring(go0) .. "）")
 end
 -- 局内选车页没有「试驾」（同战雷的出击页；试驾审查 4：飞机卡禁选，原来右边「试驾」还在、点了开的是选中的坦克）
-check(T.findNamed("HangarTest") == nil and T.findNamed("ViewBtn") ~= nil, "局内选车：右边没有「试驾」（「只看车」还在）")
+check(T.findNamed("HangarTest") == nil, "局内选车：没有「试驾」")
 -- 服务器也不让局内试驾（Tech.lua testDrive 按 Round.lua G.inMatch 拦；后续审查 6：原来只藏了按钮，客户端直接发 testDrive 照样能半路去训练场）——
 --   不回任何提示：回「训练场还在准备」「几秒后出击」的是被别的条件拦下的，不算
 T.runUntil(function() return G.rangeReady == true end, 30, 1 / 10)
@@ -107,11 +113,11 @@ if shotDir then
   local dump = dofile(MOCK_DIR .. "/uidump.lua")
   dump(T, me, shotDir .. "/pick.json", true)
 end
-T.press(T.findNamed("HangarGo"))
+T.press(spawnGo())
 T.runUntil(function() return P.vehicle ~= nil end, 10)
-check(P.vehicle ~= nil and P.vehicle.treeKey == key, "点出击：坐进选中的那一辆（" .. tostring(P.vehicle and P.vehicle.treeKey) .. "）")
+check(P.vehicle ~= nil and P.vehicle.treeKey == key, "点「加入战斗！」：坐进选中的那一辆（" .. tostring(P.vehicle and P.vehicle.treeKey) .. "）")
 R.run(0.6)
-check(not C.hangarGui.Visible, "坐进车：机库收起")
+check(not C.hangarGui.Visible and not spawnOn(), "坐进车：出击页收起")
 local br = G.treeRoundBr()
 check(math.abs(br - myBr) < 0.01, string.format("本局战斗等级 = 我阵容里最高的 %.1f（%.1f）", myBr, br))
 
@@ -176,17 +182,18 @@ G.wtRaw = true
 G.damageEnt(mv, 1e6, { team = other, name = "bot" })
 G.wtRaw = nil
 T.runUntil(function() return P.vehicle == nil and not P.alive end, 10)
-T.runUntil(function() return C.hangarGui.Visible and goLabel() == "出击" end, 20)
-check(C.hangarGui.Visible and goLabel() == "出击", "车被打掉（阵亡效果放完）：回到局内选车页，主按钮还是「出击」")
-local card = T.findNamed("Line_" .. key)
+T.runUntil(function() return spawnOn() end, 20)
+check(spawnOn() and not C.hangarGui.Visible, "车被打掉（阵亡效果放完）：回到战雷的出击页")
+local card = T.findNamed("Spawn_" .. key)
 local spTxt = nil
 for _, d in ipairs(card and card:GetDescendants() or {}) do if d.Name == "Sp" then spTxt = d.Text end end
 check(spTxt ~= nil and spTxt ~= "", "那一辆卡上写着这一局的账（" .. tostring(spTxt) .. "）")
 check(T.findNamed("HangarTest") == nil, "回到局内选车页：还是没有「试驾」")
-T.press(T.findNamed("LeaveMatch"))
+T.press(T.findNamed("SpawnLeave"))
 R.run(0.8)
 check(P.match == nil, "点「退出战斗」：这一局不打了")
-check(C.hangarGui.Visible and goLabel() == "加入战斗" and not T.findNamed("LeaveMatch"), "回到普通机库：主按钮「加入战斗」、没有「退出战斗」（" .. tostring(goLabel()) .. "）")
+T.runUntil(function() return C.hangarGui.Visible end, 5)
+check(C.hangarGui.Visible and not spawnOn() and goLabel() == "加入战斗" and not T.findNamed("LeaveMatch"), "回到普通机库：主按钮「加入战斗」、没有「退出战斗」（" .. tostring(goLabel()) .. "）")
 check(T.findNamed("HangarTest") ~= nil, "回到普通机库（局外）：「试驾」回来了")
 
 print("⑥ 打完回到匹配中")

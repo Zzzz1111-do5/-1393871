@@ -25,7 +25,8 @@ local key = G.treeLineup(P)[1]
 T.act("matchJoin", key)
 T.runUntil(function() return G.round.phase == "prep" end, 15)
 R.run(1)
-T.press(T.findNamed("HangarGo"))
+T.runUntil(function() return T.findNamed("SpawnGo") ~= nil end, 10)   -- 局内是战雷的出击页（WtSpawn.lua）
+T.press(T.findNamed("SpawnGo"))
 T.runUntil(function() return P.vehicle ~= nil end, 10)
 T.runUntil(function() return G.round.phase == "battle" end, 60, 1 / 10)
 -- 等电脑车上场，挑一辆敌车

@@ -271,10 +271,11 @@ T.act("matchJoin", starter.key)
 R.run(0.5)
 T.runUntil(function() return G.round.phase ~= "queue" end, 15)
 check(G.round.phase == "prep", "匹配到了：准备阶段（" .. tostring(G.round.phase) .. "）")
-T.runUntil(function() return C.S and C.S.pick == true and T.findNamed("Line_" .. starter.key) ~= nil end, 10)
-local gcard = T.findNamed("Line_" .. starter.key)
+-- 局内选车是战雷的出击页（WtSpawn.lua，用户 11-28「被击毁重新召唤载具要有这个界面」）：顶上阵容卡 Spawn_<键>、右下「加入战斗！」SpawnGo
+T.runUntil(function() return C.S and C.S.pick == true and T.findNamed("Spawn_" .. starter.key) ~= nil end, 10)
+local gcard = T.findNamed("Spawn_" .. starter.key)
 if gcard then T.press(gcard) R.run(0.3) end
-local go = T.findNamed("HangarGo")
+local go = T.findNamed("SpawnGo")
 if go then T.press(go) end
 T.runUntil(function() return P.alive and P.vehicle ~= nil end, 30)
 local eg = P.vehicle
@@ -282,14 +283,14 @@ check(eg ~= nil and not eg.air and eg.treeKey == starter.key, "先出了地面�
 R.run(1)
 T.remoteAs(me, "Drive", { op = "exit", hangar = true })
 T.runUntil(function() return not P.alive end, 15)
-T.runUntil(function() return T.findNamed("HangarGo") ~= nil end, 10)
+T.runUntil(function() return T.findNamed("SpawnGo") ~= nil end, 10)
 G.wtState(P).sp = 5000   -- 打出了分、攒够了出飞机的 SP（测试直接给）
 G.pushOne(P)
 R.run(1.5)
-local acard = T.findNamed("Line_" .. KEY)
+local acard = T.findNamed("Spawn_" .. KEY)
 check(acard ~= nil and acard:GetAttribute("Locked") ~= true, "出过地面车：飞机卡能选了")
 if acard then T.press(acard) R.run(0.5) end
-go = T.findNamed("HangarGo")
+go = T.findNamed("SpawnGo")
 if go then T.press(go) end
 local ea
 T.runUntil(function()
@@ -301,6 +302,10 @@ if ea then
   check(same(ea.load, want) and ea.model:GetAttribute("Load") == sig(want), "挂的、模型上的 Load 属性和存的一样：" .. tostring(ea.model:GetAttribute("Load")))
   check(ea.fuelSel == 0.75 and math.abs((ea.model:GetAttribute("Fuel") or 0) - 0.75) < 0.01, "内油是存的 75%（" .. tostring(ea.fuelSel) .. "）")
 end
+-- 退出这一局回普通机库（整备只在机库里开：战雷的出击页里没有整备），⑤ 以后照旧在机库里
+T.act("matchLeave")
+T.runUntil(function() return P.match == nil and T.findNamed("HangarGo") ~= nil end, 15)
+R.run(1)
 
 print("⑤ 服务器校验：非法武器清成空、内油夹住、不认得的预设不记")
 local bad = { "aim120", "pl15", 12, "b250", "zzz", true, "tk800" }   -- 别家的弹、挂不上这个挂点的、不是字符串的
@@ -385,7 +390,7 @@ local goParent0 = goB and goB.Parent and goB.Parent.Name
 local ab7 = T.findNamed("AmmoBtn")
 if ab7 then T.press(ab7) R.run(1.2) end
 local W7, st7 = C.workshopState()
-check(W7.on and st7 ~= nil and st7.key == KEY, "局内选车的机库里也打开整备（" .. tostring(st7 and st7.key) .. (inPick and "，局内" or "") .. "）")
+check(W7.on and st7 ~= nil and st7.key == KEY, "机库里打开整备（" .. tostring(st7 and st7.key) .. (inPick and "，局内" or "") .. "）")
 goB = T.findNamed("HangarGo")
 check(goB ~= nil and goB.Parent ~= nil and goB.Parent.Name == "TopRow", "整备开着：主按钮在顶栏正中（原来在 " .. tostring(goParent0) .. "；右下是整备的底部条）")
 -- 挂点卡：对称时同名的一对一张、不对称时一个挂点一张，从左翼尖排到右翼尖

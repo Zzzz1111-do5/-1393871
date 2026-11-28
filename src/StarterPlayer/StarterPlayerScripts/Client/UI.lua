@@ -1206,13 +1206,13 @@ function UI.init(G)
   boardBtn.TextColor3 = RGB(200, 206, 210)
   for _, c in ipairs(boardBtn:GetChildren()) do if c:IsA("UICorner") then c:Destroy() end end   -- 直角，跟新界面一样
   boardBtn.TextSize = 22
-  boardBtn.Activated:Connect(function()
-    if board.Visible then G.uiShow(board, false)
-    else
-      G.drawBoard()
-      G.uiShow(board, true)
-    end
-  end)
+  -- 开 / 关战况表（v 不给就是切换）：左上「≡」、局内出击页的「数据统计」（WtSpawn.lua）
+  function G.boardToggle(v)
+    if v == nil then v = not board.Visible end
+    if v then G.drawBoard() end
+    G.uiShow(board, v)
+  end
+  boardBtn.Activated:Connect(function() G.boardToggle() end)
 
   ---------------------------------------------------------------- 结算
 
