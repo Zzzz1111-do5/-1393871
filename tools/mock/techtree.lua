@@ -1,6 +1,6 @@
 -- 科技树、机库、只开载具（用户 11-25：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」
 --   「不要让玩家拿枪之类的了 就跟战雷完全一样 不要让玩家作为个体活动」）：python3 tools/mock/run.py tools/mock/techtree.lua
---   ① 数据：五个系 × 三棵树（坦克、战机、直升机），每一项能开（veh / base 在 VehDefs / AirDefs 里），同一列前置连得上，每棵树第一级有白送的
+--   ① 数据：五个系 × 三棵树（坦克、战机、直升机），每一项能开（veh / base 在 VehDefs / AirDefs 里），同一列前置连得上，地面树第一级白送一辆（飞机、直升机要买）
 --   ② 机库：没出击时盖住步兵部署页，底下是出击阵容（白送的那几辆）；当步兵出击被拒
 --   ③ 出击：点阵容里一辆坦克的「出击」，人直接坐在这辆车里、出现在自己基地；车上记着科技树的名字
 --   ④ 「下车」= 回机库：车没了、人阵亡，机库又出来
@@ -35,12 +35,14 @@ for _, nat in ipairs(TT.NATIONS) do
       if (br ~= "ground") ~= (ad ~= nil) or (ad and (ad.kind == "heli") ~= (br == "heli")) then table.insert(bad, it.key .. " 树和型号对不上") end
       if it.free then free = free + 1 end
     end
-    if free == 0 and #list > 0 then table.insert(noFree, nat .. ":" .. br) end   -- 空着的树（德国固定翼：没找到原模型，都删了）不算
+    -- 11-28 用户「送就只送1级载具 飞机要拿金币买」：只有地面树白送一辆一级车；飞机、直升机树不送
+    if br == "ground" and free == 0 and #list > 0 then table.insert(noFree, nat .. ":" .. br) end
+    if br ~= "ground" and free > 0 then table.insert(noFree, nat .. ":" .. br .. "（不该送）") end
   end
 end
 check(nAll >= 90, "一共 " .. nAll .. " 项（中德美日俄 × 坦克 / 战机 / 直升机；没有原模型的 11-25 删了）")
 check(#bad == 0, "每一项都开得了（型号在 VehDefs / AirDefs 里）、前置连得上" .. (#bad > 0 and ("：" .. table.concat(bad, " ", 1, math.min(8, #bad))) or ""))
-check(#noFree == 0, "每棵树第一级都有白送的" .. (#noFree > 0 and ("（缺 " .. table.concat(noFree, " ") .. "）") or ""))
+check(#noFree == 0, "地面树第一级白送一辆、飞机直升机不送" .. (#noFree > 0 and ("（" .. table.concat(noFree, " ") .. "）") or ""))
 
 print("② 机库：盖住步兵部署页，当步兵出击被拒")
 local me = T.join("P1", 9101, true)
@@ -71,7 +73,7 @@ local cards = {}
 for _, c in ipairs(hg and hg:GetDescendants() or {}) do
   if c.Name:match("^Line_") then table.insert(cards, c) end
 end
-check(#cards >= 2, "出击阵容里有白送的几辆（" .. #cards .. " 张卡）")
+check(#cards >= 1, "出击阵容里有白送的那辆坦克（" .. #cards .. " 张卡）")
 
 print("③ 出击：直接坐在车里出现在自己基地")
 local groundKey

@@ -274,8 +274,9 @@ for _, nat in ipairs(TT.NATIONS) do
       table.insert(out, it)
       TT.byKey[it.key] = it
     end
-    local st = pickStarter(out, br)
-    if st then
+    -- 只白送地面树的一级车（用户 11-28「送就只送1级载具 飞机要拿金币买」）：飞机、直升机树没有起步车，要拿金币买
+    local st = (br == "ground") and pickStarter(out, br) or nil
+    if st and st.rank == 1 then
       st.free = true
       TT.START[nat][br] = st.key
     end

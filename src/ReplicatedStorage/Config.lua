@@ -299,7 +299,7 @@ end
 Config.Economy = {
   unlockAll = false,
   infinite = false,
-  startCoins = 20000,
+  startCoins = 0,   -- 用户 11-28「不要送那个2w金币了」：新账号不送金币（靠打仗攒；老档里的照存的数字）
   treeK = 0.5,
   perScore = 0.1, win = 200, lose = 60,
   veh = {
