@@ -4,7 +4,7 @@
 --   ① 平飞极速（军推 / 加力）：停得住（不无限加速）、在真机海平面极速的范围里
 --   ② 持续盘旋：全加力保持高度的最大过载盘旋 40 秒后的转弯角速度（°/s）和速度
 --   ③ 瞬时转弯：中速拉满过载的最大转弯角速度
---   ④ 满杆滚转角速度、松杆后多滚多少度（不超过 30°：用户 11-28「惯性要能收住」）
+--   ④ 满杆滚转角速度、松杆后多滚多少度（比只靠副翼少三分之一、不超过 55°：用户 11-28「惯性要能收住」「减少三分之一的角度」）
 --   ⑤ 拉杆：过载起到稳定值九成要多久、冲过头多少；松杆后过载回稳的样子（电传一下稳住，机械操纵按自己的短周期晃一两下）
 --   ⑥ 失速速度（1 g，干净构型）、离地速度够不够（游戏里的 vRot 要比带襟翼的失速速度快）
 --   ⑦ 机械操纵的飞机低速拉满杆会失速、一边机翼先掉；松杆能改出来
@@ -253,8 +253,9 @@ for _, key in ipairs(ids) do
       key, m, D.Ta / W, m / D.S, Vs, out.vMil, out.vAB, out.str, out.strV, out.itrEM, out.itrEMV, out.itr, out.roll, out.rollOver,
       out.t90, out.over * 100, out.relMin, out.crosses))
     check(out.roll > D.pmax * 0.55, string.format("%s：满杆滚转 %.0f°/s（设计 %d）", key, out.roll, D.pmax))
-    -- 用户 11-28「飞机滚筒做着 然后突然不做滚筒 惯性要能收住」：满速滚转松杆多滚不超过 30°（原来电传战斗机 55～76°）
-    check(out.rollOver < 30, string.format("%s：满速滚转松杆收得住（多滚 %.0f°）", key, out.rollOver))
+    -- 用户 11-28「飞机滚筒做着 然后突然不做滚筒 惯性要能收住」「你减少三分之一的角度」：满速滚转松杆多滚比只靠副翼少三分之一
+    --   （原来电传战斗机 55～76°，现在 37～51°）：不超过 55°
+    check(out.rollOver < 55, string.format("%s：满速滚转松杆收得住（多滚 %.0f°）", key, out.rollOver))
     check(out.t90 < 2.4, string.format("%s：拉杆后过载 %.2f 秒到九成", key, out.t90))
     check(out.over < 0.45, string.format("%s：拉杆过载不冲过头太多（%.0f%%）", key, out.over * 100))
   end

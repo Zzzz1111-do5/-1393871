@@ -25,10 +25,16 @@ local RAD = math.pi / 180
 local sin, cos, sqrt, abs, exp, atan2, asin = math.sin, math.cos, math.sqrt, math.abs, math.exp, math.atan2, math.asin
 FM.DT = 1 / 120
 FM.G = G0
--- 收住滚转的刹车（1/秒，FM.sub 积分前那段；用户 11-28「滚筒做着突然不做 惯性要能收住」）：满速滚转松杆多滚约 p / ROLL_BRAKE 弧度；
---   各型可以在自己那一行写 rollBrake 改
-local ROLL_BRAKE = 20
+-- 收住滚转的刹车（1/秒，FM.sub 积分前那段；用户 11-28「滚筒做着突然不做 惯性要能收住」，又「你减少三分之一的角度」）：
+--   满速滚转松杆多滚的角度比只靠副翼时少三分之一（F-16 71° → 47°、苏-27 76° → 49°、歼-6 41° → 30°）——
+--   电传 / 增稳 / 教官飞 4.5，机械操纵松杆 2（没有飞控，同样的刹车对它们收得更狠）；各型可以在自己那一行写 rollBrake 改
+local ROLL_BRAKE, ROLL_BRAKE_MECH = 4.5, 2
 FM.ROLL_BRAKE = ROLL_BRAKE
+-- 转弯机动性（用户 11-28「我指的机动性 是我飞行转向的机动性 稍微高一点」；战雷的飞机也比真机灵一点）：
+--   整条升力曲线 × lift（失速迎角不变：同一个迎角升力多一成）、诱导阻力 × ind——升力限制的那一段（拐角速度以下）瞬时转弯率、
+--   推力限制的持续盘旋率各高约一成；过载限制、极速、零升阻力不变。FM.get 建表时乘（F-14 收后掠那一套 FM.sweep 里也乘）
+local AGILE = { lift = 1.1, ind = 0.83 }
+FM.AGILE = AGILE
 
 local function clamp(v, a, b) if v < a then return a elseif v > b then return b end return v end
 local function lerp(a, b, t) return a + (b - a) * t end
@@ -265,6 +271,8 @@ function FM.get(id, treeKey)
   if D.prop and not D.Tm then D.Tm = D.prop.Tst end
   D.Ta = D.Ta or D.Tm
   D.vne = D.vne or 400
+  D.CLa, D.CLm = D.CLa * AGILE.lift, D.CLm * AGILE.lift   -- 转弯机动性（见上面 AGILE）
+  if D.K then D.K = D.K * AGILE.ind else D.e = D.e / AGILE.ind end
   FM.finish(D)
   cache[key] = D
   return D
@@ -317,8 +325,8 @@ function FM.sweep(D, M)
     local t = k / 50
     E = setmetatable({}, { __index = D })
     E.b = lerp(D.b, W.b, t)
-    E.CLa = lerp(D.CLa, W.CLa, t)
-    E.CLm = lerp(D.CLm, W.CLm, t)
+    E.CLa = lerp(D.CLa, W.CLa * AGILE.lift, t)   -- 收后掠那一套也乘转弯机动性（D 的已经在 FM.get 里乘过）
+    E.CLm = lerp(D.CLm, W.CLm * AGILE.lift, t)
     E.aS = lerp(D.aS, W.aS, t)
     E.Mcr = lerp(D.Mcr, W.Mcr, t)
     E.CDw = lerp(D.CDw, W.CDw, t)
@@ -812,7 +820,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     end
     if pWant and (abs(pWant) < abs(p) or pWant * p < 0) then
       -- 接近失速迎角（八成起）就逐渐不刹：掉翼、自转照真的来（机械操纵低速拉满杆一边机翼先掉，滚过去机头才掉得下来、改得出）
-      Lm = Lm - Ixx * (D.rollBrake or ROLL_BRAKE) * (1 - smooth(0.8 * D.aSr, D.aSr, aa)) * (p - pWant)
+      Lm = Lm - Ixx * (D.rollBrake or (cmdLaw and ROLL_BRAKE or ROLL_BRAKE_MECH)) * (1 - smooth(0.8 * D.aSr, D.aSr, aa)) * (p - pWant)
     end
   end
   p = p + (Lm + (Iyy - Izz) * q * r) / Ixx * h
