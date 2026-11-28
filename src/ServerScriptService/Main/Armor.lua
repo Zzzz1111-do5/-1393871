@@ -620,8 +620,9 @@ function Armor.init(G)
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
           life = 60 })   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
       end
-      G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id })
+      G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id, r = (w.rate < 0.5) and w.rate or nil, c = w.cal })   -- r、c：机关炮的射速、口径（客户端声音按它）
     elseif w.kind == "gun" then
+      S.own = true   -- 他自己的客户端已经本地画了、响了（Weapons.lua botShot 给这一发带上 by）
       G.botShot(mz.Position, mz.Position + spreadDir(gdir, w.spread) * w.range, w, S, { e.model, P.char }, 0)
     elseif w.kind == "sam" then
       -- 地空导弹（铠甲-S1 的 57E6）：要客户端用防空火控雷达锁住的那架飞机（msg.tgt，AaFcs 的 Q 锁定）——服务器看一眼（敌方、飞机、射程里），

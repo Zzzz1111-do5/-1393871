@@ -753,8 +753,10 @@ function Weapons.init(G)
     local rw = P and G.rewindShot and G.rewindShot(P, from, dir, w.range or 500, res)
     local hit = (rw and rw.pos) or (res and res.Position) or (from + dir * (w.range or 500))
     local B = srcInfo and srcInfo.bot
+    -- s：车上、工事上机枪的声音类别（VehDefs 的 snd，客户端 Fx.lua G.gunSnd 接成连发）；by：真人开的车上的机枪（srcInfo.own，Armor.lua）——
+    --   他自己的客户端开火那一刻已经本地画了曳光、放了声音（Drive.lua），回来的这一发跳过（原来又在枪口响一遍）
     G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit, t = srcInfo and srcInfo.team, ent = B and B.e and B.e.id or nil,   -- ent：哪个小兵开的（客户端画后坐、枪口焰）
-      h = surfOf(rw, res) })
+      h = surfOf(rw, res), s = w.snd, by = (srcInfo and srcInfo.own and P and P.pl) and P.pl.UserId or nil })
     if G.treeRay then G.treeRay(from, hit, w) end   -- 钢城：车上的机枪、工事打在树干上（Trees.lua）
     if rw then
       G.hitRewound(rw, w, w.dmg, srcInfo, w.head or 1)

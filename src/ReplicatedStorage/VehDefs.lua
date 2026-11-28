@@ -98,7 +98,7 @@ VehDefs.W = {
     vs = { inf = 1, light = 1, armor = 0.24, air = 1.3, ship = 0.3, fort = 0.55 }, fx = "ac", cal = 0.18 },
   -- BRDM-2 的 KPVT 14.5 毫米重机枪（BPU-1 单人炮塔，一节弹链 50 发、车里一共 500 发，约 600 发 / 分；B-32 穿甲燃烧弹 500 米约 32 毫米）
   kpvt = { kind = "gun", dmg = 62, rate = 0.1, mag = 50, reload = 6, reserve = 450, range = 1600, spread = 0.4,
-    vs = { inf = 1, light = 0.8, armor = 0.08, air = 0.6, ship = 0.1, fort = 0.25 }, fx = "lmg" },
+    vs = { inf = 1, light = 0.8, armor = 0.08, air = 0.6, ship = 0.1, fort = 0.25 }, fx = "lmg", snd = "mg145" },
   -- 铠甲-S1 的两门 2A38M 双管 30 毫米高炮（一门一分钟两千五百发，两门一起打）：打飞机为主，地面也能扫
   ac30aa = { kind = "shell", dmg = 44, speed = 1320, drop = 0.15, splash = 4.5, rate = 0.03, mag = 350, reload = 6, reserve = 1050, range = 2600,
     vs = { inf = 0.9, light = 0.8, armor = 0.12, air = 2.3, ship = 0.25, fort = 0.35 }, fx = "ac", cal = 0.2 },
@@ -133,10 +133,12 @@ VehDefs.W = {
   --   86 式的红箭-73（仿 9M14「婴儿」：约 425 毫米、120 米 / 秒、3 公里，炮上导轨一枚 + 车里四枚）
   tow1 = { kind = "atgm", dmg = 750, speed = 778, splash = 4, rate = 2.5, mag = 2, reload = 14, reserve = 5, range = 10500, fx = "msl", turn = 2.4 },
   hj73 = { kind = "atgm", dmg = 620, speed = 336, splash = 3, rate = 1, mag = 1, reload = 25, reserve = 4, range = 8400, fx = "msl", turn = 1.3 },
+  -- snd：声音类别（客户端 Fx.lua G.gunSnd，用户 11-28「机枪机炮的音效不太好听」）——mg762 并列机枪：真录音连发循环 + 松开的收尾；
+  --   mg127 / mg145 大口径机枪：.50 真录音单发一发一发按射速放（14.5 慢一成、更低沉）
   coax = { kind = "gun", dmg = 24, rate = 0.08, mag = 200, reload = 5, reserve = 2000, range = 900, spread = 0.45,
-    vs = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }, fx = "lmg" },
+    vs = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }, fx = "lmg", snd = "mg762" },
   hmg = { kind = "gun", dmg = 40, rate = 0.11, mag = 100, reload = 5, reserve = 900, range = 1200, spread = 0.5,
-    vs = { inf = 1, light = 0.5, armor = 0.04, air = 0.4, ship = 0.05, fort = 0.12 }, fx = "lmg" },
+    vs = { inf = 1, light = 0.5, armor = 0.04, air = 0.4, ship = 0.05, fort = 0.12 }, fx = "lmg", snd = "mg127" },
   how155 = { kind = "arty", dmg = 340, splash = 26, rate = 7, mag = 1, reload = 0, reserve = 40, minR = 300, maxR = 3600, flight = 6,
     vs = { inf = 1, light = 1, armor = 0.6, air = 0, ship = 0.5, fort = 1.2 } },
   mlrs = { kind = "arty", dmg = 180, splash = 22, rate = 0.45, mag = 12, reload = 25, reserve = 24, minR = 500, maxR = 4000, flight = 7, scatter = 40,

@@ -23,6 +23,19 @@ return {
 		src = "ProSoundEffects：Rifle Single Shots 1–4" },
 	hmg = { ids = { 90006135469253, 133704528245805 }, vol = 1, s = { 0.95, 1.05 }, len = 2.5,
 		src = "Obamacaremathlab：50 Caliber heavy machine gun fire once (2)、50 Caliber HMG fire once sound effect (3)" },
+	-- 车上的机枪、机关炮（用户 11-28「机枪机炮的音效不太好听」，照战雷；Fx.lua G.gunSnd）：
+	--   并列机枪（7.62）：M4A1 的整段连发录音（描述写着「Crack of Automatic Fire……Bigger Low End」的两条，录音里约 740 / 757 发 / 分）——
+	--   按住时循环其中整数发的那一段（cut.loop：起止都在两发之间的过零点，接缝不响），松开放最后一发起到回声完（cut.tail 起、cut.len 止）；
+	--   rpm 录音里的射速（按这挺枪的射速微调播放速度）。分析：下载 Ogg、按包络找每发的起点、自相关定射速、48 kHz 上对过零点
+	mg762 = { ids = { 9113185032, 9113183802 }, vol = 1, s = { 1, 1 }, len = 5.4,
+		rpm = { [9113185032] = 740, [9113183802] = 757 },
+		cut = { [9113185032] = { loop = { 0.16081, 0.73119 }, tail = 0.87009, len = 3.69 },
+			[9113183802] = { loop = { 0.3622, 1.59109 }, tail = 1.948, len = 5.36 } },
+		src = "ProSoundEffects：Assault Rifle 18、Assault Rifle 19（M4A1 Carbine, Crack of Automatic Fire, Series of Bursts, Bigger Low End）" },
+	--   大口径机枪、机关炮、慢的航炮：巴雷特 M82 的单发（.50 BMG，和 M2 重机枪同一种 12.7×99 毫米弹；开头一下很冲、0.1 秒后是回声，
+	--   30～300 赫兹占一半多）——一发一发按射速放，口径越大放得越慢越低沉；同上面 rifle 那四条
+	bmg50 = { ids = { 9118173739, 9118173999, 9118173988, 9118173992 }, vol = 1, s = { 0.98, 1.02 }, len = 3.4,
+		src = "ProSoundEffects：Rifle Single Shots 1–4（Barrett M82 .50 Cal, Single Shots）" },
 	missile = { ids = { 509177476, 101663861280893 }, vol = 1.3, s = { 0.95, 1.05 }, len = 5,
 		src = "ZuluCenturion：SeaRAM missile launch；ii1_z：ATGM Launch (Stugna-P) Missile" },
 	-- 子弹从耳边飞过、跳弹、打在金属上、音爆

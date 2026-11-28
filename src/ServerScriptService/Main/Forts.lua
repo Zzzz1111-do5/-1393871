@@ -458,7 +458,7 @@ function Forts.init(G)
     local d2 = spreadDir(dir, w.spread)
     G.launch({ kind = "shell", pos = mz, vel = d2 * w.speed, grav = true, gscale = w.gscale, w = w, src = srcOf(e), ignore = ignoreOf(e),
       life = w.range / w.speed + 0.5, step = flakStep, team = e.team, tfuse = tfuse or (w.range / w.speed), byEnt = e.id })
-    G.fx({ k = "vfire", p = mz, d = dir, f = "ac", id = e.id })
+    G.fx({ k = "vfire", p = mz, d = dir, f = "ac", id = e.id, r = ((w.rate or 1) < 0.5) and w.rate or nil, c = w.cal or 0.2 })   -- 高炮：客户端声音按射速、口径
   end
 
   -- 榴弹炮：落点散布随距离变大；返回 false 是超出射程

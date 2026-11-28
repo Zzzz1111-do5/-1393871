@@ -457,7 +457,7 @@ function AIVeh.init(G)
         G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },
           life = math.max(w.range / w.speed + 0.5, 4000 * BAL.S / w.speed) })   -- 没有弹道表的炮（机关炮、73 毫米）：也飞 4 公里（原来射程 ÷ 初速，一公里多就没了）
       end
-      G.fx({ k = "vfire", p = mz.Position, d = dir, f = w.fx, id = e.id })
+      G.fx({ k = "vfire", p = mz.Position, d = dir, f = w.fx, id = e.id, r = (w.rate < 0.5) and w.rate or nil, c = w.cal })   -- r、c：机关炮的射速、口径（客户端声音按它）
     else
       G.botShot(mz.Position, mz.Position + spread(mz.LookVector, (w.spread or 0.5) * 1.6 * optK) * (w.range or 600), w, S, { e.model }, 0)
     end

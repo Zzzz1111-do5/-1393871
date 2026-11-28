@@ -2073,16 +2073,30 @@ function Drive.init(G)
     G.R.Drive:FireServer({ op = "fire", w = wid, dir = mz.LookVector, aim = st.aimPt, ty = st.ty, gp = st.gp, my = st.my, mp = st.mp,
       am = BAL.GUN[wid] and st.fcs.am or nil, tgt = samTgt,
       disp = (st.arty and G.artyBloom) and G.artyBloom() or nil })   -- 炮兵视角里散布圈胀开了多少（0～1，服务器按它散落点）   -- am 坦克炮这一发是什么弹（服务器按它的初速、阻力打出去）；tgt 地空导弹的目标
+    -- 声音（用户 11-28「机枪机炮的音效不太好听」，Fx.lua G.gunSnd）：自己打的本地马上放——机枪按 VehDefs 的 snd（并列机枪连发循环、
+    --   大口径单发连放），连发的机关炮一发一发放 .50 真录音、按口径放慢；服务器回来的那一发跳过（机枪 by、机关炮看车的 id）
+    local autoGun = (w.rate or 1) < 0.5
+    local snd = nil
+    if G.gunSnd then
+      if w.kind == "gun" and w.snd then
+        snd = G.gunSnd("me:" .. wid, w.snd, mz.Position, w.rate, nil, true)
+        if snd and w.snd == "mg762" then
+          st.gsOn = st.gsOn or {}
+          st.gsOn[wid] = true   -- 松开扳机时收尾（下面每帧看）
+        end
+      elseif w.kind == "shell" and autoGun and (w.fx == "ac" or w.fx == "agun") then
+        if not G.gunSnd("me:" .. wid, "ac", mz.Position, w.rate * rofK * crewK * rackK, w.cal, true) and G.playSound then G.playSound("lmg", mz.Position) end
+      end
+    end
     if w.kind == "gun" and G.gunFx then   -- 自己打的机枪：本地马上画曳光（服务器发回来的特效会跳过自己打的，原来开车打机枪什么都看不见）
       local dir = mz.LookVector
       local ex = rayEx()
       aimParams.FilterDescendantsInstances = ex
       local res = G.rayFar(mz.Position, dir * (w.range or 900), aimParams)
-      G.gunFx(wid, mz.Position, res and res.Position or (mz.Position + dir * (w.range or 900)), true)
+      G.gunFx(wid, mz.Position, res and res.Position or (mz.Position + dir * (w.range or 900)), true, nil, nil, nil, snd)
     end
     -- 连发的机炮（射击间隔 < 0.5 秒：M2A3 25 毫米、BMP 30 毫米、防空炮……）开火不晃镜头、不后坐、不推车身
     --   （用户 11-27「机炮开打的时候屏幕不要往前拉 就正常就行 也别搞后坐力」）；单发的主炮照旧（11-25 要的战雷手感）
-    local autoGun = (w.rate or 1) < 0.5
     if (w.kind == "shell" or w.kind == "arty") and autoGun then
       if G.vehRecoil then G.vehRecoil(st.id) end   -- 炮管往后一缩（模型上的，不动镜头）
       st.fireT = t
@@ -2511,6 +2525,16 @@ function Drive.init(G)
     if st.mgFiring then   -- 按住空格：机枪连发
       local mw = mgWeapon()
       if mw then tryFire(mw) end
+    end
+    if st.gsOn and next(st.gsOn) and G.gunSndOff then   -- 并列机枪松开扳机（左键、空格都没按着它）：连发循环马上收尾（Fx.lua）
+      local a = st.firing and weaponId() or nil
+      local b = st.mgFiring and mgWeapon() or nil
+      for wid in pairs(st.gsOn) do
+        if wid ~= a and wid ~= b then
+          G.gunSndOff("me:" .. wid)
+          st.gsOn[wid] = nil
+        end
+      end
     end
     -- 报给服务器（每秒 15 次）
     st.sendT -= dt

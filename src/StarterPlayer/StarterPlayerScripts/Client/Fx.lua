@@ -69,23 +69,28 @@ function Fx.init(G)
   pcall(function() SL = require(game:GetService("ReplicatedStorage"):WaitForChild("SoundLib", 5)) or {} end)
   local REAL, REALLEN = {}, {}   -- [键] = { 载上了的 SoundId… }；[SoundId] = 秒
   task.spawn(function()
-    local list, byId = {}, {}
+    local list, byId = {}, {}   -- byId[SoundId] = { 键… }：同一条录音可以给好几个键用（巴雷特单发：rifle、bmg50），一条只预载一次
     for key, cfg in pairs(SL) do
       for _, id in ipairs(cfg.ids or {}) do
-        local s = Instance.new("Sound")
-        s.SoundId = "rbxassetid://" .. tostring(id)
-        table.insert(list, s)
-        byId[s.SoundId] = key
-        REALLEN[s.SoundId] = cfg.len or 3
+        local sid = "rbxassetid://" .. tostring(id)
+        if not byId[sid] then
+          local s = Instance.new("Sound")
+          s.SoundId = sid
+          table.insert(list, s)
+          byId[sid] = {}
+          REALLEN[sid] = cfg.len or 3
+        end
+        table.insert(byId[sid], key)
       end
     end
     if #list == 0 then return end
     local ok = pcall(function()
       game:GetService("ContentProvider"):PreloadAsync(list, function(cid, status)
-        local key = byId[cid]
-        if key and status == Enum.AssetFetchStatus.Success then
-          REAL[key] = REAL[key] or {}
-          table.insert(REAL[key], cid)
+        if byId[cid] and status == Enum.AssetFetchStatus.Success then
+          for _, key in ipairs(byId[cid]) do
+            REAL[key] = REAL[key] or {}
+            if not table.find(REAL[key], cid) then table.insert(REAL[key], cid) end
+          end
         end
       end)
     end)
@@ -380,6 +385,12 @@ function Fx.init(G)
     return { id = EXP, vol = 1, s = { sp, sp }, loop = { a, a + per * sp }, eq = { (per > 0.03) and 7 or 4, 0, (per < 0.02) and 2 or -3 } }
   end
   function G.gunLoop(key, gid, p, on)
+    local w0 = AD.W[gid or ""]
+    if on and w0 and (w0.rate or 0) >= 0.045 and G.gunClock(key, "ac", p, true, w0.rate, w0.cal) then
+      on = false   -- 射得慢的（一秒不到 22 发：直升机的 M230、2A42、M197……）改成一发一发放真录音（下面 G.gunClock）：这一挺的循环声停掉
+    elseif not on then
+      G.gunClock(key, nil, nil, false)   -- 松开：一发一发放的那挺也停（最后一发的回声照样拖完）
+    end
     local g = guns[key]
     if g and (not on or g.gid ~= gid) then
       g.snd:Destroy()
@@ -403,6 +414,252 @@ function Fx.init(G)
     local t = os.clock()
     for k, g in pairs(guns) do
       if t > g.till then G.gunLoop(k, nil, nil, false) end
+    end
+  end
+
+  ---------------------------------------------------------------- 车上的机枪、机关炮，慢的航炮（用户 11-28「机枪机炮的音效不太好听」，照战雷）
+  --   原来每一发放一次「打一枪」的录音（重机枪单发拉快一点），一秒十来发叠在一起、又被每 0.1 秒 8 个的上限掐掉一些：节奏乱、声音薄；
+  --   自己开车打的并列机枪放的还是步枪声，服务器回来的那一发又在枪口响一遍。现在（录音见 SoundLib 的 mg762、bmg50）：
+  --   · 并列机枪 mg762：真录音的整段连发循环（一挺一个 Sound，循环其中整数发的那一段），松开放最后一发起到回声完的那截
+  --   · 大口径机枪 mg127 / mg145、机关炮 ac：巴雷特 .50 单发一发一发按射速放（14.5 慢一成，机关炮按口径放慢、更低沉）；每打一发，
+  --     前一发很快淡掉（只留开头那一下），最后一发不淡、回声拖完——松开扳机就是一声带回声的收尾；一挺 4 个 Sound 轮流用，不每发新建
+  --   别人的：服务器每一发一个事件，同一挺按 key（机关炮：车的 id）或位置（14 格内、同一类）认，停了一阵算松开；网络一帧里挤进来的
+  --     几发按射速一发一发排开放（最多欠 3 发，多的不补）。慢的航炮（服务器不是每发都发）按射速自己打拍子（G.gunClock）
+  --   同时最多 GS_MAX 挺在响（满了顶掉离镜头最远的那挺），远过 GS_FAR 的不响；录音没载上返回 false（调用的照旧放原来的声音）
+  local GS_MAX, GS_FAR, GS_N = 8, 1900, 4
+  local GS_RATE = { mg762 = 0.08, mg127 = 0.11, mg145 = 0.1, ac = 0.2 }   -- 没带射速时按类别（VehDefs：coax 0.08、hmg 0.11、kpvt 0.1）
+  local gsList, gsPool = {}, { shot = {}, loop = {} }
+  G.gunSndState = function() return gsList end   -- 测试用
+  local function shotTone(cls, cal)   -- 单发的速度（音高）、音量、低音（分贝）
+    if cls == "mg127" then return 1, 1, 0 end
+    if cls == "mg145" then return 0.9, 1.1, 1 end
+    local c = cal or 0.18   -- 机关炮、航炮：VehDefs / AirDefs 的 cal（0.14 约 20 毫米 … 0.22 约 30 毫米）
+    return math.clamp(0.95 - (c - 0.12) * 3.5, 0.55, 0.9), 1.25, 3
+  end
+  G.gunShotTone = shotTone   -- 测试用
+  local function gsRelease(g)   -- 收回池里（打完了、回声也完了，或者被顶掉）
+    for _, sd in ipairs(g.voices) do sd:Stop() end
+    g.holder.CFrame = CFrame.new(0, -2600, 0)
+    local i = table.find(gsList, g)
+    if i then table.remove(gsList, i) end
+    table.insert(gsPool[g.kind], g)
+  end
+  local function gsGet(kind, key, cls, p)
+    for _, g in ipairs(gsList) do
+      if g.kind == kind and g.cls == cls then
+        if key ~= nil then
+          if g.key == key then return g end
+        elseif g.key == nil and g.p and p and (g.p - p).Magnitude < 14 then
+          return g
+        end
+      end
+    end
+    local cp = cam.CFrame.Position
+    local d = p and (p - cp).Magnitude or 0
+    if d > GS_FAR then return nil end
+    if #gsList >= GS_MAX then   -- 满了：顶掉最远的那挺（这一挺比它还远就不响）
+      local far, fd = nil, -1
+      for _, g in ipairs(gsList) do
+        local gd = g.p and (g.p - cp).Magnitude or 0
+        if gd > fd then far, fd = g, gd end
+      end
+      if not far or fd <= d then return nil end
+      gsRelease(far)
+    end
+    local g = table.remove(gsPool[kind])
+    if not g then
+      g = { kind = kind, voices = {}, eqs = {},
+        holder = part(nil, V(0.2, 0.2, 0.2), CFrame.new(0, -2600, 0), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1) }
+      g.holder.Name = "GunSnd"
+      for i = 1, (kind == "shot") and GS_N or 2 do   -- 单发：轮流用的 4 个；循环：循环那个 + 收尾那个
+        local sd = Instance.new("Sound")
+        sd.RollOffMinDistance, sd.RollOffMaxDistance = 40, 2600
+        local eq = Instance.new("EqualizerSoundEffect")
+        eq.LowGain, eq.MidGain, eq.HighGain = 0, 0, 0
+        eq.Parent = sd
+        sd.Parent = g.holder
+        g.voices[i], g.eqs[i] = sd, eq
+      end
+    end
+    local t = os.clock()
+    g.key, g.cls, g.p, g.own = key, cls, p, nil
+    g.i, g.pend, g.nextT, g.lastT, g.lastShot, g.till, g.on = 0, 0, 0, t, t, nil, false
+    g.fade, g.live, g.vb, g.shots, g.tails = {}, {}, {}, 0, 0
+    table.insert(gsList, g)
+    return g
+  end
+  -- 远处的高音被吃掉、近处刚炸过发闷（Shock.lua 的 G.muffle）、自己在车里 / 炮长镜里打的闷一点：返回 高音分贝、音量倍数
+  local function gsHi(g)
+    local d = g.p and (g.p - cam.CFrame.Position).Magnitude or 0
+    local muf = G.muffle and G.muffle() or 0
+    local inside = (g.own and ((G.interiorOn and G.interiorOn()) or (G.drive and G.drive.sight))) and -6 or 0
+    return math.max(-80, -math.min(18, d / 90) - 34 * muf + inside), 1 - 0.55 * muf
+  end
+  local function gsShoot(g, t)   -- 单发：轮到的那个 Sound 从头放；前一发开始淡掉
+    local ids = REAL.bmg50
+    if not ids or #ids == 0 then return end
+    g.i = g.i % GS_N + 1
+    local v, eq = g.voices[g.i], g.eqs[g.i]
+    local id = ids[(g.i - 1) % #ids + 1]   -- 四条录音轮着（同一挺每一发不完全一样）
+    if v.SoundId ~= id then v.SoundId = id end
+    local hi, mv = gsHi(g)
+    v:Stop()
+    v.TimePosition = 0
+    v.PlaybackSpeed = g.sp * (0.985 + 0.03 * math.random())
+    v.Volume = math.min(10, g.vol * mv)
+    eq.LowGain, eq.HighGain = g.low, hi
+    v:Play()
+    g.fade[g.i], g.live[g.i], g.vb[g.i] = nil, true, v.Volume
+    local pi = (g.i - 2) % GS_N + 1   -- 前一发：只留开头那一下（最后一发没有后一发接它，回声拖完）
+    if g.live[pi] and not g.fade[pi] then g.fade[pi] = t end
+    g.lastShot = t
+    g.shots += 1
+  end
+  local function gsLoopStart(g)   -- 并列机枪按下：随机挑一条连发录音，从头放（头两发是自然的起头），到循环段尾跳回循环段头
+    local ids = REAL.mg762
+    local cfg = SL.mg762
+    if not ids or #ids == 0 or not cfg or not cfg.cut then return false end
+    local rid = ids[math.random(#ids)]
+    local num = tonumber(string.match(rid, "%d+$"))
+    local cut = num and cfg.cut[num]
+    if not cut then return false end
+    g.rid, g.cut = rid, cut
+    g.sp = math.clamp((60 / g.rate) / ((cfg.rpm and cfg.rpm[num]) or 750), 0.9, 1.12)   -- 按这挺枪的射速微调（7.62 并列机枪多在 650～800 发 / 分）
+    g.vol = (cfg.vol or 1) * (g.own and 0.85 or 1)
+    local v, eq = g.voices[1], g.eqs[1]
+    local hi, mv = gsHi(g)
+    v:Stop()
+    v.SoundId = rid
+    v.PlaybackRegionsEnabled = true
+    v.PlaybackRegion = NumberRange.new(0, cut.len)
+    v.LoopRegion = NumberRange.new(cut.loop[1], cut.loop[2])
+    v.Looped = true
+    v.PlaybackSpeed = g.sp
+    v.Volume = math.min(10, g.vol * mv)
+    eq.LowGain, eq.HighGain = 1, hi
+    v.TimePosition = 0
+    v:Play()
+    g.on = true
+    return true
+  end
+  local function gsLoopStop(g, t)   -- 松开：循环停，接着放同一条录音里最后一发起到回声完的那截
+    g.on = false
+    local v, tl, eq = g.voices[1], g.voices[2], g.eqs[2]
+    v:Stop()
+    local hi, mv = gsHi(g)
+    tl:Stop()
+    tl.SoundId = g.rid
+    tl.Looped = false
+    tl.PlaybackRegionsEnabled = true
+    tl.PlaybackRegion = NumberRange.new(g.cut.tail, g.cut.len)
+    tl.PlaybackSpeed = g.sp
+    tl.Volume = math.min(10, g.vol * mv)
+    eq.LowGain, eq.HighGain = 1, hi
+    tl.TimePosition = g.cut.tail
+    tl:Play()
+    g.lastShot = t
+    g.tails += 1
+  end
+  -- 机枪 / 机关炮开了一发（车上、工事上的；自己打的在 Drive.lua 本地马上放，服务器回来的那一发跳过）：
+  --   key 哪一挺（自己的 "me:武器"、别人的机关炮 "v车 id"；nil 按位置认），cls 类别（VehDefs 的 snd：mg762 / mg127 / mg145；机关炮 "ac"），
+  --   p 枪口，rate 射击间隔（秒），cal 口径（机关炮定音高），own 自己打的。放了（或者太远、挤不下不放）返回 true；录音没载上返回 false
+  function G.gunSnd(key, cls, p, rate, cal, own)
+    local loop = cls == "mg762"
+    local need = REAL[loop and "mg762" or "bmg50"]
+    if not need or #need == 0 or typeof(p) ~= "Vector3" then return false end
+    local t = os.clock()
+    local g = gsGet(loop and "loop" or "shot", key, cls, p)
+    if not g then return true end   -- 太远、挤不下：不响（也不放原来那声）
+    g.p, g.own, g.lastT = p, own, t
+    g.holder.CFrame = CFrame.new(p)
+    g.rate = rate or g.rate or GS_RATE[cls] or 0.1
+    if loop then
+      g.timeout = own and (g.rate * 1.3 + 0.03) or math.max(0.16, g.rate * 1.6 + 0.05)   -- 别人的：网络一帧帧来，多等一点
+      if not g.on and not gsLoopStart(g) then
+        gsRelease(g)
+        return false
+      end
+      return true
+    end
+    g.sp, g.vol, g.low = shotTone(cls, cal)
+    if own then g.vol *= 0.85 end
+    g.till = nil
+    g.pend = math.min(g.pend + 1, 3)
+    if t >= g.nextT then
+      gsShoot(g, t)
+      g.pend -= 1
+      g.nextT = t + g.rate * 0.85
+    end
+    return true
+  end
+  -- 自己松开扳机（Drive.lua：这一帧没按住了）：并列机枪的循环马上停、放收尾（不等超时，不多响一两发）
+  function G.gunSndOff(key)
+    for _, g in ipairs(gsList) do
+      if g.key == key and g.kind == "loop" and g.on then gsLoopStop(g, os.clock()) end
+    end
+  end
+  -- 按射速自己打拍子（慢的航炮：服务器不是每一发都发事件）：on 时开着——自己的（key "me"，p nil 在耳边）一直开到 off，别人的 0.25 秒没再收到就停
+  function G.gunClock(key, cls, p, on, rate, cal)
+    if not on then
+      for _, g in ipairs(gsList) do if g.key == key and g.till then g.till = 0 end end
+      return true
+    end
+    if not (REAL.bmg50 and #REAL.bmg50 > 0) then return false end
+    local t = os.clock()
+    local g = gsGet("shot", key, cls, p)
+    if not g then return true end
+    g.p = p
+    if p then g.holder.CFrame = CFrame.new(p) end
+    g.rate = rate or 0.1
+    g.sp, g.vol, g.low = shotTone(cls, cal)
+    if key == "me" then g.vol *= 0.7 end
+    if not g.till or g.till < t then g.nextT = t end   -- 刚按下：马上打第一发
+    g.till = (key == "me") and math.huge or (t + 0.25)
+    g.lastT = t
+    return true
+  end
+  local function stepGunSnd()
+    if #gsList == 0 then return end
+    local t = os.clock()
+    for i = #gsList, 1, -1 do
+      local g = gsList[i]
+      if not g.p then g.holder.CFrame = cam.CFrame end   -- 自己开的飞机：在耳边
+      if g.kind == "shot" then
+        if g.till then   -- 打拍子
+          if t <= g.till and t >= g.nextT then
+            gsShoot(g, t)
+            g.nextT = math.max(g.nextT + g.rate, t - g.rate * 0.5)
+          end
+        elseif g.pend > 0 and t >= g.nextT then   -- 欠着的（一帧里挤进来的）
+          gsShoot(g, t)
+          g.pend -= 1
+          g.nextT = t + g.rate * 0.85
+        end
+        local fl = math.clamp(g.rate * 1.8, 0.03, 0.22)   -- 淡掉要多久（四个 Sound 轮一圈之前淡完）
+        for k = 1, GS_N do
+          local f = g.fade[k]
+          if f then
+            local q = 1 - (t - f) / fl
+            if q <= 0 then
+              g.voices[k]:Stop()
+              g.fade[k], g.live[k] = nil, false
+            else
+              g.voices[k].Volume = (g.vb[k] or g.vol) * q * q
+            end
+          end
+        end
+        local busy = (g.till and t <= g.till) or g.pend > 0
+        if not busy and t - g.lastShot > 3.6 / g.sp then gsRelease(g) end   -- 打完了、最后一发的回声也完了
+      else   -- 循环（并列机枪）
+        if g.on and t - g.lastT > g.timeout then gsLoopStop(g, t) end
+        if g.on then   -- 跟着距离、震荡变
+          local hi, mv = gsHi(g)
+          g.voices[1].Volume = math.min(10, g.vol * mv)
+          g.eqs[1].HighGain = hi
+        elseif t - g.lastShot > (g.cut.len - g.cut.tail) / g.sp + 0.3 then
+          gsRelease(g)
+        end
+      end
     end
   end
 
@@ -586,7 +843,7 @@ function Fx.init(G)
   local IMPK = { hmg = 1.7, coax = 1.4, ciws = 2, agun = 2, ac = 2, sniper = 1.3, lmg = 1.1 }   -- 弹着点的大小（按口径：步枪 1）
   -- h：打在什么上面（HitSurf 代号；别人打的服务器给，nil 是什么都没打中；自己打的不给，本地探一下）
   -- pel：霰弹的其余弹丸（只画曳光和弹着点，枪口火、枪声那一发已经有了）
-  function G.gunFx(id, a, b, mine, h, quiet, pel)
+  function G.gunFx(id, a, b, mine, h, quiet, pel, nosnd)   -- nosnd：声音已经放过了（车上的机枪：G.gunSnd 连发循环 / 单发连放）
     local d = b - a
     local L = d.Magnitude
     if L < 0.5 then return end
@@ -641,7 +898,7 @@ function Fx.init(G)
         end)
       end
     end
-    if pel then return end
+    if pel or nosnd then return end
     if mine and (id == "m4" or id == "sniper" or id == "rifle" or id == "qbz191") then   -- 自己开的：耳边叠层的枪声，弹壳过一会儿落地
       G.sfx(quiet and ((id == "sniper") and "sniperSdMe" or "rifleSdMe") or ((id == "sniper") and "sniperMe" or "rifleMe"), nil, { must = true })
       if math.random() < 0.35 then G.sfx("brass", nil, { delay = 0.35 + math.random() * 0.25 }) end
@@ -2009,7 +2266,15 @@ function Fx.init(G)
         G.muzzleSmall((f == "ac" or f == "agun" or f == "ciws" or f == "msl") and "a" or "h", M + dir * 0.6, dir)
       end
       flash(M + dir, RGB(255, 190, 110), 16, 4, 0.1)
-      G.playSound("lmg", M)
+      -- 声音（用户 11-28「机枪机炮的音效不太好听」）：机关炮 / 高炮一发一发放 .50 真录音、按口径放慢（G.gunSnd，同一辆车的同一门接成一串）；
+      --   自己开的车打的已经在 Drive.lua 本地放过（不等服务器那一来一回）；车上发导弹的那一声在新弹出现时放（newShot），这里不再放机枪声
+      local f = e.f
+      local myV = G.drive ~= nil and G.drive.id ~= nil and G.drive.id == e.id
+      if f == "ac" or f == "agun" then
+        if not myV and not G.gunSnd(e.id and ("v" .. tostring(e.id) .. ":" .. tostring(e.g or "")) or nil, "ac", M, e.r, e.c) then G.playSound("lmg", M) end
+      elseif f ~= "msl" then
+        G.playSound("lmg", M)
+      end
       if G.vehRecoil and e.id then G.vehRecoil(e.id, e.g) end
       return
     end
@@ -2277,7 +2542,9 @@ function Fx.init(G)
         end
         if e.by ~= me.UserId then
           nearMiss(e)
-          G.gunFx(e.w, e.a, e.b, false, e.h, e.q, e.pel)
+          -- 车上、工事上的机枪（服务器 botShot 带 s = VehDefs 的 snd）：连发循环 / 单发连放（G.gunSnd），放了就不再放原来那一声
+          local snd = e.s and not e.pel and typeof(e.a) == "Vector3" and G.gunSnd(nil, e.s, e.a) or nil
+          G.gunFx(e.w, e.a, e.b, false, e.h, e.q, e.pel, snd)
           if G.radarShot then G.radarShot(e.a, e.t, e.q) end   -- 雷达：敌人开枪的地方闪一下（Hud.lua）
         end
       elseif k == "boom" then
@@ -2437,6 +2704,7 @@ function Fx.init(G)
     VL.step(dt or 1 / 60)
     stepShots(dt or 1 / 60)
     stepGuns()
+    stepGunSnd()
     if #drops > 0 then stepDrops(dt or 1 / 60) end
   end
 end
