@@ -179,8 +179,9 @@ setFoe(p0 + V3(0, 0, -6000), V3(240, 0, 0))
 local m2 = launch(fly.p + V3(0, 0, 1500), V3(0, 0, -700))
 R.run(0.2)
 check(m2.active == true, "近了：开导引头")
-R.run(0.8)
-check(m2.tgt == nil, "目标侧着飞（置零）：导引头甩掉了")
+-- 置零半秒就甩掉（11-28 导弹能量：弹助推得快、一秒内冲近几百格，目标转出置零角以后照规则还能再咬上——只看一秒内甩掉过没有）
+local shook = T.runUntil(function() return m2.tgt == nil end, 1.0)
+check(shook, "目标侧着飞（置零）：导引头甩掉了")
 -- 迎头的：打得中
 setFoe(p0 + V3(0, 0, -6000), V3(0, 0, 200))
 local hp0 = foe.hp
@@ -463,7 +464,7 @@ T.key(Enum.KeyCode.F, false)
 T.runUntil(function() return shot == nil or shot.dl ~= nil or shot.active == true end, 0.5)
 check(shot ~= nil and shot.dl == true and not shot.active, string.format("打出去了：离上次航迹更新 %.1f 秒（原来 1.3 秒就断），数据链照旧通（等一帧）", gap))
 check(shot ~= nil and sentOps(n1, "rwr") == 0, "发射的时候对方告警器不报导弹（边扫边跟打的）")
-local act = shot ~= nil and T.runUntil(function() return shot.active == true end, 4)
+local act = shot ~= nil and T.runUntil(function() return shot.active == true end, 8)   -- 靶机钉在原地（发射速度 0）：11-28 导弹能量以后助推三秒才到满速，飞到开机距离要四秒多
 R.run(1 / 30)
 check(act and sentOps(n1, "rwr") >= 1, "导引头开机：对方这时才收到「导弹来袭」（rwr " .. sentOps(n1, "rwr") .. " 次）")
 if shot then shot.life = 0 end
