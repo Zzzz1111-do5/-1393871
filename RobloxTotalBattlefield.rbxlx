@@ -1822,7 +1822,7 @@ return {
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-28 16:45 f75c635"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-28 17:37 26759ae"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 -- 存档怎么写（Store.lua，用户 11-26「账号的载具解锁要能保留」）：gap 同一个人两次写至少隔几秒（Roblox 同一个键 6 秒才能写一次，多的排队）、
 --   auto 每隔几秒看一次存档变没变（变了就存）、closeWait 关服时最多等几秒把还没写完的写完（Roblox 给 BindToClose 30 秒）
@@ -9969,7 +9969,12 @@ add("tree.testOnAir", "训练场试飞：{1}（改装全装上；在训练场跑
 add("tree.testOnSky", "训练场试飞：{1}（改装全装上；满油满弹在训练场的跑道上滑不起来，直接在空中出发：在靶区南边朝北飞，靶区就在正前方；三架靶机绕圈、地上一排靶车，都不还手；下飞机回机库）", "Test flight: {1} (all modifications; fully loaded it can't get off the test range runway, so you start in the air south of the target area, heading straight for it; three target aircraft circle there and a row of targets sits on the ground; none shoot back; bail out to return)")
 add("tree.testInAir", "训练场试飞：{1}（改装全装上；跑道 / 直升机坪上没摆下，直接在空中出发，靶区就在前面；三架靶机绕圈、地上一排靶车，都不还手；下飞机回机库）", "Test flight: {1} (all modifications; there was no room on the runway / helipad, so you start in the air with the target area ahead; three target aircraft circle there and a row of targets sits on the ground; none shoot back; bail out to return)")
 add("tree.testOnPad", "训练场试飞：{1}（改装全装上；在训练场直升机坪上，拉总距起飞；北边靶区三架靶机绕圈、地上一排靶车，都不还手；下飞机回机库）", "Test flight: {1} (all modifications; you start on the test range helipad, raise the collective to lift off; three target aircraft circle over the target area to the north and a row of targets sits on the ground; none shoot back; bail out to return)")
-add("tree.rangeBusy", "训练场还在准备（刚开服），稍等几秒再试驾", "The test range is still being set up (server just started) — try again in a few seconds")
+add("tree.rangeBusy", "训练场还在准备（刚开服），好了自动开始试驾", "The test range is still being set up (server just started) — your test drive starts by itself when it's ready")
+-- 战场是雪山图的服务器：主界面试驾就在这张图上（Tech.lua chooseRM，用户 11-28「为什么训练场现在还是没有雪山地图」）
+add("tree.snowBusy", "雪山图还在生成（刚开服），好了自动开始试驾", "The Snow Peaks map is still being generated (server just started) — your test drive starts by itself when it's ready")
+add("tree.rangeMatch", "雪山图上正在打一局：这次在训练场试驾", "A battle is on the Snow Peaks map right now: this test drive is on the test range")
+add("tree.testMatch", "雪山图要开打一局了：试驾结束，回到机库", "A battle is starting on the Snow Peaks map: test drive over, back to the hangar")
+add("tree.testOnSnow", "雪山图上试驾：{1}（改装全装上；靶道前面几百米到一两公里摆着靶车，两辆在跑；天上三架靶机；都不还手；下车回机库）", "Test drive on Snow Peaks: {1} (all modifications; target vehicles down your lane from a few hundred metres out to 1-2 km, two moving; three target aircraft overhead; none shoot back; leave the vehicle to return)")
 add("wt.needParts", "修不了：这辆车还没研究改装「零件」", "Can't repair: research the \"Parts\" modification first")
 add("wt.needFpe", "灭不了火：这辆车还没研究改装「灭火器」", "No extinguisher: research the \"FPE\" modification first")
 add("ui.youKilled", "击毙 {1}", "Killed {1}")
@@ -11704,7 +11709,7 @@ return Lang
       <Item class="ModuleScript" referent="31">
         <Properties>
           <string name="Name">de</string>
-          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：de 的译文（2216 / 2403 条）
+          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：de 的译文（2220 / 2407 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -12868,13 +12873,17 @@ return {
     ["tree.needRes"] = "Zuerst erforschen",
     ["tree.notInLineup"] = "Nicht in deiner Aufstellung",
     ["tree.notOwned"] = "Du besitzt dieses Fahrzeug nicht",
-    ["tree.rangeBusy"] = "Das Testgelände wird noch aufgebaut (Server gerade gestartet) — versuche es in ein paar Sekunden erneut",
+    ["tree.rangeBusy"] = "Das Testgelände wird noch aufgebaut (Server gerade gestartet) — die Testfahrt startet von selbst, sobald es bereit ist",
+    ["tree.rangeMatch"] = "Auf Schneegipfel läuft gerade ein Gefecht: diese Testfahrt findet auf dem Testgelände statt",
     ["tree.rp"] = "{1} Forschungspunkte erhalten",
+    ["tree.snowBusy"] = "Die Karte Schneegipfel wird noch erzeugt (Server gerade gestartet) — die Testfahrt startet von selbst, sobald sie bereit ist",
     ["tree.testInAir"] = "Testflug: {1} (alle Modifikationen; auf Piste / Hubschrauberlandeplatz war kein Platz, daher Start in der Luft mit dem Zielgebiet voraus; dort kreisen drei Zielflugzeuge, am Boden steht eine Reihe Ziele; keiner schießt zurück; aussteigen, um zurückzukehren)",
+    ["tree.testMatch"] = "Auf Schneegipfel beginnt ein Gefecht: Testfahrt beendet, zurück in den Hangar",
     ["tree.testOn"] = "Testgelände: {1} (alle Modifikationen; sieben Zielfahrzeuge auf deiner Bahn auf 300-2000 m, zwei fahren; drei Zielflugzeuge am Himmel; keiner schießt zurück; steig aus, um zurückzukehren)",
     ["tree.testOnAir"] = "Testflug: {1} (alle Modifikationen; Start auf der Piste des Testgeländes, Schub geben zum Abheben; drei Zielflugzeuge kreisen über dem Zielgebiet im Norden, am Boden steht eine Reihe Ziele; keiner schießt zurück; aussteigen, um zurückzukehren)",
     ["tree.testOnPad"] = "Testflug: {1} (alle Modifikationen; Start auf dem Hubschrauberlandeplatz des Testgeländes, Kollektiv anheben zum Abheben; drei Zielflugzeuge kreisen über dem Zielgebiet im Norden, am Boden steht eine Reihe Ziele; keiner schießt zurück; aussteigen, um zurückzukehren)",
     ["tree.testOnSky"] = "Testflug: {1} (alle Modifikationen; voll beladen hebt es von der Piste nicht ab, daher Start in der Luft südlich des Zielgebiets mit Kurs darauf; dort kreisen drei Zielflugzeuge, am Boden steht eine Reihe Ziele; keiner schießt zurück; aussteigen, um zurückzukehren)",
+    ["tree.testOnSnow"] = "Testfahrt auf Schneegipfel: {1} (alle Modifikationen; Zielfahrzeuge auf deiner Bahn von einigen hundert Metern bis 1-2 km, zwei fahren; drei Zielflugzeuge am Himmel; keiner schießt zurück; steig aus, um zurückzukehren)",
     ["tree.useHangar"] = "Setze ein Fahrzeug aus deiner Hangar-Aufstellung ein",
     ["tree.waitDeploy"] = "Einsatz in {1} s",
     ["tree.walkIn"] = "Fahrzeug bereit — hingehen und E drücken",
@@ -14140,7 +14149,7 @@ return {
       <Item class="ModuleScript" referent="32">
         <Properties>
           <string name="Name">es</string>
-          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：es 的译文（2233 / 2403 条）
+          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：es 的译文（2237 / 2407 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -15305,13 +15314,17 @@ return {
     ["tree.needRes"] = "Investígalo primero",
     ["tree.notInLineup"] = "No está en tu alineación",
     ["tree.notOwned"] = "No tienes este vehículo",
-    ["tree.rangeBusy"] = "El campo de pruebas aún se está preparando (el servidor acaba de arrancar): inténtalo en unos segundos",
+    ["tree.rangeBusy"] = "El campo de pruebas aún se está preparando (el servidor acaba de arrancar): la prueba empezará sola en cuanto esté listo",
+    ["tree.rangeMatch"] = "Ahora hay una batalla en Picos Nevados: esta prueba será en el campo de pruebas",
     ["tree.rp"] = "Ganaste {1} puntos de investigación",
+    ["tree.snowBusy"] = "El mapa Picos Nevados aún se está generando (el servidor acaba de arrancar): la prueba empezará sola en cuanto esté listo",
     ["tree.testInAir"] = "Vuelo de prueba: {1} (todas las modificaciones; no había sitio en la pista / helipuerto, así que empiezas en el aire con la zona de blancos delante; allí giran tres aviones blanco y hay una fila de blancos en tierra; ninguno dispara; eyéctate para volver)",
+    ["tree.testMatch"] = "Empieza una batalla en Picos Nevados: prueba terminada, vuelta al hangar",
     ["tree.testOn"] = "Campo de pruebas: {1} (todas las modificaciones; siete vehículos blanco en tu calle a 300-2000 m, dos en movimiento; tres aviones blanco en el cielo; ninguno dispara; bájate del vehículo para volver)",
     ["tree.testOnAir"] = "Vuelo de prueba: {1} (todas las modificaciones; empiezas en la pista del campo de pruebas, acelera para despegar; tres aviones blanco giran sobre la zona de blancos al norte y hay una fila de blancos en tierra; ninguno dispara; eyéctate para volver)",
     ["tree.testOnPad"] = "Vuelo de prueba: {1} (todas las modificaciones; empiezas en el helipuerto del campo de pruebas, sube el colectivo para despegar; tres aviones blanco giran sobre la zona de blancos al norte y hay una fila de blancos en tierra; ninguno dispara; eyéctate para volver)",
     ["tree.testOnSky"] = "Vuelo de prueba: {1} (todas las modificaciones; con carga completa no despega de la pista, así que empiezas en el aire al sur de la zona de blancos, rumbo directo a ella; allí giran tres aviones blanco y hay una fila de blancos en tierra; ninguno dispara; eyéctate para volver)",
+    ["tree.testOnSnow"] = "Prueba en Picos Nevados: {1} (todas las modificaciones; vehículos blanco en tu calle desde unos cientos de metros hasta 1-2 km, dos en movimiento; tres aviones blanco en el cielo; ninguno dispara; bájate del vehículo para volver)",
     ["tree.useHangar"] = "Despliega un vehículo de tu alineación del hangar",
     ["tree.waitDeploy"] = "Desplegando en {1} s",
     ["tree.walkIn"] = "Vehículo listo: acércate y pulsa E",
@@ -16600,7 +16613,7 @@ return {
       <Item class="ModuleScript" referent="33">
         <Properties>
           <string name="Name">fr</string>
-          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：fr 的译文（2231 / 2403 条）
+          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：fr 的译文（2235 / 2407 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -17760,13 +17773,17 @@ return {
     ["tree.needRes"] = "Recherchez-le d'abord",
     ["tree.notInLineup"] = "Pas dans votre équipe",
     ["tree.notOwned"] = "Vous ne possédez pas ce véhicule",
-    ["tree.rangeBusy"] = "Le terrain d'essai est encore en préparation (serveur tout juste lancé) — réessayez dans quelques secondes",
+    ["tree.rangeBusy"] = "Le terrain d'essai est encore en préparation (serveur tout juste lancé) — l'essai démarrera tout seul dès qu'il sera prêt",
+    ["tree.rangeMatch"] = "Une bataille se déroule en ce moment sur Pics enneigés : cet essai se fera sur le terrain d'essai",
     ["tree.rp"] = "{1} points de recherche gagnés",
+    ["tree.snowBusy"] = "La carte Pics enneigés est encore en cours de génération (serveur tout juste lancé) — l'essai démarrera tout seul dès qu'elle sera prête",
     ["tree.testInAir"] = "Vol d'essai : {1} (toutes les modifications ; pas de place sur la piste / l'héliport, vous partez donc en vol avec la zone cible devant ; trois avions cibles y tournent et une rangée de cibles est au sol ; aucun ne riposte ; évacuez pour revenir)",
+    ["tree.testMatch"] = "Une bataille commence sur Pics enneigés : fin de l'essai, retour au hangar",
     ["tree.testOn"] = "Terrain d'essai : {1} (toutes les modifications ; sept véhicules cibles dans votre couloir à 300-2000 m, dont deux en mouvement ; trois avions cibles au-dessus ; aucun ne riposte ; descendez du véhicule pour revenir)",
     ["tree.testOnAir"] = "Vol d'essai : {1} (toutes les modifications ; départ sur la piste du terrain d'essai, mettez les gaz pour décoller ; trois avions cibles tournent au-dessus de la zone cible au nord et une rangée de cibles est au sol ; aucun ne riposte ; évacuez pour revenir)",
     ["tree.testOnPad"] = "Vol d'essai : {1} (toutes les modifications ; départ sur l'héliport du terrain d'essai, levez le collectif pour décoller ; trois avions cibles tournent au-dessus de la zone cible au nord et une rangée de cibles est au sol ; aucun ne riposte ; évacuez pour revenir)",
     ["tree.testOnSky"] = "Vol d'essai : {1} (toutes les modifications ; à pleine charge il ne décolle pas de la piste, vous partez donc en vol au sud de la zone cible, cap droit dessus ; trois avions cibles y tournent et une rangée de cibles est au sol ; aucun ne riposte ; évacuez pour revenir)",
+    ["tree.testOnSnow"] = "Essai sur Pics enneigés : {1} (toutes les modifications ; véhicules cibles dans votre couloir de quelques centaines de mètres à 1-2 km, dont deux en mouvement ; trois avions cibles au-dessus ; aucun ne riposte ; descendez du véhicule pour revenir)",
     ["tree.useHangar"] = "Déployez un véhicule de votre équipe au hangar",
     ["tree.waitDeploy"] = "Déploiement dans {1} s",
     ["tree.walkIn"] = "Véhicule prêt — approchez et appuyez sur E",
@@ -19058,7 +19075,7 @@ return {
       <Item class="ModuleScript" referent="34">
         <Properties>
           <string name="Name">ja</string>
-          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ja 的译文（2312 / 2403 条）
+          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ja 的译文（2316 / 2407 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -20244,13 +20261,17 @@ return {
     ["tree.needRes"] = "先に研究してください",
     ["tree.notInLineup"] = "出撃編成に入っていません",
     ["tree.notOwned"] = "この車両を所有していません",
-    ["tree.rangeBusy"] = "試験場はまだ準備中（サーバー起動直後）— 数秒後にもう一度",
+    ["tree.rangeBusy"] = "試験場はまだ準備中（サーバー起動直後）— 準備ができたら自動で試乗が始まります",
+    ["tree.rangeMatch"] = "いまスノーピークスで戦闘中のため、今回の試乗は試験場で行います",
     ["tree.rp"] = "研究ポイント {1} を獲得",
+    ["tree.snowBusy"] = "スノーピークスのマップはまだ生成中（サーバー起動直後）— 準備ができたら自動で試乗が始まります",
     ["tree.testInAir"] = "試験飛行：{1}（改修すべて装着。滑走路 / ヘリパッドに空きがないため空中から出発、標的区域は前方。標的機 3 機が周回し、地上には標的が一列。どれも反撃しない。脱出すると格納庫へ）",
+    ["tree.testMatch"] = "スノーピークスで戦闘が始まります：試乗は終了、格納庫へ戻ります",
     ["tree.testOn"] = "試験場で試乗：{1}（改修すべて装着。自分のレーンの 300～2000 m 先に標的車両 7 両、うち 2 両は走行中。上空に標的機 3 機。どれも反撃しない。降車すると格納庫へ）",
     ["tree.testOnAir"] = "試験飛行：{1}（改修すべて装着。試験場の滑走路から出発、スロットルを上げて離陸。北の標的区域で標的機 3 機が周回し、地上には標的が一列。どれも反撃しない。脱出すると格納庫へ）",
     ["tree.testOnPad"] = "試験飛行：{1}（改修すべて装着。試験場のヘリパッドから出発、コレクティブを上げて離陸。北の標的区域で標的機 3 機が周回し、地上には標的が一列。どれも反撃しない。脱出すると格納庫へ）",
     ["tree.testOnSky"] = "試験飛行：{1}（改修すべて装着。満載では試験場の滑走路から離陸できないため、標的区域の南の空中から北へ向けて出発。標的区域は正面。標的機 3 機が周回し、地上には標的が一列。どれも反撃しない。脱出すると格納庫へ）",
+    ["tree.testOnSnow"] = "スノーピークスで試乗：{1}（改修すべて装着。自分のレーンの数百 m～1、2 km 先に標的車両、うち 2 両は走行中。上空に標的機 3 機。どれも反撃しない。降車すると格納庫へ）",
     ["tree.useHangar"] = "格納庫の出撃編成から車両を選んで出撃",
     ["tree.waitDeploy"] = "{1} 秒後に出撃",
     ["tree.walkIn"] = "車両の準備完了 — 近づいて E で乗車",
@@ -21603,7 +21624,7 @@ return {
       <Item class="ModuleScript" referent="35">
         <Properties>
           <string name="Name">ko</string>
-          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ko 的译文（2312 / 2403 条）
+          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ko 的译文（2316 / 2407 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -22789,13 +22810,17 @@ return {
     ["tree.needRes"] = "먼저 연구하세요",
     ["tree.notInLineup"] = "출격 편성에 없습니다",
     ["tree.notOwned"] = "이 차량을 보유하지 않았습니다",
-    ["tree.rangeBusy"] = "시험장이 아직 준비 중입니다(서버 시작 직후) — 몇 초 뒤 다시 시도하세요",
+    ["tree.rangeBusy"] = "시험장이 아직 준비 중입니다(서버 시작 직후) — 준비되면 시승이 자동으로 시작됩니다",
+    ["tree.rangeMatch"] = "지금 설산 맵에서 전투가 진행 중이라 이번 시승은 시험장에서 합니다",
     ["tree.rp"] = "연구 포인트 {1} 획득",
+    ["tree.snowBusy"] = "설산 맵이 아직 생성 중입니다(서버 시작 직후) — 준비되면 시승이 자동으로 시작됩니다",
     ["tree.testInAir"] = "시험 비행: {1}(개조 전부 장착. 활주로 / 헬기장에 자리가 없어 공중에서 시작, 표적 구역은 전방. 표적기 3대가 선회하고 지상에 표적이 한 줄. 모두 반격하지 않음. 탈출하면 격납고로)",
+    ["tree.testMatch"] = "설산 맵에서 전투가 시작됩니다: 시승을 마치고 격납고로 돌아갑니다",
     ["tree.testOn"] = "시험장 시승: {1}(개조 전부 장착. 내 사로 300~2000 m 앞에 표적 차량 7대, 그중 2대는 이동 중. 상공에 표적기 3대. 모두 반격하지 않음. 하차하면 격납고로)",
     ["tree.testOnAir"] = "시험 비행: {1}(개조 전부 장착. 시험장 활주로에서 시작, 스로틀을 올려 이륙. 북쪽 표적 구역에 표적기 3대가 선회하고 지상에 표적이 한 줄. 모두 반격하지 않음. 탈출하면 격납고로)",
     ["tree.testOnPad"] = "시험 비행: {1}(개조 전부 장착. 시험장 헬기장에서 시작, 콜렉티브를 올려 이륙. 북쪽 표적 구역에 표적기 3대가 선회하고 지상에 표적이 한 줄. 모두 반격하지 않음. 탈출하면 격납고로)",
     ["tree.testOnSky"] = "시험 비행: {1}(개조 전부 장착. 만재 상태로는 시험장 활주로에서 이륙할 수 없어 표적 구역 남쪽 공중에서 북쪽을 향해 시작. 표적 구역은 정면. 표적기 3대가 선회하고 지상에 표적이 한 줄. 모두 반격하지 않음. 탈출하면 격납고로)",
+    ["tree.testOnSnow"] = "설산 시승: {1}(개조 전부 장착. 내 사로 앞 수백 m~1~2 km에 표적 차량, 그중 2대는 이동 중. 상공에 표적기 3대. 모두 반격하지 않음. 하차하면 격납고로)",
     ["tree.useHangar"] = "격납고 출격 편성에서 차량을 골라 출격",
     ["tree.waitDeploy"] = "{1}초 후 출격",
     ["tree.walkIn"] = "차량 준비 완료 — 다가가서 E로 탑승",
@@ -24148,7 +24173,7 @@ return {
       <Item class="ModuleScript" referent="36">
         <Properties>
           <string name="Name">pt</string>
-          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：pt 的译文（2234 / 2403 条）
+          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：pt 的译文（2238 / 2407 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -25314,13 +25339,17 @@ return {
     ["tree.needRes"] = "Pesquise primeiro",
     ["tree.notInLineup"] = "Não está na sua escalação",
     ["tree.notOwned"] = "Você não possui este veículo",
-    ["tree.rangeBusy"] = "O campo de testes ainda está sendo preparado (servidor acabou de iniciar): tente de novo em alguns segundos",
+    ["tree.rangeBusy"] = "O campo de testes ainda está sendo preparado (servidor acabou de iniciar): o teste começa sozinho assim que estiver pronto",
+    ["tree.rangeMatch"] = "Há uma batalha em Picos Nevados agora: este teste será no campo de testes",
     ["tree.rp"] = "Você ganhou {1} pontos de pesquisa",
+    ["tree.snowBusy"] = "O mapa Picos Nevados ainda está sendo gerado (servidor acabou de iniciar): o teste começa sozinho assim que estiver pronto",
     ["tree.testInAir"] = "Voo de teste: {1} (todas as modificações; não havia espaço na pista / heliponto, então você começa no ar com a área de alvos à frente; lá circulam três aeronaves-alvo e há uma fileira de alvos no solo; nenhum revida; ejete para voltar)",
+    ["tree.testMatch"] = "Uma batalha vai começar em Picos Nevados: teste encerrado, de volta ao hangar",
     ["tree.testOn"] = "Campo de testes: {1} (todas as modificações; sete veículos-alvo na sua pista a 300-2000 m, dois em movimento; três aeronaves-alvo no céu; nenhum revida; saia do veículo para voltar)",
     ["tree.testOnAir"] = "Voo de teste: {1} (todas as modificações; você começa na pista do campo de testes, acelere para decolar; três aeronaves-alvo circulam sobre a área de alvos ao norte e há uma fileira de alvos no solo; nenhum revida; ejete para voltar)",
     ["tree.testOnPad"] = "Voo de teste: {1} (todas as modificações; você começa no heliponto do campo de testes, suba o coletivo para decolar; três aeronaves-alvo circulam sobre a área de alvos ao norte e há uma fileira de alvos no solo; nenhum revida; ejete para voltar)",
     ["tree.testOnSky"] = "Voo de teste: {1} (todas as modificações; carregado ao máximo não decola da pista, então você começa no ar ao sul da área de alvos, rumo direto a ela; lá circulam três aeronaves-alvo e há uma fileira de alvos no solo; nenhum revida; ejete para voltar)",
+    ["tree.testOnSnow"] = "Teste em Picos Nevados: {1} (todas as modificações; veículos-alvo na sua pista de algumas centenas de metros até 1-2 km, dois em movimento; três aeronaves-alvo no céu; nenhum revida; saia do veículo para voltar)",
     ["tree.useHangar"] = "Implante um veículo da sua escalação no hangar",
     ["tree.waitDeploy"] = "Implantando em {1} s",
     ["tree.walkIn"] = "Veículo pronto: aproxime-se e aperte E",
@@ -26609,7 +26638,7 @@ return {
       <Item class="ModuleScript" referent="37">
         <Properties>
           <string name="Name">ru</string>
-          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ru 的译文（2309 / 2403 条）
+          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ru 的译文（2313 / 2407 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -27790,13 +27819,17 @@ return {
     ["tree.needRes"] = "Сначала исследуйте",
     ["tree.notInLineup"] = "Нет в вашем составе",
     ["tree.notOwned"] = "У вас нет этой машины",
-    ["tree.rangeBusy"] = "Полигон ещё готовится (сервер только запустился) — попробуйте через несколько секунд",
+    ["tree.rangeBusy"] = "Полигон ещё готовится (сервер только запустился) — тест-драйв начнётся сам, как только всё будет готово",
+    ["tree.rangeMatch"] = "Сейчас на карте «Снежные пики» идёт бой: этот тест-драйв пройдёт на полигоне",
     ["tree.rp"] = "Получено {1} очков исследования",
+    ["tree.snowBusy"] = "Карта «Снежные пики» ещё создаётся (сервер только запустился) — тест-драйв начнётся сам, как только всё будет готово",
     ["tree.testInAir"] = "Тестовый полёт: {1} (все модификации; на полосе / площадке не было места, поэтому старт в воздухе, зона целей впереди; там кружат три самолёта-мишени, на земле ряд целей; никто не стреляет; покиньте самолёт, чтобы вернуться)",
+    ["tree.testMatch"] = "На карте «Снежные пики» начинается бой: тест-драйв окончен, возврат в ангар",
     ["tree.testOn"] = "Полигон: {1} (все модификации; семь целей на вашей дорожке на 300-2000 м, две движутся; три самолёта-мишени в небе; никто не стреляет в ответ; выйдите из машины, чтобы вернуться)",
     ["tree.testOnAir"] = "Тестовый полёт: {1} (все модификации; старт на полосе полигона, дайте газ и взлетайте; три самолёта-мишени кружат над зоной целей на севере, на земле ряд целей; никто не стреляет; покиньте самолёт, чтобы вернуться)",
     ["tree.testOnPad"] = "Тестовый полёт: {1} (все модификации; старт с вертолётной площадки полигона, поднимите шаг-газ для взлёта; три самолёта-мишени кружат над зоной целей на севере, на земле ряд целей; никто не стреляет; покиньте машину, чтобы вернуться)",
     ["tree.testOnSky"] = "Тестовый полёт: {1} (все модификации; с полной загрузкой с полосы не взлететь, поэтому старт в воздухе южнее зоны целей курсом прямо на неё; там кружат три самолёта-мишени, на земле ряд целей; никто не стреляет; покиньте самолёт, чтобы вернуться)",
+    ["tree.testOnSnow"] = "Тест-драйв на «Снежных пиках»: {1} (все модификации; цели на вашей дорожке от нескольких сотен метров до 1-2 км, две движутся; три самолёта-мишени в небе; никто не стреляет в ответ; выйдите из машины, чтобы вернуться)",
     ["tree.useHangar"] = "Выберите машину из состава в ангаре",
     ["tree.waitDeploy"] = "Развёртывание через {1} с",
     ["tree.walkIn"] = "Машина готова — подойдите и нажмите E",
@@ -30469,13 +30502,17 @@ return {
     ["tree.needRes"] = "先研究完才能買",
     ["tree.notInLineup"] = "這一輛不在出擊陣容裡",
     ["tree.notOwned"] = "還沒買下這一輛",
-    ["tree.rangeBusy"] = "訓練場還在準備（剛開服），稍等幾秒再試駕",
+    ["tree.rangeBusy"] = "訓練場還在準備（剛開服），好了自動開始試駕",
+    ["tree.rangeMatch"] = "雪山圖上正在打一局：這次在訓練場試駕",
     ["tree.rp"] = "這一局掙了 {1} 研究點",
+    ["tree.snowBusy"] = "雪山圖還在生成（剛開服），好了自動開始試駕",
     ["tree.testInAir"] = "訓練場試飛：{1}（改裝全裝上；跑道 / 直升機坪上沒擺下，直接在空中出發，靶區就在前面；三架靶機繞圈、地上一排靶車，都不還手；下飛機回機庫）",
+    ["tree.testMatch"] = "雪山圖要開打一局了：試駕結束，回到機庫",
     ["tree.testOn"] = "訓練場試駕：{1}（改裝全裝上；你的靶道前面 300～2000 米七輛靶車，兩輛在跑；天上三架靶機；都不還手；下車回機庫）",
     ["tree.testOnAir"] = "訓練場試飛：{1}（改裝全裝上；在訓練場跑道上，推油門起飛；北邊靶區三架靶機繞圈、地上一排靶車，都不還手；下飛機回機庫）",
     ["tree.testOnPad"] = "訓練場試飛：{1}（改裝全裝上；在訓練場直升機坪上，拉總距起飛；北邊靶區三架靶機繞圈、地上一排靶車，都不還手；下飛機回機庫）",
     ["tree.testOnSky"] = "訓練場試飛：{1}（改裝全裝上；滿油滿彈在訓練場的跑道上滑不起來，直接在空中出發：在靶區南邊朝北飛，靶區就在正前方；三架靶機繞圈、地上一排靶車，都不還手；下飛機回機庫）",
+    ["tree.testOnSnow"] = "雪山圖上試駕：{1}（改裝全裝上；靶道前面幾百米到一兩公里擺著靶車，兩輛在跑；天上三架靶機；都不還手；下車回機庫）",
     ["tree.useHangar"] = "從機庫的出擊陣容裡挑一輛車出擊",
     ["tree.waitDeploy"] = "{1} 秒後出擊",
     ["tree.walkIn"] = "車擺好了，走過去按 E 上車",
@@ -45328,6 +45365,11 @@ function G.ensureRange()
 end
 task.spawn(function()
   if G.placesWait then G.placesWait(10) end
+  -- 战场就是雪山图（只剩这一张，开服就定；测试台 MapName）：主界面试驾就在这张图上（Tech.lua chooseRM，用户 11-28「为什么训练场现在还是没有雪山地图」），
+  --   不先建训练场区块（省开服的 CPU、内存、体素：用户 11-28 晚「现在太卡了」）——这张图上正在打一局、有人点试驾时才建（Tech.lua 按需 G.ensureRange）
+  local t0 = os.clock()
+  while not G.mapId and os.clock() - t0 < 2 do task.wait(0.1) end
+  if G.testBattleSnow and G.testBattleSnow() then return end
   if not G.wantLocalRange or G.wantLocalRange() then G.ensureRange() end
 end)
 
@@ -45341,6 +45383,9 @@ task.spawn(function()
       G.testRange = require(script:WaitForChild("SnowRange")).new(G.Map)
       G.rangeReady = G.testRange ~= nil
     end)
+  elseif G.testBattleSnow and G.testBattleSnow() then
+    -- 别的服务器、战场是雪山图：这张图上没在打一局的时候试驾就在这上面（同训练场服务器那一套靶道，Tech.lua chooseRM）
+    G.try("试驾（战场的雪山图）", function() G.battleRange = require(script:WaitForChild("SnowRange")).new(G.Map) end)
   end
   if G.farLodPublish then G.try("远景替身", G.farLodPublish) end   -- 流式加载时远处的楼画替身（FarLod.lua）
   if G.depotsBuild then G.try("生成点", G.depotsBuild) end   -- 载具生成点（要等舰队甲板建好）
@@ -45450,6 +45495,10 @@ print("[全面大战场] " .. Config.Version .. "（脚本构建 " .. tostring(C
 --   打：每 0.3 秒找射程内、看得见（地形、烟幕不挡）的敌人——车、工事用主炮，步兵、机器人用并列机枪（没有机枪就主炮）；
 --     炮塔按真实回转速度转过去、按距离抬高炮口（炮弹有落差），对准了才打；新目标先瞄 1～2 秒；有目标时放慢开
 --   撤：血掉到三成五以下、或者主炮打光了，往出发的地方撤，撤到了就收走（不算被毁）；卡住了往旁边倒一下
+--   11-28 晚（用户「然后目前人机坦克太假」）照真人车组开、打：车速有惯性（按型号加速、刹车，倒车最快 rev），不再一下子满速、一下子停住；
+--     主炮打车、工事是「短停射击」——炮快装好了就刹停，停稳、瞄准了才开炮，开完接着走（行进间只有有稳定器的近距离才打，还更散）；
+--     在据点守着的：车头对着敌人（正面装甲），打一炮倒回去二三十格躲着装弹、装好了再开出来打（打了就躲）；
+--     新目标先瞄一两秒到三秒，第一发更散、第二发好一点、第三发起才准（修正），开着的时候更散
 --   车是 Armor 的实体（客户端照样画、炮塔按 Ty / Gp 转、车轮按 Sp 转），Driver 属性 −1：没有「E 上车」、不算「可驾驶」，也不占玩家的名额
 local RS = game:GetService("ReplicatedStorage")
 
@@ -45650,7 +45699,7 @@ function AIVeh.init(G)
     crew.e = e
     e.counts = 1   -- 占点算数（Ents.countAt；跟机器人一样按 botW 折算）
     e.ai = { state = state, goal = goal.id, land = goal.land, home = home, hold = nil, tgt = nil, seekT = 0, aimT = 0, stuckT = 0, lastP = e.root.CFrame.Position,
-      sideT = 0, holdT = 0, crew = crew }
+      sideT = 0, holdT = 0, crew = crew, v = 0, shotN = 0, lastShot = -9, scootT = 0, scootTo = nil, goAfter = 0 }
     e.model:SetAttribute("Crew", crew.name)   -- 名牌写开车的人（客户端按这个显示，没有就照旧写车名）
     local _ = nm
     e.emptyAt, e.resP = nil, nil
@@ -45758,23 +45807,44 @@ function AIVeh.init(G)
   ---------------------------------------------------------------- 开
 
   -- 车底朝 face 往前挪一步（转向有上限、急转弯慢下来）；返回挪了多远
-  local function drive(e, goalPos, dt, speedK)
+  -- 开：车速有惯性（用户 11-28 晚「然后目前人机坦克太假」：原来一下子满速、一下子停住）——e.ai.v 往要的速度靠，加速按型号的 accel、
+  --   刹车快两倍半（快到了按 v² / 2a 提前刹），倒车最快 rev。goalPos = nil：刹停；back：倒着开（车头不转过去，屁股朝着 goalPos）
+  local function drive(e, goalPos, dt, speedK, back)
     local d = e.def
+    local A0 = e.ai
     local base = G.vehBaseOf(e)
     local p = base.Position
     local look = flat(base.LookVector)
     look = (look.Magnitude > 0.01) and look.Unit or V(0, 0, -1)
-    local to = flat(goalPos - p)
-    local dist = to.Magnitude
-    if dist < 4 then e.model:SetAttribute("Sp", 0) return 0 end
-    if e.wt and e.wt.mob == false then e.model:SetAttribute("Sp", 0) return 0 end   -- 战雷式伤害：开不动了（Wt.lua）
-    local want = to.Unit
-    local ang = math.atan2(look:Cross(want).Y, look:Dot(want))
-    local maxT = math.rad(d.turn or 36) * dt
-    local nl = CFrame.Angles(0, math.clamp(ang, -maxT, maxT), 0) * look
-    local sp = (d.speed or 30) * speedK * math.clamp(1 - math.abs(ang) / math.rad(100), 0.25, 1)
-    local step = math.min(sp * dt, dist)
-    local np = p + nl * step
+    local acc = d.accel or 6
+    local mob = not (e.wt and e.wt.mob == false)   -- 战雷式伤害：开不动了（Wt.lua）
+    local want, nl = 0, look
+    if mob and goalPos then
+      local to = flat(goalPos - p)
+      local dist = to.Magnitude
+      if dist >= 4 then
+        local hdg = back and -to.Unit or to.Unit
+        local ang = math.atan2(look:Cross(hdg).Y, look:Dot(hdg))
+        local maxT = math.rad(d.turn or 36) * dt
+        nl = CFrame.Angles(0, math.clamp(ang, -maxT, maxT), 0) * look
+        local vmax = back and (d.rev or (d.speed or 30) * 0.35) or (d.speed or 30)
+        want = vmax * speedK * math.clamp(1 - math.abs(ang) / math.rad(100), 0.25, 1)
+        local brakeD = ((A0.v or 0) ^ 2) / (2 * acc * 2.5) + 3
+        if dist < brakeD then want *= math.clamp(dist / brakeD, 0.15, 1) end
+        if back then want = -want end
+      end
+    end
+    local v = A0.v or 0
+    local braking = want == 0 or v * want < 0 or math.abs(want) < math.abs(v)
+    v = approach(v, want, (braking and acc * 2.5 or acc) * dt)
+    if not mob then v = 0 end
+    A0.v = v
+    if math.abs(v) < 0.05 then
+      A0.v = 0
+      e.model:SetAttribute("Sp", 0)
+      return 0
+    end
+    local np = p + nl * (v * dt)
     local nb
     if e.lcac then   -- 气垫艇上：车底在艇的甲板高度；冲上沙滩放下车
       local LC = G.LCAC
@@ -45788,18 +45858,34 @@ function AIVeh.init(G)
         if e.lcac and e.lcac.alive then G.moveEnt(e.lcac, G.lcacUnder(nb)) end
       end
     else
-      if Map.height(np.X, np.Z) < -2 and not d.amphib then e.model:SetAttribute("Sp", 0) return 0 end   -- 前面是海：不往下开
-      -- 钢城：前面是楼（Map.bldAt，车身半宽）就停住（卡住了 think 里会往旁边倒一下）；已经卡在楼边上的让它开出来
+      if Map.height(np.X, np.Z) < -2 and not d.amphib then A0.v = 0 e.model:SetAttribute("Sp", 0) return 0 end   -- 前面是海：不往下开
+      -- 前面是楼（Map.bldAt，车身半宽）就停住（卡住了 think 里会往旁边倒一下）；已经卡在楼边上的让它开出来
       if Map.bldAt then
         local hw = (d.W or 10) * 0.5
-        if Map.bldAt(np.X, np.Z, hw) and not Map.bldAt(p.X, p.Z, hw) then e.model:SetAttribute("Sp", 0) return 0 end
+        if Map.bldAt(np.X, np.Z, hw) and not Map.bldAt(p.X, p.Z, hw) then A0.v = 0 e.model:SetAttribute("Sp", 0) return 0 end
       end
       nb = G.vehBaseAt(d, np.X, np.Z, nl)
     end
     G.moveEnt(e, nb * CF(0, d.H / 2, 0))
-    if G.treeTouch then G.treeTouch(np, d, nl) end   -- 钢城：开过去撞倒树（Trees.lua）
-    e.model:SetAttribute("Sp", math.floor(sp * 3.6 / 2.8 + 0.5))
-    return step
+    if G.treeTouch then G.treeTouch(np, d, nl) end   -- 开过去撞倒树（Trees.lua）
+    e.model:SetAttribute("Sp", math.floor(v * 3.6 / 2.8 + 0.5))
+    return math.abs(v * dt)
+  end
+  -- 停着把车头转向 pos（正面装甲对着敌人）：差 25° 以上才转，原地转（按型号的转向速度的七成）
+  local function faceTo(e, pos, dt)
+    local d = e.def
+    if e.wt and e.wt.mob == false then return end
+    local base = G.vehBaseOf(e)
+    local look = flat(base.LookVector)
+    look = (look.Magnitude > 0.01) and look.Unit or V(0, 0, -1)
+    local to = flat(pos - base.Position)
+    if to.Magnitude < 1 then return end
+    local ang = math.atan2(look:Cross(to.Unit).Y, look:Dot(to.Unit))
+    if math.abs(ang) < math.rad(25) then return end
+    local maxT = math.rad((d.turn or 36) * 0.7) * dt
+    local nl = CFrame.Angles(0, math.clamp(ang, -maxT, maxT), 0) * look
+    local p = base.Position
+    G.moveEnt(e, G.vehBaseAt(d, p.X, p.Z, nl) * CF(0, d.H / 2, 0))
   end
 
   -- 没有炮塔的车（VehDefs turret.arc：SU-100 这类）：目标在炮的射界外面——停下来原地转车头（over 度，往右为正），转到射界里再打
@@ -45904,7 +45990,13 @@ function AIVeh.init(G)
     local S = { team = e.team, name = e.ai.crew.name, bot = e.ai.crew }
     local optK = G.wtOptK and G.wtOptK(e) or 1   -- 观瞄受损 / 打坏（Wt.lua，11-26）：打得不准
     if w.kind == "shell" then
-      local dir = spread(mz.LookVector, 0.25 * optK)
+      -- 准头（11-28 晚）：第一发更散（2.2 倍）、第二发 1.4 倍、第三发起照常（修正）；开着打更散（满速 3.5 倍：只有有稳定器的近距离才会行进间开炮）
+      local A0 = e.ai
+      local mv = math.clamp(math.abs(A0.v or 0) / math.max(d.speed or 30, 1), 0, 1)
+      local nk = ((A0.shotN or 0) == 0 and 2.2) or ((A0.shotN or 0) == 1 and 1.4) or 1
+      local dir = spread(mz.LookVector, 0.25 * optK * nk * (1 + 2.5 * mv))
+      A0.shotN = (A0.shotN or 0) + 1
+      A0.lastShot = t
       local ww, a = w, nil
       if G.tankWeaponOf then ww, a = G.tankWeaponOf(wid, w, e.ai.ammo) end
       if a then   -- 坦克炮：真实初速、重力、空气阻力（Ballistics.lua），带曳光
@@ -45978,7 +46070,10 @@ function AIVeh.init(G)
     e.model:SetAttribute("Ty", math.floor(e.ty * 2 + 0.5) / 2)
     e.model:SetAttribute("Gp", math.floor(e.gp * 2 + 0.5) / 2)
     local tol = (w.kind == "shell") and 1.2 or 4
-    if now() >= e.ai.aimT and math.abs(angDiff(wantYaw, e.ty)) < tol and math.abs(wantPitch - e.gp) < tol then fire(e, wid) end
+    -- 主炮：停稳了才打（短停射击）；有稳定器的、四百格（一百四十米）以内的可以行进间打
+    local still = math.abs(e.ai.v or 0) < math.max(1.5, (d.speed or 30) * 0.08)
+    local moveOk = w.kind ~= "shell" or still or (not d.noStab and horiz < 400)
+    if moveOk and now() >= e.ai.aimT and math.abs(angDiff(wantYaw, e.ty)) < tol and math.abs(wantPitch - e.gp) < tol then fire(e, wid) end
     return wid
   end
 
@@ -45987,6 +46082,22 @@ function AIVeh.init(G)
   local function think(e, dt)
     local A0 = e.ai
     local t = now()
+    -- 准备阶段：原地待命（同真人：WtBattle 倒计时），不找目标、不开火——派在出车位上的先往前开四五十格让出车位
+    --   （真人匹配到了也是在出车位上出来：原来电脑车停在车位上，真人的车生不出来），开到了就刹停等着
+    if G.round and G.round.phase == "prep" then
+      A0.tgt = nil
+      if not A0.stage then
+        local base = G.vehBaseOf(e)
+        local fwd = flat(base.LookVector)
+        fwd = (fwd.Magnitude > 0.01) and fwd.Unit or V(0, 0, -1)
+        local p = base.Position + fwd * (45 + math.random() * 15) + V(-fwd.Z, 0, fwd.X) * ((math.random() - 0.5) * 30)
+        local x, z = landSpot(p.X, p.Z, 30)
+        A0.stage = x and V(x, 0, z) or base.Position
+      end
+      local far = (flat(A0.stage - e.root.CFrame.Position)).Magnitude > 6
+      drive(e, far and A0.stage or nil, dt, 0.35)
+      return
+    end
     local main = weaponsOf(e.def)
     -- 撤：血少了、主炮打光了
     if A0.state ~= "retreat" and A0.state ~= "boat" then
@@ -45997,7 +46108,10 @@ function AIVeh.init(G)
     if t >= A0.seekT then
       A0.seekT = t + 0.3
       local nt = (A0.state ~= "boat") and findTarget(e) or nil
-      if nt and (not A0.tgt or A0.tgt.ref ~= nt.ref) then A0.aimT = t + 1 + math.random() end   -- 新目标：先瞄一会儿
+      if nt and (not A0.tgt or A0.tgt.ref ~= nt.ref) then   -- 新目标：车长发现、报给炮长、炮塔转过去，先瞄一会儿（1.5～3 秒），从第一发重新修正
+        A0.aimT = t + 1.5 + math.random() * 1.5
+        A0.shotN = 0
+      end
       A0.tgt = nt
     end
     if A0.tgt then
@@ -46007,6 +46121,10 @@ function AIVeh.init(G)
     -- 开
     local moved = 0
     local slow = A0.tgt and 0.45 or 0.85
+    -- 交战（主炮对车、工事）：炮快装好了（1.5 秒以内）就刹停等着开炮（短停射击），开完看一眼（0.8 秒）再走
+    local stMain = main and e.wst[main]
+    local engage = A0.tgt ~= nil and A0.tgt.kind ~= "inf" and stMain ~= nil and A0.state ~= "boat" and A0.state ~= "retreat"
+    local halt = engage and (stMain.next - t < 1.5 or t < (A0.lastShot or -9) + 0.8) and stMain.mag + stMain.reserve > 0
     if A0.tgt and A0.arcOver and A0.arcOver ~= 0 and A0.state ~= "boat" and A0.state ~= "retreat" then
       pivot(e, A0.arcOver, dt)   -- 没有炮塔的车：先把车头转向目标
       A0.stuckAt = t
@@ -46024,6 +46142,7 @@ function AIVeh.init(G)
       local gp = nil
       for _, p in ipairs(Map.POINTS) do if p.id == A0.goal then gp = p end end
       local cur = gp and eligible(e.team, gp, A0.land) or 0
+      if A0.pin then gp, cur = gp or {}, 1 end   -- 测试用（tools/mock/aitank.lua）：钉在 A0.hold 守着，不换目标
       if cur <= 0 or t >= A0.holdT + 30 then
         A0.holdT = t
         local g = pickGoal(e.team, A0.land)
@@ -46034,13 +46153,30 @@ function AIVeh.init(G)
       end
       if gp then
         A0.hold = A0.hold or holdSpot(gp, e.root.CFrame.Position)
-        if (flat(A0.hold - e.root.CFrame.Position)).Magnitude < 25 then
+        local here = e.root.CFrame.Position
+        if A0.state == "hold" and engage and t < (A0.scootT or 0) and A0.scootTo then
+          -- 打了就躲：倒回去二三十格（车头还对着敌人）、装好弹再开出来
+          moved = drive(e, A0.scootTo, dt, 0.8, true)
+        elseif (flat(A0.hold - here)).Magnitude < 25 then
           A0.state = "hold"
-          e.model:SetAttribute("Sp", 0)
+          if engage then
+            local tp = targetPos(A0.tgt) or A0.tgt.pos
+            if math.abs(A0.v or 0) < 0.5 then faceTo(e, tp, dt) end   -- 正面装甲对着敌人
+            -- 刚开完一炮、装弹要好几秒：倒回去躲着（后面是楼、是陡坡就不倒）
+            if t - (A0.lastShot or -9) < 0.3 and stMain.next - t > 3 and t >= (A0.scootT or 0) + 1 then
+              local back = flat(here - tp)
+              if back.Magnitude > 1 then
+                local to = here + back.Unit * (22 + math.random() * 12)
+                local blocked = (Map.bldAt and Map.bldAt(to.X, to.Z, (e.def.W or 10) * 0.5)) or (Map.slope and Map.slope(to.X, to.Z) > 0.35)
+                if not blocked then A0.scootTo, A0.scootT = to, t + 2.2 + math.random() * 1.4 end
+              end
+            end
+          end
+          moved = drive(e, (not halt and (flat(A0.hold - here)).Magnitude > 6) and A0.hold or nil, dt, 0.5)   -- 躲完开回守的地方；在那儿就刹停
         else
           A0.state = "go"
           local wp = (t < A0.sideT and A0.side) or waypoint(e, A0.hold)
-          moved = drive(e, wp, dt, slow)
+          moved = drive(e, (not halt) and wp or nil, dt, slow)   -- 短停射击：刹停等开炮
         end
       end
     end
@@ -46070,7 +46206,9 @@ function AIVeh.init(G)
     local step = acc
     acc = 0
     local R = G.round
-    if not R or R.phase ~= "battle" or G.aiVehOff then
+    -- 准备阶段也派（用户 11-28 晚「点加入战斗就进入地图里面等着吧 等倒计时结束就开战」：真人在基地等倒计时，电脑车原来开战那一刻才冒出来）——
+    --   准备阶段派出来的原地待命（think 里刹停、不找目标、不开火），倒计时完一起出发
+    if not R or (R.phase ~= "battle" and R.phase ~= "prep") or G.aiVehOff then
       for i = #list, 1, -1 do
         if list[i].alive then remove(list[i]) end
         table.remove(list, i)
@@ -46088,15 +46226,17 @@ function AIVeh.init(G)
       end
     end
     spawnT -= step
+    -- 准备阶段：前 4 秒先让匹配进来的真人在出车位上坐进车（WtMatch matchFound），再派电脑车
+    if R.phase == "prep" and now() - (R.t0 or 0) < 4 then spawnT = math.max(spawnT, 0.5) end
     if spawnT <= 0 then
-      spawnT = (R.battleAt and (now() - R.battleAt) < 40) and 1 or 3
+      spawnT = (R.phase == "prep" or (R.battleAt and (now() - R.battleAt) < 40)) and 1 or 3
       for _, team in ipairs({ "atk", "def" }) do
         local n = 0
         for _, e in ipairs(list) do if e.team == team then n += 1 end end
         if n < maxFor(team) and now() >= nextAt[team] then
           local ok, e = G.try("派 AI 车", spawn, team)
           -- 一辆一辆来；没派成（车位满、没地方）过一会儿再试。开战头 40 秒（匹配补的人机一起出发，同战雷）两秒一辆，车位空出来就派
-          local early = R.battleAt and (now() - R.battleAt) < 40
+          local early = R.phase == "prep" or (R.battleAt and (now() - R.battleAt) < 40)
           nextAt[team] = now() + ((ok and e) and (early and 1 or 8) or (early and 2 or 15))
         end
       end
@@ -51854,6 +51994,32 @@ function Ents.init(G)
   end
   G.rocketAm = rocketAm   -- 测试用
 
+  -- 坦克炮（全口径炮弹）、反坦克导弹 / 火箭弹（破甲战斗部）直接打中飞机、直升机：一发打下来
+  --   （用户 11-28「然后坦克炮打到直升机为什么直升机还有可能活」）——原来照血算：120 毫米炮一发 640 × 对空 0.8 = 512，
+  --   直升机 900～1350 血，打在机身中段（发动机、油箱那块）只掉一半血、部件也没打断，照样飞走；战雷里坦克炮弹（榴弹、破甲弹、穿甲弹都一样）
+  --   打中直升机就是散架掉下去。航炮、高炮这些小口径照旧按血、按部件（WtAir.lua）一下一下算；近炸、溅射照旧按 G.explode
+  local function heavyOnAir(s)
+    local w = s.w or {}
+    if s.kind == "shell" then return w.fx == "tank" or (w.cal or 0) >= 0.25 end
+    if s.kind == "rocket" or s.kind == "missile" then
+      local am = rocketAm(s)
+      return am == "heat" or am == "atgm"
+    end
+    return false
+  end
+  local function airOneShot(s, inst)
+    local e = inst and G.entOf(inst)
+    if not (e and e.alive and e.air) or not heavyOnAir(s) then return false end
+    if s.src and s.src.team == e.team then return false end   -- 自己人：照旧不伤（damageEnt 也拦）
+    G.wtRaw = true   -- 直接判毁（不再走 WtAir 的部件、机身血）
+    local ok, err = pcall(G.damageEnt, e, 1e9, s.src)
+    G.wtRaw = nil
+    if not ok then G.reportError("坦克炮打飞机", err) end
+    if not e.alive then G.airOneShots = (G.airOneShots or 0) + 1 end   -- 测试用
+    return not e.alive
+  end
+  G.airOneShot = airOneShot
+
   local shotN = 0
   function G.launch(s)
     s.t = 0
@@ -51998,7 +52164,7 @@ function Ents.init(G)
           local hitE = res.Instance and G.eraShell and G.entOf(res.Instance)
           local ek = hitE and G.eraShell(hitE, s, res.Position)   -- 重型爆反挡穿甲弹（Era.lua）
           if ek then G.dmgK = { [hitE] = ek } end
-          if res.Instance then hitThing(res.Instance, s.w, s.w.dmg, s.src, 1, res.Position) end
+          if res.Instance and not airOneShot(s, res.Instance) then hitThing(res.Instance, s.w, s.w.dmg, s.src, 1, res.Position) end
           -- 炮弹、航炮直接打在车、船、飞机上：钢甲上迸一团白热的火花（客户端 Fx 的 spark；大小按口径：坦克炮 2 倍，航炮 1.25 倍）
           local hs = res.Instance and HitSurf.of(res.Instance, res.Material)
           if hs and HitSurf.METAL[hs] then
@@ -52030,6 +52196,7 @@ function Ents.init(G)
           -- 火箭弹、导弹：爆反按来向找块，这一发的爆炸和直接命中都按它打折（G.dmgK 在两下之间都留着）
           local m = G.eraBlast and G.eraBlast(res.Position, s.w, s.vel)
           if m then G.dmgK = m end
+          if res.Instance then airOneShot(s, res.Instance) end   -- 反坦克导弹 / 火箭弹直接打中飞机、直升机：一发打下来（上面 airOneShot）
           local hs2 = res.Instance and HitSurf.of(res.Instance, res.Material)
           -- 按材质、来向、战斗部画（钢甲上也带：客户端画打在车上的那一套）；11-27 审查 10：带上弹种（rocketAm）——炮射导弹、反坦克导弹、
           --   火箭筒这些破甲战斗部的客户端按破甲弹画，原来一律画成榴弹
@@ -59411,6 +59578,26 @@ function Round.init(G)
 
   function G.roundStep(dt)
     local t = now()
+    -- 战雷式对局（匹配）：这一局的真人都走了（「退出战斗」、掉线）——电脑车自己打下去没人看，白占服务器（用户 11-28 晚「现在太卡了」），
+    --   战场那张雪山图也一直被这一局占着、主界面试驾只能退回训练场区块（「为什么训练场现在还是没有雪山地图」，Tech.lua chooseRM）：
+    --   收掉这一局（车、残骸照开局那样清掉），回到匹配中
+    if (R.phase == "prep" or R.phase == "battle") and G.matchOn and G.matchOn() and not G.pve then
+      local any = false
+      for _, Q in pairs(G.P) do
+        if Q.match == R.n and Q.pl and Q.pl.Parent then any = true break end
+      end
+      if any then
+        R.emptyT = nil
+      else
+        R.emptyT = (R.emptyT or 0) + dt
+        if R.emptyT >= 5 then
+          R.emptyT = nil
+          print("[全面大战场] 这一局的真人都走了：收掉，回到匹配中")
+          G.roundStart()
+          return
+        end
+      end
+    end
     if R.phase == "queue" then   -- 匹配中：匹配够了（WtMatch.lua 的 queueStep）开准备阶段，排着的人坐进自己点的车
       if G.queueStep and G.queueStep(t) then
         R.phase = "prep"
@@ -62394,9 +62581,33 @@ function Tech.init(G)
   end
   -- 训练场（MapRange）：第几个在试驾的人用第几条靶道
   local RangeMap = G.Map.Range or require(RS:WaitForChild("MapRange"))
-  -- 一张图一个服务器（Places.lua，用户 11-28「训练场 还有各种地图单独做成一个服务器」「试驾你就让我在雪山地图试驾吧搞点靶车」）：
-  --   训练场服务器在雪山图上试驾（SnowRange.lua：同样这几个函数，外加按地形挑好的靶车位置），别的服务器照旧用训练场区块（MapRange）
-  local function RM() return G.testRange or RangeMap end
+  -- 在哪试驾（一次试驾定一处，记在 s.rm / s.where）：
+  --   · 训练场服务器（Places.lua，用户 11-28「训练场 还有各种地图单独做成一个服务器」）：开的就是雪山图，在这张图上试
+  --     （G.testRange，SnowRange.lua：同 MapRange 的几个函数，外加按地形挑好的靶车位置）
+  --   · 别的服务器、战场就是雪山图（用户 11-28「试驾你就让我在雪山地图试驾吧搞点靶车」，晚上又问「为什么训练场现在还是没有雪山地图」——
+  --     原来只有单独发布的训练场地点才在雪山上试，Studio、只发布了一个地点的照旧去绿草的训练场区块）：这张图上没在打一局（匹配中、结算）
+  --     就在战场这张雪山图上试（G.battleRange，init.server.lua 建图以后算：同样每人一条靶道、靶车、靶机）；正在打一局的时候
+  --     （两头基地出电脑车，靶道就在基地边上）才退回训练场区块（那时候才建）；一局要开打了，在这张图上试驾的人回机库（下面 matchFound）
+  --   · 战场不是雪山：训练场区块（MapRange）
+  local function snowMapFree()
+    local R0 = G.round
+    return not (R0 and (R0.phase == "prep" or R0.phase == "battle"))
+  end
+  -- 战场是不是雪山图（开服时图还没定：只剩雪山这一张就算是——马上就定成它）
+  local function battleSnow()
+    if G.placeRole == "range" then return false end
+    local id = G.mapId
+    if not id and G.Map.ids and #G.Map.ids == 1 then id = G.Map.ids[1] end
+    return id ~= nil and id == (Config.RangeMap or "snow")
+  end
+  G.testBattleSnow = battleSnow
+  local function chooseRM()   -- 靶场、哪一种（"range" 训练场服务器 / "battle" 战场的雪山图 / "zone" 训练场区块）、好了没有
+    if G.placeRole == "range" then return G.testRange or RangeMap, "range", G.testRange ~= nil and G.rangeReady == true end
+    if battleSnow() and snowMapFree() then return G.battleRange or RangeMap, "battle", G.battleRange ~= nil and G.worldReady == true end
+    return RangeMap, "zone", G.rangeReady == true
+  end
+  G.testWhere = function() local _, w, ok = chooseRM() return w, ok end   -- 测试用
+  local function RM(s) return (s and s.rm) or G.testRange or RangeMap end
   -- 两个人几乎同时点试驾（用户 11-28「如果这个游戏里有两个人同时选择开始试驾怎么办」）：靶道号原来在点的那一刻算、人生出来（零点几秒，
   --   远处还要等流式加载几秒）以后才登记进 tests——这中间第二个人点，两个人分到同一条靶道，两辆车生在一起。现在点的那一刻先占着（reserved），
   --   登记进 tests 就放开；没生出来（出生失败、掉线）的 30 秒后不算
@@ -62414,8 +62625,7 @@ function Tech.init(G)
   G.testReserved = function() return reserved end   -- 测试用
   -- 第 idx 个在试驾的人的车位：靶道够分就一人一条；比靶道还多（同一个服务器里八个以上同时开坦克试驾）的，在同一条靶道里往旁边挪开
   --   （雪山训练场 SnowRange 有 16 条：两头基地各一排）
-  local function testSpot(idx)
-    local rm = RM()
+  local function testSpot(rm, idx)
     local n = rm.LANES
     local p, d = rm.lane(idx % n + 1)
     local row = (idx // n) % 3
@@ -62471,7 +62681,7 @@ function Tech.init(G)
     local id = pick(heli and DRONE_HELI or DRONE_JET, i, AD.get)
     if not id or not G.spawnAircraftAir then return end
     -- 雪山上的训练场（SnowRange）：圈收进河谷里（半径最多 SKY_R 米、圈心挪到河谷中线），飞得比圈上最高的地形高——两边七八百米的雪山
-    local rm = RM()
+    local rm = RM(s)
     if rm.SKY_R then
       r = math.min(r, rm.SKY_R)
       if rm.skyCenter then c = rm.skyCenter(c) end
@@ -62523,7 +62733,54 @@ function Tech.init(G)
       end
     end
   end)
-  G.ACT.testDrive = function(P, key)
+  -- 靶场还没好（开服头一会儿雪山图还在生成、训练场区块还在后台建）：记下来，好了自动接着试（不用再点一次；一个人只等一辆，再点换成新点的）
+  local testWait = {}   -- [P] = 要试的那一辆
+  local function testLater(P, key)
+    local first = testWait[P] == nil
+    testWait[P] = key
+    if not first then return end
+    task.spawn(function()
+      local t0 = now()
+      while now() - t0 < 180 do
+        task.wait(0.5)
+        if G.P[P.pl] ~= P or not testWait[P] then break end
+        local _, w, ok = chooseRM()
+        if ok then break end
+        if w == "zone" and G.ensureRange then G.ensureRange() end   -- 等雪山图的时候这张图开打了：退回训练场区块（这时候才建）
+      end
+      local k = testWait[P]
+      testWait[P] = nil
+      if k and G.P[P.pl] == P and not P.alive and not (G.inMatch and G.inMatch(P)) then
+        local _, _, ok = chooseRM()
+        if ok then G.ACT.testDrive(P, k) end
+      end
+    end)
+  end
+  G.testWaiting = function(P) return testWait[P] end   -- 测试用
+  -- 战场这张雪山图要开打一局了（匹配到了）：在这张图上试驾的人回机库——靶道就在两头基地边上，电脑车、出击的人都从那儿出来
+  --   （同长按 H 回机库：车、靶车、靶机收走，不算阵亡，马上能再点试驾——那时候这张图在打，退回训练场区块）
+  local function testEndBack(P)
+    local s = tests[P]
+    if not s then return end
+    local e, char = s.veh, P.char
+    P.char, P.alive, P.vehicle = nil, false, nil   -- 先断开：角色的 Died 不算阵亡（Round.lua onDied 只认 P.char）
+    if e and P.remote == e then P.remote = nil end
+    P.canDeployAt = now()
+    P.dmgLog = {}
+    testClean(P)
+    if e and e.alive then pcall(G.removeEnt, e) end
+    if char and char.Parent then char:Destroy() end
+    pcall(function() P.pl.Character = nil end)
+    G.msg(P.pl, "info", "tree.testMatch")
+    if G.pushOne then G.pushOne(P) end
+  end
+  G.on("matchFound", function()
+    for Q, s in pairs(tests) do
+      if s.where == "battle" then G.try("试驾让出雪山图", testEndBack, Q) end
+    end
+  end)
+  G.on("left", function(P) testWait[P] = nil end)
+  local function testDriveNow(P, key)
     local it = type(key) == "string" and TT.byKey[key]
     if not it or P.alive or G.pve or not G.ACT.deploy then return end
     -- 局内（这一局算他的、准备 / 战斗阶段：机库是局内选车页，Round.lua G.inMatch）不能试驾，同战雷的出击页：TechUI 在局内选车页藏了「试驾」、
@@ -62533,29 +62790,38 @@ function Tech.init(G)
     local air = it.branch == "air" or it.branch == "heli"
     local heli = it.branch == "heli"
     local tl, tf = treeLoadOf(P, key)   -- 试驾也按机库里存的挂载、内油（整备；没存过是 nil：第一套预设、满内油）
-    -- 有训练场服务器（Places.lua）：传送过去试（带着这一辆，到了自动坐进去）；传不过去就在本服务器的训练场区块里试
+    -- 有训练场服务器（Places.lua）：传送过去试（带着这一辆，到了自动坐进去）；传不过去就在本服务器试（下面 chooseRM 挑在哪）
     if G.teleport and G.placeFor and G.placeFor("range") then
-      local function here()   -- 传送没成功：本服务器的训练场区块建好了就接着试（不用再点一次）
-        if G.ensureRange then G.ensureRange() end
+      local function here()   -- 传送没成功：本服务器的靶场好了就接着试（不用再点一次）
         G.placeTpOffFor = G.placeTpOffFor or {}
         G.placeTpOffFor[P.pl] = true
         G.msg(P.pl, "info", "place.rangeHere")
-        task.spawn(function()
-          local t0 = now()
-          while not G.rangeReady and now() - t0 < 120 do task.wait(0.5) end
-          if G.rangeReady and G.P[P.pl] == P and not P.alive then G.ACT.testDrive(P, key) end
-        end)
+        local _, where0, ok0 = chooseRM()
+        if ok0 then
+          if G.P[P.pl] == P and not P.alive then testDriveNow(P, key) end
+        else
+          if where0 == "zone" and G.ensureRange then G.ensureRange() end
+          testLater(P, key)
+        end
       end
       if not (G.placeTpOffFor and G.placeTpOffFor[P.pl]) and G.teleport(P, "range", { td = key }, here) then return end
     end
-    if not G.rangeReady then G.msg(P.pl, "info", "tree.rangeBusy") return end   -- 训练场还在后台建（开服头一会儿）
+    local rm, where, ready = chooseRM()
+    if not ready then   -- 开服头一会儿：雪山图还在生成 / 训练场区块还在后台建——好了自动接着试
+      if where == "zone" and G.ensureRange then G.ensureRange() end   -- 战场这张雪山图上正在打一局：这时候才建训练场区块
+      G.msg(P.pl, "info", (where == "zone") and "tree.rangeBusy" or "tree.snowBusy")
+      testLater(P, key)
+      return
+    end
+    testWait[P] = nil
+    if where == "zone" and battleSnow() then G.msg(P.pl, "info", "tree.rangeMatch") end   -- 雪山图上正在打一局：这次在训练场区块试
     local idx = testIndex(P)
     reserved[P] = { i = idx, t = now() }   -- 先占着（见 testIndex）
-    -- 出车的地方（训练场里）：车在第 idx 条靶道的射击线上、飞机在跑道东头、直升机在直升机坪
+    -- 出车的地方：车在第 idx 条靶道的射击线上、飞机在跑道东头、直升机在直升机坪
     local spawnAt, spawnDir
-    if heli then spawnAt, spawnDir = RM().heliPad(idx)
-    elseif air then spawnAt, spawnDir = RM().runwayStart(idx)
-    else spawnAt, spawnDir = testSpot(idx) end
+    if heli then spawnAt, spawnDir = rm.heliPad(idx)
+    elseif air then spawnAt, spawnDir = rm.runwayStart(idx)
+    else spawnAt, spawnDir = testSpot(rm, idx) end
     local all = {}   -- 试驾：改装全装上（下面 applyFx）
     for _, m in ipairs(WM.list(it)) do all[m.key] = true end
     local fx = WM.fx(it, all)
@@ -62566,17 +62832,17 @@ function Tech.init(G)
     local sky = false
     if air and not heli then
       local okR, run, lifted = pcall(AD.takeoffRun, AD.get(it.play), { treeKey = it.key, thrK = fx.thr, h = spawnAt.Y })
-      if okR and run and (not lifted or run > RM().runwayLeft(idx) * 0.95) then sky = true end
+      if okR and run and (not lifted or run > rm.runwayLeft(idx) * 0.95) then sky = true end
     end
     local function go()
       if not P.alive or not P.char then return end
       testClean(P)
-      local s = { P = P, idx = idx, dummies = {}, drones = {}, foe = (P.team == "atk") and "def" or "atk", air = air }
+      local s = { P = P, idx = idx, dummies = {}, drones = {}, foe = (P.team == "atk") and "def" or "atk", air = air, rm = rm, where = where }
       local d = air and AD.get(it.play)
       local skyAt, skyV   -- 空中出生的位置、速度
       if air then
         -- 飞机、直升机：靶区在挡弹墙北面（空中靶区，MapRange.AIRTGT），朝北摆靶
-        s.base, s.dir = RM().airTarget(), Vector3.new(0, 0, -1)
+        s.base, s.dir = rm.airTarget(), Vector3.new(0, 0, -1)
         -- 空中出生（上面估的跑道上滑不起来 sky、下面摆不到跑道 / 直升机坪上的兜底）：朝北、带 0.8 倍军推最大速度（客户端 Fly.lua 空中出发也按这个）；
         --   固定翼往南退到离靶区中心 RUNIN 秒航程的地方、朝北进场——原来在靶区中心正上方出来：地面靶在正前方 0～1460 格，1200 格高、
         --   600 格 / 秒平飞投炸弹要提前 5000 多格松手，一出来就已经飞过了靶子，轰炸机掉头半径又有好几公里；现在轰-6K 出来九秒多才到投弹点。
@@ -62627,7 +62893,7 @@ function Tech.init(G)
         end
       else
         -- 雪山训练场：按地形挑好、看得见的位置（同一条靶道挤了两个人的，往旁边挪开的那个照原来的偏移摆，不跟第一个人的靶车摆在一处）
-        local tg = RM().targets and (idx < RM().LANES) and RM().targets(idx % RM().LANES + 1, RANGE)
+        local tg = rm.targets and (idx < rm.LANES) and rm.targets(idx % rm.LANES + 1, RANGE)
         if tg then
           for _, t in ipairs(tg) do dummyAt(s, t.k, t.pos, -s.dir, t.swing) end
         else
@@ -62644,12 +62910,12 @@ function Tech.init(G)
       --   空中出生的别留在天上（收起平板就掉下来）；在跑道上出生的也别站在起飞位上（上面 PivotTo 到了机身上：飞机滑走以后人还钉在跑道上，
       --   前面几个起飞位的飞机滑跑正好从他身上穿过去）
       if e.def and e.def.drone and P.remote == e and P.char then
-        local op = RM().runwaySide(idx) + Vector3.new(0, 3, 0)
+        local op = rm.runwaySide(idx) + Vector3.new(0, 3, 0)
         P.char:PivotTo(CFrame.lookAt(op, op + Vector3.new(0, 0, -1)))
       end
       -- 提示在哪出来：空中出生分两种原因——估出来跑道上滑不起来（sky：testOnSky）、摆不到跑道 / 直升机坪上的兜底（testInAir；原来兜底也说
       --   「满油满弹滑不起来」）；直升机停在直升机坪上（testOnPad；原来和固定翼一样说「在跑道上，推油门起飞」）
-      local msg = "tree.testOn"
+      local msg = (where ~= "zone") and "tree.testOnSnow" or "tree.testOn"   -- 雪山图上：靶车按地形摆，多在几百米内（SnowRange）
       if aloft then msg = sky and "tree.testOnSky" or "tree.testInAir"
       elseif heli then msg = "tree.testOnPad"
       elseif air then msg = "tree.testOnAir" end
@@ -62660,6 +62926,15 @@ function Tech.init(G)
     P.testSpawnCF = CFrame.new(spawnAt + Vector3.new(0, 4, 0))
     G.ACT.deploy(P, "crew", air and "baseAir" or "base", go)
     P.testDeploy, P.testSpawnCF = nil, nil
+  end
+  -- 同一个人一次只走一趟：雪山图上的靶道第一次用到要按地形现算（SnowRange，会等几帧）、出车 LoadCharacter 也要等——
+  --   这中间又点了一下、或者靶场好了自动接着试（testLater）撞上，都不理（不然出两次车、占两条靶道）
+  G.ACT.testDrive = function(P, key)
+    if P.testBusy and now() - P.testBusy < 10 then return end
+    P.testBusy = now()
+    local ok, err = pcall(testDriveNow, P, key)
+    P.testBusy = nil
+    if not ok then error(err, 0) end
   end
   -- 试驾下车 / 在试驾场被打掉：回机库不算阵亡，不用等重生倒计时（战雷：试驾完马上能再试驾、能出击）——
   --   Round 在阵亡时记的 canDeployAt 晚一帧清掉（同一帧里 Round 的阵亡处理可能排在后面）
@@ -85146,7 +85421,9 @@ function Fx.init(G)
     n = { dust = RGB(206, 182, 134), dust2 = RGB(230, 214, 180), clod = RGB(176, 150, 108), life = 1.4, soot = RGB(96, 80, 60), scorch = 0.35, gk = 1.4, dustK = 1 },
     d = { dust = RGB(124, 104, 80), dust2 = RGB(160, 142, 116), clod = RGB(58, 46, 34), life = 1.0, soot = RGB(34, 28, 22), scorch = 0.25, gk = 1.0, dustK = 1 },
     v = { dust = RGB(120, 110, 86), dust2 = RGB(150, 140, 116), clod = RGB(74, 86, 50), life = 0.8, soot = RGB(34, 28, 22), scorch = 0.25, gk = 0.45, dustK = 0.9, grass = true },
-    i = { dust = RGB(238, 242, 248), dust2 = RGB(226, 232, 242), clod = RGB(214, 222, 234), life = 1.3, soot = RGB(58, 50, 44), scorch = 0.15, gk = 1.5, dustK = 1, snow = true },
+    -- 雪（11-28 晚用户「炮弹和炸弹炸到地面没有战雷那种效果 包括机枪打到地面也没有」——现在只剩雪山图：原来全是白的，白雪地上看不出来）：
+    --   第二色带一点灰蓝的阴影、焦痕从 0.15 加深到 0.55（炸过的地方一块黑），翻出来的冻土另画（下面 EARTH）
+    i = { dust = RGB(238, 242, 248), dust2 = RGB(196, 205, 218), clod = RGB(214, 222, 234), life = 1.3, soot = RGB(44, 38, 33), scorch = 0.55, gk = 1.5, dustK = 1, snow = true },
     j = { dust = RGB(222, 232, 242), dust2 = RGB(236, 242, 248), clod = RGB(210, 224, 236), life = 0.6, soot = RGB(58, 50, 44), scorch = 0.3, gk = 0.4, dustK = 0.4, ice = true },
     r = { dust = RGB(150, 148, 142), dust2 = RGB(186, 184, 178), clod = RGB(104, 102, 98), life = 0.8, soot = RGB(40, 38, 36), scorch = 0.5, gk = 0.35, dustK = 0.8, spark = true },
     c = { dust = RGB(162, 160, 154), dust2 = RGB(198, 196, 190), clod = RGB(124, 122, 116), life = 0.9, soot = RGB(40, 38, 36), scorch = 0.5, gk = 0.35, dustK = 0.8, spark = true },
@@ -85261,6 +85538,8 @@ function Fx.init(G)
   -- 哪种地面用哪套尘、哪种碎渣
   local IMPNAME = { d = "dirt", v = "grass", n = "sand", i = "snow", j = "ice", r = "rock", c = "rock", g = "rock", o = "wood", f = "dirt" }
   local IMPBITS = { d = "chips", v = "grassBits", n = "sandGrain", i = "snowGlint", j = "iceChips", r = "gravel", c = "gravel", g = "gravel", o = "splinter" }
+  -- 打在雪上再加的：雪底下的冻土屑（深色，白地上一眼看得见打在哪；11-28 晚）
+  local IMPBITS2 = { i = "chips" }
 
   -- 弹着点打中的是什么零件、朝哪（沿弹道在落点前后各探 3 格）：客户端的样子（View 的文件夹）、特效、自己的角色不算
   local probe = RaycastParams.new()
@@ -85350,6 +85629,8 @@ function Fx.init(G)
       VL.emit("Imp_" .. name, 1, cf, (h == "f") and 1 or IMPD[name].n * cnt, big)
       local bits = IMPBITS[h]
       if bits then VL.emit("Imp_" .. bits, 1, cf, IMPB[bits].n * cnt, big) end
+      local bits2 = IMPBITS2[h]
+      if bits2 then VL.emit("Imp_" .. bits2, 1, cf, 3 * cnt, big) end
       if cosI < 0.35 and (h == "d" or h == "n" or h == "i" or h == "v") then   -- 擦地：顺着弹道往前再拖一道
         local fw = (refl * 0.85 + nrm * 0.25)
         fw = (fw.Magnitude > 1e-3) and fw.Unit or up
@@ -85404,7 +85685,7 @@ function Fx.init(G)
   VL.def("eCol", function(S, v)
     local P = GPAL[v:sub(1, 1)] or GPAL.d
     local c0, c1, c2 = P.clod:Lerp(P.dust, 0.3), P.dust, P.dust2
-    if P.snow then c0, c1, c2 = RGB(120, 112, 104), RGB(186, 186, 190), RGB(226, 232, 242) end   -- 脏雪：下暗上白
+    if P.snow then c0, c1, c2 = RGB(70, 61, 53), RGB(150, 146, 144), RGB(222, 228, 238) end   -- 脏雪：下面一截翻出来的冻土（11-28 晚加深）、上白
     if v:sub(2, 2) == "g" then
       local gr = RGB(140, 138, 134)
       c0, c1, c2 = c0:Lerp(gr, 0.35), c1:Lerp(gr, 0.35), c2:Lerp(gr, 0.35)
@@ -85728,7 +86009,11 @@ function Fx.init(G)
       VL.emit("eCol", S, upCF(p, up), n(21 * ((heat and 0.6) or (mp and 0.8) or 1) * P.dustK), code .. ((heat or mp) and "g" or ""))
       if heat or mp then VL.emit("eJet", S, upCF(p, dirU), n(heat and 7 or 4)) end
       if P.spark and d < 1500 then VL.emit("eSpark", S, upCF(p, up), n(8 + r / 2)) end
-      if P.snow then VL.emit("eIce", 1, upCF(p, up), n(12)) end
+      if P.snow then
+        VL.emit("eIce", 1, upCF(p, up), n(12))
+        -- 雪底下的冻土（11-28 晚）：一股褐色的土跟着雪一起掀起来——白地上看得见炸在哪
+        VL.emit("eCol", S, upCF(p, up), n(8 * ((heat and 0.6) or (mp and 0.8) or 1)), "d" .. ((heat or mp) and "g" or ""))
+      end
     end
     -- E4 黑烟（破甲弹灰烟）
     if heat then VL.emit("eGrey", S, upCF(p, up), n(3.5))
@@ -85738,9 +86023,9 @@ function Fx.init(G)
       if G.wreckChunks and d < 1500 then G.wreckChunks(p, R, K, 6) end
     elseif tl == 1 then
       local cn = n(24 * ((heat and 0.5) or (mp and 0.75) or 1))
-      if P.snow then
-        VL.emit("eClod", S, upCF(p, up), cn * 0.7, code)
-        VL.emit("eClod", S, upCF(p, up), cn * 0.3, code .. "D")
+      if P.snow then   -- 雪块、冻土块一半一半（原来七三：白地上看不出土块）
+        VL.emit("eClod", S, upCF(p, up), cn * 0.5, code)
+        VL.emit("eClod", S, upCF(p, up), cn * 0.5, code .. "D")
       else
         VL.emit("eClod", S, upCF(p, up), cn, code)
       end
@@ -85867,6 +86152,10 @@ function Fx.init(G)
     -- ② 土块、碎石（木头是木屑、雪地是雪块、冰面是冰屑）
     if tl == 1 then VL.emit("kClod", s, upCF(p + nrm * 0.2, up), n(nC), code) end
     if P.snow and tl == 1 then VL.emit("kIce", 1, upCF(p + nrm * 0.2, up), n(8)) end
+    if P.snow then   -- 雪底下的冻土（11-28 晚）：一股深色的土跟着白雪一起掀起来、几块冻土块
+      VL.emitK("kFount", s, upCF(p + nrm * 0.2, up), n(nF * 0.45), "d", nil, 8 + 12 * cosI)
+      if tl == 1 then VL.emit("kClod", s, upCF(p + nrm * 0.2, up), n(nC * 0.5), "d") end
+    end
     -- ③ 贴地一圈扬尘（往四周推开、慢慢散）、一团留着随风飘的灰
     VL.emit("kRing", s, lookCF(p + nrm * 0.8, V(1, 0, 0)), n(7 + 3 * s), code)
     VL.emit("kHang", s, upCF(p + nrm * 0.8, nrm), n(2 + s), code)
@@ -131631,7 +131920,9 @@ function WreckFx.init(G)
       --   + 头上的火、稀稀的几团烟（落地以后接着冒一会儿）
       local f, sm, tr
       local burnT = 2.5 + math.random() * 3
-      if big or math.random() < 0.55 then
+      -- 11-28 晚：原来大块 + 小块各 55% 的机会——运气不好十块里只有三块冒烟（殉爆改成一打中就炸以后测试里正好抽到这一回）；
+      --   现在保底：大块、隔一块的小块一定烧，其余三成机会（十块里六七块拖着烟带甩出去）
+      if big or i % 2 == 0 or math.random() < 0.3 then
         f = emitter(c, { tex = TX.FIRE, rate = big and 8 or 5, secs = burnT, life = { 0.25, 0.5 }, spd = { 0.5, 2 }, spread = 40, acc = V(0, 6, 0),
           size = seq(0, big and 2.2 or 1.4, 1, 0.3), tr = seq(0, 0.1, 1, 1), col = cs(0, FIRE_WHITE, 0.35, FIRE_PALE, 1, FIRE_DARK), le = 0.9, li = 0, bright = 3, prio = 2 })
         sm = emitter(c, { tex = TX.SOOT, rate = big and 2 or 1, secs = 11, life = { 1.4, 2.6 }, spd = { 0.5, 2 }, spread = 30, acc = V(0, 3, 0), drag = 0.8, wind = true,
