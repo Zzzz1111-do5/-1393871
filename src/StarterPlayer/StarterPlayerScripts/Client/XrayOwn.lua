@@ -903,9 +903,10 @@ end
 local BUILD = { engine = engineItem, trans = transItem, trackL = trackItem, trackR = trackItem, breech = breechItem, barrel = barrelItem,
   tdrive = tdriveItem, optics = opticsItem, fuelL = fuelItem, fuelR = fuelItem, troops = troopsItem }
 
--- opts：{ M = VehModels 的模型信息（爆反块）、live = 弹的现况 }；返回 { items = { { k, cat, frame = hull / tur / gun, specs, ci / mi（WtC / WtM 第几位）… } }, total, A, R, lay }
+-- opts：{ M = VehModels 的模型信息（爆反块）、live = 弹的现况、limit = 零件上限（默认 LIMIT；命中回放的小窗用得少一点）}；返回 { items = { { k, cat, frame = hull / tur / gun, specs, ci / mi（WtC / WtM 第几位）… } }, total, A, R, lay }
 function XrayOwn.plan(d, opts)
   opts = opts or {}
+  local LIMIT = opts.limit or LIMIT
   local W = req("WtDamage")
   local lay = W.layout(d)
   local ctx = mkCtx(d, lay)
@@ -1071,17 +1072,19 @@ function XrayOwn.init(G)
     if s and s ~= k then return s end
     return fb or k
   end
-  -- 类别的颜色（不用蓝；完好 / 受损 / 打坏的意思同 Theme：绿、琥珀、红）
+  -- 类别的颜色——11-28（用户「目前x光效果还是不如战雷」）改成按真东西的质感、沉着一点（同 WtHud 命中回放的 XC）：
+  --   弹药黄铜、油箱橄榄、发动机钢灰、传动蓝灰、炮闩炮管炮钢、观瞄青色玻璃、乘员浅橄榄绿；原来紫的发动机、粉的弹药、青的油箱像卡通
+  --   （完好 / 受损 / 打坏的意思同 Theme：琥珀、红；阵亡近黑）
   local PAL = {
-    crew = TH.C.GOOD, engine = RGB(176, 124, 236), trans = RGB(146, 130, 184), fuel = RGB(64, 194, 176), ammo = RGB(236, 98, 168),
-    breech = RGB(208, 210, 202), barrel = RGB(150, 156, 152), tdrive = RGB(170, 182, 100), optics = RGB(236, 240, 236),
-    era = RGB(204, 188, 140), track = RGB(112, 116, 112), troops = RGB(158, 202, 150), other = TH.C.MUTE,
+    crew = RGB(160, 188, 136), engine = RGB(140, 148, 158), trans = RGB(122, 134, 150), fuel = RGB(114, 130, 98), ammo = RGB(206, 170, 102),
+    breech = RGB(124, 130, 138), barrel = RGB(114, 120, 128), tdrive = RGB(128, 136, 148), optics = RGB(96, 170, 180),
+    era = RGB(186, 168, 126), track = RGB(94, 98, 104), troops = RGB(160, 188, 136), other = RGB(130, 138, 148),
   }
   local STATE = { hurt = TH.C.WARN, broken = TH.C.BAD, kia = RGB(44, 34, 32), fire = RGB(255, 132, 40), hover = TH.C.TEXT }
   local function shade(c, sub)
     if sub == "dk" then return c:Lerp(BLACK, 0.4) end
-    if sub == "tip" then return c:Lerp(WHITE, 0.5) end
-    if sub == "gl" then return c:Lerp(RGB(26, 34, 32), 0.62) end
+    if sub == "tip" then return RGB(78, 82, 90) end   -- 弹头：钢色（弹体黄铜）
+    if sub == "gl" then return RGB(130, 206, 214) end   -- 镜头玻璃
     return c
   end
   local function colOf(key)
@@ -1122,15 +1125,17 @@ function XrayOwn.init(G)
     if #pool < POOL_MAX then pool[#pool + 1] = p else p:Destroy() end
   end
 
-  -- 一组一个 Highlight（AlwaysOnTop：隔着车身也看得见）
+  -- 一组一个 Highlight——11-28 改成按深浅遮挡（Occluded）：车身透明了不挡（透明件不写深度），部件之间前面的挡住后面的；
+  --   原来 AlwaysOnTop + 一半的平涂：部件的明暗没了、前后的颜色叠在一起分不出远近（「不如战雷」主要就差在这）。
+  --   类别组只淡淡上一层色（夜里、机库暗处也看得见）+ 描边；状态（伤、毁、阵亡、起火、指着的）上色重一点
   local function hlStyle(key)
     local c = colOf(key)
-    if key == "kia" then return c, TH.C.BAD:Lerp(BLACK, 0.35), 0.15, 0.2 end
-    if key == "broken" then return c, c:Lerp(WHITE, 0.3), 0.3, 0.1 end
-    if key == "hurt" then return c, c:Lerp(WHITE, 0.3), 0.35, 0.1 end
-    if key == "fire" then return c, RGB(255, 220, 140), 0.2, 0 end
-    if key == "hover" then return c, WHITE, 0.3, 0 end
-    return c, c:Lerp(WHITE, 0.4), 0.5, 0.15
+    if key == "kia" then return c, TH.C.BAD:Lerp(BLACK, 0.35), 0.25, 0.15 end
+    if key == "broken" then return c, c:Lerp(WHITE, 0.3), 0.4, 0.1 end
+    if key == "hurt" then return c, c:Lerp(WHITE, 0.3), 0.45, 0.1 end
+    if key == "fire" then return c, RGB(255, 220, 140), 0.25, 0 end
+    if key == "hover" then return c, WHITE, 0.4, 0 end
+    return c, c:Lerp(WHITE, 0.45), 0.72, 0.3
   end
   local function group(c, key)
     local g = c.groups[key]
@@ -1143,7 +1148,7 @@ function XrayOwn.init(G)
     g.Name = "X_" .. key
     g.Parent = c.folder
     local h = Instance.new("Highlight")
-    h.DepthMode = Enum.HighlightDepthMode.AlwaysOnTop
+    h.DepthMode = Enum.HighlightDepthMode.Occluded
     h.FillColor, h.OutlineColor, h.FillTransparency, h.OutlineTransparency = hlStyle(key)
     h.Adornee, h.Parent = g, g
     c.groups[key], c.hls[key] = g, h
@@ -1341,13 +1346,13 @@ function XrayOwn.init(G)
       for _, q in ipairs(m:GetDescendants()) do
         if q:IsA("BasePart") and q.Transparency < 0.95 then
           c.faded[#c.faded + 1] = { q, q.LocalTransparencyModifier }
-          q.LocalTransparencyModifier = math.max(q.LocalTransparencyModifier, 0.82)
+          q.LocalTransparencyModifier = math.max(q.LocalTransparencyModifier, 0.86)   -- 11-28：0.82 → 0.86，里面的部件更清楚
         end
       end
       local hl = Instance.new("Highlight")
       hl.Name = "Hull"
       hl.DepthMode = Enum.HighlightDepthMode.Occluded
-      hl.FillTransparency, hl.OutlineTransparency, hl.OutlineColor = 1, 0.3, TH.C.LINE
+      hl.FillTransparency, hl.OutlineTransparency, hl.OutlineColor = 1, 0.25, RGB(214, 226, 238)   -- 车身外轮廓：淡淡的一圈亮线
       hl.Adornee, hl.Parent = m, c.folder
     end
     c.folder.Parent = workspace
@@ -1703,7 +1708,39 @@ function XrayOwn.init(G)
   end
   -- 每帧：init.client.lua 的 steps 里排在 view（还有 interior / ride / hatch）后面调——View 这一帧摆好车模、算好车体 / 炮塔 / 炮的框架以后
   --   再摆透视零件（原来单独连 RenderStepped，跟 View 谁先跑没保证：先跑就比车壳晚一帧，开起来里面的零件发飘）
+  -- 按住 X 时外面压暗一点、远处虚掉（照战雷的 X 光，11-28）：景深对焦在车上（DayNight 的 FarBlur 照 G.xrayFocus 改对焦，不另建一个景深打架），
+  --   另加一层调色压亮度、提对比；按下 0.2 秒渐入、松手渐出
+  local Lighting = game:GetService("Lighting")
+  local dimCC, dimK, dimT = nil, 0, os.clock()
+  local focus = { k = 0, dist = 30, rad = 15 }
+  local function dimStep()
+    local now = os.clock()
+    local dt = math.min(0.1, now - dimT)
+    dimT = now
+    local on = holding and cur ~= nil
+    if not on and dimK <= 0 then
+      if G.xrayFocus then G.xrayFocus = nil end
+      return
+    end
+    dimK = math.clamp(dimK + (on and dt or -dt) * 5, 0, 1)
+    if not dimCC then
+      dimCC = Instance.new("ColorCorrectionEffect")
+      dimCC.Name = "XrayDim"
+      dimCC.Parent = Lighting
+    end
+    dimCC.Enabled = dimK > 0
+    dimCC.Brightness, dimCC.Contrast = -0.05 * dimK, 0.06 * dimK
+    local st = G.drive
+    local cam = workspace.CurrentCamera
+    focus.k = dimK
+    if st and st.root and st.d and cam then
+      focus.dist = (cam.CFrame.Position - st.root.Position).Magnitude
+      focus.rad = math.max(st.d.L or 10, st.d.W or 6) * 0.75
+    end
+    G.xrayFocus = (dimK > 0) and focus or nil
+  end
   G.stepOwnXray = function()
+    pcall(dimStep)
     local ok, err = pcall(step)
     if not ok then
       holding = false

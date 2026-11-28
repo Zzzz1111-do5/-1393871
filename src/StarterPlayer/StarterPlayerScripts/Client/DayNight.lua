@@ -292,6 +292,15 @@ function DayNight.init(G)
     local sharp = G.scopeOn == true or G.fpsAiming == true or (dr ~= nil and (dr.sight or dr.eo)) or G.interiorOptic ~= nil
       or (fl ~= nil and fl.eo == true) or (G.killcamOn ~= nil and G.killcamOn()) or (G.perfK or 1) < 0.7
     local want = not sharp
+    -- 按住 X 看自己的车（XrayOwn 的 G.xrayFocus，11-28）：对焦到车上、远处虚掉一些，部件跳出来；松手渐渐回到平时的远处微糊
+    local xr = G.xrayFocus
+    if xr and xr.k > 0 and want then
+      if not far.Enabled then far.Enabled = true end
+      far.FocusDistance, far.InFocusRadius = xr.dist, xr.rad
+      far.FarIntensity = 0.06 + 0.36 * xr.k
+      return
+    end
+    if far.FocusDistance ~= 200 then far.FocusDistance, far.InFocusRadius = 200, 50 end
     if far.Enabled ~= want then far.Enabled = want end
     if want then
       local k = fl and 0.035 or 0.06

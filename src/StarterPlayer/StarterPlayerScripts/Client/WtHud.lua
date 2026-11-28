@@ -153,7 +153,7 @@ function WtHud.init(G)
 
   ---------------------------------------------------------------- X 光命中回放
 
-  local XW, XH = mobile and 240 or 320, mobile and 150 or 196
+  local XW, XH = mobile and 260 or 380, mobile and 156 or 214   -- 11-28：照战雷的命中回放放大一点（原来 320 × 196，弹药一发发的看不清）
   local xr = frame(gui, UDim2.fromOffset(XW, XH + 22), mobile and UD2(1, -12, 0, 120) or UD2(1, -20, 1, -300), RGB(8, 12, 14), 0.25, V2(1, mobile and 0 or 1))
   xr.Name = "WtXray"
   xr.Visible = false
@@ -166,8 +166,9 @@ function WtHud.init(G)
   local vp = Instance.new("ViewportFrame")
   vp.Name = "View"
   vp.Size, vp.Position = UD2(1, -4, 1, -24), UD2(0, 2, 0, 22)
-  vp.BackgroundColor3, vp.BackgroundTransparency = RGB(14, 22, 30), 0.1
-  vp.Ambient, vp.LightColor, vp.LightDirection = RGB(170, 175, 185), RGB(255, 255, 255), V3(-0.4, -1, -0.3)
+  -- 11-28（「x光效果还是不如战雷」）：底色石板蓝灰（原来近乎黑：半透明的车壳、部件糊在一起）；环境光压低、主光暖一点，实心部件有明暗
+  vp.BackgroundColor3, vp.BackgroundTransparency = RGB(30, 36, 44), 0
+  vp.Ambient, vp.LightColor, vp.LightDirection = RGB(118, 124, 134), RGB(255, 248, 236), V3(-0.45, -1, -0.35)
   vp.Parent = xr
   local vcam = Instance.new("Camera")
   vcam.FieldOfView = 40
@@ -199,8 +200,9 @@ function WtHud.init(G)
     for _, em in ipairs(f:GetChildren()) do if em:GetAttribute("EntId") == id then return em end end
     return nil
   end
-  -- 状态：先看实体属性（服务器刚写的），没有就按这一发报来的
-  local function states(em, d)
+  -- 状态：先看实体属性（服务器刚写的），这一发报来的（m.parts：打到的乘员 / 模块打完以后的状态）盖在上面——
+  --   11-28：原来只看属性，开炮的人这边那辆车没流下来（远、刚出生）时全按没事画，打死的驾驶员还是绿的
+  local function states(em, d, m)
     local lay = W.layout(d)
     local cs, ms = {}, {}
     local wc = em and em:GetAttribute("WtC")
@@ -213,6 +215,14 @@ function WtHud.init(G)
     for _, it in ipairs(lay.list) do
       if it.kind == "crew" then ci += 1 out[it] = cs[ci] or 2 else mi += 1 out[it] = ms[mi] or 2 end
     end
+    if m and m.parts then
+      local byK = {}
+      for _, it in ipairs(lay.list) do byK[it.k] = it end
+      for _, pt in ipairs(m.parts) do
+        local it = pt.k and byK[pt.k]
+        if it and type(pt.s) == "number" then out[it] = math.min(out[it] or 2, pt.s) end
+      end
+    end
     return out
   end
   ---------------------------------------------------------------- X 光：射流的慢放动画
@@ -221,14 +231,40 @@ function WtHud.init(G)
   --   ③ 白热的射流一点点钻进车里（越往里越慢），射流头一颗亮球、光套跳动，经过的地方甩出熔化的金属珠（白 → 橙 → 暗红），
   --      后面一截慢的杵体（真的聚能装药：射流头每秒七八公里，杵体只有几百米）④ 破片一根根往外长，打到的乘员 / 模块闪红再定色
   --   ⑤ 弹药殉爆一团火球 / 起火一簇火 ⑥ 镜头拉回来看整辆车、慢慢绕；底下一行字：穿深 / 等效毫米（击毁时换成「弹药殉爆」）
-  local xInfo = label(xr, "", UD2(1, -12, 0, 16), UD2(0, 6, 1, -19), 12, RGB(200, 236, 255), BOLD, nil, Enum.TextXAlignment.Left)
+  local xInfo = label(xr, "", UD2(1, -12, 0, 30), UD2(0, 6, 1, -33), 12, RGB(200, 236, 255), BOLD, nil, Enum.TextXAlignment.Left)
   xInfo.Name = "XrInfo"
   xInfo.ZIndex = 3
+  xInfo.TextWrapped, xInfo.TextYAlignment = true, Enum.TextYAlignment.Bottom   -- 长的字幕（弹种说明 + 穿深）折成两行，不再出框
+  xInfo.TextStrokeTransparency, xInfo.TextStrokeColor3 = 0.45, RGB(10, 14, 18)
   local xSlow = label(xr, "", UD2(0, 90, 0, 14), UD2(1, -8, 0, 26), 11, RGB(255, 210, 120), BOLD, V2(1, 0), Enum.TextXAlignment.Right)
   xSlow.Name = "XrSlow"
   xSlow.ZIndex = 3
   local xStroke = xr:FindFirstChildOfClass("UIStroke")
-  local VP_BG, XR_LINE, INFO = TH.C.BG, TH.C.HUD, TH.C.TEXT
+  local VP_BG, XR_LINE, INFO = RGB(30, 36, 44), TH.C.HUD, TH.C.TEXT
+  -- 没事的部件按类别的颜色（实心打光；照战雷的命中回放：一眼分得出弹药、油箱、发动机、乘员）
+  local XC = {
+    crew = RGB(160, 188, 136), troops = RGB(160, 188, 136), ammo = RGB(206, 170, 102), fuel = RGB(114, 130, 98),
+    engine = RGB(140, 148, 158), trans = RGB(122, 134, 150), breech = RGB(114, 120, 128), barrel = RGB(114, 120, 128),
+    tdrive = RGB(128, 136, 148), optics = RGB(96, 170, 180), track = RGB(94, 98, 104), other = RGB(130, 138, 148),
+  }
+  local KIA = RGB(128, 30, 26)   -- 乘员阵亡：暗红（毁了的模块是亮红 DEAD）
+  local BLACKC = Color3.new(0, 0, 0)
+  local function xrCol(kind, cat, s, hit)   -- 一件的颜色：状态（伤琥珀、毁红、阵亡暗红）、没事的按类别；这一发没打到的往底色退一点
+    if kind == "crew" then return (s == 0) and KIA or ((s == 1) and HURT or XC.crew) end
+    if s == 0 then return DEAD elseif s == 1 then return HURT end
+    local c = XC[cat] or XC.other
+    return hit and c or c:Lerp(VP_BG, 0.22)
+  end
+  local function xrTr(kind, s, hit)   -- 乘员、打到的、伤了毁了的实心；没打到的没事模块淡一点（打到的才醒目）
+    if kind == "crew" or s < 2 or hit then return 0 end
+    return 0.35
+  end
+  local function xrSub(col, g, s, cat)   -- 一件里的子件：深色件（排气、缸盖、炮管的箍）、弹头、玻璃
+    if g == "dk" then return col:Lerp(BLACKC, 0.3) end
+    if g == "tip" then return (s == 2) and RGB(78, 82, 90) or col:Lerp(BLACKC, 0.35) end
+    if g == "gl" then return (s == 2) and RGB(130, 206, 214) or col end
+    return col
+  end
   local TI, JD = 0.7, 0.95   -- 弹飞进来 0.7 秒；射流钻进去 0.95 秒（都是慢放的）
   local xa = nil
   local function ease(q) q = math.clamp(q, 0, 1) return 1 - (1 - q) ^ 2.4 end
@@ -460,7 +496,7 @@ function WtHud.init(G)
           end
         elseif not H.done then
           H.done = true
-          for _, q in ipairs(H.ps or { H }) do q.p.Color, q.p.Transparency, q.p.Size = H.col, H.tr, q.size end
+          for _, q in ipairs(H.ps or { H }) do q.p.Color, q.p.Transparency, q.p.Size = xrSub(H.col, q.g, H.s or 2, H.cat), H.tr, q.size end
         end
       end
     end
@@ -814,7 +850,7 @@ function WtHud.init(G)
           end
         elseif not H.done then
           H.done = true
-          for _, q in ipairs(H.ps or { H }) do q.p.Color, q.p.Transparency, q.p.Size = H.col, H.tr, q.size end
+          for _, q in ipairs(H.ps or { H }) do q.p.Color, q.p.Transparency, q.p.Size = xrSub(H.col, q.g, H.s or 2, H.cat), H.tr, q.size end
         end
       end
     end
@@ -855,6 +891,18 @@ function WtHud.init(G)
   end
 
   local GHOST_N = 120   -- 回放里车的半透明影子最多几块
+  -- 车壳影子的样子（11-28：浅一点、更透——原来 150,190,220 / 0.88，几层模型叠起来一片浑蓝，盖住里面的部件）
+  local GHOST = { col = RGB(206, 220, 234), tr = 0.9, mat = Enum.Material.SmoothPlastic }
+  local XR_LIMIT = 360   -- 回放里部件最多几个零件（XrayOwn.plan 的 limit：弹多的车一发一个零件、再多少画几发）
+  local lastGhost = nil   -- 测试 / 截图用（tools/mock/xrshot.lua）：这一回放的车壳用哪个原模型、炮塔转角、样子
+  local IMeta = nil       -- ImportedMeta（第一次用到时 require；没有记 false）
+  G.wtXrStyle = function()
+    if not lastGhost then return {} end
+    local s = lastGhost.style
+    return { ghost = { key = lastGhost.key, ty = lastGhost.ty, tur = lastGhost.tur,
+      style = { col = { math.floor(s.col.R * 255 + 0.5), math.floor(s.col.G * 255 + 0.5), math.floor(s.col.B * 255 + 0.5) }, tr = s.tr,
+        mat = tostring(s.mat):match("([%w_]+)$") } } }
+  end
   -- 影子用哪几块（11-27 审查）：原来按包围盒体积挑最大的 120 块——履带板（Tracks.lua 挂在车模型下的 TrackLink，一辆八九十块）占了名额，
   --   细长的件（炮管、天线、机枪，体积小）被挤掉，而炮管是回放里最好认的东西。现在履带板不要，按最长的那条边排：丢的是螺栓、灯座这种小块
   local function ghostParts(model)
@@ -892,13 +940,13 @@ function WtHud.init(G)
       end
     end
     box(V3(0.5, 0.5, 0.5), CF(p0), RGB(255, 240, 200), 0, Enum.Material.Neon)
-    local st = states(entModel(m.id), d)
+    local st = states(entModel(m.id), d, m)
     for it, P in pairs(xrParts) do
       local sv = st[it] or 2
-      local col
-      if P.kind == "crew" then col = (sv == 0) and DEAD or ((sv == 1) and HURT or OK)
-      else col = (sv == 0) and DEAD or ((sv == 1) and HURT or RGB(120, 150, 170)) end
-      for _, q in ipairs(P.ps or { { p = P.p } }) do q.p.Color = col end
+      local hit = sv < 2
+      local col = xrCol(P.kind, P.cat or "other", sv, hit)
+      local tr = xrTr(P.kind, sv, hit)
+      for _, q in ipairs(P.ps or { { p = P.p } }) do q.p.Color, q.p.Transparency = xrSub(col, q.g, sv, P.cat), tr end
     end
     xrBurst.n += 1
     xrBurst.t = os.clock()
@@ -937,69 +985,99 @@ function WtHud.init(G)
         for _, ch in ipairs(c:GetChildren()) do if not ch:IsA("SpecialMesh") then ch:Destroy() end end
         pcall(function() c.TextureID = "" end)
         c.Anchored, c.CanCollide, c.CastShadow = true, false, false
-        c.Material, c.Color, c.Transparency = Enum.Material.SmoothPlastic, RGB(150, 190, 220), 0.88
+        c.Material, c.Color, c.Transparency = GHOST.mat, GHOST.col, GHOST.tr
         c.CFrame = inv * p.CFrame
         c.Parent = world
       end
     end
     if n == 0 then
       local hH = lay.hH
-      box(V3(d.W, hH - (d.clear or 1.2), d.L), CF(0, ((d.clear or 1.2) + hH) / 2, 0), RGB(150, 190, 220), 0.85)
+      local b1 = box(V3(d.W, hH - (d.clear or 1.2), d.L), CF(0, ((d.clear or 1.2) + hH) / 2, 0), RGB(150, 190, 220), 0.85)
+      b1:SetAttribute("XrGhost", true)
       if d.turret then
         local tcf = CF(W.fromTur(d, V3(), yaw)) * CFrame.Angles(0, -math.rad(yaw), 0)
-        box(lay.ts, tcf * CF(0, lay.ts.Y / 2, 0), RGB(150, 190, 220), 0.8)
+        local b2 = box(lay.ts, tcf * CF(0, lay.ts.Y / 2, 0), RGB(150, 190, 220), 0.8)
+        b2:SetAttribute("XrGhost", true)
       end
     end
-    -- 乘员、模块
-    local st = states(entModel(m.id), d)
+    do   -- 截图用：这辆车的原模型键（ImportedMeta 的 alias）、炮塔转角
+      if IMeta == nil then
+        local ms = RS:FindFirstChild("ImportedMeta")
+        local okIM, r = ms ~= nil, nil
+        if okIM then okIM, r = pcall(require, ms) end
+        IMeta = (okIM and type(r) == "table") and r or false
+      end
+      local key = IMeta and IMeta.alias and IMeta.alias[d.id]
+      local info = key and IMeta.m and IMeta.m[key]
+      lastGhost = { key = key, ty = yaw, tur = info and info.tur, style = GHOST }
+    end
+    -- 乘员、模块（用户 11-28「目前x光效果还是不如战雷」：照战雷的命中回放重画）——每件照真东西的样子画（XrayOwn.plan，同按住 X 的透视：
+    --   一发发的弹、发动机缸体、变速箱、油箱、炮闩炮管、人形乘员），实心、打光（原来除了乘员都是一个半透明的方块、统一一种蓝灰）；
+    --   没事的按类别一种沉着的颜色（XC：弹药黄铜、油箱橄榄、发动机钢灰……），这一发没打到的淡一点、退后一点，打到的才醒目；
+    --   伤了琥珀、毁了红、乘员阵亡暗红；拿不到形状的退回一个方块
+    local st = states(entModel(m.id), d, m)
     local hitK = {}
     for _, p in ipairs(m.parts or {}) do hitK[p.k] = true end
     local sub = (not x.jet) and KS[x.sub or ""] and x.sub or nil   -- 动能弹 / 穿甲爆破 / 杀爆 / 碎甲：各自的慢放（xkBuild）
     local anim = (x.jet or sub) and (m.r == "pen" or m.kill) and x.sub ~= "ac" and true or false   -- 打穿了才放慢放动画（机枪 / 机炮的小弹不放：连发时同一个角度往里叠）
     local hitP = {}   -- 动画里打到的乘员 / 模块：先画成没事的样子，射流 / 破片到了才变色
+    local tF = d.turret and (CF(W.fromTur(d, V3(), yaw)) * CFrame.Angles(0, -math.rad(yaw), 0)) or CF()
+    local FR = { hull = CF(), tur = tF, gun = (d.gun and d.turret) and (tF * CF(d.gun.pivot) * CFrame.Angles(math.rad(x.gp or 0), 0, 0)) or tF }
+    local plan = nil
+    if XO and XO.plan then
+      local okP, r = pcall(XO.plan, d, { limit = XR_LIMIT })
+      if okP and type(r) == "table" and r.items then plan = r end
+    end
+    local byIt = {}
+    if plan then for _, x2 in ipairs(plan.items) do if x2.it then byIt[x2.it] = x2 end end end
+    local function partsOf(specs, F, colFn, tr)   -- 一件的零件：{ { p, size, g } … }
+      local ps = {}
+      for _, sp in ipairs(specs) do
+        local q = box(sp.s, F * sp.cf, colFn(sp.g), tr)
+        if sp.sh == "S" then q.Shape = Enum.PartType.Ball elseif sp.sh == "C" then q.Shape = Enum.PartType.Cylinder end
+        q.Size = sp.s
+        ps[#ps + 1] = { p = q, size = q.Size, g = sp.g }
+      end
+      return ps
+    end
     for _, it in ipairs(lay.list) do
       local s = st[it] or 2
-      local col
-      if it.kind == "crew" then col = (s == 0) and DEAD or ((s == 1) and HURT or OK)
-      else col = (s == 0) and DEAD or ((s == 1) and HURT or RGB(120, 150, 170)) end
-      local size = it.hi - it.lo
-      local c = (it.lo + it.hi) / 2
-      local cf
-      if it.tur then cf = CF(W.fromTur(d, c, yaw)) * CFrame.Angles(0, -math.rad(yaw), 0)
-      else cf = CF(c) end
-      local tr = (it.kind == "crew") and 0.1 or ((s == 2 and not hitK[it.k]) and 0.55 or 0.15)
-      -- 乘员：零件拼的人（同 X 透视的姿势：驾驶员半躺、炮长贴着瞄准镜、车长头在指挥塔里、装填手站着；XrayOwn.crewSpecs）
+      local x2 = byIt[it]
+      local cat = (it.kind == "crew") and "crew" or (x2 and x2.cat) or "other"
+      local col = xrCol(it.kind, cat, s, hitK[it.k])
+      local tr = xrTr(it.kind, s, hitK[it.k])
       local ps = nil
-      if it.kind == "crew" and XO and XO.crewSpecs then
-        local okS, specs = pcall(XO.crewSpecs, d, lay, it)
-        if okS and type(specs) == "table" and #specs > 0 then
-          local fr = it.tur and (CF(W.fromTur(d, V3(), yaw)) * CFrame.Angles(0, -math.rad(yaw), 0)) or CF()
-          ps = {}
-          for _, sp in ipairs(specs) do
-            local q = box(sp.s, fr * sp.cf, col, tr)
-            if sp.sh == "S" then q.Shape = Enum.PartType.Ball elseif sp.sh == "C" then q.Shape = Enum.PartType.Cylinder end
-            q.Size = sp.s
-            ps[#ps + 1] = { p = q, size = q.Size }
-          end
-        end
+      if x2 and x2.specs and #x2.specs > 0 then
+        ps = partsOf(x2.specs, FR[x2.frame] or FR.hull, function(g) return xrSub(col, g, s, cat) end, tr)
       end
       local p
-      if ps then
+      if ps and #ps > 0 then
         p = ps[1].p
       else
-        local bs = (it.kind == "crew") and size * 0.8 or size
-        p = box(bs, cf, col, tr)
+        local size = it.hi - it.lo
+        local c = (it.lo + it.hi) / 2
+        local cf = it.tur and (CF(W.fromTur(d, c, yaw)) * CFrame.Angles(0, -math.rad(yaw), 0)) or CF(c)
+        p = box((it.kind == "crew") and size * 0.8 or size, cf, col, tr)
         if it.kind == "crew" then
           local sm = Instance.new("SpecialMesh")
           sm.MeshType = Enum.MeshType.Sphere
           sm.Parent = p
         end
+        ps = nil
       end
-      xrParts[it] = { p = p, ps = ps, kind = it.kind }
+      xrParts[it] = { p = p, ps = ps, kind = it.kind, cat = cat }
       if anim and hitK[it.k] then
-        table.insert(hitP, { p = p, ps = ps, it = it, col = col, tr = tr, size = p.Size })
-        local c0, t0 = (it.kind == "crew") and OK or RGB(120, 150, 170), (it.kind == "crew") and 0.1 or 0.55
-        for _, q in ipairs(ps or { { p = p } }) do q.p.Color, q.p.Transparency = c0, t0 end
+        table.insert(hitP, { p = p, ps = ps, it = it, col = col, tr = tr, size = p.Size, cat = cat, s = s })
+        local c0 = xrCol(it.kind, cat, 2, true)   -- 射流 / 破片到之前：没事的样子
+        for _, q in ipairs(ps or { { p = p } }) do q.p.Color, q.p.Transparency = xrSub(c0, q.g, 2, cat), 0 end
+      end
+    end
+    if plan then   -- 不算伤害的件（并列机枪、车长周视镜、热像仪、反坦克导弹发射架）：没事的颜色、淡一点
+      for _, x2 in ipairs(plan.items) do
+        if not x2.it and x2.specs and x2.cat ~= "era" then
+          local col = xrCol("mod", x2.cat, 2, false)
+          partsOf(x2.specs, FR[x2.frame] or FR.hull, function(g) return xrSub(col, g, 2, x2.cat) end, xrTr("mod", 2, false))
+        end
       end
     end
     -- 弹道：外面一段、弹芯往里一段（橙），破片一锥（黄）；射流打穿的换成慢放动画
@@ -1027,7 +1105,7 @@ function WtHud.init(G)
     end
     -- 镜头：从来弹方向、稍高一点看车中心，慢慢绕（射流动画先从斜侧面推近，见 xaStep）
     xrC = V3(0, (d.H or 7) * 0.45, 0)
-    xrDist = math.max(d.L, d.W) * 1.55 + 4
+    xrDist = math.max(d.L, d.W) * 1.32 + 3   -- 11-28：窗口放大了、车也拉近一点（原来 × 1.55 + 4，车只占一半）
     xrDir = (-dv * V3(1, 0, 1))
     if xrDir.Magnitude < 0.1 then xrDir = V3(0, 0, 1) end
     xrDir = xrDir.Unit
