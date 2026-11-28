@@ -226,12 +226,18 @@ local nCard = 0
 for _, c in ipairs(panel and panel:GetDescendants() or {}) do if c.Name:match("^Card_") then nCard = nCard + 1 end end
 local tnat = C.treeState().nat
 if C.S and C.S.pick then
-  -- 用户 11-26「那个局内选车的界面别弄科技树了」：一局里的选车界面不开科技树（TechUI.lua 见到 S.pick 就关上）
+  -- 用户 11-26「那个局内选车的界面别弄科技树了」：一局里的选车界面不开科技树（TechUI.openTree 见到 S.pick 不开）
   check(panel and not panel.Visible, "局内选车时科技树不开（用户 11-26 要求）")
-else
-  check(panel and panel.Visible and nCard == #TT.list[tnat].ground,
-    string.format("科技树开着：%s 地面 %d 格（这一系地面 %d 项）", tostring(tnat), nCard, #TT.list[tnat].ground))
+  -- 研究在局外的机库里点：先退出这一局（出击页的「退出战斗」），再开科技树
+  T.act("matchLeave")
+  T.runUntil(function() return not (C.S and C.S.pick) end, 10)
+  R.as("client", function() C.openTechTree() end)
+  R.run(0.6)
+  nCard = 0
+  for _, c in ipairs(panel and panel:GetDescendants() or {}) do if c.Name:match("^Card_") then nCard = nCard + 1 end end
 end
+check(panel and panel.Visible and nCard == #TT.list[tnat].ground,
+  string.format("局外：科技树开着，%s 地面 %d 格（这一系地面 %d 项）", tostring(tnat), nCard, #TT.list[tnat].ground))
 local nxt
 for _, it in ipairs(TT.list.cn.ground) do if TT.canResearch(t, it.key) then nxt = it break end end
 if nxt then
