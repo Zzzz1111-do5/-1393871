@@ -825,6 +825,17 @@ function TechUI.init(G)
     vb.TextSize = TH.S.small
     vb.MouseButton1Click:Connect(function() ui.Visible = false back.Visible = true end)
     H.viewBtn = vb
+    -- 挂载表（战雷的「挂载」窗口，LoadoutWin.lua；用户 11-28「飞机选挂载我还是没找到位置 你给我做成这样」）：选中的是有挂点的飞机 / 直升机才出来
+    local lb = button(sbox, L("挂载", "Loadout"), UDim2.new(0, 84, 0, 26), UDim2.new(1, -264, 0, 108))
+    lb.Name = "LoadoutBtn"
+    lb.TextSize = TH.S.small
+    lb.TextColor3 = AMBER
+    lb.Visible = false
+    lb.MouseButton1Click:Connect(function()
+      local _, key = selIt()
+      if key and G.openLoadout then G.openLoadout(key) end
+    end)
+    H.loadBtn = lb
   end
 
   do   -- 底下（11-25 照战雷重排）：一条「科技树」把手 + 各国页签（点哪国换哪国），下面五个阵容槽位（refreshHangar 里填）
@@ -1337,6 +1348,10 @@ function TechUI.init(G)
       H.crewBoxT.Text = L("乘员", "CREW")
     end
     -- 弹药键：地面车配弹、飞机 / 直升机打开整备的挂载页（Workshop.lua）；没有挂点的直升机（运输型）、没车时才淡掉
+    if H.loadBtn then   -- 机库里「挂载」键：有挂点的飞机 / 直升机
+      local ad0 = it and it.branch ~= "ground" and AD.get(it.play)
+      H.loadBtn.Visible = (ad0 and ad0.st and #ad0.st > 0) and true or false
+    end
     if H.ammoBtn then
       local ad = it and it.branch ~= "ground" and AD.get(it.play)
       local can = it ~= nil and ((it.branch == "ground" and G.openAmmo ~= nil) or (ad and ad.st and #ad.st > 0 and (G.openWorkshop ~= nil or G.openHangar ~= nil)))

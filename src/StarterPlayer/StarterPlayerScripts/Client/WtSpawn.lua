@@ -240,7 +240,10 @@ function WtSpawn.init(G)
         G.treeSaveLoad(it.key, l2, p2, v, true)
         fillOptions()
       end, "Fuel")
-      text(opts, L("挂点、副油箱细调在机库「整备」里", "Fine-tune pylons in the hangar workshop"), U2.new(1, 0, 0, 16), U2.fromOffset(0, y), TH.S.tiny, FAINT)
+      -- 挂载表（战雷的「挂载」窗口，LoadoutWin.lua；用户 11-28「飞机选挂载我还是没找到位置 你给我做成这样」）
+      local lb = btn(opts, L("挂载表…（全部方案、每个挂点挂什么）", "Loadout table… (all presets)"), U2.new(1, 0, 0, 28), U2.fromOffset(0, y + 2), "OpenLoadout")
+      lb.TextSize = TH.S.small
+      lb.MouseButton1Click:Connect(function() if G.openLoadout then G.openLoadout(it.key) end end)
     else
       text(opts, L("弹药：按机库里配的出击", "Ammo: as loaded in the hangar"), U2.new(1, 0, 0, 18), U2.fromOffset(0, y), TH.S.small, MUTE, TH.F.bold)
     end
