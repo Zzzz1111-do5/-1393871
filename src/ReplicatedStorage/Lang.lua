@@ -1805,7 +1805,6 @@ add("wt.dlLost", "数据链中断", "Datalink lost")
 -- 机载雷达（Radar.lua / Fly.lua，用户 11-27「飞机雷达按型号照战雷做、能用键控制雷达方向」）：照战雷手动锁——R / Alt+T 选目标、Alt+F 锁定；模式字样用真机缩写（中英一样）
 add("rd.keys", "Alt + R 开关 · Q 量程 · E 模式 · Z 扫描", "Alt + R on/off · Q range · E mode · Z scan")   -- 屏下两行（各 316 像素宽）
 add("rd.keys2", "Alt + T 选目标 · F 锁定 · 方向键 / 滚轮 天线 · C 回中", "Alt + T target · F lock · arrows/wheel aim · C center")
-add("rd.zone", "±{1}° · {2} 行", "±{1}° · {2} bar")   -- 雷达屏左上：扫描区（方位半宽 × 行数）
 add("rd.scanT", "扫描 ±{1}° · {2} 行（一帧 {3} 秒）", "Scan ±{1}° · {2} bar (frame {3} s)")
 add("rd.modeT", "{1}：{2}", "{1}: {2}")
 add("rd.m.rws", "搜索（边搜索边测距）", "range-while-search")
@@ -1844,6 +1843,10 @@ add("tech.radar.far", "（量程 ×{1}）", " (range ×{1})")
 add("tech.radar.scan", "扫描 {1}（{2}°/秒，默认一帧 {3} 秒）", "Scans {1} ({2}°/s, default frame {3} s)")
 add("tech.radar.tws", "边扫边跟 {1} 批 · 同时攻击 {2} 个", "Track-while-scan {1} targets · engage {2}")
 add("tech.radar.stt", "只能单目标跟踪（没有边扫边跟）", "Single-target track only (no TWS)")
+add("tech.radar.iff", "带敌我识别（IFF）：友机在雷达屏上标出来、不能锁", "IFF: friendlies are marked on the scope and can't be locked")
+add("tech.radar.noIff", "没有敌我识别：友机和敌机在屏上一个样", "No IFF: friendlies look the same as enemies")
+add("tech.rcs", "RCS（迎头、干净构型）约 {1} m² · 被雷达发现的距离约为三代机的 {2}%", "RCS (frontal, clean) ~{1} m² · detected at ~{2}% of a 4th-gen fighter's range")
+add("rd.iffFriend", "敌我识别：友机，不能锁", "IFF: friendly, can't lock")
 add("tech.radar.acm", "近战模式：{1}", "ACM modes: {1}")
 
 -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」「各维度还原一致」）：科技树原来写 base（模型、性能都借）的地面车

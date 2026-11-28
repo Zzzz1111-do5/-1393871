@@ -880,7 +880,7 @@ function Air.init(G)
         else
           chance = 0.07
         end
-        if (s.pos - p).Magnitude < 2200 and math.random() < chance then
+        if (s.pos - p).Magnitude < 2200 and (G.flareRoll or math.random)() < chance then   -- G.flareRoll：测试里把运气定死
           s.tgt = { decoy = true, pos = p - (e.vel or V()) * 0.15, vel = (e.vel or V()) * 0.35 + V(0, -10, 0) }
           s.tgId = nil
           G.fx({ k = "shotFix", id = s.id, p = s.pos, v = s.vel, lost = true })

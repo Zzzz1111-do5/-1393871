@@ -137,12 +137,58 @@ RD.OF = { j8 = "sl8a", j10 = "klj10", j11 = "t1493", j16 = "j16", j15t = "j15t",
 RD.VAR = { cn_j10a = "klj3", cn_j11 = "n001e", us_f16a = "apg66", jp_f2a = "japg1", us_f15a = "apg63", us_f15e = "apg70", jp_f15jm = "apg63v1",
   ru_su27sm = "n001ve", ru_su30sm = "n011m" }
 
+---------------------------------------------------------------- RCS（雷达反射截面）
+-- 用户 11-28「引入一下rcs这个概念」：每型迎头、干净构型的 RCS（m²）。公开资料多是估的说法（隐身机各家差一两个数量级），取常见的中间值。
+--   雷达方程：同一部雷达能发现的距离 ∝ RCS 的四次方根。km（真实公里）是对 RD.SIGMA0（5 m²，三代战斗机迎头）说的；
+--   游戏量程 = K·√km（按根号压缩），所以游戏里按 (σ / σ0)^(1/8) 缩放（RD.rangeK）：F-22（0.0003 m²）只剩三成，轰-6K（60 m²）远三成
+--   外挂（弹舱里的不算）每件加一点（RD.STORE_RCS）：隐身机挂了外挂就不再隐身。
+--   方位（RD.aspectK）：侧面比迎头大得多（机身侧面、垂尾），尾后也大一点（喷口）：σ(θ) = σ迎头 ·（1 + 7 sin²θ + 1.5·max(0, −cos θ)）
+RD.SIGMA0 = 5
+RD.RCS = {
+  -- 中国（多是估的）
+  j6 = 4, j8 = 8, j10 = 1.5, j11 = 12, j15t = 10, j16 = 8, j20 = 0.01, j35 = 0.02, j36 = 0.002, h6k = 60, gj11 = 0.01, gj2 = 1,
+  -- 美国、日本
+  f16 = 1.2, f15 = 15, f14 = 25, f22 = 0.0003, f35 = 0.005, a10c = 20, b2 = 0.001, mq9 = 1,
+  -- 俄罗斯
+  mig29 = 5, su27 = 15, su35 = 3, su57 = 0.3, su25 = 10,
+  -- 直升机（旋翼的回波大）
+  z20 = 8, uh60 = 10, ch47 = 30, mi24 = 15, mi28 = 10, ka52 = 8, tiger = 3, ah1w = 3, ah1s = 3, oh1 = 1, ah64dj = 4, mi8 = 15, nh90 = 6,
+  uh1n = 5, z8 = 20, ch47j = 30, uh60ja = 10,
+}
+RD.RCS_DEF = { jet = 5, heli = 8 }   -- 表里没有的按种类
+-- 科技树里借型号的版本 RCS 不一样的（同 RD.VAR：老型号没上吸波涂料、进气道不一样）
+RD.RCS_VAR = { cn_j10a = 3, cn_j11 = 15, us_f16a = 1.5, ru_su27sm = 15, ru_su30sm = 12 }
+RD.STORE_RCS = { aam = 0.1, sam = 0.1, agm = 0.2, bomb = 0.2, rkt = 0.3, tank = 0.5 }
+-- 一架飞机迎头的 RCS：型号（科技树版本优先）+ 外挂。d：AirDefs 的型号；load：每个挂点挂的武器（同 Load 属性拆开的表）；W：AirDefs.W
+function RD.rcsOf(d, treeKey, load, W)
+  if not d then return RD.SIGMA0 end
+  local s = (treeKey and RD.RCS_VAR[treeKey]) or RD.RCS[d.id or ""] or RD.RCS_DEF[d.kind or "jet"] or RD.SIGMA0
+  if type(load) == "table" and W then
+    for i, wid in ipairs(load) do
+      local stn = d.st and d.st[i]
+      local w = wid and W[wid]
+      if w and stn and not stn.bay then   -- 多联挂架按枚数（火箭巢是一个巢）
+        local cnt = (w.kind == "rkt") and 1 or ((stn.n and stn.n[wid]) or 1)
+        s = s + (RD.STORE_RCS[w.kind] or 0.1) * cnt
+      end
+    end
+  end
+  return s
+end
+-- cosT：目标机头方向和「目标 → 雷达」的夹角余弦（1 = 迎头、0 = 正侧面、−1 = 尾后）
+function RD.aspectK(cosT)
+  local c = math.clamp(cosT or 1, -1, 1)
+  return 1 + 7 * (1 - c * c) + 1.5 * math.max(0, -c)
+end
+function RD.rangeK(sigma) return (math.max(sigma or RD.SIGMA0, 1e-6) / RD.SIGMA0) ^ 0.125 end
+
 for k, r in pairs(T) do
   r.key = k
   r.range = math.floor(RD.K * math.sqrt(r.km))
   r.lock = math.floor(r.range * (r.lockK or 0.8))
   r.el = math.max(r.elU, r.elD)
   r.ldK = r.ldK or 1
+  if r.iff == nil then r.iff = r.kind == "pd" end   -- 敌我识别（用户 11-28「iff」）：脉冲多普勒这一代都带询问机；老脉冲雷达分不出敌我
 end
 
 function RD.of(id, treeKey)
@@ -172,9 +218,12 @@ function RD.acmGeo(r, k) return (r.acmGeo and r.acmGeo[k]) or RD.ACM[k] end
 function RD.fade(r, i) return math.max(2.6, RD.frame(r, i) + 0.8) end
 
 -- 资料卡（TechUI）「雷达」那一节：{ { 字, 是不是标题 }, … }。T(键, …) 是 Lang 的翻译（客户端 G.T），en 英文界面；r 为 nil 写「没有对空雷达」
-function RD.card(r, T2, en)
+function RD.card(r, T2, en, sigma)
   T2 = T2 or function(k) return k end
   local rows = { { T2("tech.radar"), true } }
+  if sigma then   -- 这一型自己的 RCS（迎头、干净构型）：被别人的雷达多远发现（按 5 m² 的几成）
+    table.insert(rows, { T2("tech.rcs", (sigma < 0.1) and string.format("%.3g", sigma) or string.format("%.1f", sigma), string.format("%d", math.floor(RD.rangeK(sigma) * 100 + 0.5))) })
+  end
   if not r then
     table.insert(rows, { T2("tech.radar.none") })
     return rows
@@ -189,6 +238,7 @@ function RD.card(r, T2, en)
     table.insert(sc, T2("tech.radar.bars", tostring(s[1]), tostring(s[2])) .. (s.far and T2("tech.radar.far", string.format("%.2f", s.far)) or ""))
   end
   table.insert(rows, { T2("tech.radar.scan", table.concat(sc, " · "), tostring(r.rate), string.format("%.1f", RD.frame(r, 1))) })
+  table.insert(rows, { T2(r.iff and "tech.radar.iff" or "tech.radar.noIff") })
   if (r.tws or 0) > 0 then
     table.insert(rows, { T2("tech.radar.tws", tostring(r.tws), tostring(r.eng or 1)) })
   else

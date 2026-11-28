@@ -164,7 +164,7 @@ check(c0:find("没有对空雷达", 1, true) ~= nil, "没有雷达的写「没�
 check(cardText(RD.T.klj5):find("（估）", 1, true) ~= nil and cardText(RD.T.apg68):find("（估）", 1, true) == nil, "外界估的（KLJ-5）写「估」，公开的（APG-68）不写")
 local miss = {}
 for _, k in ipairs({ "rd.keys", "rd.keys2", "rd.noTgt", "rd.isOff", "rd.cantSee", "rd.lockFar", "rd.unlock", "wt.radarOn", "wt.radarOff", "wt.radarRange",
-	"air.radarLost", "air.radarLostNotch", "air.radarNotch", "air.radarClutter", "rd.zone", "rd.scanT", "rd.modeT", "rd.m.rws", "rd.m.tws", "rd.m.acm", "rd.center", "rd.alt" }) do
+	"air.radarLost", "air.radarLostNotch", "air.radarNotch", "air.radarClutter", "rd.scanT", "rd.modeT", "rd.m.rws", "rd.m.tws", "rd.m.acm", "rd.center", "rd.alt" }) do
 	if not (Lang.zh[k] and Lang.en[k]) then table.insert(miss, k) end
 end
 check(#miss == 0, "Fly.lua / Radar.lua 用到的提示都有中英文" .. ((#miss > 0) and ("（缺 " .. table.concat(miss, " ") .. "）") or ""))
@@ -178,8 +178,8 @@ for _, k in ipairs({ "air.helpJet", "air.helpJetKb" }) do
 	end
 end
 check(helpOk, "开飞机的按键说明（中英）写了 Alt+E 模式、Alt+Z 扫描方式、Alt+C 天线回中")
-local zh1, zh2 = Lang.t("zh", "rd.zone", "60", "2"), Lang.t("en", "rd.scanT", "30", "4", "4.0")
-check(zh1 == "±60° · 2 行" and zh2 == "Scan ±30° · 4 bar (frame 4.0 s)", "雷达屏的扫描区字样：" .. zh1 .. " / " .. zh2)
+local zh2 = Lang.t("en", "rd.scanT", "30", "4", "4.0")   -- 屏上左上的扫描区照战雷写「宽°x高°」（Radar.lua 自己拼，不走 Lang）
+check(zh2 == "Scan ±30° · 4 bar (frame 4.0 s)", "换扫描方式的提示字样：" .. zh2)
 
 print("④ 模式、扫描")
 local function has(t, v) for _, x in ipairs(t) do if x == v then return true end end return false end
@@ -210,6 +210,24 @@ check(RD.ACQ == 13850, "近战自动截获 " .. RD.ACQ .. " 格（真机 10 海�
 check(RD.MEM == 2 and RD.MODE_TAG.mem == "MEM" and RD.MODE_TAG.stt == "STT", "STT 丢了先记忆外推 2 秒（屏上 STT MEM）")
 check(math.abs(RD.fade(RD.T.apg68, 2) - 8.8) < 1e-9 and math.abs(RD.fade(RD.T.klj5, 1) - 2.6) < 1e-9, string.format("亮点多久暗掉：APG-68 ±60°×4 行 %.1f 秒、KLJ-5 默认 %.1f 秒", RD.fade(RD.T.apg68, 2), RD.fade(RD.T.klj5, 1)))
 check(RD.acmGeo(RD.T.awg9, "bore").az == 1.2 and RD.acmGeo(RD.T.apg68, "vert").el1 == 50 and RD.acmGeo(RD.T.apg66, "vert").el1 == 30, "近战扫描区：F-14 的 PLM 用自己的（±1.2°），APG-68 竖扫到 +50°、APG-66 到 +30°")
+
+print("⑤ RCS、敌我识别（用户 11-28「引入一下rcs这个概念」「iff」）")
+local function near(a, b, e) return math.abs(a - b) < (e or 1e-3) end
+check(near(RD.rangeK(5), 1) and near(RD.rangeK(0.0003), (0.0003 / 5) ^ 0.125) and RD.rangeK(0.0003) < 0.32 and RD.rangeK(60) > 1.3,
+	string.format("量程按 (σ / 5)^(1/8)：F-22 %.0f%%、轰-6K %.0f%%", RD.rangeK(0.0003) * 100, RD.rangeK(60) * 100))
+check(near(RD.aspectK(1), 1) and near(RD.aspectK(0), 8) and near(RD.aspectK(-1), 2.5), "方位：迎头 1 倍、正侧面 8 倍、尾后 2.5 倍")
+local f16 = { id = "f16", kind = "jet", st = { { name = "a" }, { name = "b" }, { name = "c", bay = "main" } } }
+local W = { aim120 = { kind = "aam" }, tank370 = { kind = "tank" }, gbu = { kind = "bomb" } }
+check(near(RD.rcsOf(f16, nil, { "aim120", "tank370", "gbu" }, W), 1.2 + 0.1 + 0.5), "外挂加 RCS（弹舱里的不算）：F-16 挂一枚 AIM-120 + 一个副油箱 = 1.8 m²")
+check(near(RD.rcsOf({ id = "f22", kind = "jet", st = {} }), 0.0003, 1e-9) and RD.rcsOf({ id = "j10", kind = "jet" }, "cn_j10a") == 3, "隐身机 0.0003 m²；科技树版本自己的（歼-10A 3 m²）")
+local missing = {}
+local adSrc = fs.readFile("src/ReplicatedStorage/AirDefs.lua")
+for id in string.gmatch(adSrc, "\nD%.([%w_]+) = ") do if RD.RCS[id] == nil then table.insert(missing, id) end end
+table.sort(missing)
+check(#missing == 0, "每一型都写了 RCS" .. ((#missing > 0) and ("（缺：" .. table.concat(missing, " ") .. "）") or ""))
+local iffBad = {}
+for k, r in pairs(RD.T) do if r.iff ~= (r.kind == "pd") then table.insert(iffBad, k) end end
+check(#iffBad == 0 and RD.T.sl8a.iff == false and RD.T.apg68.iff == true, "脉冲多普勒的雷达带敌我识别、老脉冲雷达（SL-8A）没有")
 
 print(bad == 0 and "全部通过" or ("有 " .. bad .. " 项不对"))
 process.exit(bad == 0 and 0 or 1)

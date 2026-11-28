@@ -17,6 +17,7 @@
 --      离上次航迹更新超过 1.3 秒（老的数据链有效期）再打，数据链照旧通（等一帧）；发射时对方不报导弹、导引头开机才报；对比：Alt+F STT 了对方马上报锁定
 --   ⑨ 近战（ACM）：Alt+E 进近战、Alt+Z 换竖扫（屏上写 ACM VS）；13850 格外的不自动锁；机头上方 30°、3000 格的一帧以内自动 STT（选着雷达弹也好、
 --      什么弹都好）；雷达锁定跟武器脱钩：换红外弹，导引头先咬雷达锁着的那架（不是离机头最近的那架）
+--   ⑩ RCS：同样距离 F-22 看不见、苏-27 看得见，F-22 要近得多；侧面 RCS 大；敌我识别：友机亮点上一道横线、不轮到、锁不上
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
@@ -201,21 +202,21 @@ end
 foe.radarTgt, foe.radarT = jet.id, 1e12
 local far = shoot(6000)
 R.run(0.2)
-math.random = function(a, b) if a then return rnd(a, b) end return 0.01 end
+G.flareRoll = function() return 0.01 end   -- 服务器的随机数（模拟器里脚本的 math 是开服时拷的一份，改测试这边的 math.random 管不到它）
 T.key(Enum.KeyCode.X, true)
 R.run(0.3)
 T.key(Enum.KeyCode.X, false)
-math.random = rnd
+G.flareRoll = nil
 check(far.tgt == jet, "数据链阶段：箔条骗不了")
 local near = shoot(1500)
 R.run(0.2)
 check(near.active == true, "这枚开了导引头")
 st.flareNext = 0
-math.random = function(a, b) if a then return rnd(a, b) end return 0.01 end
+G.flareRoll = function() return 0.01 end
 T.key(Enum.KeyCode.X, true)
 R.run(0.3)
 T.key(Enum.KeyCode.X, false)
-math.random = rnd
+G.flareRoll = nil
 check(near.tgt ~= jet and near.tgt and near.tgt.decoy, "开了导引头的被箔条骗走了")
 for _, s in ipairs(G.shots) do if s == far or s == near then s.life = 0 end end
 holdV = V3()
@@ -350,7 +351,7 @@ local t2 = R.clock()
 check(math.abs((t2 - t1) - 4.0) < 0.1 and math.abs((RSt().frameT or 0) - 4.0) < 0.1,
   string.format("APG-68 默认扫描（±60°×2 行、60°/秒）扫一帧 %.2f 秒（真机 4 秒；雷达记的 %.2f）", t2 - t1, RSt().frameT or -1))
 local zoneT = gui:FindFirstChild("RadarZone", true)
-check(zoneT and zoneT.Text == C.T("rd.zone", "60", "2") and mode.Text == "RWS", "雷达屏写 RWS、扫描区 " .. tostring(zoneT and zoneT.Text))
+check(zoneT and zoneT.Text == "120°x7°" and mode.Text == "RWS", "雷达屏写 RWS、扫描区照战雷写宽 × 高（±60° · 2 行 × 3.5° = 120°x7°）：" .. tostring(zoneT and zoneT.Text))
 -- 波束在左边往右扫的时候把敌机摆到右前方 40°：等波束扫到 40° 那里才出亮点
 T.runUntil(function() local s = RSt() return s.bar == 1 and s.dir > 0 and s.bAz < -40 end, 8)
 placeFoe(40, 0, 6000)
@@ -494,6 +495,40 @@ sF.wi = slotI or sF.wi
 sF.lock, sF.lockT = nil, 0
 R.run(0.3)
 check(sF.lock ~= nil and sF.lock.em == fem and sF.lock.slaved == true, "换红外弹：导引头先咬雷达锁着的那架（不是离机头最近的那架）")
+print("⑩ RCS、敌我识别（用户 11-28「引入一下rcs这个概念」「iff」）")
+altKey(Enum.KeyCode.E)   -- 近战 → RWS
+R.run(1 / 30)
+sF.rdLock, sF.lock, sF.rdSel = nil, nil, nil
+local Rr = sF.rd.range
+placeFoe(0, 0, Rr * 0.6)       -- F-22 迎头、0.6 倍量程
+placeFoe2(10, 0, Rr * 0.6)     -- 苏-27 同距离
+R.run(0.3)
+local okF, whyF = C.radarSees(sF, fem)
+local okS = C.radarSees(sF, foe2.model)
+check(not okF and whyF == "range" and okS == true, string.format("同在 %.0f 格：F-22（0.0003 m²，量程只剩 %.0f%%）看不见（%s）、苏-27（15 m²）看得见",
+  Rr * 0.6, (C.radarRcsK(fem, sF) or 0) * 100, tostring(whyF)))
+placeFoe(0, 0, Rr * 0.22)
+R.run(0.3)
+check(C.radarSees(sF, fem) == true, "F-22 近到 0.22 倍量程才看得见")
+local kNose = C.radarRcsK(foe2.model, sF)
+fly3.v = V3(1, 0, 0) * 150   -- 苏-27 侧过来（机头朝侧面）
+R.run(0.2)
+check(C.radarRcsK(foe2.model, sF) > kNose * 1.2, string.format("侧面 RCS 大：量程倍数迎头 %.2f → 侧面 %.2f", kNose, C.radarRcsK(foe2.model, sF)))
+-- 敌我识别：苏-27 改成我方，F-22 挪远
+placeFoe(0, 0, 60000, 0)
+foe2.model:SetAttribute("Team", "atk")
+placeFoe2(5, 0, 6000)
+waitFrame(9)
+waitFrame(9)
+check(C.radarIffFriend(foe2.model) == true, "APG-68 带敌我识别：认得出这架是友机")
+local iffShown = false
+for _, d in ipairs(C.radarGui:GetDescendants()) do
+  if d.Name == "Iff" and d:IsA("Frame") and d.Visible and d.Parent and d.Parent.Visible then iffShown = true end
+end
+check(iffShown, "雷达屏上友机的亮点上面一道横线")
+check(C.radarNext(sF, nil) ~= foe2.model, "R / Alt+T 不轮到友机")
+check(C.radarStt(sF, foe2.model) == false and sF.rdLock == nil, "友机锁不上（提示「敌我识别：友机」）")
+foe2.model:SetAttribute("Team", "def")
 hold2:Disconnect()
 conn2:Disconnect()
 conn:Disconnect()

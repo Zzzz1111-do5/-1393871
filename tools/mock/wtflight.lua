@@ -82,7 +82,8 @@ check(mode and mode.Text == "RWS", "写 RWS（搜索，真机缩写：用户 11-
 local zone, rng = find("RadarZone"), find("RadarRange")
 local rdj = st.rd   -- 歼-20 的 KLJ-5（Radars.lua）：默认扫描方式 ±60° · 2 行
 local sc1 = rdj and rdj.scans[1]
-check(sc1 ~= nil and zone and zone.Text == C.T("rd.zone", tostring(sc1[1]), tostring(sc1[2])), "扫描区（方位半宽 · 行数）：" .. tostring(zone and zone.Text))
+local zw = sc1 and string.format("%d°x%d°", 2 * math.min(sc1[1], rdj.az), math.floor(sc1[2] * 3.5 + 0.5)) or "?"   -- 战雷：宽 × 高（一行 3.5°）
+check(sc1 ~= nil and zone and zone.Text == zw, "扫描区照战雷写宽 × 高（" .. zw .. "）：" .. tostring(zone and zone.Text))
 local r0 = rng and rng.Text
 local function altKey(code)
   T.key(Enum.KeyCode.LeftAlt, true)

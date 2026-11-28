@@ -18,11 +18,14 @@
 --      天线跟着目标（只看万向架）；看不见了（置零 / 地杂波 / 出了万向架 / 太远）先按记忆外推 RD.MEM 秒（屏上 STT MEM），还是没有就丢锁
 --      （提示置零 / 丢失）、回到原来的扫描；跟踪着每半秒报一次 lockOn（数据链、对方的告警）。换模式、关雷达就断开。
 --      **跟所选武器脱钩**：雷达弹锁它（Fly.lua）、红外弹导引头跟着它指、机炮提前量优先算它
---   ⑤ 雷达屏（B 显）：右边一块方屏，横轴方位（固定 ±60°——扫描区挪出去时整条横轴跟着平移，两个上角写窗口两头的角度）、竖轴距离；
+--   ⑤ 雷达屏（B 显，照战雷的方形雷达屏；用户 11-28 给了截图、「那就不做扇形了」）：右边一块方屏，横轴方位铺满这部雷达的方位万向架
+--      （±rd.az，两个上角写两头的角度，同战雷「-70° … 70°」），扫描区是里面两条竖线；竖轴距离（四道距离线，右上量程、右下 0 km）；
 --      扫描区两条竖线、底边下面小三角指扫描中心、左边一道竖括号是扫描的俯仰范围（一行一个小横道，正在扫的那行亮）、白横道是天线俯仰；
 --      RWS 的目标一小横道（越久没扫到越暗）、TWS 的航迹小方块带速度线，选中的两边竖线「|—|」，STT 的方框 + 圆点 + 速度线；
---      顶上真机缩写的模式（RWS / TWS / STT / STT MEM / ACM VS…，中英一样：用户 11-27 定的）、左上扫描区（±60° · 2 行；近战写宽 × 高）、右上量程、
+--      顶上真机缩写的模式（RWS / TWS / STT / STT MEM / ACM VS…，中英一样：用户 11-27 定的）、左上扫描区「宽°x高°」（同战雷「40°x10°」）、右上量程、
 --      屏里右上角扫描区在光标距离（量程一半）上盖住的海拔「上 / 下」（真机 B 显光标旁边那两个数）；自己打出去的主动雷达弹走数据链（见下）
+--   ⑥ RCS（用户 11-28「引入一下rcs这个概念」）：量程按目标的 RCS 缩放（Radars.lua rcsOf / aspectK / rangeK：型号、外挂、方位）——隐身机近了才看得见；
+--      敌我识别（「iff」）：友机也扫得到；带 IFF 的雷达（脉冲多普勒这一代）给它上面一道横线、不能选、不能锁、不建航迹，没有 IFF 的分不出来
 --   G.radarSees(st, em) → 看得见吗、原因（off / gone / fov / range / notch / clutter）、机体方位°、俯仰°、距离（只看万向架：扫描区由波束管）
 --   G.radarStep(st, dt)：每帧扫描、画屏；G.radarOff()；G.radarReset(st)：开飞（每架次）时雷达开着、量程最大、RWS、默认扫描方式、天线回中
 --   G.airRadarContacts()：屏上的 { em, az, dist, locked }；G.radarHas(st, em)：在不在屏上；G.radarNext(st, cur)：下一个（TWS 在航迹里轮）；
@@ -79,6 +82,42 @@ function Radar.init(G)
     return f, V(-f.Z, 0, f.X)
   end
 
+  -- RCS（用户 11-28「引入一下rcs这个概念」，Radars.lua）：这架飞机迎头的 RCS（型号、科技树版本、外挂；Model / TreeKey / Load 属性变了才重算）
+  --   × 方位（侧面大、尾后稍大），量程按 (σ / 5 m²)^(1/8) 缩放（雷达方程四次方根、游戏量程再按根号压缩）
+  local rcsCache = setmetatable({}, { __mode = "k" })
+  local function rcsClean(em)
+    local id, tk, ld = em:GetAttribute("Model"), em:GetAttribute("TreeKey"), em:GetAttribute("Load")
+    local c = rcsCache[em]
+    if c and c.id == id and c.tk == tk and c.ld == ld then return c.s end
+    local d = type(id) == "string" and AD.get(id) or nil
+    local load = nil
+    if d and type(ld) == "string" then
+      load = {}
+      local i = 0
+      for w in string.gmatch(ld .. ",", "([^,]*),") do
+        i += 1
+        load[i] = (w ~= "") and w or false
+      end
+    end
+    local sg = (RD and RD.rcsOf) and RD.rcsOf(d, tk, load, AD.W) or 5
+    rcsCache[em] = { id = id, tk = tk, ld = ld, s = sg }
+    return sg
+  end
+  local function rcsK(em, root, u)   -- u：雷达 → 目标的单位向量
+    if not (RD and RD.rangeK) then return 1 end
+    return RD.rangeK(rcsClean(em) * RD.aspectK(root.CFrame.LookVector:Dot(-u)))
+  end
+  -- 这一刻对它的量程倍数（Fly.lua 的锁定距离、测试）
+  G.radarRcsK = function(em, st)
+    st = st or G.fly
+    local root = em and em.Parent and em:FindFirstChild("Root")
+    if not st or not root then return 1 end
+    local to = root.CFrame.Position - st.cf.Position
+    if to.Magnitude < 1 then return 1 end
+    return rcsK(em, root, to.Unit)
+  end
+  G.radarRcs = function(em) return em and rcsClean(em) or nil end   -- 测试用
+
   -- 看得见吗（只看万向架：扫描区由下面的波束管；单目标跟踪时天线跟着目标，也是这个）。far：这种扫描方式的量程倍数（窄扇区）
   local function sees(st, em, _, far)
     local rd = st and st.rd
@@ -97,7 +136,7 @@ function Radar.init(G)
     if math.abs(az) > rd.az or el > rd.elU or el < -rd.elD then return false, "fov", az, el, dist end
     -- 下视（视线比地平线低一个波束半宽以上）：脉冲多普勒的量程打折（ldK）；脉冲雷达贴地的目标埋在地杂波里
     local down = u.Y < -SIN_B
-    local rng = rd.range * (far or 1)
+    local rng = rd.range * (far or 1) * rcsK(em, root, u)   -- 对这架的 RCS（隐身机近了才看得见）
     if down and rd.kind == "pd" then rng = rng * (rd.ldK or 1) end
     if dist > rng then return false, "range", az, el, dist end
     if rd.kind == "pd" then
@@ -125,7 +164,8 @@ function Radar.init(G)
   local UIS = game:GetService("UserInputService")
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
   local TH = G.Theme   -- 统一外观（docs/style.md）：只用 HUD 绿 / WARN 琥珀 / BAD 红 / 白
-  local GRN, LINE, FILL, BEAMC = TH.C.HUD, TH.C.HUD:Lerp(TH.C.INK, 0.12), TH.C.HUD:Lerp(TH.C.INK, 0.55), TH.C.HUD:Lerp(Color3.new(1, 1, 1), 0.3)
+  -- 屏底亮一点的半透明绿（照战雷 F/A-18 截图），线是 HUD 绿
+  local GRN, LINE, FILL, BEAMC = TH.C.HUD, TH.C.HUD:Lerp(TH.C.INK, 0.12), TH.C.HUD:Lerp(TH.C.INK, 0.38), TH.C.HUD:Lerp(Color3.new(1, 1, 1), 0.3)
   local AMB, RED, WHITE = TH.C.WARN, TH.C.BAD, Color3.new(1, 1, 1)
   local function frame(parent, size, pos, col, tr, anchor)
     local f = Instance.new("Frame")
@@ -160,7 +200,7 @@ function Radar.init(G)
     f.Visible = true
   end
   local W, H = mobile and 190 or 236, mobile and 180 or 224
-  local scope = frame(gui, U2.fromOffset(W, H), mobile and U2.new(1, -16, 0.5, 60) or U2.new(1, -44, 0.5, 130), FILL, 0.5, V2(1, 0.5))   -- 右侧偏下：让开右上的圆形小地图和它下面的「被发现!」
+  local scope = frame(gui, U2.fromOffset(W, H), mobile and U2.new(1, -16, 0.5, 60) or U2.new(1, -44, 0.5, 130), FILL, 0.45, V2(1, 0.5))   -- 右侧偏下：让开右上的圆形小地图和它下面的「被发现!」
   scope.Name = "RadarScope"
   scope.Active = true   -- 双击回中：点在屏上不算开炮
   local st0 = Instance.new("UIStroke")
@@ -192,7 +232,10 @@ function Radar.init(G)
     local l1 = frame(b, U2.fromOffset(2, 9), U2.new(0, -4, 0.5, 0), WHITE, 0, V2(0.5, 0.5))   -- 选中的：两边竖线「|—|」
     local l2 = frame(b, U2.fromOffset(2, 9), U2.new(1, 4, 0.5, 0), WHITE, 0, V2(0.5, 0.5))
     l1.Name, l2.Name = "SelL", "SelR"
-    blips[i] = { f = b, l1 = l1, l2 = l2 }
+    local iff = frame(b, U2.fromOffset(12, 2), U2.new(0.5, 0, 0, -4), WHITE, 0, V2(0.5, 1))   -- 敌我识别认出的友机：上面一道横线（同战雷）
+    iff.Name = "Iff"
+    iff.Visible = false
+    blips[i] = { f = b, l1 = l1, l2 = l2, iff = iff }
   end
   -- 边扫边跟的航迹：小方块 + 速度线（往哪飞），指定的两边竖线
   local trk = {}
@@ -329,18 +372,24 @@ function Radar.init(G)
     if st then st.rdLock, st.rdSel = nil, nil end
     keysText()   -- 换了语言下一架就换过来
   end
+  -- 雷达扫得到的：天上所有的飞机（友机也在里面——敌我识别 IFF 才分得出来，用户 11-28「iff」）；friend[em] 记是不是友机
+  local friend = setmetatable({}, { __mode = "k" })
   local function hostiles(st)
     local out = {}
     local f = workspace:FindFirstChild("Ents")
     if not f then return out end
     local myTeam = me:GetAttribute("Side")
     for _, em in ipairs(f:GetChildren()) do
-      if em ~= st.em and em:GetAttribute("Kind") == "air" and em:GetAttribute("Team") ~= myTeam and not em:GetAttribute("Wreck") and (em:GetAttribute("Hp") or 1) > 0 then
+      if em ~= st.em and em:GetAttribute("Kind") == "air" and not em:GetAttribute("Wreck") and (em:GetAttribute("Hp") or 1) > 0 then
+        friend[em] = em:GetAttribute("Team") == myTeam
         table.insert(out, em)
       end
     end
     return out
   end
+  -- 敌我识别认出来的友机（这部雷达带 IFF 才认得出；没有 IFF 的雷达友机跟敌机一样）：不能选、不能锁、不建航迹
+  local function iffFriend(st, em) return st ~= nil and st.rd ~= nil and st.rd.iff == true and friend[em] == true end
+  G.radarIffFriend = function(em) return iffFriend(lastSt, em) end
   -- 雷达关着：看不见（Fly.lua 的雷达弹锁不上、锁着的丢掉）
   G.radarSees = function(st, em, gimbal, far)
     if not S.on and st and st.rd then return false, "off" end
@@ -361,6 +410,7 @@ function Radar.init(G)
   end
   function G.radarStt(st, em)
     if not st or st ~= lastSt or not st.rd or not S.on then return false end
+    if iffFriend(st, em) then toast("rd.iffFriend") return false end   -- 敌我识别：友机不锁
     return enterStt(st, em)
   end
   function G.radarUnlock(st)
@@ -482,7 +532,7 @@ function Radar.init(G)
     local src = (S.mode == "tws" and next(tracks) ~= nil) and tracks or seen
     local list = {}
     for em, r in pairs(src) do
-      if em.Parent then table.insert(list, { em = em, az = r.az or 0, dist = r.dist or 0 }) end
+      if em.Parent and not iffFriend(st, em) then table.insert(list, { em = em, az = r.az or 0, dist = r.dist or 0 }) end   -- 敌我识别认出的友机不轮到
     end
     if #list == 0 then return nil end
     table.sort(list, function(a, b) if a.az ~= b.az then return a.az < b.az end return a.dist < b.dist end)
@@ -683,8 +733,9 @@ function Radar.init(G)
       if t.hit or acqd then return end
       t.hit = true
       if not sees(st, t.em, nil, z.far) then return end
+      local fr = iffFriend(st, t.em)   -- 敌我识别认出的友机：屏上标出来，不自动截获、不建航迹
       if z.acq then   -- 近战：近处第一个扫到的自动进单目标跟踪
-        if t.dist <= z.acq and enterStt(st, t.em) then acqd = true end
+        if not fr and t.dist <= z.acq and enterStt(st, t.em) then acqd = true end
         return
       end
       if t.dist > range then return end
@@ -694,8 +745,8 @@ function Radar.init(G)
         sr = {}
         seen[t.em] = sr
       end
-      sr.t, sr.az, sr.dist = now, az, t.dist
-      if S.mode == "tws" then   -- 边扫边跟：建 / 更新航迹（批数满了只当亮点）
+      sr.t, sr.az, sr.dist, sr.friend = now, az, t.dist, fr
+      if S.mode == "tws" and not fr then   -- 边扫边跟：建 / 更新航迹（批数满了只当亮点）
         local tr = tracks[t.em]
         if not tr and nTracks() < (rd.tws or 0) then
           tr = { em = t.em, id = t.em:GetAttribute("EntId"), t0 = now }
@@ -755,10 +806,9 @@ function Radar.init(G)
     end
 
     ---- 画
-    local winH = math.max(60, z.A)
+    -- 横轴铺满方位万向架（战雷：两个上角写万向架两头）；扫描区一直在万向架里，不用平移（头盔跟着镜头看出去的，夹在两边）
+    local winH = math.max(rd.az or 60, 10)
     local winC = 0
-    local reach = math.abs(z.cAz) + z.A
-    if reach > winH then winC = ((z.cAz > 0) and 1 or -1) * (reach - winH) end
     local function xRaw(az) return 0.5 + (az - winC) / (2 * winH) end
     local function xOf(az) return clamp(xRaw(az), 0.02, 0.98) end
     local function yOf(dist) return clamp(1 - dist / range, 0.02, 0.98) end
@@ -802,7 +852,7 @@ function Radar.init(G)
         seen[em] = nil
         if st.rdSel == em and not tracks[em] and not (lk and lk.em == em) then st.rdSel = nil end   -- 选中的那个暗掉了：不再选着它（Fly.lua 锁不了屏上没有的）
       elseif not tracks[em] and not (lk and lk.em == em) then
-        table.insert(contacts, { em = em, az = sr.az, dist = sr.dist, locked = false })
+        table.insert(contacts, { em = em, az = sr.az, dist = sr.dist, locked = false, friend = sr.friend == true })
         if nBl < #blips then
           nBl += 1
           local b = blips[nBl]
@@ -810,6 +860,8 @@ function Radar.init(G)
           b.f.BackgroundTransparency = clamp(age / fade, 0, 0.85)
           local sel = st.rdSel == em or (st.lock ~= nil and st.lock.em == em)   -- 选中的（R / Alt+T）、别的弹锁着的
           b.l1.Visible, b.l2.Visible = sel, sel
+          b.iff.Visible = sr.friend == true
+          b.iff.BackgroundTransparency = b.f.BackgroundTransparency
           b.f.Visible = true
         end
       end
@@ -923,14 +975,10 @@ function Radar.init(G)
     elseif S.mode == "acm" then tag = RD.MODE_TAG.acm .. " " .. RD.tag(rd, z.tag)
     else tag = RD.MODE_TAG[S.mode] or "RWS" end
     tMode.Text = tag
-    if S.mode == "acm" then
-      tZone.Text = string.format("%d°×%d°", math.floor(2 * z.A + 0.5), math.floor(2 * z.H + 0.5))
-    else
-      tZone.Text = T("rd.zone", tostring(math.floor(z.A + 0.5)), tostring(#z.lines))
-    end
+    tZone.Text = string.format("%d°x%d°", math.floor(2 * z.A + 0.5), math.floor(2 * z.H + 0.5))   -- 战雷：扫描区宽 × 高
     tRange.Text = string.format("%.0f km", range / AD.M / 1000)
     tAzL.Text, tAzR.Text = string.format("%d°", math.floor(winC - winH + 0.5)), string.format("%d°", math.floor(winC + winH + 0.5))
-    tElT.Text, tElB.Text = string.format("+%d°", rd.elU), string.format("-%d°", rd.elD)
+    tElT.Text, tElB.Text = string.format("%d°", rd.elU), string.format("-%d°", rd.elD)   -- 俯仰万向架两头（战雷「60°」「-45°」）
     if S.on and S.mode ~= "acm" and not lk then
       local R0 = range / 2
       local h0 = p0.Y

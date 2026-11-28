@@ -1355,7 +1355,8 @@ function Fly.init(G)
     local ok, why, _, _, dist = G.radarSees(st, em)
     if why == "off" then return false, "rd.isOff" end
     if not ok or not (G.radarHas and G.radarHas(st, em)) then return false, "rd.cantSee" end
-    if dist > st.rd.lock then return false, "rd.lockFar", string.format("%.1f", st.rd.lock / AD.M / 1000) end
+    local lockR = st.rd.lock * (G.radarRcsK and G.radarRcsK(em, st) or 1)   -- 按它的 RCS（隐身机要近得多才锁得上）
+    if dist > lockR then return false, "rd.lockFar", string.format("%.1f", lockR / AD.M / 1000) end
     if not (G.radarStt and G.radarStt(st, em)) then return false, "rd.cantSee" end
     local _, w = storeW()
     if radarManual(w) then

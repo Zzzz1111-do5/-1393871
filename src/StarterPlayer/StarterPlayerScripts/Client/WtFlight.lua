@@ -494,7 +494,7 @@ function WtFlight.init(G)
         tr.f.Position = UDim2.fromOffset(TAPE_W / 2 + c.az / TAPE_DEG * (TAPE_W / 2), 26)
         tr.f.Rotation = c.locked and 0 or 45
         tr.f.Size = c.locked and UDim2.fromOffset(9, 9) or UDim2.fromOffset(6, 6)
-        tr.f.BackgroundTransparency = c.locked and 1 or 0
+        tr.f.BackgroundTransparency = c.locked and 1 or (c.friend and 0.65 or 0)   -- 敌我识别认出的友机：淡一点（Radar.lua contacts.friend）
         tr.s.Transparency = c.locked and 0 or 1
         tr.f.Visible = true
       end
