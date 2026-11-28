@@ -1021,6 +1021,7 @@ function Air.init(G)
     if e.onGround and d.gd ~= true then e.upAt = now() end   -- 刚离地（AI 舰艇的自动防空导弹 12 秒内不打：Navy.lua）
     e.onGround = d.gd == true
     if typeof(d.aim) == "Vector3" then e.aim = d.aim end
+    e.eoOn = d.eo == true   -- 开着光电吊舱（瞄准点就是吊舱看着的地方：那一片也算加载中心，aheadStep）
     e.stick = d.stk == true   -- 机炮黏住了目标（客户端 Fly.lua 的 gunStick）
     local m = e.model
     local function q(name, v, k)
@@ -1122,6 +1123,73 @@ function Air.init(G)
 
   ---------------------------------------------------------------- 每帧：机组跟着飞机走；没人开的飞机掉下来；落地补弹
 
+  -- 高速飞行的前方预加载（用户 11-28「飞机飞太快 地图加载跟不上 做一个流体预加载 根据飞机的速度和方向」）：
+  --   开了 streaming 时客户端只收到加载中心（藏起来的人物，跟着飞机挪）四周一圈；一秒飞一两千格时前面的房子、地形细节来不及送到。
+  --   给开飞机的人加一个「前方加载点」（Player:AddReplicationFocus）：每 0.25 秒挪到这架飞机按现在的速度、方向 3.5 秒后到的地方
+  --   （最远 3000 格，不低于地面），服务器按它把前方那一片先送过去；慢下来（每秒 60 格以下）、下飞机、飞机没了就撤掉
+  local AHEAD_T, AHEAD_MAX, AHEAD_MIN_V = 3.5, 3000, 60
+  --   光电吊舱放大看远处（用户 11-28「吊舱ui和战雷对其 加一个LOD」）：吊舱看着的那一点（客户端每次同步发的瞄准点，开着吊舱时就是吊舱十字下面）
+  --   离飞机 600 格以上也加一个加载点——几公里外的房子、车、地形细节先送过来，放大了看得见（客户端的树按放大后的距离挑版本，Scenery.lua）
+  local focusF = nil
+  local focusSet = {}   -- 挂着加载点的飞机（飞机从 aircraft 里拿掉以后也要撤）
+  local function focusOff(e, key)
+    local f = e.focus and e.focus[key]
+    if not f then return end
+    if G.streamFocus and f.pl then G.streamFocus(f.pl, f.part, false) end
+    f.part:Destroy()
+    e.focus[key] = nil
+    if not next(e.focus) then e.focus = nil focusSet[e] = nil end
+  end
+  local function focusAllOff(e)
+    if not e.focus then return end
+    local keys = {}
+    for k in pairs(e.focus) do keys[#keys + 1] = k end
+    for _, k in ipairs(keys) do focusOff(e, k) end
+  end
+  local function focusAt(e, key, pl, p)
+    local f = e.focus and e.focus[key]
+    if f and f.pl ~= pl then focusOff(e, key) f = nil end
+    if f then f.part.CFrame = CFrame.new(p) return end
+    if not (focusF and focusF.Parent) then
+      focusF = Instance.new("Folder")
+      focusF.Name = "StreamAhead"
+      focusF.Parent = workspace
+    end
+    local part = Instance.new("Part")
+    part.Name = key .. "_" .. tostring(e.id)
+    part.Anchored, part.CanCollide, part.CanQuery, part.CanTouch = true, false, false, false
+    part.Transparency, part.Size = 1, V(1, 1, 1)
+    part.CFrame = CFrame.new(p)
+    part.Parent = focusF
+    e.focus = e.focus or {}
+    e.focus[key] = { part = part, pl = pl }
+    focusSet[e] = true
+    G.streamFocus(pl, part, true)
+  end
+  local function aheadStep(e, D, dt)
+    if not G.streaming or not D or D.remote == e or not e.alive then focusAllOff(e) return end
+    e.focusAcc = (e.focusAcc or 0) + dt
+    if e.focus and e.focusAcc < 0.25 then return end
+    e.focusAcc = 0
+    local p0 = e.root.CFrame.Position
+    local v = e.vel or V()
+    local spd = v.Magnitude
+    if spd >= AHEAD_MIN_V then
+      local p = p0 + v.Unit * math.min(spd * AHEAD_T, AHEAD_MAX)
+      focusAt(e, "ahead", D.pl, V(p.X, math.max(p.Y, surface(p.X, p.Z) + 20, 0), p.Z))
+    else
+      focusOff(e, "ahead")
+    end
+    local a = e.eoOn and e.aim
+    if typeof(a) == "Vector3" and (a - p0).Magnitude > 600 then
+      focusAt(e, "look", D.pl, a + V(0, 20, 0))
+    else
+      focusOff(e, "look")
+    end
+  end
+  G.airAhead = function(e) return e and e.focus and e.focus.ahead and e.focus.ahead.part end   -- 测试用
+  G.airLook = function(e) return e and e.focus and e.focus.look and e.focus.look.part end
+
   local gunAcc = 0
   G.onFrame(function(dt)
     gunAcc += dt
@@ -1130,6 +1198,9 @@ function Air.init(G)
       gunAcc = 0
     end
     local t = now()
+    for e in pairs(focusSet) do
+      if not e.alive or not e.model.Parent or e.driver == nil then focusAllOff(e) end
+    end
     for _, e in ipairs(table.clone(aircraft)) do
       local D = e.driver
       if D and (not D.alive or not D.char or not D.char.Parent or G.P[D.pl] ~= D) then
@@ -1147,6 +1218,7 @@ function Air.init(G)
       end
       if D and D.char and D.remote ~= e then D.char:PivotTo(e.root.CFrame) end
       for i, Q in ipairs(e.pass) do if Q.char then Q.char:PivotTo(e.root.CFrame * CF(((i % 2) * 2 - 1) * 2, 0, -2 + i * 2.5)) end end
+      aheadStep(e, D, dt)
       if e.alive then burnFuel(e, dt) end
       if e.alive and e.oobUntil and t >= e.oobUntil then   -- 读秒读完了客户端却不再报位置（掉线、卡住）：照样判毁
         e.oobUntil = nil

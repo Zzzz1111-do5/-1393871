@@ -307,9 +307,27 @@ function Scenery.init(G)
   end
   G.sceneryUnderVeh = underVeh
 
+  -- 镜头的速度（每帧平滑着估）：开飞机一秒几百上千格时，摆树、石头的中心往前挪（用户 11-28「飞机飞太快 地图加载跟不上
+  --   做一个流体预加载 根据飞机的速度和方向」）——前面的格子先算、先摆，身后飞过去的先收；每秒 120 格以下（车、人）不挪
+  local camVel = V(0, 0, 0)
+  local LEAD_V, LEAD_K, LEAD_MAX = 120, 0.8, 600
+  local function leadOf()
+    local vh = V(camVel.X, 0, camVel.Z)
+    local spd = vh.Magnitude
+    if spd <= LEAD_V then return V(0, 0, 0) end
+    return vh.Unit * math.min((spd - LEAD_V) * LEAD_K, LEAD_MAX)
+  end
+  G.sceneryLead = function() return leadOf(), camVel end   -- 测试用
+  -- 放大看远处的那一点（光电吊舱、瞄准镜变焦：用户 11-28「吊舱ui和战雷对其 加一个LOD」）：那一点四周一圈的格子也摆，
+  --   挑版本按「离镜头的距离 ÷ 倍率」——放大 12 倍看 6 公里外，那片树按 500 格的样子画（不再是一片光秃秃、或者一排公告板）
+  local focus = nil   -- { p = 世界坐标, zoom = 倍率 }
+  G.sceneryFocus = function(p, zoom)
+    if typeof(p) == "Vector3" and (zoom or 1) >= 1.5 then focus = { p = p, zoom = zoom } else focus = nil end
+  end
+
   -- 一次更新：镜头附近的格子按距离挑版本；超出范围的收回池里
   local function update(budgetMs)
-    local cp = cam.CFrame.Position
+    local cp = cam.CFrame.Position + leadOf()
     local t0 = os.clock()
     collectFlats(cp)
     local ccx, ccz = math.floor(cp.X / CELL), math.floor(cp.Z / CELL)
@@ -318,13 +336,44 @@ function Scenery.init(G)
     local seen = {}
     -- 由近到远：先摆近的（预算用完了远处下次再说）
     local order = {}
+    local inOrder = {}
     for dz = -rc, rc do
       for dx = -rc, rc do
         local x0, z0 = (ccx + dx) * CELL, (ccz + dz) * CELL
         local ex = math.max(x0 - cp.X, 0, cp.X - (x0 + CELL))
         local ez = math.max(z0 - cp.Z, 0, cp.Z - (z0 + CELL))
         local d = math.sqrt(ex * ex + ez * ez)
-        if d < maxR then table.insert(order, { ccx + dx, ccz + dz, d }) end
+        if d < maxR then
+          table.insert(order, { ccx + dx, ccz + dz, d })
+          inOrder[cellKey(ccx + dx, ccz + dz)] = #order
+        end
+      end
+    end
+    -- 放大看的那一点：四周 FR 格以内的格子按「离镜头的距离 ÷ 倍率」算远近（排进同一个由近到远的队）
+    local fp, fz, FR = nil, 1, 0
+    if focus then
+      fp, fz = focus.p, focus.zoom
+      FR = math.clamp(maxR * 0.5, 240, 700)
+      local fcx, fcz = math.floor(fp.X / CELL), math.floor(fp.Z / CELL)
+      local fr = math.ceil(FR / CELL) + 1
+      for dz = -fr, fr do
+        for dx = -fr, fr do
+          local x0, z0 = (fcx + dx) * CELL, (fcz + dz) * CELL
+          local ex = math.max(x0 - fp.X, 0, fp.X - (x0 + CELL))
+          local ez = math.max(z0 - fp.Z, 0, fp.Z - (z0 + CELL))
+          if ex * ex + ez * ez < FR * FR then
+            local cx0, cz0 = x0 + CELL / 2 - cam.CFrame.Position.X, z0 + CELL / 2 - cam.CFrame.Position.Z
+            local dEff = math.sqrt(cx0 * cx0 + cz0 * cz0) / fz
+            local key = cellKey(fcx + dx, fcz + dz)
+            local j = inOrder[key]
+            if j then
+              order[j][3] = math.min(order[j][3], dEff)
+            elseif dEff < maxR then
+              table.insert(order, { fcx + dx, fcz + dz, dEff })
+              inOrder[key] = #order
+            end
+          end
+        end
       end
     end
     table.sort(order, function(a, b) return a[3] < b[3] end)
@@ -352,6 +401,7 @@ function Scenery.init(G)
               local dx, dz = it.x - cp.X, it.z - cp.Z
               local dy = (it.y - cp.Y) * 0.5   -- 天上往下看：高度算一半（飞机上看地面不至于全变公告板）
               local d = math.sqrt(dx * dx + dz * dz + dy * dy)
+              if fp and (it.x - fp.X) ^ 2 + (it.z - fp.Z) ^ 2 < FR * FR then d = math.min(d, d / fz) end   -- 放大看的那一片
               local w = want(it.k, d)
               if w and underVeh(it) then w = nil end   -- 车压着：先收起来，车开走了下一次更新再摆回去
               if w ~= it.cur then
@@ -632,6 +682,7 @@ function Scenery.init(G)
   end
 
   -- 每帧：镜头挪了 10 格以上、或者过了 0.3 秒，更新一次（每次最多 4 毫秒算格子、400 处换模型）
+  local prevCp = nil
   function G.stepScenery(dt)
     stepOcean()
     stepFalls()
@@ -639,6 +690,12 @@ function Scenery.init(G)
     if math.abs(pk - curK) > 0.01 then applyK(pk) end
     timer += dt
     local cp = cam.CFrame.Position
+    if prevCp and (dt or 0) > 1e-4 then
+      local v = (cp - prevCp) / dt
+      if v.Magnitude > 4000 then v = V(0, 0, 0) end   -- 镜头一下跳过去（出生、换载具、试驾）：不算速度
+      camVel = camVel:Lerp(v, math.min(1, dt * 3))
+    end
+    prevCp = cp
     if (lastPos and (cp - lastPos).Magnitude < 10 and timer < 0.3) then return end
     if timer < 0.08 then return end
     timer = 0

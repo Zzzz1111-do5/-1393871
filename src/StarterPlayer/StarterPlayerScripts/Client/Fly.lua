@@ -510,11 +510,14 @@ function Fly.init(G)
     end
   end
 
-  -- 光电吊舱的画面（P 键；用户给的参考：F-16 的瞄准吊舱页面 TGP）：
-  --   中间 4:3 的显示器（外面全黑），四边是多功能显示器的按键字（上 A-G / NARO 1.0x / OVRD / CNTL，左 WHOT / SP / CZ，下 SWAP / HSD / SMS / [TGP] / DCLT），
-  --   贯穿全屏、中间留空的细十字；跟踪到车、船、飞机就套一个 POINT 方框，没跟踪是 AREA；右上指北箭头；
-  --   左下激光编码 L 1688、目标斜距 T（海里），右下高度（英尺）、TTI 弹着时间；
-  --   显示器右边一栏：投放方式 · 武器、TTI 大字和进度条、武器状态（投出去了 AWAY、激光 ARM、LST）、一句提示、按键说明
+  -- 光电吊舱的画面（P 键）。用户 11-28「吊舱ui和战雷对其」：照战雷的瞄准吊舱画面重排（原来照 F-16 多功能显示器的 TGP 页：中间 4:3 的框、
+  --   四边一圈 A-G / NARO / OVRD / SWAP / HSD 之类的按键字）——
+  --   · 整屏就是吊舱的画面，四边一圈渐暗（镜头的暗角）；贯穿全屏的细十字，正中留空、空口两头各一小横，正中一个小点
+  --   · 跟踪：看着车、船、飞机套 POINT 方框（按它在画面里多大），没跟踪是正中一个小 AREA 框，框下面写跟踪方式
+  --   · 左上：模式（CCD / WHOT / BHOT）大字，下面倍率和视场角、对地 / 对空，再下面指北箭头和视线方位（右上留给小地图）
+  --   · 下面正中：目标距离（公里）、激光编码；它左边：吊舱转角框（横着是方位、竖着是俯仰，亮点是吊舱看着的方向，上沿中间的刻度是机头）
+  --     和俯视的小飞机（飞机往哪飞，相对吊舱看的方向）；右下：高度（米）、弹着时间（左下留给小队名单）
+  --   · 右边一栏（小地图下面）：投放方式 · 武器、TTI 大字和进度条、投放状态、一句提示、按键说明
   local MFD = RGB(232, 234, 230)
   local MFD_DIM = RGB(150, 154, 150)
   local MOB = G.mobile == true
@@ -523,40 +526,92 @@ function Fly.init(G)
   eoGui.Visible = false
   eoGui.ZIndex = 10   -- 盖住平显（速度、高度框等）
   local TG = {}
-  local disp = ui.frame(eoGui, UDim2.fromScale(1, 0.78), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+  local disp = ui.frame(eoGui, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
   disp.Name = "TgpDisplay"
   disp.ZIndex = 10
-  do
-    local a = Instance.new("UIAspectRatioConstraint")
-    a.AspectRatio = 4 / 3
-    a.Parent = disp
-    local mask = Instance.new("UIStroke")   -- 显示器外面全黑
-    mask.Thickness = 3000
-    mask.Color = RGB(0, 0, 0)
-    mask.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    mask.Parent = disp
-    local edge = ui.frame(disp, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
-    edge.ZIndex = 11
-    ui.stroke(edge, RGB(90, 94, 90), 1, 0.2)
+  do   -- 暗角：四边一圈渐暗
+    for _, e in ipairs({ { UDim2.new(1, 0, 0.16, 0), UDim2.fromScale(0, 0), 90 }, { UDim2.new(1, 0, 0.16, 0), UDim2.fromScale(0, 0.84), 270 },
+      { UDim2.new(0.12, 0, 1, 0), UDim2.fromScale(0, 0), 0 }, { UDim2.new(0.12, 0, 1, 0), UDim2.fromScale(0.88, 0), 180 } }) do
+      local f = ui.frame(disp, e[1], e[2], RGB(0, 0, 0), 0)
+      f.Name = "Vignette"
+      f.ZIndex = 10
+      local g = Instance.new("UIGradient")
+      g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 1) })
+      g.Rotation = e[3]
+      g.Parent = f
+    end
   end
   local function mfd(text, pos, anchor, size, col, align)
-    local l = ui.label(disp, text, UDim2.fromOffset(150, (size or 16) + 4), pos, size or (MOB and 12 or 16), col or MFD, Enum.Font.RobotoMono, anchor or Vector2.new(0.5, 0.5), align)
+    local l = ui.label(disp, text, UDim2.fromOffset(170, (size or 16) + 4), pos, size or (MOB and 12 or 16), col or MFD, Enum.Font.RobotoMono, anchor or Vector2.new(0.5, 0.5), align)
     l.TextStrokeTransparency, l.TextStrokeColor3 = 0.55, RGB(0, 0, 0)
     l.ZIndex = 12
     return l
   end
   local TS = MOB and 12 or 16
-  -- 上排、下排、左列的按键字
-  TG.ag = mfd("A-G", UDim2.new(0.165, 0, 0, 22), nil, TS)
-  TG.fov = mfd("NARO", UDim2.new(0.5, 0, 0, 22), nil, TS)
-  TG.zoom = mfd("1.0x", UDim2.new(0.5, 0, 0, 22 + TS + 4), nil, TS)
-  mfd("OVRD", UDim2.new(0.665, 0, 0, 22), nil, TS)
-  mfd("CNTL", UDim2.new(0.83, 0, 0, 22), nil, TS)
-  local eoMode = mfd("WHOT", UDim2.new(0.1, 0, 0.1, 0), nil, TS)
-  -- 飞机航向（用户 11-22：「那个飞机图标不应该放在屏幕下面，用来在电子吊舱的时候知道飞机航向嘛」）：吊舱画面下面正中一个俯视的小飞机，
+  local L0, T0 = MOB and 18 or 34, MOB and 14 or 28   -- 左右、上下的边距
+  local LEFT, RIGHT = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right
+  -- 左上：模式大字、倍率、视场角、对地 / 对空
+  local eoMode = mfd("CCD", UDim2.fromOffset(L0, T0), Vector2.new(0, 0), TS + 8, nil, LEFT)
+  TG.zoom = mfd("1.0x", UDim2.fromOffset(L0, T0 + TS + 14), Vector2.new(0, 0), TS + 2, nil, LEFT)
+  TG.fov = mfd("", UDim2.fromOffset(L0 + (MOB and 52 or 72), T0 + TS + 16), Vector2.new(0, 0), TS - 2, MFD_DIM, LEFT)
+  TG.ag = mfd("A-G", UDim2.fromOffset(L0, T0 + 2 * TS + 22), Vector2.new(0, 0), TS - 2, MFD_DIM, LEFT)
+  -- 左上那一组的下面：指北箭头、视线方位
+  local NY = T0 + 3 * TS + 42
+  TG.northN = mfd("N", UDim2.fromOffset(L0 + 6, NY), nil, TS - 2)
+  TG.north = ui.label(disp, "➤", UDim2.fromOffset(30, 30), UDim2.fromOffset(L0 + 30, NY), MOB and 18 or 22, MFD, Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0.5))
+  TG.north.ZIndex = 12
+  TG.brg = mfd("BRG 000", UDim2.fromOffset(L0 + 52, NY), Vector2.new(0, 0.5), TS - 2, MFD_DIM, LEFT)
+  TG.brg.Name = "EoBearing"
+  -- 细十字：横竖贯穿，中间留空；空口两头各一小横；正中一个小点
+  local GAP = MOB and 22 or 34
+  for _, c in ipairs({ { UDim2.new(0, 1, 0.5, -GAP), UDim2.fromScale(0.5, 0), Vector2.new(0.5, 0) }, { UDim2.new(0, 1, 0.5, -GAP), UDim2.fromScale(0.5, 1), Vector2.new(0.5, 1) },
+    { UDim2.new(0.5, -GAP, 0, 1), UDim2.fromScale(0, 0.5), Vector2.new(0, 0.5) }, { UDim2.new(0.5, -GAP, 0, 1), UDim2.fromScale(1, 0.5), Vector2.new(1, 0.5) } }) do
+    local l = ui.frame(disp, c[1], c[2], MFD, 0.35, c[3])
+    l.Name = "Cross"
+    l.ZIndex = 11
+  end
+  local TICK = MOB and 5 or 8
+  for _, c in ipairs({ { 0, -GAP }, { 0, GAP }, { -GAP, 0 }, { GAP, 0 } }) do
+    local horiz = c[1] == 0
+    local f = ui.frame(disp, horiz and UDim2.fromOffset(TICK * 2, 1) or UDim2.fromOffset(1, TICK * 2), UDim2.new(0.5, c[1], 0.5, c[2]), MFD, 0.2, Vector2.new(0.5, 0.5))
+    f.Name = "CrossTick"
+    f.ZIndex = 11
+  end
+  local cdot = ui.frame(disp, UDim2.fromOffset(3, 3), UDim2.fromScale(0.5, 0.5), MFD, 0.1, Vector2.new(0.5, 0.5))
+  cdot.Name = "CrossDot"
+  cdot.ZIndex = 11
+  -- 跟踪框（POINT）/ 区域跟踪的小框（AREA）、跟踪方式字
+  TG.box = ui.frame(disp, UDim2.fromOffset(52, 52), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+  TG.box.Name = "TrackBox"
+  TG.box.ZIndex = 12
+  TG.boxStroke = ui.stroke(TG.box, MFD, 1.5, 0)
+  TG.track = mfd("AREA", UDim2.new(0.5, 0, 0.5, MOB and 52 or 78), nil, TS - 2, MFD_DIM)
+  TG.track.Name = "TrackMode"
+  -- 下面正中：目标距离（公里）、激光编码
+  TG.rng = mfd("D --", UDim2.new(0.5, 0, 1, -(MOB and 46 or 72)), nil, TS + 6)
+  TG.laser = mfd("LSR 1688", UDim2.new(0.5, 0, 1, -(MOB and 26 or 44)), nil, TS - 2, MFD_DIM)
+  -- 下面正中偏左：吊舱转角框（横着方位 −180°～180°，竖着俯仰 +20°～−90°）
+  local GW, GH = MOB and 84 or 120, MOB and 44 or 62
+  local EL_TOP, EL_BOT = 20, -90
+  local GX = MOB and -250 or -360   -- 框的左边离屏幕中线
+  do
+    local gb = ui.frame(disp, UDim2.fromOffset(GW, GH), UDim2.new(0.5, GX, 1, -(MOB and 30 or 46)), RGB(0, 0, 0), 0.6, Vector2.new(0, 1))
+    gb.Name = "EoGimbal"
+    gb.ZIndex = 11
+    ui.stroke(gb, MFD, 1, 0.35)
+    local nose = ui.frame(gb, UDim2.fromOffset(1, 7), UDim2.new(0.5, 0, 0, 0), MFD, 0.15, Vector2.new(0.5, 0))
+    nose.ZIndex = 12
+    local hz = ui.frame(gb, UDim2.new(1, 0, 0, 1), UDim2.new(0, 0, EL_TOP / (EL_TOP - EL_BOT), 0), MFD, 0.7)
+    hz.ZIndex = 12
+    TG.gimDot = ui.frame(gb, UDim2.fromOffset(6, 6), UDim2.fromScale(0.5, 0.5), MFD, 0, Vector2.new(0.5, 0.5))
+    TG.gimDot.Name = "Dot"
+    TG.gimDot.ZIndex = 13
+    TG.gimTxt = mfd("", UDim2.new(0.5, GX, 1, -(MOB and 30 or 46) - GH - 4), Vector2.new(0, 1), TS - 4, MFD_DIM, LEFT)
+  end
+  -- 飞机航向（用户 11-22：「那个飞机图标……用来在电子吊舱的时候知道飞机航向嘛」）：转角框右边一个俯视的小飞机，
   --   机头朝哪 = 飞机往哪飞（相对吊舱现在看的方向：朝上就是吊舱顺着机头看），下面一行写航向度数
   do
-    local hb = ui.frame(disp, UDim2.fromOffset(56, 56), UDim2.new(0.5, 0, 1, -64), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+    local hb = ui.frame(disp, UDim2.fromOffset(56, 56), UDim2.new(0.5, GX + GW + 44, 1, -(MOB and 52 or 74)), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
     hb.Name = "EoHeading"
     hb.ZIndex = 12
     local ring = ui.frame(hb, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
@@ -578,57 +633,28 @@ function Fly.init(G)
     bar(14, 3, 0, 13)       -- 平尾
     bar(6, 6, 0, -16)       -- 机头
     TG.plane = plane
-    TG.hdg = mfd("000", UDim2.new(0.5, 0, 1, -28), nil, TS - 2)
+    TG.hdg = mfd("000", UDim2.new(0.5, GX + GW + 44, 1, -(MOB and 18 or 32)), nil, TS - 2)
   end
-  mfd("SP", UDim2.new(0, 10, 0.33, 0), Vector2.new(0, 0.5), TS, nil, Enum.TextXAlignment.Left)
-  mfd("CZ", UDim2.new(0, 10, 0.5, 0), Vector2.new(0, 0.5), TS, nil, Enum.TextXAlignment.Left)
-  for i, tx in ipairs({ "SWAP", "HSD", "SMS", "TGP", "DCLT" }) do
-    local l = mfd(tx, UDim2.new(({ 0.165, 0.33, 0.5, 0.665, 0.83 })[i], 0, 1, -18), nil, TS)
-    if tx == "TGP" then   -- 现在这一页：框起来
-      local b = ui.frame(disp, UDim2.fromOffset(TS * 3 + 10, TS + 10), UDim2.new(0.665, 0, 1, -18), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
-      b.ZIndex = 12
-      ui.stroke(b, MFD, 1, 0.15)
-      l.Name = "TgpPage"
-    end
-  end
-  -- 左下、右下的数
-  TG.laser = mfd("L 1688", UDim2.new(0, 46, 1, -76), Vector2.new(0, 0.5), TS + 2, nil, Enum.TextXAlignment.Left)
-  TG.rng = mfd("T --", UDim2.new(0, 46, 1, -50), Vector2.new(0, 0.5), TS + 2, nil, Enum.TextXAlignment.Left)
-  TG.alt = mfd("", UDim2.new(1, -46, 1, -76), Vector2.new(1, 0.5), TS + 2, nil, Enum.TextXAlignment.Right)
-  TG.tti = mfd("", UDim2.new(1, -46, 1, -50), Vector2.new(1, 0.5), TS + 4, nil, Enum.TextXAlignment.Right)
-  -- 细十字：横竖贯穿，中间留空
-  local GAP = MOB and 22 or 34
-  for _, c in ipairs({ { UDim2.new(0, 1, 0.5, -GAP), UDim2.fromScale(0.5, 0), Vector2.new(0.5, 0) }, { UDim2.new(0, 1, 0.5, -GAP), UDim2.fromScale(0.5, 1), Vector2.new(0.5, 1) },
-    { UDim2.new(0.5, -GAP, 0, 1), UDim2.fromScale(0, 0.5), Vector2.new(0, 0.5) }, { UDim2.new(0.5, -GAP, 0, 1), UDim2.fromScale(1, 0.5), Vector2.new(1, 0.5) } }) do
-    local l = ui.frame(disp, c[1], c[2], MFD, 0.35, c[3])
-    l.ZIndex = 11
-  end
-  -- 跟踪框（POINT）/ 区域跟踪的小框（AREA）、跟踪方式字
-  TG.box = ui.frame(disp, UDim2.fromOffset(52, 52), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
-  TG.box.Name = "TrackBox"
-  TG.box.ZIndex = 12
-  TG.boxStroke = ui.stroke(TG.box, MFD, 1.5, 0)
-  TG.track = mfd("AREA", UDim2.new(0.5, 0, 0.5, MOB and 70 or 112), nil, TS + 2)
-  TG.track.Name = "TrackMode"
-  -- 指北箭头
-  TG.north = ui.label(disp, "➤", UDim2.fromOffset(30, 30), UDim2.new(0.9, 0, 0.11, 0), MOB and 18 or 26, MFD, Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0.5))
-  TG.north.ZIndex = 12
-  TG.northN = mfd("N", UDim2.new(0.9, -22, 0.11, -18), nil, TS - 2)
-  -- 右边一栏（显示器外面的黑边上）
-  local side = ui.frame(disp, UDim2.fromOffset(MOB and 170 or 236, 300), UDim2.new(1, 18, 0, 0), RGB(0, 0, 0), 1)
+  -- 右下：高度（米）、弹着时间
+  TG.alt = mfd("", UDim2.new(1, -L0, 1, -(MOB and 46 or 72)), Vector2.new(1, 0.5), TS + 2, nil, RIGHT)
+  TG.tti = mfd("", UDim2.new(1, -L0, 1, -(MOB and 26 or 44)), Vector2.new(1, 0.5), TS + 2, nil, RIGHT)
+  -- 右边一栏
+  local side = ui.frame(disp, UDim2.fromOffset(MOB and 170 or 236, 300), UDim2.new(1, -L0, 0.38, 0), RGB(0, 0, 0), 1, Vector2.new(1, 0))
   side.Name = "TgpSide"
   side.ZIndex = 12
   local function sl(text, y, size, col, font)
-    local l = ui.label(side, text, UDim2.new(1, 0, 0, (size or 12) + 4), UDim2.fromOffset(0, y), size or 12, col or MFD, font or Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left)
+    local l = ui.label(side, text, UDim2.new(1, 0, 0, (size or 12) + 4), UDim2.fromOffset(0, y), size or 12, col or MFD, font or Enum.Font.RobotoMono, nil, RIGHT)
     l.ZIndex = 12
     l.TextWrapped = true
+    l.TextStrokeTransparency, l.TextStrokeColor3 = 0.6, RGB(0, 0, 0)
     return l
   end
-  TG.rel = sl("", 0, MOB and 10 or 11, MFD_DIM)
-  ui.label(side, "TTI", UDim2.fromOffset(30, 14), UDim2.fromOffset(0, MOB and 36 or 52), MOB and 10 or 11, MFD_DIM, Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left).ZIndex = 12
-  TG.ttiBig = ui.label(side, "-:--", UDim2.fromOffset(160, 34), UDim2.fromOffset(34, MOB and 22 or 34), MOB and 22 or 32, MFD, Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left)
+  TG.rel = sl("", 0, MOB and 10 or 12, MFD_DIM)
+  local ttiCap = ui.label(side, "TTI", UDim2.fromOffset(30, 14), UDim2.new(1, -(MOB and 112 or 150), 0, MOB and 36 or 52), MOB and 10 or 11, MFD_DIM, Enum.Font.RobotoMono, nil, LEFT)
+  ttiCap.ZIndex = 12
+  TG.ttiBig = ui.label(side, "-:--", UDim2.fromOffset(MOB and 80 or 112, 34), UDim2.new(1, 0, 0, MOB and 22 or 34), MOB and 22 or 32, MFD, Enum.Font.RobotoMono, Vector2.new(1, 0), RIGHT)
   TG.ttiBig.ZIndex = 12
-  local barBg = ui.frame(side, UDim2.new(0.86, 0, 0, 3), UDim2.fromOffset(0, MOB and 58 or 76), RGB(70, 72, 70), 0)
+  local barBg = ui.frame(side, UDim2.new(0.7, 0, 0, 3), UDim2.new(1, 0, 0, MOB and 58 or 76), RGB(70, 72, 70), 0, Vector2.new(1, 0))
   barBg.ZIndex = 12
   TG.bar = ui.frame(barBg, UDim2.fromScale(0, 1), nil, MFD, 0)
   TG.bar.ZIndex = 13
@@ -636,7 +662,7 @@ function Fly.init(G)
   TG.away = sl("", y0, MOB and 10 or 11, MFD)
   TG.arm = sl("", y0 + (MOB and 15 or 20), MOB and 10 or 11, RGB(236, 200, 120))
   TG.lst = sl("", y0 + (MOB and 30 or 40), MOB and 10 or 11, MFD)
-  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 16, MFD, Enum.Font.BuilderSans)
+  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 15, MFD, Enum.Font.BuilderSans)
   TG.say.Size = UDim2.new(1, 0, 0, MOB and 40 or 56)
   local eoHint = sl("", y0 + (MOB and 96 or 140), MOB and 9 or 10, MFD_DIM)
   eoHint.Size = UDim2.new(1, 0, 0, 90)
@@ -787,6 +813,7 @@ function Fly.init(G)
   local function eoApply()
     local on = st ~= nil and st.eo == true
     eoGui.Visible = on
+    if not on and G.sceneryFocus then G.sceneryFocus(nil) end
     if st then   -- 吊舱页面盖满屏幕：平显的速度、高度、航向框、武器栏、下面的信息栏收起来，出来再放回去
       for _, l in ipairs(HUDS) do if l ~= warnText then l.Visible = st.pilot == true and not on end end
       panel.Visible = not on
@@ -1263,7 +1290,12 @@ function Fly.init(G)
     st.fl = { by = by, yaw = math.atan2(-lk.X, -lk.Z), pitch = math.asin(clamp(lk.Y, -1, 1)) }
   end
   flStop = function()
-    if st then st.fl = nil end
+    if not st then return end
+    -- 纯键盘驾驶、在地上：右键拖到哪，松开镜头就停在哪（不滑回机头，用户 11-28）；战雷鼠标瞄准在空中照旧回到准星圈
+    if st.fl and st.fl.by == "rmb" and (not mouseAim or st.ground) and st.pilot and not st.uav then
+      st.kbLook = { yaw = st.fl.yaw, pitch = st.fl.pitch }
+    end
+    st.fl = nil
   end
   G.flyFreeLook = function(on) if on then flStart("rmb") else flStop() end end   -- 测试用
   -- 战雷的投弹（用户 11-24：「……包括投弹以及各方面操作细节和手感」）：Shift + B 投弹数量（单投 → 双投 → 齐投，整局记着）；
@@ -2235,7 +2267,7 @@ function Fly.init(G)
     elseif io.UserInputType == Enum.UserInputType.MouseButton2 and st.d.kind == "jet" and not st.uav and not st.eo and not st.bsight then
       flStart("rmb")   -- 自由视角：按住右键拖动
     elseif k == Enum.KeyCode.C and st.d.kind == "jet" and st.pilot then
-      if mouseAim then flStart("c") else flStop() end   -- 战雷鼠标瞄准：按住 C 也是自由视角；纯键盘：C 视角回到身后
+      if mouseAim and not st.ground then flStart("c") else st.fl, st.kbLook = nil, nil end   -- 战雷鼠标瞄准：按住 C 也是自由视角；纯键盘、地上：C 镜头回到身后
     elseif k == Enum.KeyCode.X then   -- 热诱弹：按住连续放（用户），每帧里按节拍发（stepFly）
       st.flareHold = true
       if os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then   -- 点一下也放一组（按下、松开在同一帧里的话，按住的逻辑一组都发不出去）
@@ -2460,9 +2492,11 @@ function Fly.init(G)
   function tgpStep(pos, wid, w)
     local m = EO_MODES[st.eoMode or 1]
     eoMode.Text = T("eo." .. m)
-    TG.fov.Text = (st.zoomS >= 3) and "NARO" or "WIDE"
+    TG.fov.Text = string.format("%.1f°", cam.FieldOfView)
     TG.zoom.Text = string.format("%.1fx", st.zoomS)
     TG.ag.Text = (w and w.kind == "aam") and "A-A" or "A-G"
+    -- 放大看的那一片：树按放大后的距离挑版本（Scenery.lua）；服务器那边按同步的瞄准点把那一片先送过来（Air.lua aheadStep）
+    if G.sceneryFocus then G.sceneryFocus(st.aimPt, st.zoomS) end
     -- 下面的小飞机：机头朝向相对吊舱镜头转（镜头朝北、飞机朝东：小飞机机头朝右）
     do
       local acf = st and st.cf
@@ -2475,10 +2509,24 @@ function Fly.init(G)
         TG.hdg.Text = string.format("%03d", math.floor((math.deg(-ya) % 360) + 0.5) % 360)
       end
     end
+    -- 吊舱转角：横着是吊舱视线相对机头的方位，竖着是俯仰；视线方位（真方位，度）
+    do
+      local lv0 = cam.CFrame.LookVector
+      local al = st.cf.LookVector
+      if (lv0.X * lv0.X + lv0.Z * lv0.Z) > 1e-6 and (al.X * al.X + al.Z * al.Z) > 1e-6 then
+        local yc = math.atan2(-lv0.X, -lv0.Z)
+        local ya = math.atan2(-al.X, -al.Z)
+        local az = math.deg(angDiff(yc, ya))   -- 往右为正
+        local el = math.deg(math.asin(clamp(lv0.Y, -1, 1)))
+        TG.gimDot.Position = UDim2.fromScale(clamp(0.5 + az / 360, 0, 1), clamp((EL_TOP - el) / (EL_TOP - EL_BOT), 0, 1))
+        TG.gimTxt.Text = string.format("AZ %+04d  EL %+03d", math.floor(az + 0.5), math.floor(el + 0.5))
+        TG.brg.Text = string.format("BRG %03d", math.floor((math.deg(-yc) % 360) + 0.5) % 360)
+      end
+    end
     local camP = cam.CFrame.Position
     local vs = cam.ViewportSize
-    local dispH = vs.Y * 0.78
-    local dispW = math.min(vs.X, dispH * 4 / 3)
+    local dispH = vs.Y   -- 整屏就是吊舱画面（11-28 照战雷；原来中间 4:3 的显示器）
+    local dispW = vs.X
     -- 跟踪：吊舱正看着车、船、飞机 → POINT，框按它在画面里多大；锁着的目标不在中间就框到它那里；都没有是 AREA（中间一个小框）
     local point, bx, by, bs = false, dispW / 2, dispH / 2, MOB and 18 or 26
     local function sizeOf(model, at)
@@ -2504,10 +2552,10 @@ function Fly.init(G)
     TG.box.Size = UDim2.fromOffset(bs, bs)
     TG.boxStroke.Thickness = point and 1.5 or 1
     TG.track.Text = point and "POINT" or "AREA"
-    -- 斜距（海里）、高度（英尺）、指北
+    -- 目标距离（公里）、高度（米）、指北（照战雷用公制；原来照 F-16 写海里、英尺）
     local slant = (st.aimPt - camP).Magnitude / AD.M
-    TG.rng.Text = string.format("T %.1f", slant / 1852)
-    TG.alt.Text = string.format("%d", math.floor(pos.Y / AD.M * 3.281 + 0.5))
+    TG.rng.Text = string.format("D %.2f km", slant / 1000)
+    TG.alt.Text = string.format("ALT %d m", math.floor(pos.Y / AD.M + 0.5))
     local lv = cam.CFrame.LookVector
     TG.north.Rotation = -90 - math.deg(math.atan2(lv.X, -lv.Z))
     -- 投出去的弹还在飞：TTI 按它离瞄准点多远、多快；没投就按现在投下去要飞多久
@@ -2608,12 +2656,22 @@ function Fly.init(G)
         if st.fl then   -- 自由视角（右键拖着）：鼠标转世界里的方向（准心、飞机照旧）
           st.fl.yaw -= md.X * SENS
           st.fl.pitch = clamp(st.fl.pitch - md.Y * SENS, -1.45, 1.45)
-        elseif st.pilot and not st.uav and mouseAim and not key(Enum.KeyCode.C) then
+        elseif st.pilot and not st.uav and mouseAim and not key(Enum.KeyCode.C) and not st.ground then
           -- 战雷式鼠标瞄准：鼠标转想去的方向（世界里的方向，可以转到身后——飞机掉头追过去）
           st.aimYaw -= md.X * SENS
           st.aimPitch = clamp(st.aimPitch - md.Y * SENS, -1.45, 1.45)
         elseif st.pilot and not st.uav then
-          -- 有人开的固定翼（用户 11-21：WASD 控制方向、不要准心控制）：鼠标不管方向；转视角改成按住右键拖动（上面 st.fl，用户 11-26 晚）
+          -- 有人开的固定翼（用户 11-21：WASD 控制方向、不要准心控制）、战雷鼠标瞄准时在地上滑跑：鼠标不管方向，鼠标直接转镜头——
+          --   看世界里的一个方向（方位、俯仰），转到哪停在哪，不再被拽回机头（用户 11-28「飞机驾驶不要强制让镜头跟着机头」；
+          --   原来纯键盘时镜头钉在机头上，只有按住右键才能转、松开就滑回去）；按 C 回到身后
+          if md.X ~= 0 or md.Y ~= 0 then
+            if not st.kbLook then
+              local lk = cam.CFrame.LookVector
+              st.kbLook = { yaw = math.atan2(-lk.X, -lk.Z), pitch = math.asin(clamp(lk.Y, -1, 1)) }
+            end
+            st.kbLook.yaw -= md.X * SENS
+            st.kbLook.pitch = clamp(st.kbLook.pitch - md.Y * SENS, -1.45, 1.45)
+          end
         elseif st.pilot then   -- 无人机：鼠标推的是想去的方向（飞机自动转过去）
           -- 镜头跟着机身：按镜头的左右、上下转（倒飞、竖直爬升时鼠标往上照样是画面上方），再限制在机头前方的椭圆里
           --   （鼠标没动就不管：自动驾驶、降落辅助给的方向照原样）
@@ -2768,7 +2826,12 @@ function Fly.init(G)
       -- 机头标记跟着机动小幅位移（用户 11-21：像 MWT 那样视角里有个会位移的飞机小标志）：镜头的朝向慢半拍跟上机头——
       --   一阶平滑（不会来回晃），最多偏 7°；压杆转弯时标记往转的那边挪一点，松杆回到正中。原来镜头死钉在机头上，标记一动不动；
       --   再原来镜头跟着鼠标瞄准方向，标记在画面里到处跑（偏 229 像素、来回摆四次，用户嫌乱）
-      if not wtCam then
+      if wtCam then st.kbLook = nil end   -- 离地以后交给鼠标瞄准（镜头顺着准星圈）
+      if not wtCam and st.kbLook then   -- 鼠标转开的镜头：停在那个方向，地平线放平（不跟着机头）
+        fwd = (CFrame.Angles(0, st.kbLook.yaw, 0) * CFrame.Angles(st.kbLook.pitch, 0, 0)).LookVector
+        upC = V(0, 1, 0)
+        st.camF = fwd
+      elseif not wtCam then
         local noseF = fwd
         local cf2 = noseF
         if st.camF and st.camF:Dot(noseF) > 0.5 then
@@ -3057,7 +3120,7 @@ function Fly.init(G)
     if st.sendT <= 0 and st.pilot and not st.crashed then
       st.sendT = math.max(st.sendT + 1 / 15, 0)   -- 按平均每秒 15 次（原来每次重设，帧率低时间隔拖成两三帧）
       local c = st.c
-      G.R.Drive:FireServer({ op = "state", cf = st.cf, v = st.vel, gd = st.ground, aim = st.aimPt, stk = st.stick ~= nil, thr = c.thr, gear = c.gear, flap = c.flap, cp = c.pit, cr = c.rol,
+      G.R.Drive:FireServer({ op = "state", cf = st.cf, v = st.vel, gd = st.ground, aim = st.aimPt, eo = st.eo or nil, stk = st.stick ~= nil, thr = c.thr, gear = c.gear, flap = c.flap, cp = c.pit, cr = c.rol,
         cy = c.yaw, bay = c.bay, bays = c.bayS, rpm = c.rpm, col = c.col, can = c.can, hook = c.hook, brk = c.brk, ty = c.ty, gp = c.gp, fold = c.fold })
     end
     -- 平显
