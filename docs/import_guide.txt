@@ -38,6 +38,9 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWBP]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日起 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～八包、E 第一～七包，新的在上面）
+  11-28 晚这一包（直升机照战雷的鼠标瞄准：W 升 S 降、鼠标定方向、A/D 侧飞、Q/E 转机头；飞机滚转收得住、转弯机动性高一点；
+    机枪、机关炮的声音换成真录音的连发 / 单发）：只换游戏文件（或者「三、只换脚本」），不用导模型。
+    声音用的是创作者商店里 ProSoundEffects 的公开音频（任何游戏都能直接用），不用上传；载不下来的话照旧是原来的声音
   11-28 这一包（挂载表、局内出击页、金币充值、T-90A「窗帘-1」红灯、车被打爆照战雷、开镜黑框 / 望远镜缩放、弹药架起火殉爆、PGL-625……）：
     只换游戏文件（或者「三、只换脚本」），不用导模型。
     金币充值要上架才能真的收 R 币：创作者后台（create.roblox.com → 这个体验 → 盈利 / Monetization → 开发者产品 / Developer Products）建 5 个产品，
