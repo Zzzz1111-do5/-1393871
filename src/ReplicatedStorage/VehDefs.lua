@@ -111,6 +111,12 @@ VehDefs.W = {
   --   射程按游戏的比例尺（57E6 真车约 20 公里 → 6000；9M31 约 4.2 公里，比针-V 还近）；飞行参数在 AirDefs.W.s9m31
   s9m31 = { kind = "sam", dmg = 380, rate = 3, mag = 4, reload = 0, reserve = 0, range = 2000,
     vs = { inf = 0.3, light = 0.3, armor = 0.05, air = 1, ship = 0.2, fort = 0.1 }, fx = "msl" },
+  -- Type 625（PGL-625）弹炮结合（用户 11-28「中系有个防空车 我记得是带导弹的」）：真车一门 25 毫米六管加特林 + 炮塔两侧四联装短程防空导弹
+  --   （出口型 625E 用 FB-10A；国内型据说是便携式那一级的弹）——炮一分钟三四千发；导弹红外导引头、Q 锁住飞机再发（同铠甲、箭-1），飞行参数在 AirDefs.W.sfb10
+  ac25g = { kind = "shell", dmg = 30, speed = 1150, drop = 0.15, splash = 3.2, rate = 0.017, mag = 400, reload = 6, reserve = 1200, range = 2200,
+    vs = { inf = 0.9, light = 0.7, armor = 0.1, air = 2.2, ship = 0.2, fort = 0.3 }, fx = "ac", cal = 0.17 },
+  sfb10 = { kind = "sam", dmg = 360, rate = 1.2, mag = 4, reload = 0, reserve = 0, range = 2600,
+    vs = { inf = 0.3, light = 0.3, armor = 0.05, air = 1, ship = 0.2, fort = 0.1 }, fx = "msl" },
   vulcan = { kind = "shell", dmg = 26, speed = 1200, drop = 0.2, splash = 2.5, rate = 0.035, mag = 300, reload = 6, reserve = 1200, range = 1600,
     vs = { inf = 1, light = 0.6, armor = 0.05, air = 2.0, ship = 0.15, fort = 0.25 }, fx = "ac", cal = 0.14 },
   -- 车顶 GAU-8 加特林附件（坦克改装，TankMods.OPT.gau8）：30 毫米，一秒二十发，2048 发
@@ -543,7 +549,7 @@ D.pgl625 = wheeled({ cat = "aa", L = 24, W = 8.4, H = 9.6, hullH = 5.6, clear = 
   turret = { pivot = V(0, 5.6, 2.4), size = V(4.6, 2.2, 4.6), style = "spaag", trav = 90, elev = { -5, 85 }, radar = true, twin = 2.8 },
   gun = { pivot = V(0, 1.1, -1.2), len = 7.4, cal = 0.22 }, sight = V(0, 2.0, -2.0),
   smoke = { banks = { { at = V(2.3, 0.6, -2.4), yaw = 35 }, { at = V(-2.3, 0.6, -2.4), yaw = -35 } }, n = 4 },
-  weapons = { "ac35" } })
+  weapons = { "ac25g", "sfb10" } })   -- 25 毫米六管加特林 + 4 枚短程防空导弹（原来只写了一门 35 炮）
 -- 铠甲-S1（用户 11-24 找的俄系；SanderWolf_ 的原模型 pantsir）：KamAZ-6560 8×8 底盘、后部战斗模块——两门 2A38M 双管 30 炮 + 12 枚 57E6 地空导弹，
 --   顶上搜索雷达一直转、前面跟踪雷达；尺寸按原模型（全长约 10.3 米）
 D.pantsir = wheeled({ cat = "aa", L = 28.8, W = 8.4, H = 11.4, hullH = 7.5, clear = 1.9, speed = 70.0, accel = 8, rev = 19.4, turn = 34, truck = true,

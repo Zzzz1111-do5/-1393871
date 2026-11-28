@@ -102,6 +102,10 @@ AirDefs.W = {
   --   发动机、过载、掉速直接写在这里（不进下面的 MOTOR 表）
   s9m31 = { kind = "sam", seeker = "ir", dmg = 380, splash = 11, speed = 350, range = 2000, turn = 35, burn = 3, g = 14, bleed = 0.2, smoke = "med",
     life = 7, vs = VS_AAM, shape = { L = 5.0, d = 0.34, fin = 0.7 } },
+  -- Type 625 的短程防空导弹（出口型 FB-10A：外界说法射程 10 公里上下、红外导引头带抗干扰；车上四枚，VehDefs.W.sfb10）：
+  --   比 9M31 快、远、转得灵；双色红外（热诱弹不好骗：Air.lua flare 按 band）
+  sfb10 = { kind = "sam", seeker = "ir", band = "2", dmg = 360, splash = 11, speed = 520, range = 2600, turn = 55, burn = 3, g = 28, bleed = 0.16, smoke = "low",
+    mt = "bs", dv = 0.95, out = 0.3, life = 8, vs = VS_AAM, shape = { L = 5.6, d = 0.3, fin = 0.6 } },
 
   akd10 = { kind = "agm", dmg = 900, splash = 10, speed = 380, range = 2400, lockTime = 1.2, cone = 25, turn = 40, burn = 6, life = 9, vs = VS_AGM,
     shape = { L = 5.0, d = 0.5, fin = 0.7 } },
