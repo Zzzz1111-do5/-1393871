@@ -1662,6 +1662,16 @@ function B.superElev(a, xm, los)
 end
 
 -- 游戏里用的：初速（格 / 秒）、阻力系数（每格）、重力倍数（Ents / Fx 的 GRAV = workspace.Gravity × 0.55 乘 gscale）
+-- 脱壳弹（打出去炮口外面弹托几瓣飞开；用户 11-28「钢针打出去的效果跟尾烟要有区别」：钢针 = 尾翼稳定脱壳穿甲弹的长杆）：
+--   fs 尾翼稳定脱壳穿甲弹（长杆，初速一千三百米以上）/ ds 旋转稳定的脱壳穿甲弹（APDS：豹 1 的 DM13、M60A1 的 M392）；全口径、次口径的没有
+function B.sabotOf(a)
+  if type(a) ~= "table" or a.cls ~= "ap" then return nil end
+  if a.sub == "fs" or a.sub == "ds" then return a.sub end
+  if string.find(a.name or "", "APDS", 1, true) then return "ds" end
+  if (a.v0 or 0) >= 1300 then return "fs" end
+  return nil
+end
+
 function B.launchArgs(a)
   return a.v0 * S, a.k / S, B.G / (workspace.Gravity * 0.55)
 end
@@ -1772,7 +1782,7 @@ return {
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-28 11:34 32bd1f5"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-28 13:24 fe74ef2"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 -- 存档怎么写（Store.lua，用户 11-26「账号的载具解锁要能保留」）：gap 同一个人两次写至少隔几秒（Roblox 同一个键 6 秒才能写一次，多的排队）、
 --   auto 每隔几秒看一次存档变没变（变了就存）、closeWait 关服时最多等几秒把还没写完的写完（Roblox 给 BindToClose 30 秒）
@@ -11064,7 +11074,8 @@ add("wt.m.trackL", "左履带", "Left track")
 add("wt.m.trackR", "右履带", "Right track")
 add("wt.m.barrel", "炮管", "Barrel")
 add("wt.m.breech", "炮闩", "Breech")
-add("wt.m.tdrive", "炮塔驱动", "Turret drive")
+add("wt.m.tdrive", "方向机", "Traverse drive")
+add("wt.m.edrive", "高低机", "Elevation drive")
 add("wt.m.ammo", "弹药架", "Ammo rack")
 add("wt.m.ammoH", "车体弹药", "Hull ammo")
 add("wt.m.fuelL", "左油箱", "Left fuel tank")
@@ -11080,7 +11091,8 @@ add("wt.ms.trans", "传", "TRN")
 add("wt.ms.track", "履", "TRK")
 add("wt.ms.barrel", "管", "BRL")
 add("wt.ms.breech", "闩", "BRC")
-add("wt.ms.tdrive", "驱", "TRV")
+add("wt.ms.tdrive", "方", "TRV")
+add("wt.ms.edrive", "高", "ELV")
 add("wt.ms.ammo", "弹", "AMO")
 add("wt.ms.fuel", "油", "FUL")
 add("wt.dead", "阵亡", " KO")
@@ -11097,7 +11109,7 @@ add("wt.ric", "跳弹", "RICOCHET")
 add("wt.np", "未击穿", "NON-PENETRATION")
 add("wt.hit", "命中", "HIT")
 add("wt.mm", "装甲 {1} 毫米 / 穿深 {2} 毫米", "armour {1} mm / penetration {2} mm")
-add("wt.xrTitle", "命中回放 · {1} · {2} 米", "HIT CAMERA · {1} · {2} m")
+add("wt.xrName", "{1} · {2} 米", "{1} · {2} m")   -- 命中回放左下小字的第一行：车名 · 距离
 add("wt.xrJetB", "金属射流弹 · 穿深 {1} / 等效 {2} 毫米", "METAL JET · pen {1} / eff {2} mm")
 add("wt.xrJet", "聚能射流 · 穿深 {1} / 等效 {2} 毫米", "SHAPED-CHARGE JET · pen {1} / eff {2} mm")
 add("wt.xr.fs", "长杆穿甲弹 · 杆头被啃短、钻得深 · 穿深 {1} / 等效 {2} 毫米", "APFSDS · rod erodes, goes deep · pen {1} / eff {2} mm")
@@ -11108,7 +11120,6 @@ add("wt.xr.ac", "机炮穿甲弹 · 穿深 {1} / 等效 {2} 毫米", "AUTOCANNON
 add("wt.xr.he", "杀爆弹 · 车外炸开 · 穿深 {1} / 等效 {2} 毫米", "HE · bursts outside · pen {1} / eff {2} mm")
 add("wt.xr.hesh", "碎甲弹 · 装甲没打穿、内壁崩落 · 当量 {1} / 等效 {2} 毫米", "HESH · no hole, inner wall spalls · eq {1} / eff {2} mm")
 add("wt.xr.tandem", "串联破甲弹 · 前级先炸 · 穿深 {1} / 等效 {2} 毫米", "TANDEM HEAT · precursor first · pen {1} / eff {2} mm")
-add("wt.xrSlow", "慢放 ×0.01", "SLOW-MO ×0.01")
 add("wt.tipFire", "起火，按 Y 灭火", "ON FIRE. Press Y to extinguish")
 add("wt.tipFixing", "维修中 {1}%（按 Y 取消）", "Repairing {1}% (Y to cancel)")
 add("wt.tipFix", "有部件损坏：按 Y 维修", "Parts damaged: press Y to repair")
@@ -11182,7 +11193,9 @@ add("xr.fuel", "油箱", "Fuel")
 add("xr.ammo", "弹药", "Ammo")
 add("xr.breech", "炮闩", "Breech")
 add("xr.barrel", "炮管", "Barrel")
-add("xr.tdrive", "炮塔驱动", "Turret drive")
+add("xr.tdrive", "方向机", "Traverse drive")
+add("xr.edrive", "高低机", "Elevation drive")
+add("xr.drives", "方向机 / 高低机", "Traverse / elevation drives")
 add("xr.optics", "观瞄", "Optics")
 add("xr.era", "爆反", "ERA")
 add("xr.other", "其他", "Other")
@@ -11549,7 +11562,7 @@ return Lang
         <Item class="ModuleScript" referent="32">
           <Properties>
             <string name="Name">de</string>
-            <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：de 的译文（2177 / 2349 条）
+            <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：de 的译文（2178 / 2350 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -13150,11 +13163,12 @@ return {
     ["wt.m.ammoH"] = "Wannenmunition",
     ["wt.m.barrel"] = "Rohr",
     ["wt.m.breech"] = "Verschluss",
+    ["wt.m.edrive"] = "Höhenrichtantrieb",
     ["wt.m.engine"] = "Motor",
     ["wt.m.fuelL"] = "Linker Tank",
     ["wt.m.fuelR"] = "Kraftstofftank",
     ["wt.m.optics"] = "Optik",
-    ["wt.m.tdrive"] = "Turmantrieb",
+    ["wt.m.tdrive"] = "Seitenrichtantrieb",
     ["wt.m.trackL"] = "Linke Kette",
     ["wt.m.trackR"] = "Rechte Kette",
     ["wt.m.trans"] = "Getriebe",
@@ -13164,9 +13178,10 @@ return {
     ["wt.ms.ammo"] = "MUN",
     ["wt.ms.barrel"] = "ROHR",
     ["wt.ms.breech"] = "VER",
+    ["wt.ms.edrive"] = "HÖH",
     ["wt.ms.engine"] = "MOT",
     ["wt.ms.fuel"] = "KST",
-    ["wt.ms.tdrive"] = "TRB",
+    ["wt.ms.tdrive"] = "SEI",
     ["wt.ms.track"] = "KET",
     ["wt.ms.trans"] = "GTR",
     ["wt.mslAct"] = "Raketensuchkopf aktiv",
@@ -13235,8 +13250,6 @@ return {
     ["wt.xrBurst"] = "Serien-Durchschläge ×{1}",
     ["wt.xrJet"] = "HOHLLADUNGSSTRAHL · Durchschlag {1} / eff. {2} mm",
     ["wt.xrJetB"] = "METALLSTRAHL · Durchschlag {1} / eff. {2} mm",
-    ["wt.xrSlow"] = "ZEITLUPE ×0,01",
-    ["wt.xrTitle"] = "TREFFERKAMERA · {1} · {2} m",
     ["wt.youFire"] = "Feuer breitet sich aus",
     ["wt.youHit"] = "Von der Druckwelle getroffen",
     ["wt.youNp"] = "Panzerung hat gehalten",
@@ -13354,6 +13367,8 @@ return {
     ["xr.d.rounds"] = "{1} / {2} Schuss",
     ["xr.d.turbine"] = "Gasturbine",
     ["xr.dead"] = "Zerstört / gefallen",
+    ["xr.drives"] = "Seiten- / Höhenrichtantrieb",
+    ["xr.edrive"] = "Höhenrichtantrieb",
     ["xr.engine"] = "Motor",
     ["xr.fire"] = "In Brand",
     ["xr.fuel"] = "Kraftstoff",
@@ -13371,7 +13386,7 @@ return {
     ["xr.s.kia"] = "Gefallen",
     ["xr.s.ok"] = "Intakt",
     ["xr.s.wounded"] = "Verwundet",
-    ["xr.tdrive"] = "Turmantrieb",
+    ["xr.tdrive"] = "Seitenrichtantrieb",
     ["xr.track"] = "Ketten / Räder",
     ["xr.trans"] = "Getriebe",
     ["xr.troops"] = "Truppenraum",
@@ -13911,7 +13926,7 @@ return {
         <Item class="ModuleScript" referent="33">
           <Properties>
             <string name="Name">es</string>
-            <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：es 的译文（2194 / 2349 条）
+            <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：es 的译文（2195 / 2350 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -15537,11 +15552,12 @@ return {
     ["wt.m.ammoH"] = "Munición del casco",
     ["wt.m.barrel"] = "Tubo",
     ["wt.m.breech"] = "Recámara",
+    ["wt.m.edrive"] = "Mecanismo de elevación",
     ["wt.m.engine"] = "Motor",
     ["wt.m.fuelL"] = "Depósito izquierdo",
     ["wt.m.fuelR"] = "Depósito de combustible",
     ["wt.m.optics"] = "Óptica",
-    ["wt.m.tdrive"] = "Accionamiento de torreta",
+    ["wt.m.tdrive"] = "Mecanismo de giro de la torreta",
     ["wt.m.trackL"] = "Cadena izquierda",
     ["wt.m.trackR"] = "Cadena derecha",
     ["wt.m.trans"] = "Transmisión",
@@ -15551,9 +15567,10 @@ return {
     ["wt.ms.ammo"] = "MUN",
     ["wt.ms.barrel"] = "TUB",
     ["wt.ms.breech"] = "REC",
+    ["wt.ms.edrive"] = "ELV",
     ["wt.ms.engine"] = "MOT",
     ["wt.ms.fuel"] = "COM",
-    ["wt.ms.tdrive"] = "ACC",
+    ["wt.ms.tdrive"] = "GIR",
     ["wt.ms.track"] = "CAD",
     ["wt.ms.trans"] = "TRN",
     ["wt.mslAct"] = "Buscador del misil activo",
@@ -15622,8 +15639,6 @@ return {
     ["wt.xrBurst"] = "Penetraciones en ráfaga ×{1}",
     ["wt.xrJet"] = "CHORRO DE CARGA HUECA · pen. {1} / ef. {2} mm",
     ["wt.xrJetB"] = "CHORRO METÁLICO · pen. {1} / ef. {2} mm",
-    ["wt.xrSlow"] = "CÁMARA LENTA ×0,01",
-    ["wt.xrTitle"] = "CÁMARA DE IMPACTO · {1} · {2} m",
     ["wt.youFire"] = "El fuego se extiende",
     ["wt.youHit"] = "Alcanzado por la onda expansiva",
     ["wt.youNp"] = "El blindaje aguantó",
@@ -15741,6 +15756,8 @@ return {
     ["xr.d.rounds"] = "{1} / {2} disparos",
     ["xr.d.turbine"] = "Turbina de gas",
     ["xr.dead"] = "Destruido / muerto",
+    ["xr.drives"] = "Giro / elevación",
+    ["xr.edrive"] = "Mecanismo de elevación",
     ["xr.engine"] = "Motor",
     ["xr.fire"] = "En llamas",
     ["xr.fuel"] = "Combustible",
@@ -15758,7 +15775,7 @@ return {
     ["xr.s.kia"] = "Muerto",
     ["xr.s.ok"] = "Intacto",
     ["xr.s.wounded"] = "Herido",
-    ["xr.tdrive"] = "Accionamiento de torreta",
+    ["xr.tdrive"] = "Mecanismo de giro de la torreta",
     ["xr.track"] = "Cadenas / ruedas",
     ["xr.trans"] = "Transmisión",
     ["xr.troops"] = "Compartimento de tropa",
@@ -16297,7 +16314,7 @@ return {
         <Item class="ModuleScript" referent="34">
           <Properties>
             <string name="Name">fr</string>
-            <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：fr 的译文（2192 / 2349 条）
+            <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：fr 的译文（2193 / 2350 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -17918,11 +17935,12 @@ return {
     ["wt.m.ammoH"] = "Munitions de caisse",
     ["wt.m.barrel"] = "Tube",
     ["wt.m.breech"] = "Culasse",
+    ["wt.m.edrive"] = "Mécanisme de pointage en hauteur",
     ["wt.m.engine"] = "Moteur",
     ["wt.m.fuelL"] = "Réservoir gauche",
     ["wt.m.fuelR"] = "Réservoir",
     ["wt.m.optics"] = "Optique",
-    ["wt.m.tdrive"] = "Entraînement de tourelle",
+    ["wt.m.tdrive"] = "Mécanisme de rotation de tourelle",
     ["wt.m.trackL"] = "Chenille gauche",
     ["wt.m.trackR"] = "Chenille droite",
     ["wt.m.trans"] = "Transmission",
@@ -17932,9 +17950,10 @@ return {
     ["wt.ms.ammo"] = "MUN",
     ["wt.ms.barrel"] = "TUBE",
     ["wt.ms.breech"] = "CUL",
+    ["wt.ms.edrive"] = "ÉLÉ",
     ["wt.ms.engine"] = "MOT",
     ["wt.ms.fuel"] = "CAR",
-    ["wt.ms.tdrive"] = "ENT",
+    ["wt.ms.tdrive"] = "ROT",
     ["wt.ms.track"] = "CHE",
     ["wt.ms.trans"] = "TRN",
     ["wt.mslAct"] = "Autodirecteur du missile actif",
@@ -18003,8 +18022,6 @@ return {
     ["wt.xrBurst"] = "Pénétrations en rafale ×{1}",
     ["wt.xrJet"] = "JET DE CHARGE CREUSE · pén. {1} / eff. {2} mm",
     ["wt.xrJetB"] = "JET MÉTALLIQUE · pén. {1} / eff. {2} mm",
-    ["wt.xrSlow"] = "RALENTI ×0,01",
-    ["wt.xrTitle"] = "CAMÉRA D'IMPACT · {1} · {2} m",
     ["wt.youFire"] = "L'incendie se propage",
     ["wt.youHit"] = "Touché par le souffle",
     ["wt.youNp"] = "Le blindage a tenu",
@@ -18125,6 +18142,8 @@ return {
     ["xr.d.rounds"] = "{1} / {2} coups",
     ["xr.d.turbine"] = "Turbine à gaz",
     ["xr.dead"] = "Détruit / mort",
+    ["xr.drives"] = "Rotation / pointage en hauteur",
+    ["xr.edrive"] = "Mécanisme de pointage en hauteur",
     ["xr.engine"] = "Moteur",
     ["xr.fire"] = "En feu",
     ["xr.fuel"] = "Carburant",
@@ -18142,7 +18161,7 @@ return {
     ["xr.s.kia"] = "Mort",
     ["xr.s.ok"] = "Intact",
     ["xr.s.wounded"] = "Blessé",
-    ["xr.tdrive"] = "Entraînement de tourelle",
+    ["xr.tdrive"] = "Mécanisme de rotation de tourelle",
     ["xr.track"] = "Chenilles / roues",
     ["xr.trans"] = "Transmission",
     ["xr.troops"] = "Compartiment des troupes",
@@ -18681,7 +18700,7 @@ return {
         <Item class="ModuleScript" referent="35">
           <Properties>
             <string name="Name">ja</string>
-            <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ja 的译文（2273 / 2349 条）
+            <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ja 的译文（2274 / 2350 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -20377,11 +20396,12 @@ return {
     ["wt.m.ammoH"] = "車体弾薬",
     ["wt.m.barrel"] = "砲身",
     ["wt.m.breech"] = "砲尾",
+    ["wt.m.edrive"] = "俯仰装置",
     ["wt.m.engine"] = "エンジン",
     ["wt.m.fuelL"] = "左燃料タンク",
     ["wt.m.fuelR"] = "燃料タンク",
     ["wt.m.optics"] = "光学装置",
-    ["wt.m.tdrive"] = "砲塔駆動",
+    ["wt.m.tdrive"] = "旋回装置",
     ["wt.m.trackL"] = "左履帯",
     ["wt.m.trackR"] = "右履帯",
     ["wt.m.trans"] = "変速機",
@@ -20391,9 +20411,10 @@ return {
     ["wt.ms.ammo"] = "弾",
     ["wt.ms.barrel"] = "身",
     ["wt.ms.breech"] = "尾",
+    ["wt.ms.edrive"] = "俯",
     ["wt.ms.engine"] = "エ",
     ["wt.ms.fuel"] = "燃",
-    ["wt.ms.tdrive"] = "駆",
+    ["wt.ms.tdrive"] = "旋",
     ["wt.ms.track"] = "履",
     ["wt.ms.trans"] = "変",
     ["wt.mslAct"] = "ミサイルのシーカー作動",
@@ -20462,8 +20483,6 @@ return {
     ["wt.xrBurst"] = "連続貫通 ×{1}",
     ["wt.xrJet"] = "成形炸薬噴流 · 貫徹 {1} / 等価 {2} mm",
     ["wt.xrJetB"] = "金属噴流 · 貫徹 {1} / 等価 {2} mm",
-    ["wt.xrSlow"] = "スロー ×0.01",
-    ["wt.xrTitle"] = "命中カメラ · {1} · {2} m",
     ["wt.youFire"] = "延焼中",
     ["wt.youHit"] = "爆風を受けた",
     ["wt.youNp"] = "装甲が防いだ",
@@ -20585,6 +20604,8 @@ return {
     ["xr.d.rounds"] = "{1} / {2} 発",
     ["xr.d.turbine"] = "ガスタービン",
     ["xr.dead"] = "破壊 / 戦死",
+    ["xr.drives"] = "旋回装置 / 俯仰装置",
+    ["xr.edrive"] = "俯仰装置",
     ["xr.engine"] = "エンジン",
     ["xr.era"] = "ERA",
     ["xr.fire"] = "火災",
@@ -20603,7 +20624,7 @@ return {
     ["xr.s.kia"] = "戦死",
     ["xr.s.ok"] = "健全",
     ["xr.s.wounded"] = "負傷",
-    ["xr.tdrive"] = "砲塔駆動",
+    ["xr.tdrive"] = "旋回装置",
     ["xr.track"] = "履帯 / 車輪",
     ["xr.trans"] = "変速機",
     ["xr.troops"] = "兵員室",
@@ -21152,7 +21173,7 @@ return {
         <Item class="ModuleScript" referent="36">
           <Properties>
             <string name="Name">ko</string>
-            <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ko 的译文（2273 / 2349 条）
+            <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ko 的译文（2274 / 2350 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -22848,11 +22869,12 @@ return {
     ["wt.m.ammoH"] = "차체 탄약",
     ["wt.m.barrel"] = "포신",
     ["wt.m.breech"] = "포미",
+    ["wt.m.edrive"] = "고저 장치",
     ["wt.m.engine"] = "엔진",
     ["wt.m.fuelL"] = "좌측 연료탱크",
     ["wt.m.fuelR"] = "연료탱크",
     ["wt.m.optics"] = "광학 장비",
-    ["wt.m.tdrive"] = "포탑 구동",
+    ["wt.m.tdrive"] = "선회 장치",
     ["wt.m.trackL"] = "좌측 궤도",
     ["wt.m.trackR"] = "우측 궤도",
     ["wt.m.trans"] = "변속기",
@@ -22862,9 +22884,10 @@ return {
     ["wt.ms.ammo"] = "탄",
     ["wt.ms.barrel"] = "신",
     ["wt.ms.breech"] = "미",
+    ["wt.ms.edrive"] = "고",
     ["wt.ms.engine"] = "엔",
     ["wt.ms.fuel"] = "연",
-    ["wt.ms.tdrive"] = "구",
+    ["wt.ms.tdrive"] = "선",
     ["wt.ms.track"] = "궤",
     ["wt.ms.trans"] = "변",
     ["wt.mslAct"] = "미사일 탐색기 작동",
@@ -22933,8 +22956,6 @@ return {
     ["wt.xrBurst"] = "연속 관통 ×{1}",
     ["wt.xrJet"] = "성형작약 제트 · 관통 {1} / 등가 {2} mm",
     ["wt.xrJetB"] = "금속 제트 · 관통 {1} / 등가 {2} mm",
-    ["wt.xrSlow"] = "슬로 모션 ×0.01",
-    ["wt.xrTitle"] = "명중 카메라 · {1} · {2} m",
     ["wt.youFire"] = "불길 확산",
     ["wt.youHit"] = "폭발에 맞음",
     ["wt.youNp"] = "장갑이 막아냄",
@@ -23056,6 +23077,8 @@ return {
     ["xr.d.rounds"] = "{1} / {2}발",
     ["xr.d.turbine"] = "가스 터빈",
     ["xr.dead"] = "파괴 / 전사",
+    ["xr.drives"] = "선회 / 고저 장치",
+    ["xr.edrive"] = "고저 장치",
     ["xr.engine"] = "엔진",
     ["xr.era"] = "ERA",
     ["xr.fire"] = "화재",
@@ -23074,7 +23097,7 @@ return {
     ["xr.s.kia"] = "전사",
     ["xr.s.ok"] = "온전",
     ["xr.s.wounded"] = "부상",
-    ["xr.tdrive"] = "포탑 구동",
+    ["xr.tdrive"] = "선회 장치",
     ["xr.track"] = "궤도 / 바퀴",
     ["xr.trans"] = "변속기",
     ["xr.troops"] = "병력실",
@@ -23623,7 +23646,7 @@ return {
         <Item class="ModuleScript" referent="37">
           <Properties>
             <string name="Name">pt</string>
-            <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：pt 的译文（2195 / 2349 条）
+            <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：pt 的译文（2196 / 2350 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -25250,11 +25273,12 @@ return {
     ["wt.m.ammoH"] = "Munição do casco",
     ["wt.m.barrel"] = "Tubo",
     ["wt.m.breech"] = "Culatra",
+    ["wt.m.edrive"] = "Mecanismo de elevação",
     ["wt.m.engine"] = "Motor",
     ["wt.m.fuelL"] = "Tanque esquerdo",
     ["wt.m.fuelR"] = "Tanque de combustível",
     ["wt.m.optics"] = "Óptica",
-    ["wt.m.tdrive"] = "Acionamento da torre",
+    ["wt.m.tdrive"] = "Mecanismo de giro da torre",
     ["wt.m.trackL"] = "Lagarta esquerda",
     ["wt.m.trackR"] = "Lagarta direita",
     ["wt.m.trans"] = "Transmissão",
@@ -25264,9 +25288,10 @@ return {
     ["wt.ms.ammo"] = "MUN",
     ["wt.ms.barrel"] = "TUB",
     ["wt.ms.breech"] = "CUL",
+    ["wt.ms.edrive"] = "ELV",
     ["wt.ms.engine"] = "MOT",
     ["wt.ms.fuel"] = "COM",
-    ["wt.ms.tdrive"] = "ACI",
+    ["wt.ms.tdrive"] = "GIR",
     ["wt.ms.track"] = "LAG",
     ["wt.ms.trans"] = "TRN",
     ["wt.mslAct"] = "Buscador do míssil ativo",
@@ -25335,8 +25360,6 @@ return {
     ["wt.xrBurst"] = "Penetrações em rajada ×{1}",
     ["wt.xrJet"] = "JATO DE CARGA OCA · pen. {1} / ef. {2} mm",
     ["wt.xrJetB"] = "JATO METÁLICO · pen. {1} / ef. {2} mm",
-    ["wt.xrSlow"] = "CÂMERA LENTA ×0,01",
-    ["wt.xrTitle"] = "CÂMERA DE IMPACTO · {1} · {2} m",
     ["wt.youFire"] = "O fogo se espalha",
     ["wt.youHit"] = "Atingido pela explosão",
     ["wt.youNp"] = "A blindagem aguentou",
@@ -25454,6 +25477,8 @@ return {
     ["xr.d.rounds"] = "{1} / {2} tiros",
     ["xr.d.turbine"] = "Turbina a gás",
     ["xr.dead"] = "Destruído / morto",
+    ["xr.drives"] = "Giro / elevação",
+    ["xr.edrive"] = "Mecanismo de elevação",
     ["xr.engine"] = "Motor",
     ["xr.fire"] = "Em chamas",
     ["xr.fuel"] = "Combustível",
@@ -25471,7 +25496,7 @@ return {
     ["xr.s.kia"] = "Morto",
     ["xr.s.ok"] = "Intacto",
     ["xr.s.wounded"] = "Ferido",
-    ["xr.tdrive"] = "Acionamento da torre",
+    ["xr.tdrive"] = "Mecanismo de giro da torre",
     ["xr.track"] = "Lagartas / rodas",
     ["xr.trans"] = "Transmissão",
     ["xr.troops"] = "Compartimento de tropas",
@@ -26010,7 +26035,7 @@ return {
         <Item class="ModuleScript" referent="38">
           <Properties>
             <string name="Name">ru</string>
-            <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ru 的译文（2270 / 2349 条）
+            <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ru 的译文（2271 / 2350 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -27701,11 +27726,12 @@ return {
     ["wt.m.ammoH"] = "Боеукладка в корпусе",
     ["wt.m.barrel"] = "Ствол",
     ["wt.m.breech"] = "Казённик",
+    ["wt.m.edrive"] = "Механизм вертикальной наводки",
     ["wt.m.engine"] = "Двигатель",
     ["wt.m.fuelL"] = "Левый топливный бак",
     ["wt.m.fuelR"] = "Топливный бак",
     ["wt.m.optics"] = "Оптика",
-    ["wt.m.tdrive"] = "Привод башни",
+    ["wt.m.tdrive"] = "Механизм поворота башни",
     ["wt.m.trackL"] = "Левая гусеница",
     ["wt.m.trackR"] = "Правая гусеница",
     ["wt.m.trans"] = "Трансмиссия",
@@ -27715,9 +27741,10 @@ return {
     ["wt.ms.ammo"] = "БК",
     ["wt.ms.barrel"] = "СТВ",
     ["wt.ms.breech"] = "ЗАТ",
+    ["wt.ms.edrive"] = "ВН",
     ["wt.ms.engine"] = "ДВ",
     ["wt.ms.fuel"] = "ТОП",
-    ["wt.ms.tdrive"] = "ПРИВ",
+    ["wt.ms.tdrive"] = "ГН",
     ["wt.ms.track"] = "ГУС",
     ["wt.ms.trans"] = "ТР",
     ["wt.mslAct"] = "ГСН ракеты включена",
@@ -27786,8 +27813,6 @@ return {
     ["wt.xrBurst"] = "Серия пробитий ×{1}",
     ["wt.xrJet"] = "КУМУЛЯТИВНАЯ СТРУЯ · пробитие {1} / экв. {2} мм",
     ["wt.xrJetB"] = "МЕТАЛЛИЧЕСКАЯ СТРУЯ · пробитие {1} / экв. {2} мм",
-    ["wt.xrSlow"] = "ЗАМЕДЛЕНИЕ ×0,01",
-    ["wt.xrTitle"] = "КАМЕРА ПОПАДАНИЯ · {1} · {2} м",
     ["wt.youFire"] = "Пожар распространяется",
     ["wt.youHit"] = "Попадание взрывной волны",
     ["wt.youNp"] = "Броня выдержала",
@@ -27909,6 +27934,8 @@ return {
     ["xr.d.rounds"] = "{1} / {2} патр.",
     ["xr.d.turbine"] = "Газовая турбина",
     ["xr.dead"] = "Уничтожено / убит",
+    ["xr.drives"] = "Приводы наведения (гориз. / верт.)",
+    ["xr.edrive"] = "Механизм вертикальной наводки",
     ["xr.engine"] = "Двигатель",
     ["xr.era"] = "ДЗ",
     ["xr.fire"] = "Горит",
@@ -27927,7 +27954,7 @@ return {
     ["xr.s.kia"] = "Убит",
     ["xr.s.ok"] = "Цел",
     ["xr.s.wounded"] = "Ранен",
-    ["xr.tdrive"] = "Привод башни",
+    ["xr.tdrive"] = "Механизм поворота башни",
     ["xr.track"] = "Гусеницы / колёса",
     ["xr.trans"] = "Трансмиссия",
     ["xr.troops"] = "Десантное отделение",
@@ -30336,11 +30363,12 @@ return {
     ["wt.m.ammoH"] = "車體彈藥",
     ["wt.m.barrel"] = "炮管",
     ["wt.m.breech"] = "炮閂",
+    ["wt.m.edrive"] = "高低機",
     ["wt.m.engine"] = "發動機",
     ["wt.m.fuelL"] = "左油箱",
     ["wt.m.fuelR"] = "油箱",
     ["wt.m.optics"] = "觀瞄",
-    ["wt.m.tdrive"] = "炮塔驅動",
+    ["wt.m.tdrive"] = "方向機",
     ["wt.m.trackL"] = "左履帶",
     ["wt.m.trackR"] = "右履帶",
     ["wt.m.trans"] = "傳動",
@@ -30350,9 +30378,10 @@ return {
     ["wt.ms.ammo"] = "彈",
     ["wt.ms.barrel"] = "管",
     ["wt.ms.breech"] = "閂",
+    ["wt.ms.edrive"] = "高",
     ["wt.ms.engine"] = "發",
     ["wt.ms.fuel"] = "油",
-    ["wt.ms.tdrive"] = "驅",
+    ["wt.ms.tdrive"] = "方",
     ["wt.ms.track"] = "履",
     ["wt.ms.trans"] = "傳",
     ["wt.mslAct"] = "導彈導引頭已開機",
@@ -30422,8 +30451,7 @@ return {
     ["wt.xrBurst"] = "連續貫穿 ×{1}",
     ["wt.xrJet"] = "聚能射流 · 穿深 {1} / 等效 {2} 毫米",
     ["wt.xrJetB"] = "金屬射流彈 · 穿深 {1} / 等效 {2} 毫米",
-    ["wt.xrSlow"] = "慢放 ×0.01",
-    ["wt.xrTitle"] = "命中回放 · {1} · {2} 米",
+    ["wt.xrName"] = "{1} · {2} 米",
     ["wt.youFire"] = "火勢蔓延",
     ["wt.youHit"] = "被炸",
     ["wt.youNp"] = "裝甲擋住了",
@@ -30547,6 +30575,8 @@ return {
     ["xr.d.rounds"] = "{1} / {2} 發",
     ["xr.d.turbine"] = "燃氣輪機",
     ["xr.dead"] = "壞了 / 陣亡",
+    ["xr.drives"] = "方向機 / 高低機",
+    ["xr.edrive"] = "高低機",
     ["xr.engine"] = "發動機",
     ["xr.era"] = "爆反",
     ["xr.fire"] = "起火",
@@ -30565,7 +30595,7 @@ return {
     ["xr.s.kia"] = "陣亡",
     ["xr.s.ok"] = "完好",
     ["xr.s.wounded"] = "受傷",
-    ["xr.tdrive"] = "炮塔驅動",
+    ["xr.tdrive"] = "方向機",
     ["xr.track"] = "履帶 / 車輪",
     ["xr.trans"] = "傳動",
     ["xr.troops"] = "載員艙",
@@ -43649,7 +43679,12 @@ function W.layout(d)
     local len = d.gun.len or 8
     add("barrel", "mod", V(gp.X - cal, gp.Y - cal, gp.Z - len), V(gp.X + cal, gp.Y + cal, gp.Z - 1.2), { tur = true, ext = true })
     add("breech", "mod", V(gp.X - 0.7, gp.Y - 0.65, gp.Z - 0.4), V(gp.X + 0.7, gp.Y + 0.55, gp.Z + 2.6), { tur = true })
-    add("tdrive", "mod", V(-1.4, -0.9, -1.6), V(-0.4, 0.1, -0.6), { tur = true })   -- 炮塔驱动（座圈前左）
+    -- 方向机（用户 11-28「方向机也要能被打坏」）：座圈前面、炮长那一侧（西方坦克炮长在右，苏式、步战车在左），
+    --   电机 + 减速箱约 0.5 米见方，下半截在座圈以下（原来只有 1 格见方 ≈ 0.36 米，几乎打不着）
+    local sd = (lay == "w4") and 1 or -1
+    local rr = math.clamp(math.min(ts.X, ts.Z) * 0.36, 1.2, Wd * 0.36)
+    local tc = V(sd * rr * 0.62, -0.35, -rr * 0.74)
+    add("tdrive", "mod", tc - V(0.7, 0.65, 0.7), tc + V(0.7, 0.65, 0.7), { tur = true })
   end
   local engFront = (lay == "ifv" or lay == "apc" or lay == "light")   -- 发动机在前面的
   if engFront then
@@ -43705,6 +43740,13 @@ function W.layout(d)
   if T and d.sight then
     local sp = d.sight
     add("optics", "mod", V(sp.X - 0.75, sp.Y - 0.45, sp.Z - 0.8), V(sp.X + 0.75, sp.Y + 0.8, sp.Z + 0.8), { tur = true, ext = true })
+  end
+  -- 高低机（同上，战雷的「垂直驱动」）：炮耳后面、炮闩旁边炮长那一侧；打坏了炮管抬不起也压不下。放在模块表最后（WtM 原来那些位不挪）
+  if d.gun and T then
+    local gp = d.gun.pivot
+    local sd = (lay == "w4") and 1 or -1
+    local x0, x1 = gp.X + sd * 0.78, gp.X + sd * 1.8
+    add("edrive", "mod", V(math.min(x0, x1), gp.Y - 1.0, gp.Z + 0.15), V(math.max(x0, x1), gp.Y - 0.05, gp.Z + 1.45), { tur = true })
   end
   hit = { list = list, nCrew = nCrew, prof = P, hH = hH, tp = tp, ts = ts }
   cache[d] = hit
@@ -43874,7 +43916,7 @@ function W.cone(axis, half, n, seed)
 end
 
 -- 名字（客户端界面）：模块 / 乘员的中文名用 Lang 的 wt.<k>
-W.MODS = { "engine", "trans", "trackL", "trackR", "barrel", "breech", "tdrive", "ammo", "ammoH", "fuelL", "fuelR", "troops", "optics" }
+W.MODS = { "engine", "trans", "trackL", "trackR", "barrel", "breech", "tdrive", "ammo", "ammoH", "fuelL", "fuelR", "troops", "optics", "edrive" }
 W.M = M
 return W
 ]]></ProtectedString>
@@ -45093,7 +45135,7 @@ function AIVeh.init(G)
       if a then   -- 坦克炮：真实初速、重力、空气阻力（Ballistics.lua），带曳光
         local v0, drag, gs = BAL.launchArgs(a)
         G.launch({ kind = "shell", pos = mz.Position, vel = dir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, cls = a.cls, w = ww, src = S, ignore = { e.model },
-          life = 60 })   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
+          life = 60, sab = BAL.sabotOf and BAL.sabotOf(a) or nil })   -- sab：脱壳弹（客户端画弹托飞开、细的弹芯）   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },
           life = math.max(w.range / w.speed + 0.5, 4000 * BAL.S / w.speed) })   -- 没有弹道表的炮（机关炮、73 毫米）：也飞 4 公里（原来射程 ÷ 初速，一公里多就没了）
@@ -45146,9 +45188,18 @@ function AIVeh.init(G)
     end
     local el = d.turret.elev or { -6, 18 }
     local wantPitch = math.clamp(math.deg(math.atan2(l.Y + drop, math.max(horiz, 1)) + se), el[1], el[2])
-    e.ty = VD.arcYaw(d, (approach(0, angDiff(wantYaw, e.ty), (d.turret.trav or 40) * dt) + e.ty) % 360)
-    e.ai.arcOver = d.turret.arc and VD.arcOver(d, wantYaw) or nil   -- 没有炮塔的车：目标在射界外面，think 里先原地转车头（pivot）
-    e.gp = approach(e.gp, wantPitch, 22 * dt)
+    -- 方向机打坏（Wt.lua trav = 0，用户 11-28「方向机也要能被打坏」）：炮塔不转了，同没有炮塔的车一样原地转车头去瞄；高低机打坏：炮管俯仰定住
+    local travK = (e.wt and e.wt.trav) or 1
+    e.ty = VD.arcYaw(d, (approach(0, angDiff(wantYaw, e.ty), (d.turret.trav or 40) * travK * dt) + e.ty) % 360)
+    if d.turret.arc then
+      e.ai.arcOver = VD.arcOver(d, wantYaw)   -- 没有炮塔的车：目标在射界外面，think 里先原地转车头（pivot）
+    elseif travK <= 0 then
+      local o = angDiff(wantYaw, e.ty)
+      e.ai.arcOver = (math.abs(o) > 0.8) and o or 0
+    else
+      e.ai.arcOver = nil
+    end
+    if not (e.wt and e.wt.elev == false) then e.gp = approach(e.gp, wantPitch, 22 * dt) end
     e.model:SetAttribute("Ty", math.floor(e.ty * 2 + 0.5) / 2)
     e.model:SetAttribute("Gp", math.floor(e.gp * 2 + 0.5) / 2)
     local tol = (w.kind == "shell") and 1.2 or 4
@@ -47403,7 +47454,7 @@ function Armor.init(G)
       elseif a then
         local v0, drag, gs = BAL.launchArgs(a)
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, cls = a.cls, w = ww, src = S, ignore = { e.model, P.char },
-          life = 60 })   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
+          life = 60, sab = BAL.sabotOf and BAL.sabotOf(a) or nil })   -- sab：脱壳弹（客户端画弹托飞开、细的弹芯）   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
           life = 60 })   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
@@ -50940,7 +50991,7 @@ function Ents.init(G)
     s.id = shotN
     table.insert(shots, s)
     G.fx({ k = "shot", id = s.id, p = s.pos, v = s.vel, kind = s.kind, g = s.grav and true or false, gs = s.gscale, tg = s.tgId or (s.target and s.target.id) or nil,
-      f = s.w and s.w.fx or nil, w = s.w and s.w.id or nil, by = s.byEnt, dr = s.drag, tr = s.tracer, ej = s.ejT })   -- dr 空气阻力、tr 曳光（坦克炮弹，Ballistics.lua）；ej 抛射：几秒后才点火
+      f = s.w and s.w.fx or nil, w = s.w and s.w.id or nil, by = s.byEnt, dr = s.drag, tr = s.tracer, ej = s.ejT, sb = s.sab })   -- sb 脱壳弹（fs 钢针 / ds）   -- dr 空气阻力、tr 曳光（坦克炮弹，Ballistics.lua）；ej 抛射：几秒后才点火
     return s
   end
 
@@ -65643,10 +65694,14 @@ function Wt.init(G)
     local mob = seatOk(S, "drv") and ok(S, "engine") and ok(S, "trans") and ok(S, "trackL") and ok(S, "trackR")
     local gun = seatOk(S, "gnr") and ok(S, "breech") and ok(S, "barrel")
     if not S.seat.gnr then gun = ok(S, "breech") and ok(S, "barrel") and alive(S) > 0 end   -- 没有炮长位的车（轻型车）：剩人就能打
+    -- 方向机、高低机（用户 11-28「方向机也要能被打坏」）：照战雷历史模式——受损（橙、红）不影响，打坏（黑）就完全不动：
+    --   方向机坏了炮塔转不动（客户端、电脑开的车改成转车体瞄），高低机坏了炮管俯仰定住；修好就恢复。原来打坏了还能 1/4 速度转、受损也慢，打坏了像没坏
     local trav = 1
     local td = S.byK.tdrive
-    if td then trav = (td.hp <= 0) and 0.25 or ((modState(td) == 1) and 0.6 or 1) end
-    if not seatOk(S, "gnr") and S.seat.gnr then trav = math.min(trav, 0.5) end
+    if td and td.hp <= 0 then trav = 0 end
+    if trav > 0 and not seatOk(S, "gnr") and S.seat.gnr then trav = math.min(trav, 0.5) end
+    local ed = S.byK.edrive
+    S.elev = not (ed and ed.hp <= 0)
     local rel = 1
     if S.seat.ldr and not seatOk(S, "ldr") then rel = 1.6 end   -- 装填手没了：别人凑合装填
     if S.fixT then gun = false end                              -- 修车的时候不能开炮
@@ -65671,6 +65726,7 @@ function Wt.init(G)
     m:SetAttribute("WtMob", S.mob)
     m:SetAttribute("WtGun", S.gun)
     m:SetAttribute("WtTrav", S.trav)
+    m:SetAttribute("WtElev", S.elev ~= false)   -- 高低机好着（false：炮管俯仰定住）
     m:SetAttribute("WtFix", S.fixT and math.clamp((now() - S.fixT) / fixTime(e), 0, 1) or nil)
     -- 原来的血量（界面上的血条、名牌）：按活着的乘员算个比例
     if e.alive and e.wtMaxHp then
@@ -75875,7 +75931,7 @@ function Drive.init(G)
     if G.interiorEngineOff then thr = 0 end   -- 驾驶员显示器上按了熄火（Interior.lua）：再按起动才走得了
     -- 没有炮塔的车（SU-100 这类，VehDefs turret.arc）：自己不打方向、瞄的地方在炮的射界外面——车体自己转过去对准（同战雷歼击车），
     --   超出 6° 以上满舵；按住 A / D 照常自己转
-    if str == 0 and st.arcPull and st.arcPull ~= 0 and d.turret and d.turret.arc then
+    if str == 0 and st.arcPull and st.arcPull ~= 0 and d.turret and (d.turret.arc or st.travDead) then
       str = math.clamp(st.arcPull / 6, -1, 1)
       st.arcSteerT = os.clock()   -- 这一下车体是自己转的：没有稳定器时瞄准线也不跟着车体转（下面镜头那里），不然越转瞄得越偏、转个不停
     end
@@ -76382,18 +76438,26 @@ function Drive.init(G)
     end
     -- 手动方式：炮塔动力关了，手摇方向机、高低机（每秒十来度、几度）
     local manual = f.mode == 3
-    local trav = d.turret.trav * (manual and 0.22 or 1) * ((st.em and st.em:GetAttribute("WtTrav")) or 1)   -- 炮塔驱动坏了 / 炮长没了：转得慢（Wt.lua）
+    local wtTrav = (st.em and st.em:GetAttribute("WtTrav")) or 1   -- 方向机打坏（0）/ 炮长没了（0.5）（Wt.lua）
+    local trav = d.turret.trav * (manual and 0.22 or 1) * wtTrav
       * ((st.em and st.em:GetAttribute("ModTrav")) or 1)   -- 研究了改装「炮塔驱动」：转得快（WtMods）
     st.ty = (st.ty + math.clamp(angDiff(st.ty, wantYaw), -trav * dt, trav * dt)) % 360
     -- 没有炮塔的车（SU-100 这类）：炮只在射界里转（VD.arcYaw）；瞄的地方在射界外面，记下超出多少（physics 里车体自己转过去）。
     --   正后方附近（超出 150° 以上）左右来回跳的时候保持原来那边，不然车体左右抽
-    if d.turret.arc then
-      st.ty = VD.arcYaw(d, st.ty)
-      local over = VD.arcOver(d, wantYaw)
+    --   方向机打坏（用户 11-28「方向机也要能被打坏」）：炮塔定在那儿不转，同没有炮塔的车一样车体自己转过去对准（自己按 A / D 照常）
+    st.travDead = wtTrav <= 0
+    if d.turret.arc or st.travDead then
+      if d.turret.arc then st.ty = VD.arcYaw(d, st.ty) end
+      local over = d.turret.arc and VD.arcOver(d, wantYaw) or angDiff(st.ty, wantYaw)
+      if st.travDead and math.abs(over) < 0.8 then over = 0 end
       if st.arcPull and math.abs(over) > 150 and math.sign(over) ~= math.sign(st.arcPull) and st.arcPull ~= 0 then over = -over end
       st.arcPull = over
+    else
+      st.arcPull = nil
     end
-    st.gp = approach(st.gp, math.clamp(wantPitch, d.turret.elev[1], d.turret.elev[2]), (manual and 6 or 35) * dt)
+    -- 高低机打坏：炮管俯仰定住（Wt.lua WtElev）
+    local elevOk = not (st.em and st.em:GetAttribute("WtElev") == false)
+    if elevOk then st.gp = approach(st.gp, math.clamp(wantPitch, d.turret.elev[1], d.turret.elev[2]), (manual and 6 or 35) * dt) end
     -- 遥控武器站（M1A2 的 CROWS）：自己转向准心、M2 自己俯仰（用户：机枪也要能转动），比炮塔快
     --   车长单独操纵它的时候（车里看 CROWS 屏：Interior.lua 给 st.rwsPt）朝车长瞄的那一点，炮塔还归炮长的准星
     if d.rws then
@@ -82593,6 +82657,17 @@ function Fx.init(G)
   local vlMod = script.Parent:WaitForChild("VfxLib", 10)
   if not vlMod then error("缺少 Client.VfxLib（脚本没换全？）") end
   local VL = require(vlMod).new(G, FXF)
+  -- 导弹 / 火箭弹的尾焰、尾烟（MslSmoke.lua，用户 11-28「然后导弹尾烟不够真实」）：连着的烟带 + 往外胀、顺风飘的烟团、喷口一截火舌；
+  --   没有这个模块（脚本没换全）退回原来一颗颗的烟球
+  local MS = nil
+  do
+    local msMod = script.Parent:FindFirstChild("MslSmoke")
+    if msMod then
+      local ok, r = pcall(require, msMod)
+      if ok and type(r) == "table" and r.new then MS = r.new(G, FXF, VL) end
+    end
+  end
+  G.mslSmoke = MS   -- 测试用
   G.vfx = VL
   -- 夜战：一闪的光（枪口焰、炮口、爆炸）——VfxLib 的 8 盏灯轮着用（挂在 Attachment 上，亮度按 Quad Out 降到 0），不每次新建零件、灯、补间；
   --   一卡一卡（用户 11-18）：同时最多 8 盏、投影子的只 1 盏（要了 o.shadow 才给），离镜头太远（光照范围外再 400 格）的不点；Range 最大 120
@@ -84268,6 +84343,44 @@ function Fx.init(G)
     med = { gap = 0.04, s0 = 1.3, s1 = 5.5, tr = 0.32, life = 2.4, col = RGB(222, 222, 218) },
     heavy = { gap = 0.022, s0 = 2.0, s1 = 9.0, tr = 0.12, life = 4.5, col = RGB(214, 212, 206) },
   }
+  -- 脱壳（钢针 / 脱壳穿甲弹打出去那一下）：弹托几瓣（钢针三瓣、旋转稳定的两瓣）出了炮口往外张开、翻着跟头飞开，
+  --   阻力大，二三十米就慢下来往下掉，一秒多淡掉；同时最多 36 瓣在飞
+  local petals = {}
+  local function sabot(p, v, sb)
+    if #petals > 36 then return end
+    local dir = v.Unit
+    local r1 = dir:Cross((math.abs(dir.Y) < 0.9) and V(0, 1, 0) or V(1, 0, 0)).Unit
+    local r2 = dir:Cross(r1).Unit
+    local n = (sb == "ds") and 2 or 3
+    G.fxSabotSeen = (G.fxSabotSeen or 0) + n   -- 测试用：一共飞出去过几瓣
+    local a0 = math.random() * math.pi * 2
+    local fwd = math.min(v.Magnitude * 0.05, 260)
+    for i = 1, n do
+      local a = a0 + (i - 1) * (2 * math.pi / n)
+      local rad = r1 * math.cos(a) + r2 * math.sin(a)
+      local p0 = p + dir * 2.2 + rad * 0.2
+      local q = part(nil, V(0.3, 0.16, 0.8), CFrame.lookAt(p0, p0 + dir), RGB(112, 116, 112), Enum.Material.Metal, 0)
+      q.Name = "Sabot"
+      table.insert(petals, { p = q, pos = p0, v = dir * fwd + rad * (60 + math.random() * 50), rot = CFrame.lookAt(V(), dir) * CFrame.Angles(0, 0, a),
+        spin = V(8 + math.random() * 14, (math.random() - 0.5) * 6, (math.random() - 0.5) * 6), t = 0, life = 1.2 + math.random() * 0.4 })
+    end
+  end
+  G.fxSabots = petals   -- 测试用
+  local function stepPetals(dt)
+    for i = #petals, 1, -1 do
+      local P = petals[i]
+      P.t += dt
+      P.v = P.v * math.exp(-3.5 * dt) + V(0, -27.5 * 2.2, 0) * dt
+      P.pos += P.v * dt
+      P.rot = P.rot * CFrame.Angles(P.spin.X * dt, P.spin.Y * dt, P.spin.Z * dt)
+      P.p.CFrame = CFrame.new(P.pos) * P.rot
+      if P.t > P.life - 0.3 then P.p.Transparency = math.clamp((P.t - (P.life - 0.3)) / 0.3, 0, 1) end
+      if P.t > P.life then
+        P.p:Destroy()
+        table.remove(petals, i)
+      end
+    end
+  end
   -- 抛射的弹点火（服务器 shotIgn，或者时候到了还没收到）：发动机声、尾焰从这里开始，发动机的时间（双脉冲、助推段）从这里算
   local function ejIgnite(s)
     if not s.ejUntil then return end
@@ -84325,13 +84438,19 @@ function Fx.init(G)
     local body
     if kind == "shell" then   -- 炮弹：一道亮的曳光
       local big = e.f == "tank"
-      body = part(CYL, big and V(5, 0.45, 0.45) or V(2.6, 0.22, 0.22), CFrame.new(e.p), big and RGB(255, 236, 190) or RGB(255, 200, 120), Enum.Material.Neon, 0)
-      if big then glowOn(body, RGB(255, 220, 170), 10, 2) end
+      -- 钢针（尾翼稳定脱壳穿甲弹的长杆，用户 11-28「钢针打出去的效果跟尾烟要有区别」）/ 旋转稳定的脱壳弹：弹芯又细又快，
+      --   只看得见尾巴上一点红的曳光（不冒烟——冒烟的是导弹、火箭弹，MslSmoke.lua）；炮口外面弹托几瓣飞开（sabot 下面）
+      local dart = big and (e.sb == "fs" or e.sb == "ds")
+      body = part(CYL, dart and V(6, 0.12, 0.12) or (big and V(5, 0.45, 0.45) or V(2.6, 0.22, 0.22)), CFrame.new(e.p),
+        dart and RGB(255, 246, 228) or (big and RGB(255, 236, 190) or RGB(255, 200, 120)), Enum.Material.Neon, 0)
+      if dart then glowOn(body, RGB(255, 150, 110), 6, 1.2)
+      elseif big then glowOn(body, RGB(255, 220, 170), 10, 2) end
+      if dart and typeof(e.v) == "Vector3" and e.v.Magnitude > 1 then sabot(e.p, e.v, e.sb) end
       -- 坦克炮弹的曳光管（用户 11-22 晚：开镜开炮看得见炮弹从左上方落下去）：一两公里外弹体不到一个像素，
       --   曳光管是一个一直这么大的亮点（屏幕上几个像素，越远越看得见光点、看不出大小），被地形、车挡住就看不见；飞两三秒烧完
       if big and e.tr then
         local bb = Instance.new("BillboardGui")
-        bb.Size = UDim2.fromOffset(9, 9)
+        bb.Size = dart and UDim2.fromOffset(6, 6) or UDim2.fromOffset(9, 9)   -- 钢针的曳光小一点、偏红
         bb.LightInfluence = 0
         bb.AlwaysOnTop = false
         bb.MaxDistance = 20000
@@ -84341,7 +84460,7 @@ function Fx.init(G)
         dotF.AnchorPoint = Vector2.new(0.5, 0.5)
         dotF.Position = UDim2.fromScale(0.5, 0.5)
         dotF.Size = UDim2.fromScale(1, 1)
-        dotF.BackgroundColor3 = RGB(255, 132, 70)
+        dotF.BackgroundColor3 = dart and RGB(255, 78, 50) or RGB(255, 132, 70)
         dotF.BorderSizePixel = 0
         local cr = Instance.new("UICorner")
         cr.CornerRadius = UDim.new(0.5, 0)
@@ -84354,6 +84473,28 @@ function Fx.init(G)
         bb.Parent = body
       end
       flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, gs = e.gs or 1, dr = e.dr, t = 0, kind = kind, trailT = 0, tracer = big and e.tr or nil }
+      -- 钢针的尾迹（用户 11-28「然后钢针打出去的尾烟也改成战雷那样的」）：战雷里钢针飞过去，曳光剂烧出一道又细又直的淡白烟线，
+      --   一两秒里慢慢变宽、淡掉、留在弹道上（打中了也不马上没）——不像导弹那样一团团往外翻、拖很久（MslSmoke.lua）。
+      --   一条 Trail（引擎画的面向镜头的带子，一发一个），挂在一个跟着弹走的空零件上：弹没了带子停下来自己淡完；曳光管烧完（3 秒多）不再拖
+      if dart and e.tr then
+        local tc = part(nil, V(0.2, 0.2, 0.2), body.CFrame, RGB(255, 255, 255), Enum.Material.SmoothPlastic, 1)
+        tc.Name = "DartTrail"
+        local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+        a0.Position, a1.Position = V(0, 0.16, 0), V(0, -0.16, 0)
+        a0.Parent, a1.Parent = tc, tc
+        local tr = Instance.new("Trail")
+        tr.Attachment0, tr.Attachment1 = a0, a1
+        tr.FaceCamera = true
+        tr.Lifetime = 1.6
+        tr.MinLength = 0.2
+        tr.Color = ColorSequence.new(RGB(236, 236, 232))
+        tr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.42), NumberSequenceKeypoint.new(0.2, 0.55), NumberSequenceKeypoint.new(1, 1) })
+        tr.WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 3.8) })
+        tr.LightEmission, tr.LightInfluence = 0.15, 0.7
+        tr.Parent = tc
+        flying[e.id].trailP, flying[e.id].trail = tc, tr
+        G.fxDartTrails = (G.fxDartTrails or 0) + 1   -- 测试用
+      end
       if G.onTankShot and big then pcall(G.onTankShot, e, flying[e.id]) end   -- 测试用：火控测试看曳光弹在镜里怎么走
       return
     elseif kind == "grenade" then
@@ -84370,7 +84511,7 @@ function Fx.init(G)
       glow.Name = "Glow"
       glow.Parent = body
     end
-    flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, t = 0, kind = kind, trailT = 0, half = body.Size.X / 2 + 0.1 }
+    flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, t = 0, kind = kind, trailT = 0, half = body.Size.X / 2 + 0.1, w = e.w }
     if (kind == "rocket" or kind == "missile") and not mine(e) then
       G.sfx((kind == "missile" and (e.w == "asm" or e.w == "sam")) and "msl" or "rkt", e.p, { vol = aw and 1 or 0.85 })
     end
@@ -84385,9 +84526,14 @@ function Fx.init(G)
     if s and G.onShotEnd then G.onShotEnd(id, s) end
     if s then
       stopRoar(s)
+      if MS and s.sm then MS.stop(s) end   -- 尾烟留到散完
       if s.body then s.body:Destroy() end
       if s.wm then for _, p in ipairs(s.wm.parts) do p:Destroy() end end
       if s.glow then s.glow:Destroy() end
+      if s.trailP then   -- 钢针的尾迹：停在打中的地方，带子自己淡完再收
+        s.trail.Enabled = false
+        Debris:AddItem(s.trailP, (s.trail.Lifetime or 1.6) + 0.2)
+      end
       flying[id] = nil
     end
   end
@@ -84448,6 +84594,16 @@ function Fx.init(G)
             s.plasma = true
             for _, q in ipairs(s.wm.parts) do q.Color = q.Color:Lerp(RGB(255, 140, 70), 0.55) q.Material = Enum.Material.Neon end
           end
+        elseif s.kind == "missile" and MS then
+          -- 尾烟按型号（MslSmoke.lua）：助推 + 续航的发动机前 35% 是助推段（浓、火舌长），续航段细、淡；双脉冲第二次点火另起一条
+          local aw = s.aw
+          local ph = 1
+          if aw and not aw.cruise then
+            local b = aw.burn or s.burn or 3
+            if tm >= b then ph = "p2"
+            elseif aw.mt == "bs" then ph = (tm < b * 0.35) and "boost" or "sus" end
+          end
+          MS.step(s, cf, s.half + 0.4, dt, burning, AD.smokeOf(aw, tm), ph, aw and aw.shape and aw.shape.d)
         elseif s.kind == "missile" and burning then
           -- 尾烟按型号（AirDefs 的 smoke；用户 11-24 夜：「不同导弹尾烟……都是不一样的」）：低烟发动机细、淡、散得快（AIM-120、AIM-9X、霹雳-15），
           --   老式发动机、助推器又粗又浓、挂在天上很久（AIM-54、57E6 的助推段、巡航弹起飞那一下）；发动机一关就不冒烟（只靠惯性滑翔）
@@ -84465,10 +84621,12 @@ function Fx.init(G)
         s.body.CFrame = CFrame.new(s.p)
       elseif s.kind == "shell" or s.kind == "bomb" then
         s.body.CFrame = CFrame.lookAt(s.p, s.p + s.v) * CFrame.Angles(0, math.pi / 2, 0)
+        if s.trailP then s.trailP.CFrame = s.body.CFrame end
         if s.tracer and not s.burnt and s.t > 3.2 then   -- 曳光管烧完了（约 3 秒、四五公里）
           s.burnt = true
           local g = s.body:FindFirstChildOfClass("BillboardGui")
           if g then g.Enabled = false end
+          if s.trail then s.trail.Enabled = false end   -- 钢针的尾迹也不再拖
         end
       elseif s.kind == "smoke" then   -- 烟幕弹：小罐子，后面拖一点白烟
         s.body.CFrame = CFrame.new(s.p)
@@ -84486,13 +84644,26 @@ function Fx.init(G)
         local g = s.body:FindFirstChild("Glow")
         local back = s.half or 1.2
         if g then g.CFrame = CFrame.new(s.p - s.v.Unit * back) end
-        s.trailT += dt
-        if s.trailT > 0.04 then   -- 尾烟（舰艇导弹的粗一些）
-          s.trailT = 0
-          local k = math.max(1, back / 1.6)
-          local sm = part(BALL, V(1, 1, 1) * k, CFrame.new(s.p - s.v.Unit * (back + 0.3)), RGB(200, 200, 200), Enum.Material.SmoothPlastic, 0.3)
-          tween(sm, 1.2 * k, { Size = V(3.5, 3.5, 3.5) * k, Transparency = 1 })
-          Debris:AddItem(sm, 1.25 * k)
+        if MS and (s.kind == "missile" or s.kind == "rocket") then
+          -- 尾烟（MslSmoke.lua）：火箭弹的发动机烧一秒多就灭（后面靠惯性飞、不冒烟）；舰艇导弹先是助推器的浓烟，然后续航
+          local ship = s.w == "asm" or s.w == "sam"
+          local on = (s.kind ~= "rocket") or s.t < 1.2
+          local cls, ph = "med", 1
+          if ship then
+            cls = (s.t < 2.5) and "heavy" or ((s.w == "asm") and "low" or "med")
+            ph = (s.t < 2.5) and "boost" or "sus"
+          end
+          MS.step(s, cf * CFrame.Angles(0, -math.pi / 2, 0), back + 0.3, dt, on, cls, ph, back * 0.4)
+          if g then g.Transparency = on and 0 or 1 end
+        else
+          s.trailT += dt
+          if s.trailT > 0.04 then   -- 尾烟（舰艇导弹的粗一些）
+            s.trailT = 0
+            local k = math.max(1, back / 1.6)
+            local sm = part(BALL, V(1, 1, 1) * k, CFrame.new(s.p - s.v.Unit * (back + 0.3)), RGB(200, 200, 200), Enum.Material.SmoothPlastic, 0.3)
+            tween(sm, 1.2 * k, { Size = V(3.5, 3.5, 3.5) * k, Transparency = 1 })
+            Debris:AddItem(sm, 1.25 * k)
+          end
         end
       end
       if s.t > ((s.kind == "bomb") and 40 or (s.hyper and 95 or ((s.kind == "shell") and 65 or 15))) then endShot(id) end   -- 炮弹：等服务器的 shotEnd（11-26 原来 15 秒就删，远的弹半路没了）
@@ -85253,6 +85424,7 @@ function Fx.init(G)
     stepGuns()
     stepGunSnd()
     if #drops > 0 then stepDrops(dt or 1 / 60) end
+    if #petals > 0 then stepPetals(dt or 1 / 60) end
   end
 end
 
@@ -105893,6 +106065,239 @@ return MslCam
         </Item>
         <Item class="ModuleScript" referent="242">
           <Properties>
+            <string name="Name">MslSmoke</string>
+            <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导弹 / 火箭弹的尾焰、尾烟（用户 11-28「然后导弹尾烟不够真实」）
+--   原来（Fx.lua）：每隔几十毫秒在弹尾放一颗实心的白球、补间放大变透明——飞得快的弹（一秒两三千格）球和球之间隔着几十上百格，
+--   天上是一串断开的珠子；烟不胀开、不翻、不飘，颜色一样，硬邦邦一颗颗。现在照真的固体火箭发动机的烟：
+--   · 尾焰：喷口一截白黄 → 橙的火舌（Trail，最长几格：跟着弹走，不随速度拖长），原来那颗发光球是喷口的亮点
+--   · 烟带（Trail）：一帧一段连着画，再快也不断；刚出来细、密，带一点火光映的暖色，越老越宽、越淡、越灰。挂在天上多久按发动机（AirDefs smoke）：
+--       low 低烟发动机（AIM-120、霹雳-15、AIM-9X）细、淡、一秒多就散；med 一般（R-27、霹雳-12、反坦克导弹）；
+--       heavy 老式发动机 / 助推器（霹雳-2、AIM-54、陶、舰艇导弹的助推器）又粗又浓、挂六七秒
+--   · 烟团（ParticleEmitter，自带的柔边烟贴图）：每帧在这一帧飞过的那一段里撒几团——小零件拉成那一段那么长，粒子在它里面随机出生，
+--       所以再快也是连着的；一团团往外胀、慢慢转、顺风飘、往上浮一点，烟带外面一层翻滚的毛边。撒多少按飞了多远（不按时间），
+--       每秒有上限（飞得快就稀一点），按 G.perfK、离镜头远近、同时在飘的总量少撒
+--   · 助推 + 续航的发动机（AirDefs mt = "bs"）：前 35% 燃烧时间是助推段，烟和火舌都浓、长；续航段细一点、淡一点（另起一条烟带：
+--       Trail 的宽度 / 透明度曲线一改，已经画出去的那一截也跟着变）；双脉冲第二次点火重新冒烟
+--   · 发动机一关（烧完、还没点火的抛射弹）：火舌灭、不再冒烟，已经冒出去的烟照样慢慢散；弹打中了 / 没了也一样（小零件留到烟散完）
+--   · 发射器一枚弹几个：飞过 500 格或者 1.2 秒换一个新的（旧的停在原地不挪，粒子到寿命才收——同 VfxLib 的规矩：长寿命的烟不跟着零件跑远）
+--   贴图只用 Roblox 自带的（VfxLib.TX.SMOKE），不上传图片
+local MslSmoke = {}
+
+function MslSmoke.new(G, FXF, VL)
+  local M = {}
+  local V, RGB = Vector3.new, Color3.fromRGB
+  local NSK, CSK = NumberSequenceKeypoint.new, ColorSequenceKeypoint.new
+  local Debris = game:GetService("Debris")
+  local SMOKE_TEX = (VL and VL.TX and VL.TX.SMOKE) or "rbxasset://textures/particles/smoke_main.dds"
+  M.stat = { trails = 0, emitters = 0, emitted = 0, live = 0, holders = 0 }
+
+  -- 三档（格；1 米 = 2.8 格）：w 烟带刚出来多宽、life 烟带留多久、tr0 刚出来的透明度、grow 老了胀到几倍宽；
+  --   gap 每飞几格撒一团、nps 每秒最多几团、pl 烟团寿命、ps 烟团 出生 / 一会儿 / 最后 多大、ptr 烟团起始透明度（贴图本身 alpha 只到 0.33）；
+  --   flame 火舌多长（× 弹径系数）
+  local CLS = {
+    low = { w = 1.0, life = 1.3, tr0 = 0.62, grow = 2.2, gap = 9, nps = 50, pl = { 1.0, 1.7 }, ps = { 1.1, 2.6, 5.5 }, ptr = 0.5, flame = 2.4 },
+    med = { w = 1.8, life = 3.4, tr0 = 0.36, grow = 2.8, gap = 5, nps = 100, pl = { 2.6, 4.2 }, ps = { 1.8, 4.6, 10 }, ptr = 0.26, flame = 3.4 },
+    heavy = { w = 2.8, life = 6.5, tr0 = 0.14, grow = 3.4, gap = 3, nps = 150, pl = { 5, 8 }, ps = { 2.8, 7, 16 }, ptr = 0.1, flame = 4.4 },
+  }
+  M.CLS = CLS
+  local WARM, FRESH, MID, OLD = RGB(255, 226, 190), RGB(240, 240, 236), RGB(224, 224, 222), RGB(198, 198, 198)
+
+  local function holder(name)
+    local p = Instance.new("Part")
+    p.Name = name
+    p.Size = V(0.2, 0.2, 0.2)
+    p.Transparency = 1
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+    p.Parent = FXF
+    M.stat.holders += 1
+    return p
+  end
+  local function attachPair(h, half)
+    local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+    a0.Position, a1.Position = V(-half, 0, 0), V(half, 0, 0)
+    a0.Parent, a1.Parent = h, h
+    return a0, a1
+  end
+  local function nsq(...)   -- (t, v, t, v …)
+    local a, kp = { ... }, {}
+    for i = 1, #a, 2 do kp[#kp + 1] = NSK(a[i], a[i + 1]) end
+    return NumberSequence.new(kp)
+  end
+  local function csq(...)
+    local a, kp = { ... }, {}
+    for i = 1, #a, 2 do kp[#kp + 1] = CSK(a[i], a[i + 1]) end
+    return ColorSequence.new(kp)
+  end
+
+  -- 一条烟带：c 档、k 宽度倍数、tk 透明度往上加（续航段淡一点）
+  local function smokeTrail(S, c, k, tk)
+    local half = c.w * k / 2
+    local a0, a1 = attachPair(S.h, half)
+    local tr = Instance.new("Trail")
+    tr.Attachment0, tr.Attachment1 = a0, a1
+    tr.FaceCamera = true
+    tr.Lifetime = c.life
+    tr.MinLength = 0.4
+    local t0 = math.min(0.95, c.tr0 + (tk or 0))
+    tr.Transparency = nsq(0, t0, 0.3, t0 + (1 - t0) * 0.35, 0.75, t0 + (1 - t0) * 0.78, 1, 1)
+    tr.WidthScale = nsq(0, 0.55, 0.1, 1, 1, c.grow)
+    tr.Color = csq(0, WARM, 0.05, FRESH, 0.45, MID, 1, OLD)
+    tr.LightEmission, tr.LightInfluence = 0, 1   -- 烟受光照（夜里不自己发白）
+    tr.Parent = S.h
+    M.stat.trails += 1
+    return tr
+  end
+  -- 火舌：喷口往后一截，最长 len 格，宽 fw
+  local function flameTrail(S, len, fw)
+    local a0, a1 = attachPair(S.h, fw / 2)
+    local tr = Instance.new("Trail")
+    tr.Attachment0, tr.Attachment1 = a0, a1
+    tr.FaceCamera = true
+    tr.Lifetime = 0.12
+    tr.MinLength = 0.1
+    tr.MaxLength = len
+    tr.Transparency = nsq(0, 0, 0.45, 0.18, 1, 1)
+    tr.WidthScale = nsq(0, 1, 1, 0.22)
+    tr.Color = csq(0, RGB(255, 252, 240), 0.35, RGB(255, 214, 130), 1, RGB(255, 128, 52))
+    tr.LightEmission, tr.LightInfluence = 1, 0
+    pcall(function() tr.Brightness = 3 end)
+    tr.Parent = S.h
+    return tr
+  end
+  -- 烟团发射器（一个只在一段路上撒）：c 档
+  local function puffEmitter(c)
+    local h = holder("MslSmokeE")
+    local pe = Instance.new("ParticleEmitter")
+    pe.Texture = SMOKE_TEX
+    pe.Rate = 0
+    pe.Lifetime = NumberRange.new(c.pl[1], c.pl[2])
+    pe.Speed = NumberRange.new(0.3, 1.6)
+    pe.SpreadAngle = Vector2.new(180, 180)
+    pe.Drag = 0.8
+    local acc = V(0, 0.5, 0)   -- 热烟往上浮一点
+    if VL and VL.wind and VL.wind().Magnitude < 0.5 then acc += V(1.2, 0, 0.6) end   -- 地图没设风：补一点水平的
+    pe.Acceleration = acc
+    pe.Size = nsq(0, c.ps[1], 0.25, c.ps[2], 1, c.ps[3])
+    pe.Transparency = nsq(0, c.ptr, 0.5, c.ptr + (1 - c.ptr) * 0.42, 1, 1)
+    pe.Color = csq(0, RGB(244, 242, 238), 1, RGB(206, 206, 204))
+    pe.Rotation = NumberRange.new(0, 360)
+    pe.RotSpeed = NumberRange.new(-18, 18)
+    pe.LightEmission, pe.LightInfluence = 0, 1
+    pe.EmissionDirection = Enum.NormalId.Top
+    pcall(function()
+      pe.Shape = Enum.ParticleEmitterShape.Box
+      pe.ShapeStyle = Enum.ParticleEmitterShapeStyle.Volume
+    end)
+    pcall(function() pe.WindAffectsDrag = true end)
+    pe.Parent = h
+    M.stat.emitters += 1
+    return { h = h, pe = pe, t0 = os.clock(), path = 0, c = c }
+  end
+  local function retireEmitter(E)
+    if not E then return end
+    Debris:AddItem(E.h, E.c.pl[2] + 0.5)
+  end
+
+  -- 同时在飘的烟团（估个数：每帧按平均寿命衰减）——多了少撒
+  local live, LIVE_MAX = 0, 2600
+  local cam = workspace.CurrentCamera
+
+  -- s：Fx 的一枚弹（flying 项）；cf 弹的 CFrame（朝飞的方向）；back 弹尾离 cf 多远；on 发动机开着；cls 档；ph 1 一般 / "boost" / "sus"；
+  --   d 弹径（格，火舌按它粗细）
+  function M.step(s, cf, back, dt, on, cls, ph, d)
+    local c = CLS[cls] or CLS.med
+    local S = s.sm
+    if not S then
+      if not on then return end
+      S = { h = holder("MslSmokeT"), trails = {}, last = nil }
+      s.sm = S
+    end
+    local p = cf.Position - cf.LookVector * back
+    S.h.CFrame = CFrame.new(p)
+    live = live * math.exp(-dt / 3.5)
+    M.stat.live = live
+    -- 发动机关了：火舌灭、烟带不再长，已经冒出去的慢慢散
+    if not on then
+      if S.flame then S.flame.Enabled = false end
+      for _, tr in pairs(S.trails) do tr.Enabled = false end
+      if S.E then retireEmitter(S.E) S.E = nil end
+      S.last, S.key, S.retire = nil, nil, nil
+      return
+    end
+    local key = cls .. "_" .. tostring(ph or 1)
+    local tr = S.trails[key]
+    if not tr then
+      tr = smokeTrail(S, c, (ph == "boost") and 1.15 or ((ph == "sus") and 0.7 or 1), (ph == "sus") and 0.18 or 0)
+      S.trails[key] = tr
+    end
+    -- 换段（助推 → 续航、第二次点火）：旧的那条多开一帧再关（这一帧它也画到现在这一点，新旧两条接上，不断一截）
+    if S.retire then S.retire.Enabled = false S.retire = nil end
+    if S.key and S.key ~= key and S.trails[S.key] then S.retire = S.trails[S.key] end
+    S.key = key
+    for k, t2 in pairs(S.trails) do t2.Enabled = (k == key) or (t2 == S.retire) end
+    local fk = (ph == "boost") and 1.3 or ((ph == "sus") and 0.7 or 1)
+    local dk = math.clamp((d or 0.8) / 0.8, 0.6, 2.2)
+    if not S.flame then S.flame = flameTrail(S, c.flame * fk * dk, math.max(0.45, (d or 0.8) * 1.25)) end
+    S.flame.Enabled = true
+    S.flame.MaxLength = c.flame * fk * dk
+    -- 烟团：这一帧飞过的那一段
+    if S.last then
+      local seg = p - S.last
+      local L = seg.Magnitude
+      if L > 0.05 then
+        local E = S.E
+        if not E or E.c ~= c or E.path > 500 or os.clock() - E.t0 > 1.2 then   -- 换一个新的发射器（旧的停在原地）
+          retireEmitter(E)
+          E = puffEmitter(c)
+          S.E = E
+        end
+        E.path += L
+        local want = L / (c.gap / ((ph == "boost") and 1.35 or ((ph == "sus") and 0.75 or 1)))
+        local k = math.clamp(G.perfK or 1, 0.4, 1.2)
+        if cam then
+          local dist = (cam.CFrame.Position - p).Magnitude
+          if dist > 4000 then k *= 0.35 elseif dist > 1600 then k *= 0.6 end
+        end
+        if live > LIVE_MAX then k *= LIVE_MAX / live end
+        S.carry = (S.carry or 0) + math.min(want, c.nps * dt * 1.5 + 1) * k
+        local n = math.floor(S.carry)
+        if n > 0 then
+          S.carry -= n
+          local wb = c.w * 0.8
+          E.h.Size = V(wb, wb, math.max(L, 0.2))
+          E.h.CFrame = CFrame.lookAt(S.last + seg / 2, p)
+          E.pe:Emit(n)
+          live += n
+          M.stat.emitted += n
+        end
+      end
+    end
+    S.last = p
+  end
+
+  -- 弹没了（打中、自毁、出了范围）：不再冒烟，烟带、烟团留到散完再收
+  function M.stop(s)
+    local S = s.sm
+    if not S then return end
+    s.sm = nil
+    if S.flame then S.flame.Enabled = false end
+    local life = 0
+    for _, tr in pairs(S.trails) do
+      tr.Enabled = false
+      life = math.max(life, tr.Lifetime)
+    end
+    Debris:AddItem(S.h, life + 0.5)
+    retireEmitter(S.E)
+  end
+  return M
+end
+
+return MslSmoke
+]]></ProtectedString>
+          </Properties>
+        </Item>
+        <Item class="ModuleScript" referent="243">
+          <Properties>
             <string name="Name">Nade</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——手雷抛物线预览（用户：持枪、手雷一切这种，放开了做）
 --   拿着手雷（武器 kind = "throw"）按住右键瞄：照服务器扔雷的算法（Weapons.lua KIND.throw：头顶上方出手、45° 抛向准星、最远 range，
@@ -106030,7 +106435,7 @@ return Nade
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="243">
+        <Item class="ModuleScript" referent="244">
           <Properties>
             <string name="Name">Night</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——夜视仪（客户端）：现在有昼夜更替（DayNight.lua），天黑了出生自动打开；步兵、飞行员按 N 开关夜视（手机右边一个小按钮）
@@ -106627,7 +107032,7 @@ return Night
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="244">
+        <Item class="ModuleScript" referent="245">
           <Properties>
             <string name="Name">Nuke</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——高超音速战术核导弹：警报、红圈、核爆（服务器 Nuke.lua；用户 11-22：「给 h6k 加一个高超音速战术核弹的挂载吧」）
@@ -107246,7 +107651,7 @@ return Nuke
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="245">
+        <Item class="ModuleScript" referent="246">
           <Properties>
             <string name="Name">Operation</string>
             <ProtectedString name="Source"><![CDATA[-- 夜间登陆的阶段简报与据点反馈。由服务器快照驱动，补上中途入场的当前目标。
@@ -107534,7 +107939,7 @@ return Operation
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="246">
+        <Item class="ModuleScript" referent="247">
           <Properties>
             <string name="Name">Optics</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——瞄准镜、望远镜的真模型（Sketchfab 上的原模型，几何和贴图原样）：给第一人称（FPSView）用
@@ -107791,7 +108196,7 @@ return Optics
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="247">
+        <Item class="ModuleScript" referent="248">
           <Properties>
             <string name="Name">Perf</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——性能面板（F7）与自动画质多管的几样（用户 11-19：游戏非常卡顿）
@@ -107946,7 +108351,7 @@ return Perf
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="248">
+        <Item class="ModuleScript" referent="249">
           <Properties>
             <string name="Name">Play</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——操作：武器栏（1–4、点选）、第一人称（默认；镜头前的枪和方块手臂在 FPSView，V 切到第三人称的肩后视角）、
@@ -108649,7 +109054,7 @@ return Play
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="249">
+        <Item class="ModuleScript" referent="250">
           <Properties>
             <string name="Name">Radar</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式机载雷达
@@ -109687,7 +110092,7 @@ return Radar
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="250">
+        <Item class="ModuleScript" referent="251">
           <Properties>
             <string name="Name">Ride</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——坐在别人开的地面车后面当乘客（用户 11-24：「运载车步战车要真的能载人」）
@@ -109815,7 +110220,7 @@ return Ride
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="251">
+        <Item class="ModuleScript" referent="252">
           <Properties>
             <string name="Name">Sail</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——开船：位置在本地算（车钟定航速、舵慢慢打过去、要有航速才转得动；船头碰到浅水、码头、别的船就停），每秒 15 次报给服务器
@@ -110412,7 +110817,7 @@ return Sail
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="252">
+        <Item class="ModuleScript" referent="253">
           <Properties>
             <string name="Name">Scenery</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图上的石头：按离镜头的距离摆出来（只在本机，不挡子弹、不挡人和车）
@@ -111126,7 +111531,7 @@ return Scenery
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="253">
+        <Item class="ModuleScript" referent="254">
           <Properties>
             <string name="Name">Scope</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜（客户端）：狙击镜、ACOG、望远镜开镜后的光学效果
@@ -112073,7 +112478,7 @@ return Scope
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="254">
+        <Item class="ModuleScript" referent="255">
           <Properties>
             <string name="Name">ScopePip</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——瞄准镜画中画（客户端）：镜内单独放大（用户 11-21：「改成镜内单独放大」，像三角洲行动、塔科夫那样）
@@ -112872,7 +113277,7 @@ return ScopePip
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="255">
+        <Item class="ModuleScript" referent="256">
           <Properties>
             <string name="Name">Settings</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——游戏设置（用户 11-25「设置一个兑换码 在设置里」「那个设置界面不好看 重做」，又发了截图「设置界面要能这样」）
@@ -113519,7 +113924,7 @@ return Settings
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="256">
+        <Item class="ModuleScript" referent="257">
           <Properties>
             <string name="Name">ShipView</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——舰艇的样子（G.viewKind.ship，View.lua 每帧调）：按 ShipDefs 的 look 拼零件——
@@ -114271,7 +114676,7 @@ return ShipView
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="257">
+        <Item class="ModuleScript" referent="258">
           <Properties>
             <string name="Name">Shock</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——震荡（用户 11-23「这个游戏按你想的来弄」：近处爆炸要有被震到的感觉，跟战地、使命召唤一样）
@@ -114359,7 +114764,7 @@ return Shock
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="258">
+        <Item class="ModuleScript" referent="259">
           <Properties>
             <string name="Name">SnowClouds</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——雪山上空的体积云
@@ -114606,7 +115011,7 @@ return SnowClouds
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="259">
+        <Item class="ModuleScript" referent="260">
           <Properties>
             <string name="Name">SnowLook</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——雪山地图的地面和下雪
@@ -114909,7 +115314,7 @@ return SnowLook
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="260">
+        <Item class="ModuleScript" referent="261">
           <Properties>
             <string name="Name">SnowPeaks</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——雪山地图谷外的山体：用户 11-26 晚「坦克交战区外你就用这几个拿去拼」「让这个地图望不到头」
@@ -115033,7 +115438,7 @@ return SnowPeaks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="261">
+        <Item class="ModuleScript" referent="262">
           <Properties>
             <string name="Name">Soldier</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机器人士兵：Roblox 正常小人 + 程序动画
@@ -115783,7 +116188,7 @@ return Soldier
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="262">
+        <Item class="ModuleScript" referent="263">
           <Properties>
             <string name="Name">SquadHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——小队（服务器 Squads.lua；用户 11-23「这个游戏按你想的来弄」）
@@ -115997,7 +116402,7 @@ return SquadHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="263">
+        <Item class="ModuleScript" referent="264">
           <Properties>
             <string name="Name">Stream</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——流式加载（Workspace.StreamingEnabled）的配套：用户 11-24 晚「streaming 优化」「各种 3A 游戏的那种优化」
@@ -116070,7 +116475,7 @@ return Stream
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="264">
+        <Item class="ModuleScript" referent="265">
           <Properties>
             <string name="Name">Tablet</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——遥控无人机的战术平板（用户：无人机驾驶应该是用一个战术平板）
@@ -116525,7 +116930,7 @@ return Tablet
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="265">
+        <Item class="ModuleScript" referent="266">
           <Properties>
             <string name="Name">TacPad</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——单兵战术平板（用户：增加一个单兵战术平板，可以召唤空投载具、空中打击，但必须要有次数限制）
@@ -117746,7 +118151,7 @@ return TacPad
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="266">
+        <Item class="ModuleScript" referent="267">
           <Properties>
             <string name="Name">TankHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——坦克驾驶界面的补充（用户 11-19 给了一张手机坦克游戏的截图：「坦克驾驶操作界面改成这样」）
@@ -118267,7 +118672,7 @@ return TankHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="267">
+        <Item class="ModuleScript" referent="268">
           <Properties>
             <string name="Name">TechUI</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——机库（出击阵容、出击）和研究（科技树）界面（用户 11-25：「从1960到现代的战机和坦克 科技树」「再去做一个中 德 美 日 俄系」
@@ -120777,7 +121182,7 @@ return TechUI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="268">
+        <Item class="ModuleScript" referent="269">
           <Properties>
             <string name="Name">Tint</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——导入的原模型贴图没出来时的底色
@@ -120890,7 +121295,7 @@ return Tint
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="269">
+        <Item class="ModuleScript" referent="270">
           <Properties>
             <string name="Name">Tracks</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——会转的履带（用户 11-25「坦克履带也要能动」；11-26「坦克履带动画也有 bug」重写）
@@ -121207,7 +121612,7 @@ return Tracks
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="270">
+        <Item class="ModuleScript" referent="271">
           <Properties>
             <string name="Name">UI</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场——界面：部署（兵种卡片 + 地图上点出生点 + 出击）、战斗中的顶栏（时间、5 个据点）、血条、小地图、
@@ -122571,7 +122976,7 @@ return UI
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="271">
+        <Item class="ModuleScript" referent="272">
           <Properties>
             <string name="Name">VehCam</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具的追尾镜头（用户 11-20：「这个游戏目前所有的载具操控都不够 3A，你用虚幻引擎 5 的水平全面升级」）
@@ -122675,7 +123080,7 @@ return VehCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="272">
+        <Item class="ModuleScript" referent="273">
           <Properties>
             <string name="Name">VehHud</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——载具驾驶界面。用户 11-18：「坦克驾驶界面、操作系统观感不够惊艳，舰船也是……放开了做，作出一款震撼的作品」
@@ -124254,6 +124659,7 @@ function VehHud.init(G)
     end
     wtMode = showTank and not compact and G.wtTankStep ~= nil
     mwtOn = showTank and not compact and not wtMode
+    camAim.Visible = not wtMode   -- 战雷那套：镜头瞄的地方是 WtTank 的大圈（用户 11-28「较大那个环改成鼠标光标的位置」），这个小圈收起
     G.tankHudActive = showTank and not compact   -- 屏幕上只留这一套（Coach 的三步卡、Hud 的提示让开）
     MW.root.Visible = mwtOn
     compGroup.Visible = not compact and not showTank and (compassSide or not (G.operationHudVisible and G.operationHudVisible()))
@@ -124269,7 +124675,7 @@ return VehHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="273">
+        <Item class="ModuleScript" referent="274">
           <Properties>
             <string name="Name">VehModels</string>
             <ProtectedString name="Source">-- Roblox全面大战场（客户端）——地面载具的样子：导入了原模型就用原模型（见下），没有就按 VehDefs 的尺寸用零件拼——车体（首上装甲、侧裙、发动机舱、反应装甲块）、
@@ -125259,7 +125665,7 @@ end
 return VehModels</ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="274">
+        <Item class="ModuleScript" referent="275">
           <Properties>
             <string name="Name">VfxLib</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——特效共用的底子（用户 11-27：开炮、炮弹打地、机枪打地、坦克殉爆都照战雷 Eagle's Shadow 做，「在 M3 的 Mac 上要丝滑」）
@@ -126001,7 +126407,7 @@ return VfxLib
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="275">
+        <Item class="ModuleScript" referent="276">
           <Properties>
             <string name="Name">View</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——实体的样子：服务器上只有一个隐形的 Root（位置）和属性（Kind 种类、Team 队伍、Hp 血量……），
@@ -127347,7 +127753,7 @@ return View
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="276">
+        <Item class="ModuleScript" referent="277">
           <Properties>
             <string name="Name">Warfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战场氛围。用户 11-18：「按照 3A 游戏的标准把这款游戏做到惊艳，自由发挥，参考战雷、战地」（夜晚照旧锁定）
@@ -128366,7 +128772,7 @@ return Warfx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="277">
+        <Item class="ModuleScript" referent="278">
           <Properties>
             <string name="Name">Workshop</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——整备（Workshop）外壳：在机库里给选中的那一辆配挂载 / 弹药、改装、乘员、涂装、看资料
@@ -129005,7 +129411,7 @@ return Workshop
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="278">
+        <Item class="ModuleScript" referent="279">
           <Properties>
             <string name="Name">WreckFx</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——车被打爆（用户 11-25「载具爆炸效果不够猛画风不够战雷」；11-27「坦克爆炸照战雷做」「M3 上要丝滑」）：照真车殉爆的录像做，写实、不卡通
@@ -129859,7 +130265,7 @@ return WreckFx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="279">
+        <Item class="ModuleScript" referent="280">
           <Properties>
             <string name="Name">WsArms</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——整备的「挂载」页（飞机、直升机；外壳是 Workshop.lua，零件是 WsKit.lua）
@@ -131787,7 +132193,7 @@ return WsArms
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="280">
+        <Item class="ModuleScript" referent="281">
           <Properties>
             <string name="Name">WsKit</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——整备（Workshop）共用的界面零件：面板、卡片、小块、分段键、勾选框、拖动条、对比行、引线标签、武器剪影、数字滚动
@@ -132968,7 +133374,7 @@ return K
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="281">
+        <Item class="ModuleScript" referent="282">
           <Properties>
             <string name="Name">WtAir</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式飞机受伤（用户 11-24 夜「把整个游戏做成战雷」④）
@@ -133346,7 +133752,7 @@ return WtAir
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="282">
+        <Item class="ModuleScript" referent="283">
           <Properties>
             <string name="Name">WtAmmo</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机库里配弹（用户 11-25「全部都做」④：战雷出车前选每种弹带几发）
@@ -133533,7 +133939,7 @@ return WtAmmo
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="283">
+        <Item class="ModuleScript" referent="284">
           <Properties>
             <string name="Name">WtBattle</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式对局的界面（用户 11-24 夜「把整个游戏做成战雷」③：对局玩法）
@@ -134023,7 +134429,7 @@ return WtBattle
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="284">
+        <Item class="ModuleScript" referent="285">
           <Properties>
             <string name="Name">WtCam</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——观战（用户 11-25「全部都做」⑮：战雷里被打掉以后能看队友）
@@ -134151,7 +134557,7 @@ return WtCam
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="285">
+        <Item class="ModuleScript" referent="286">
           <Properties>
             <string name="Name">WtComms</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——地图方格、标点、无线电（用户 11-25「全部都做」⑭，B 挑刺 13）
@@ -134454,7 +134860,7 @@ return WtComms
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="286">
+        <Item class="ModuleScript" referent="287">
           <Properties>
             <string name="Name">WtFlight</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式的开飞机界面
@@ -135060,14 +135466,16 @@ return WtFlight
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="287">
+        <Item class="ModuleScript" referent="288">
           <Properties>
             <string name="Name">WtHud</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式伤害的界面（用户 11-24「把整个游戏做成战雷」：乘员和模块伤害 + X 光回放）
 --   · 命中提示（打出去的）：准星下面一行——击穿（橙）/ 未击穿（灰）/ 跳弹（黄）/ 已击毁（红：弹药殉爆、车组全灭、烧毁），
 --     后面跟这一发伤了谁：「炮长阵亡 · 炮闩损毁 · 起火」
---   · X 光命中回放（右下一个小窗，四五秒）：目标车的外形半透明、里面的乘员和模块按状态上色（绿好、黄伤、红没了 / 毁了），
---     弹芯 / 射流一道橙线、破片一锥黄线（服务器、客户端用同一个伪随机，画出来和算的一样）；镜头从来弹方向慢慢绕
+--   · X 光命中回放（右上一个窗，照战雷：贴近命中点看，三到七秒）：目标车的外形半透明、里面的乘员和模块素模，打坏的上色（受损黄、
+--     打坏近黑 + 橙框、乘员受伤黄 / 阵亡红），弹药 / 发动机标识色（洋红 / 电光蓝）；上面正中结果字，窗口下面车组和一行行损伤；
+--     弹芯 / 射流一道橙线、破片一锥灰白线、打中东西的地方红点、命中点一团红光（服务器、客户端用同一个伪随机，画出来和算的一样）；
+--     跳弹 / 没击穿也放（静止的，弹开的方向一截橙线）
 --   · 自己的车挨打：底下一行红字「被击穿：装填手阵亡」；左下车组 / 模块面板（驾 / 炮 / 车 / 装，发 / 传 / 履 / 炮管 / 闩 / 驱 / 弹 / 油），
 --     起火、维修进度、「Y 维修 / 灭火」提示；换位「装填手 6 秒后接替炮长」
 --   服务器 Wt.lua 发 { op = "wtHit" / "wtHurt" / "wtSwap" / "wtSwapped" / "wtFireOut" / "wtFixed" }，车的状态在实体属性 WtC / WtM / WtF / WtFix
@@ -135218,30 +135626,56 @@ function WtHud.init(G)
 
   ---------------------------------------------------------------- X 光命中回放
 
-  local XW, XH = mobile and 260 or 380, mobile and 156 or 214   -- 11-28：照战雷的命中回放放大一点（原来 320 × 196，弹药一发发的看不清）
-  local xr = frame(gui, UDim2.fromOffset(XW, XH + 22), mobile and UD2(1, -12, 0, 120) or UD2(1, -20, 1, -300), RGB(8, 12, 14), 0.25, V2(1, mobile and 0 or 1))
+  -- 11-28（用户「跟战雷还是有区别」）：照战雷的命中回放重排——右上角（我们右上是小地图：在它下面）、没有边框和标题栏；
+  --   上面正中一个结果字（命中 / 击穿 / 已击毁），窗口下面右对齐「车组 存活 / 总数」、红字一行行写打坏了什么，左边一排模块小牌
+  local XW, XH = mobile and 270 or 400, mobile and 152 or 225
+  local xr = frame(gui, UDim2.fromOffset(XW, XH + 132), mobile and UD2(1, -12, 0, 120) or UD2(1, -20, 0, 18), RGB(0, 0, 0), 1, V2(1, 0))
   xr.Name = "WtXray"
   xr.Visible = false
-  do
-    local s = Instance.new("UIStroke")
-    s.Color, s.Thickness, s.Transparency = RGB(120, 200, 140), 1, 0.4
-    s.Parent = xr
-  end
-  local xTitle = label(xr, "", UD2(1, -10, 0, 18), UD2(0, 6, 0, 2), 12, Color3.new(1, 1, 1), BOLD, nil, Enum.TextXAlignment.Left)
   local vp = Instance.new("ViewportFrame")
   vp.Name = "View"
-  vp.Size, vp.Position = UD2(1, -4, 1, -24), UD2(0, 2, 0, 22)
-  -- 11-28（「x光效果还是不如战雷」）：底色石板蓝灰（原来近乎黑：半透明的车壳、部件糊在一起）；环境光压低、主光暖一点，实心部件有明暗
-  vp.BackgroundColor3, vp.BackgroundTransparency = RGB(30, 36, 44), 0
-  vp.Ambient, vp.LightColor, vp.LightDirection = RGB(118, 124, 134), RGB(255, 248, 236), V3(-0.45, -1, -0.35)
+  vp.Size, vp.Position = UDim2.fromOffset(XW, XH), UD2(0, 0, 0, 0)
+  -- 战雷的命中回放：整个是浅灰蓝的素模（车壳、部件一个色调），只有打坏的东西上色；底色近黑、一盏偏上的主光，面有明暗
+  vp.BackgroundColor3, vp.BackgroundTransparency = RGB(12, 14, 17), 0.06
+  vp.Ambient, vp.LightColor, vp.LightDirection = RGB(146, 152, 162), RGB(212, 216, 224), V3(-0.4, -1, -0.6)
   vp.Parent = xr
+  do
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, 6)
+    c.Parent = vp
+  end
+  local xTitle = label(xr, "", UD2(1, -20, 0, 22), UD2(0.5, 0, 0, 6), 17, RGB(240, 214, 70), TH.F.bold, V2(0.5, 0))
+  xTitle.Name = "XrTitle"
+  xTitle.ZIndex = 3
+  xTitle.TextStrokeTransparency, xTitle.TextStrokeColor3 = 0.35, RGB(0, 0, 0)
+  -- 窗口下面：右边「车组 2 / 4」，下面红字一行一个打坏的东西；左边一排模块小牌（这一发打到的亮起来）
+  local xCrew = label(xr, "", UD2(0, 170, 0, 18), UD2(1, -2, 0, XH + 6), 14, RGB(206, 212, 218), BOLD, V2(1, 0), Enum.TextXAlignment.Right)
+  xCrew.Name = "XrCrew"
+  xCrew.RichText = true
+  local xDmg = {}
+  for i = 1, 6 do
+    local l = label(xr, "", UD2(0, 240, 0, 17), UD2(1, -2, 0, XH + 6 + i * 17), 14, RGB(236, 64, 52), BOLD, V2(1, 0), Enum.TextXAlignment.Right)
+    l.Name = "XrDmg" .. i
+    l.TextStrokeTransparency = 0.25
+    xDmg[i] = l
+  end
+  local XR_TAGS = { "breech", "engine", "trans", "track", "tdrive", "edrive" }   -- 炮、发动机、传动、履带、方向机、高低机
+  local xTags = {}
+  for i, k in ipairs(XR_TAGS) do
+    local f = frame(xr, UDim2.fromOffset(22, 18), UD2(0, 2 + (i - 1) * 25, 0, XH + 6), RGB(16, 20, 24), 0.35)
+    f.Name = "XrTag_" .. k
+    local c = Instance.new("UICorner")
+    c.CornerRadius = UDim.new(0, 3)
+    c.Parent = f
+    xTags[k] = label(f, T("wt.ms." .. k), UD2(1, 0, 1, 0), UD2(), 11, RGB(120, 126, 132), BOLD)
+  end
   local vcam = Instance.new("Camera")
-  vcam.FieldOfView = 40
+  vcam.FieldOfView = 46
   vcam.Parent = vp
   vp.CurrentCamera = vcam
   local world = Instance.new("WorldModel")
   world.Parent = vp
-  local xrUntil, xrSpin, xrC, xrDist, xrDir = 0, 0, V3(), 30, V3(0, 0, -1)
+  local xrUntil, xrSpin, xrC, xrDist, xrDir = 0, 0, V3(), 12, V3(0, 0, -1)   -- xrC：静止的回放绕着看的那一点（命中点附近）
 
   local function box(size, cf, color, tr, mat)
     local p = Instance.new("Part")
@@ -135292,43 +135726,157 @@ function WtHud.init(G)
   end
   ---------------------------------------------------------------- X 光：射流的慢放动画
   --   用户 11-24 夜「射流弹击中别的坦克的 x 光动画要有特殊效果」：破甲 / 金属射流弹打穿时 X 光窗口里慢放——
-  --   ① 弹飞进来（镜头从侧面推近到命中点）② 打上装甲：一团白闪、贴着装甲面一圈冲击波、窗口整个亮一下、镜头一震，弹坑烧红再冷下去
+  --   ① 弹飞进来（镜头从来弹方向斜上方推近到命中点）② 打上装甲：一团白闪、贴着装甲面一圈冲击波、窗口底色轻轻亮一下、镜头一震，弹坑烧红再冷下去
   --   ③ 白热的射流一点点钻进车里（越往里越慢），射流头一颗亮球、光套跳动，经过的地方甩出熔化的金属珠（白 → 橙 → 暗红），
   --      后面一截慢的杵体（真的聚能装药：射流头每秒七八公里，杵体只有几百米）④ 破片一根根往外长，打到的乘员 / 模块闪红再定色
-  --   ⑤ 弹药殉爆一团火球 / 起火一簇火 ⑥ 镜头拉回来看整辆车、慢慢绕；底下一行字：穿深 / 等效毫米（击毁时换成「弹药殉爆」）
-  local xInfo = label(xr, "", UD2(1, -12, 0, 30), UD2(0, 6, 1, -33), 12, RGB(200, 236, 255), BOLD, nil, Enum.TextXAlignment.Left)
+  --   ⑤ 弹药殉爆一团火球 / 起火一簇火 ⑥ 镜头一直贴着命中点（11-28 照战雷，不再拉回去看整辆车），打完稍退一点；
+  --   左下小字：车名 · 距离、弹种 · 穿深 / 等效毫米；击毁时上面的结果字换成「已击毁——弹药殉爆」
+  local xInfo = label(xr, "", UD2(0, XW - 16, 0, 30), UD2(0, 8, 0, XH - 34), 11, RGB(196, 204, 212), BOLD, nil, Enum.TextXAlignment.Left)
   xInfo.Name = "XrInfo"
   xInfo.ZIndex = 3
   xInfo.TextWrapped, xInfo.TextYAlignment = true, Enum.TextYAlignment.Bottom   -- 长的字幕（弹种说明 + 穿深）折成两行，不再出框
-  xInfo.TextStrokeTransparency, xInfo.TextStrokeColor3 = 0.45, RGB(10, 14, 18)
-  local xSlow = label(xr, "", UD2(0, 90, 0, 14), UD2(1, -8, 0, 26), 11, RGB(255, 210, 120), BOLD, V2(1, 0), Enum.TextXAlignment.Right)
-  xSlow.Name = "XrSlow"
-  xSlow.ZIndex = 3
-  local xStroke = xr:FindFirstChildOfClass("UIStroke")
-  local VP_BG, XR_LINE, INFO = RGB(30, 36, 44), TH.C.HUD, TH.C.TEXT
-  -- 没事的部件按类别的颜色（实心打光；照战雷的命中回放：一眼分得出弹药、油箱、发动机、乘员）
-  local XC = {
-    crew = RGB(160, 188, 136), troops = RGB(160, 188, 136), ammo = RGB(206, 170, 102), fuel = RGB(114, 130, 98),
-    engine = RGB(140, 148, 158), trans = RGB(122, 134, 150), breech = RGB(114, 120, 128), barrel = RGB(114, 120, 128),
-    tdrive = RGB(128, 136, 148), optics = RGB(96, 170, 180), track = RGB(94, 98, 104), other = RGB(130, 138, 148),
-  }
-  local KIA = RGB(128, 30, 26)   -- 乘员阵亡：暗红（毁了的模块是亮红 DEAD）
+  xInfo.TextStrokeTransparency, xInfo.TextStrokeColor3 = 0.3, RGB(6, 8, 10)
+  local xName = ""   -- 车名 · 距离（字幕第一行）
+  local VP_BG, INFO = RGB(12, 14, 17), RGB(196, 204, 212)
+  local function setInfo(txt) xInfo.Text = (txt and txt ~= "") and (xName .. "\n" .. txt) or xName end
+  -- 窗口下面（战雷的回放）：右边「车组 存活 / 总数」，下面一行一个这一发打坏的东西（打坏 / 阵亡红、受损 / 重伤黄、起火 / 殉爆橙）——
+  --   慢放的时候跟着射流 / 破片到的那一刻一行行冒出来；左边的模块小牌：冒出来的那一行是哪块，那块亮起来（坏了红、伤了黄）
+  local TAG_OF = { breech = "breech", engine = "engine", trans = "trans", trackL = "track", trackR = "track", tdrive = "tdrive", edrive = "edrive" }
+  local TAG_IDLE, DMG_RED, DMG_YEL, DMG_FIRE = RGB(120, 126, 132), RGB(236, 64, 52), RGB(255, 206, 60), RGB(255, 140, 40)
+  local KILLC_T = RGB(255, 92, 64)   -- 击毁（同下面 KILLC）
+  local TITLE_Y, TITLE_GREY = RGB(240, 214, 70), RGB(196, 202, 208)
+  local xrLines, xrSeen = {}, {}   -- 这一回放（连发叠画时这几发一起）的损伤行：{ text, col, at, rank, tag, s }
+  local function hex(c) return string.format("#%02X%02X%02X", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)) end
+  local function dmgReset()
+    table.clear(xrLines)
+    table.clear(xrSeen)
+    for _, l in ipairs(xDmg) do l.Visible = false end
+    for _, l in pairs(xTags) do l.TextColor3 = TAG_IDLE l.Parent.BackgroundTransparency = 0.35 end
+    xCrew.Text = ""
+  end
+  local function dmgAdd(key, text, col, at, rank, tag, sv)
+    local L = xrSeen[key]
+    if L then   -- 同一件后来更坏了（受损 → 打坏）：改那一行
+      if rank > L.rank then L.text, L.col, L.rank, L.s = text, col, rank, sv end
+      L.at = math.min(L.at, at)
+      return
+    end
+    L = { text = text, col = col, at = at, rank = rank, tag = tag, s = sv }
+    xrSeen[key] = L
+    table.insert(xrLines, L)
+  end
+  local function dmgFill(m, atOf)   -- atOf(p)：这一件慢放里第几秒到（nil：马上写）；p = nil 是起火 / 殉爆
+    for _, p in ipairs(m.parts or {}) do
+      local sv = type(p.s) == "number" and p.s or 1
+      local at = atOf and atOf(p) or 0
+      if p.kind == "crew" then
+        if sv < 2 then dmgAdd("c:" .. tostring(p.seat or p.k), partName(p) .. T((sv == 0) and "wt.dead" or "wt.hurt"), (sv == 0) and DMG_RED or DMG_YEL, at, 2 - sv) end
+      elseif sv < 2 then
+        dmgAdd("m:" .. tostring(p.k), partName(p) .. T((sv == 0) and "wt.broken" or "wt.damaged"), (sv == 0) and DMG_RED or DMG_YEL, at, 2 - sv, TAG_OF[p.k], sv)
+      end
+    end
+    if m.blow then dmgAdd("blow", T("wt.blowout"), DMG_FIRE, atOf and atOf(nil) or 0, 1) end
+    if m.fire then dmgAdd("fire", T("wt.onFire"), DMG_FIRE, atOf and atOf(nil) or 0, 1) end
+  end
+  local function dmgStep(t)
+    local n, worst = 0, {}
+    for _, L in ipairs(xrLines) do
+      if t >= L.at then
+        if n < #xDmg then
+          n += 1
+          xDmg[n].Text, xDmg[n].TextColor3, xDmg[n].Visible = L.text, L.col, true
+        end
+        if L.tag then worst[L.tag] = math.min(worst[L.tag] or 2, L.s or 1) end
+      end
+    end
+    for i = n + 1, #xDmg do xDmg[i].Visible = false end
+    for k, l in pairs(xTags) do
+      local sv = worst[k]
+      l.TextColor3 = (sv == 0) and DMG_RED or ((sv == 1) and DMG_YEL or TAG_IDLE)
+      l.Parent.BackgroundTransparency = sv and 0.1 or 0.35
+    end
+  end
+  local function crewLine(st, lay)   -- 「车组 2 / 4」：活着的（受伤也算）/ 总数，活着的数字黄（全灭红）
+    local alive, total = 0, 0
+    for _, it in ipairs(lay.list) do
+      if it.kind == "crew" then
+        total += 1
+        if (st[it] or 2) > 0 then alive += 1 end
+      end
+    end
+    if total == 0 then xCrew.Text = "" return end
+    local c = (alive == 0) and DMG_RED or TITLE_Y
+    xCrew.Text = T("wtt.crew", '<font color="' .. hex(c) .. '">' .. alive .. "</font>", total)
+  end
+  local function resultWord(m, anim)   -- 上面正中的结果字：命中 / 击穿黄，跳弹 / 未击穿灰，击毁红（慢放的击毁到炸的那一刻才换）
+    if m.kill and not anim then return T((m.why == "ammo") and "wt.killAmmo" or ((m.why == "fire") and "wt.killFire" or "wt.kill")), KILLC_T, 3 end
+    if m.r == "pen" or m.kill then return T("wt.pen"), TITLE_Y, 2 end
+    if m.r == "ric" then return T("wt.ric"), TITLE_GREY, 0 end
+    if m.r == "np" then return T("wt.np"), TITLE_GREY, 0 end
+    return T("wt.hit"), TITLE_Y, 1
+  end
+  -- 颜色（用户 11-28「跟战雷还是有区别」：照战雷的命中回放）：没事的部件和乘员都是浅灰蓝 / 灰白的素模（不再按类别上色）；
+  --   受损橙、打坏近黑（外面一圈橙色的框）、乘员受伤橙黄、阵亡红；破片打中的地方一个个红点，破片本身灰白
+  --   用户 11-28「给弹药 发动机都搞一下特殊颜色的标识吧」「这个颜色你可以做的和战雷有些区别」：没事的弹药洋红、发动机电光蓝
+  --   （我们自己的标识色，不是战雷的橙 / 绿；按 X 的透视用同一套，XrayOwn.MARK）；受损黄
+  local CLAY, CLAY_CREW = RGB(170, 182, 194), RGB(206, 212, 218)
+  local MARK = (XO and XO.MARK) or { ammo = RGB(236, 62, 196), engine = RGB(46, 156, 255) }
+  local DMGC, DEADM, CREW_KO, CREW_HURT = RGB(255, 214, 48), RGB(24, 24, 28), RGB(222, 40, 32), RGB(255, 214, 48)
+  local EDGE, FRAG, SPALL = RGB(255, 132, 28), RGB(236, 36, 28), RGB(232, 234, 238)
   local BLACKC = Color3.new(0, 0, 0)
-  local function xrCol(kind, cat, s, hit)   -- 一件的颜色：状态（伤琥珀、毁红、阵亡暗红）、没事的按类别；这一发没打到的往底色退一点
-    if kind == "crew" then return (s == 0) and KIA or ((s == 1) and HURT or XC.crew) end
-    if s == 0 then return DEAD elseif s == 1 then return HURT end
-    local c = XC[cat] or XC.other
-    return hit and c or c:Lerp(VP_BG, 0.22)
+  local function xrCol(kind, cat, s, hit)   -- 一件的颜色：坏了按状态，没事的素模（弹药、发动机有标识色）
+    if kind == "crew" then return (s == 0) and CREW_KO or ((s == 1) and CREW_HURT or CLAY_CREW) end
+    if s == 0 then return DEADM elseif s == 1 then return DMGC end
+    return MARK[cat] or CLAY
   end
-  local function xrTr(kind, s, hit)   -- 乘员、打到的、伤了毁了的实心；没打到的没事模块淡一点（打到的才醒目）
+  local function catOfK(k)   -- 拿不到透视形状时按模块名分类（弹药、发动机要标识色）
+    k = tostring(k or "")
+    if string.sub(k, 1, 4) == "ammo" then return "ammo" end
+    if k == "engine" then return "engine" end
+    return "other"
+  end
+  local function xrTr(kind, s, hit)   -- 乘员、打到的、坏了的实心；没打到的没事部件稍微透一点（后面打坏的透得出来）
     if kind == "crew" or s < 2 or hit then return 0 end
-    return 0.35
+    return 0.12
   end
-  local function xrSub(col, g, s, cat)   -- 一件里的子件：深色件（排气、缸盖、炮管的箍）、弹头、玻璃
-    if g == "dk" then return col:Lerp(BLACKC, 0.3) end
-    if g == "tip" then return (s == 2) and RGB(78, 82, 90) or col:Lerp(BLACKC, 0.35) end
-    if g == "gl" then return (s == 2) and RGB(130, 206, 214) or col end
+  local function xrSub(col, g, s, cat)   -- 一件里的子件：深色件（排气、缸盖、炮管的箍）、弹头、玻璃——素模里只是深一点
+    if g == "dk" or g == "tip" then return col:Lerp(BLACKC, (s == 2) and 0.24 or 0.3) end
+    if g == "gl" then return (s == 2) and RGB(150, 176, 190) or col end
     return col
+  end
+  -- 打坏的模块外面一圈橙色的框（战雷的描边；ViewportFrame 里画不了 Highlight，用十二根细边围一个跟着模块那个框架的盒子）
+  local function edgePart(a, b, col, th)
+    local dd = b - a
+    local p = Instance.new("Part")
+    p.Anchored, p.CanCollide, p.CanQuery, p.CanTouch, p.CastShadow = true, false, false, false, false
+    p.Size = V3(th, th, math.max(dd.Magnitude, 0.05))
+    p.CFrame = CFrame.lookAt((a + b) / 2, b)
+    p.Color, p.Material = col, Enum.Material.Neon
+    p.Parent = world
+    return p
+  end
+  local function edgeBox(F, parts, hidden)
+    local mn, mx = nil, nil
+    for _, q in ipairs(parts) do
+      local cf, sz = q.p.CFrame, q.size or q.p.Size
+      for i = 0, 7 do
+        local w = cf * V3(((i % 2 == 0) and -1 or 1) * sz.X / 2, ((math.floor(i / 2) % 2 == 0) and -1 or 1) * sz.Y / 2, ((i < 4) and -1 or 1) * sz.Z / 2)
+        local l = F:PointToObjectSpace(w)
+        mn = mn and V3(math.min(mn.X, l.X), math.min(mn.Y, l.Y), math.min(mn.Z, l.Z)) or l
+        mx = mx and V3(math.max(mx.X, l.X), math.max(mx.Y, l.Y), math.max(mx.Z, l.Z)) or l
+      end
+    end
+    if not mn then return {} end
+    mn, mx = mn - V3(0.08, 0.08, 0.08), mx + V3(0.08, 0.08, 0.08)
+    local cs = {}
+    for i = 0, 7 do cs[i] = F * V3((i % 2 == 0) and mn.X or mx.X, (math.floor(i / 2) % 2 == 0) and mn.Y or mx.Y, (i < 4) and mn.Z or mx.Z) end
+    local out = {}
+    for _, e in ipairs({ { 0, 1 }, { 2, 3 }, { 4, 5 }, { 6, 7 }, { 0, 2 }, { 1, 3 }, { 4, 6 }, { 5, 7 }, { 0, 4 }, { 1, 5 }, { 2, 6 }, { 3, 7 } }) do
+      local p = edgePart(cs[e[1]], cs[e[2]], EDGE, 0.07)
+      p.Transparency = hidden and 1 or 0.05
+      out[#out + 1] = p
+    end
+    return out
   end
   local TI, JD = 0.7, 0.95   -- 弹飞进来 0.7 秒；射流钻进去 0.95 秒（都是慢放的）
   local xa = nil
@@ -135356,6 +135904,32 @@ function WtHud.init(G)
     return c1:Lerp(c2, math.clamp((q - k) / (1 - k), 0, 1))
   end
   local WHITE, ORANGE, EMBER = RGB(255, 246, 225), RGB(255, 150, 55), RGB(140, 32, 22)
+  local KILLC = KILLC_T   -- 标题：已击毁（命中 / 击穿是黄）
+  -- 战雷的回放：破片打中东西的地方一个红点（到的那一刻冒出来）；命中点一团红光（弹在那里撞开装甲、破片从那里喷）
+  local function addDot(A, pos, t)
+    A.dots = A.dots or {}
+    table.insert(A.dots, { p = nb(V3(0.36, 0.36, 0.36), CF(pos), FRAG, Enum.PartType.Ball), t = t })
+  end
+  local function dotsStep(A, t)
+    for _, D in ipairs(A.dots or {}) do
+      local q = (t - D.t) / 0.25
+      if q >= 0 then
+        D.p.Transparency = 0
+        D.p.Size = V3(1, 1, 1) * ((q < 1) and lerp(0.62, 0.36, q) or 0.36)
+      end
+    end
+  end
+  local function redGlow(A, pos, big)
+    A.rg = nb(V3(1, 1, 1), CF(pos), RGB(255, 46, 36), Enum.PartType.Ball)
+    A.rgR = big and 2.6 or 1.9
+  end
+  local function redGlowStep(A, ti)
+    if not A.rg then return end
+    ti -= A.rgT or 0
+    if ti < 0 then A.rg.Transparency = 1 return end
+    A.rg.Size = V3(1, 1, 1) * lerp(0.5, A.rgR, ease(ti / 0.25))
+    A.rg.Transparency = (ti < 1.2) and 0.32 or lerp(0.32, 0.72, math.clamp((ti - 1.2) / 1.8, 0, 1))
+  end
 
   local function xaBuild(m, x, d, yaw, p0, dv, hitP)
     local big = x.big == true
@@ -135398,8 +135972,11 @@ function WtHud.init(G)
       for _, H in ipairs(hitP) do if H.it == it and (not H.at or tt < H.at) then H.at = tt end end
     end
     for _, h in ipairs(W.trace(d, yaw, p0 + dv * 0.1, dv, core, true)) do
-      mark(h.it, TI + JD * (1 - (1 - math.clamp(h.t / core, 0, 1)) ^ (1 / 2.4)))
+      local th = TI + JD * (1 - (1 - math.clamp(h.t / core, 0, 1)) ^ (1 / 2.4))
+      mark(h.it, th)
+      addDot(A, p0 + dv * (0.1 + h.t), th)
     end
+    redGlow(A, p0 + dv * 0.35, big)
     A.spall = {}
     local cone = W.cone(dv, x.half or 18, x.n or 0, x.seed)
     for i, rv in ipairs(cone) do
@@ -135408,9 +135985,12 @@ function WtHud.init(G)
       local l2 = hits[1] and math.max(0.3, hits[1].t + 0.4) or len
       local t1 = TI + 0.14 + (i - 1) * (0.55 / math.max(#cone, 1)) + R() * 0.05
       local dur = 0.26 + l2 / M * 0.07
-      table.insert(A.spall, { p = nb(V3(0.06, 0.06, 0.1), CF(p0), RGB(255, 240, 150)), tip = nb(V3(0.26, 0.26, 0.26), CF(p0), RGB(255, 250, 220), Enum.PartType.Ball),
+      table.insert(A.spall, { p = nb(V3(0.06, 0.06, 0.1), CF(p0), SPALL), tip = nb(V3(0.26, 0.26, 0.26), CF(p0), RGB(255, 255, 255), Enum.PartType.Ball),
         rv = rv, len = l2, t = t1, d = dur })
-      if hits[1] then mark(hits[1].it, t1 + dur * 0.45) end
+      if hits[1] then
+        mark(hits[1].it, t1 + dur * 0.45)
+        addDot(A, p0 + dv * 0.1 + rv * hits[1].t, t1 + dur * 0.45)
+      end
     end
     for _, H in ipairs(hitP) do
       if not H.at then H.at = W.inside(d, yaw, p0, H.it, 0.6) and TI or (TI + JD * 0.8) end   -- 车外的零件（履带、炮管）：打上那一下
@@ -135475,7 +136055,7 @@ function WtHud.init(G)
       if seg(A.trail, p0 - dv * 12, p0, 0.08) then A.trail.Transparency = math.clamp(0.2 + ti * 0.4, 0.2, 0.7) end
     end
     if ti >= 0 then
-      -- ② 命中：白闪、冲击波、弹坑；窗口亮一下、框变橙
+      -- ② 命中：白闪、冲击波、弹坑；窗口底色轻轻亮一下
       local fq = ti / 0.35
       A.flash.Transparency = (fq < 1) and fq or 1
       A.flash.Size = V3(1, 1, 1) * lerp(0.6, A.big and 4.4 or 3.4, ease(fq))
@@ -135486,8 +136066,7 @@ function WtHud.init(G)
       local cq = math.clamp(ti / 2.4, 0, 1)
       A.crater.Color = heat(cq, WHITE, ORANGE, EMBER, 0.2)
       A.crater.Transparency = lerp(0, 0.3, cq)
-      vp.BackgroundColor3 = RGB(190, 222, 255):Lerp(VP_BG, math.clamp(ti / 0.3, 0, 1))
-      if xStroke then xStroke.Color = RGB(255, 190, 110):Lerp(XR_LINE, math.clamp(ti / 1.2, 0, 1)) end
+      vp.BackgroundColor3 = RGB(58, 64, 72):Lerp(VP_BG, math.clamp(ti / 0.3, 0, 1))
       -- ③ 射流
       local jq = ti / JD
       local a = p0 + dv * 0.05
@@ -135539,11 +136118,11 @@ function WtHud.init(G)
         local cur = Sx.len * ease(q)
         if seg(Sx.p, p0, p0 + Sx.rv * math.max(cur, 0.06), 0.06) then
           if q < 1 then
-            Sx.p.Color, Sx.p.Transparency = RGB(255, 240, 150), 0
+            Sx.p.Color, Sx.p.Transparency = SPALL, 0
             Sx.tip.CFrame, Sx.tip.Transparency = CF(p0 + Sx.rv * cur), 0
           else
             local fq = math.clamp((st - Sx.d) / 1.2, 0, 1)
-            Sx.p.Color, Sx.p.Transparency = RGB(255, 226, 90):Lerp(RGB(255, 140, 50), fq), lerp(0, 0.3, fq)
+            Sx.p.Color, Sx.p.Transparency = SPALL:Lerp(RGB(150, 156, 164), fq), lerp(0, 0.4, fq)
             Sx.tip.Transparency = 1
           end
         end
@@ -135562,6 +136141,7 @@ function WtHud.init(G)
         elseif not H.done then
           H.done = true
           for _, q in ipairs(H.ps or { H }) do q.p.Color, q.p.Transparency, q.p.Size = xrSub(H.col, q.g, H.s or 2, H.cat), H.tr, q.size end
+          for _, e in ipairs(H.edges or {}) do e.Transparency = 0.05 end   -- 打坏 / 受损的：外面一圈橙框
         end
       end
     end
@@ -135572,7 +136152,7 @@ function WtHud.init(G)
         A.boom.Size = V3(1, 1, 1) * lerp(1, A.boomR, ease(q))
         A.boom.Color = heat(q, WHITE, ORANGE, EMBER, 0.3)
         A.boom.Transparency = lerp(0.05, 1, q ^ 1.5)
-        vp.BackgroundColor3 = RGB(255, 170, 90):Lerp(VP_BG, math.clamp(q * 3, 0, 1))
+        vp.BackgroundColor3 = RGB(110, 66, 40):Lerp(VP_BG, math.clamp(q * 3, 0, 1))
       else A.boom.Transparency = 1 end
     end
     if A.fire and t >= A.fireT then
@@ -135583,16 +136163,18 @@ function WtHud.init(G)
         F.p.Transparency = 0.25
       end
     end
-    -- 字幕
-    if ti >= 0 and not A.said then A.said = true xInfo.Text, xInfo.TextColor3, xInfo.Visible = A.info, INFO, true end
-    if A.info2 and not A.said2 and t >= (A.boomT or (TI + JD)) + 0.15 then A.said2 = true xInfo.Text, xInfo.TextColor3 = A.info2, KILL end
-    xSlow.Visible = t < TI + JD + 0.4
-    -- 镜头：先从斜侧面推近到命中点（跟一点射流），射流钻完拉回来看整辆车、慢慢绕；打上那一下一震
-    xrSpin += dt * ((t < TI + JD) and math.rad(7) or math.rad(16))
-    local back = ease((t - (TI + JD + 0.2)) / 1.1)
-    local tgt = (p0 + dv * math.min(core * 0.35 * ease(ti / JD), 3)):Lerp(xrC, back)
-    local dist = lerp(lerp(xrDist * 0.95, xrDist * 0.48, ease(t / TI)), xrDist, back)
-    local eye = tgt + CFrame.Angles(0, xrSpin, 0) * xrDir * dist + V3(0, dist * 0.32, 0)
+    dotsStep(A, t)
+    redGlowStep(A, ti)
+    dmgStep(t)
+    -- 字幕（左下小字：车名 · 距离、弹种和穿深）；击毁的原因换到上面正中的标题
+    if ti >= 0 and not A.said then A.said = true setInfo(A.info) xInfo.TextColor3, xInfo.Visible = INFO, true end
+    if A.info2 and not A.said2 and t >= (A.boomT or (TI + JD)) + 0.15 then A.said2 = true xTitle.Text, xTitle.TextColor3 = A.info2, KILLC end
+    -- 镜头（战雷的回放：一直贴着命中的那一块看，不拉回去看整辆车）：从来弹方向斜后上方推近，跟一点射流，慢慢挪一点；打完稍微退一点看清打坏了什么
+    xrSpin += dt * math.rad(5)
+    local back = ease((t - (TI + JD + 0.6)) / 2.2)
+    local tgt = p0 + dv * math.min(core * 0.35 * ease(ti / JD), 3)
+    local dist = lerp(lerp(xrDist * 1.3, xrDist, ease(t / TI)), xrDist * 1.32, back)
+    local eye = tgt + CFrame.Angles(0, xrSpin, 0) * xrDir * dist + V3(0, dist * 0.42, 0)
     if ti >= 0 and ti < 0.5 then
       local k = (1 - ti / 0.5) ^ 2 * (A.big and 0.45 or 0.32)
       eye += V3(math.sin(t * 91) * k, math.sin(t * 73 + 1) * k, math.sin(t * 57 + 2) * k)
@@ -135658,8 +136240,8 @@ function WtHud.init(G)
   end
   -- 一根往外长的破片（头上一颗亮点）：o 起点、rv 方向、len 长、t 开始、d 长出来用的时间
   local function frag(list, o, rv, len, t, dur, th, col)
-    table.insert(list, { p = nb(V3(th, th, 0.1), CF(o), col or RGB(255, 240, 150)), tip = nb(V3(th * 3.4, th * 3.4, th * 3.4), CF(o), RGB(255, 250, 220), Enum.PartType.Ball),
-      o = o, rv = rv, len = len, t = t, d = dur, th = th })
+    table.insert(list, { p = nb(V3(th, th, 0.1), CF(o), col or SPALL), tip = nb(V3(th * 3.4, th * 3.4, th * 3.4), CF(o), RGB(255, 255, 255), Enum.PartType.Ball),
+      o = o, rv = rv, len = len, t = t, d = dur, th = th, col = col or SPALL })
   end
   local function fragStep(list, t)
     for _, F in ipairs(list) do
@@ -135669,11 +136251,11 @@ function WtHud.init(G)
         local cur = F.len * ease(q)
         if seg(F.p, F.o, F.o + F.rv * math.max(cur, 0.06), F.th) then
           if q < 1 then
-            F.p.Color, F.p.Transparency = RGB(255, 240, 150), 0
+            F.p.Color, F.p.Transparency = F.col, 0
             F.tip.CFrame, F.tip.Transparency = CF(F.o + F.rv * cur), 0
-          else
+          else   -- 长完：灰白冷成灰、淡一点（战雷的破片线）
             local fq = math.clamp((ft - F.d) / 1.2, 0, 1)
-            F.p.Color, F.p.Transparency = RGB(255, 226, 90):Lerp(RGB(255, 140, 50), fq), lerp(0, 0.35, fq)
+            F.p.Color, F.p.Transparency = F.col:Lerp(RGB(150, 156, 164), fq), lerp(0, 0.4, fq)
             F.tip.Transparency = 1
           end
         end
@@ -135721,7 +136303,10 @@ function WtHud.init(G)
           local l2 = hits[1] and math.max(0.3, hits[1].t + 0.3) or len
           local t1 = K.TI + 0.06 + R() * 0.08
           frag(A.frags, p0 + dv * 0.2, rv, l2, t1, 0.26, 0.06)
-          if hits[1] then mark(hits[1].it, t1 + 0.15) end
+          if hits[1] then
+            mark(hits[1].it, t1 + 0.15)
+            addDot(A, p0 + dv * 0.2 + rv * hits[1].t, t1 + 0.15)
+          end
         end
       end
     elseif K.scab then
@@ -135738,8 +136323,11 @@ function WtHud.init(G)
         local l2 = hits[1] and math.max(0.3, hits[1].t + 0.3) or len
         local t1 = K.TI + 0.42 + R() * 0.1
         local dur = 0.24 + l2 / M * 0.06
-        frag(A.frags, inner, rv, l2, t1, dur, 0.09, RGB(255, 214, 130))
-        if hits[1] then mark(hits[1].it, t1 + dur * 0.5) end
+        frag(A.frags, inner, rv, l2, t1, dur, 0.09)
+        if hits[1] then
+          mark(hits[1].it, t1 + dur * 0.5)
+          addDot(A, inner + rv * hits[1].t, t1 + dur * 0.5)
+        end
       end
     else
       -- 动能弹：孔道、杆头、（全口径）装甲塞子；破片从穿出来的地方喷；穿甲爆破弹走一米多炸开
@@ -135749,7 +136337,10 @@ function WtHud.init(G)
       local deep = A.core * (K.deep or 1)
       A.deep = deep
       local function tOf(dist) return K.TI + K.P * (1 - (1 - math.clamp(dist / deep, 0, 1)) ^ (1 / 2.4)) end
-      for _, h in ipairs(W.trace(d, yaw, p0 + dv * 0.1, dv, deep, true)) do mark(h.it, tOf(h.t)) end
+      for _, h in ipairs(W.trace(d, yaw, p0 + dv * 0.1, dv, deep, true)) do
+        mark(h.it, tOf(h.t))
+        addDot(A, p0 + dv * (0.1 + h.t), tOf(h.t))
+      end
       local ex = p0 + dv * (K.small and 0.15 or 0.35)
       local nS = K.wide and math.floor(nF * 1.25 + 0.5) or nF
       if sub == "aphe" then nS = math.floor(nF * 0.6 + 0.5) end
@@ -135761,7 +136352,10 @@ function WtHud.init(G)
         local t1 = K.TI + 0.06 + (i - 1) * (0.35 / nS) + R() * 0.04
         local dur = 0.22 + l2 / M * 0.06
         frag(A.frags, ex, rv, l2, t1, dur, (K.wide and 0.1 or 0.06) * (0.8 + R() * 0.6))
-        if hits[1] then mark(hits[1].it, t1 + dur * 0.45) end
+        if hits[1] then
+          mark(hits[1].it, t1 + dur * 0.45)
+          addDot(A, ex + rv * hits[1].t, t1 + dur * 0.45)
+        end
       end
       if K.burst then
         local bd = math.min(deep, K.burst * M)
@@ -135774,14 +136368,20 @@ function WtHud.init(G)
           local l2 = hits[1] and math.max(0.3, hits[1].t + 0.3) or len
           local dur = 0.18 + l2 / M * 0.05
           local t1 = A.tb + R() * 0.05
-          frag(A.frags, A.bp, rv, l2, t1, dur, 0.07, RGB(255, 210, 110))
-          if hits[1] then mark(hits[1].it, t1 + dur * 0.5) end
+          frag(A.frags, A.bp, rv, l2, t1, dur, 0.07)
+          if hits[1] then
+            mark(hits[1].it, t1 + dur * 0.5)
+            addDot(A, A.bp + rv * hits[1].t, t1 + dur * 0.5)
+          end
         end
       end
     end
     for _, H in ipairs(hitP) do
       if not H.at then H.at = W.inside(d, yaw, p0, H.it, 0.6) and K.TI or (K.TI + K.P * 0.8) end
     end
+    -- 命中点一团红光：碎甲在内壁崩落的地方（拍上去 0.4 秒以后）；杀爆没打穿的不画
+    if K.scab then redGlow(A, A.inner, true) A.rgT = 0.4
+    elseif not K.blast or m.r == "pen" or m.kill then redGlow(A, p0 + dv * 0.3, K.wide or K.blast) end
     killFx(A, m, d, yaw, hitP, R, (A.tb or (K.TI + K.P)) + 0.35)
     A.info = T("wt.xr." .. sub, m.pen or "?", m.arm or "?")
     A.info2 = m.kill and T((m.why == "ammo") and "wt.killAmmo" or ((m.why == "fire") and "wt.killFire" or "wt.kill")) or nil
@@ -135803,7 +136403,7 @@ function WtHud.init(G)
       A.trail.Transparency = math.clamp(0.25 + ti * 0.5, 0.25, 1)
     end
     if ti >= 0 then
-      -- ② 打上：白闪、贴着装甲的一圈、弹坑烧红；窗口亮一下、框变橙
+      -- ② 打上：白闪、贴着装甲的一圈、弹坑烧红；窗口底色轻轻亮一下
       local fq = ti / 0.3
       A.flash.Transparency = (fq < 1) and fq or 1
       A.flash.Size = V3(1, 1, 1) * lerp(0.4, (K.small and 1.4) or (K.blast and 5) or 2.8, ease(fq))
@@ -135814,8 +136414,7 @@ function WtHud.init(G)
       local cq = math.clamp(ti / 2.2, 0, 1)
       A.crater.Color = heat(cq, WHITE, ORANGE, EMBER, 0.2)
       A.crater.Transparency = lerp(0, 0.35, cq)
-      vp.BackgroundColor3 = RGB(190, 222, 255):Lerp(VP_BG, math.clamp(ti / 0.25, 0, 1))
-      if xStroke then xStroke.Color = RGB(255, 190, 110):Lerp(XR_LINE, math.clamp(ti / 1.2, 0, 1)) end
+      vp.BackgroundColor3 = RGB(58, 64, 72):Lerp(VP_BG, math.clamp(ti / 0.25, 0, 1))
       if K.blast or K.scab then A.shell.Transparency = 1 end
     end
     -- 往回溅的火花
@@ -135867,7 +136466,7 @@ function WtHud.init(G)
           A.fb.Size = V3(1, 1, 1) * lerp(0.5, 2.6 * W.M, ease(q))
           A.fb.Color = heat(q, WHITE, ORANGE, EMBER, 0.25)
           A.fb.Transparency = lerp(0, 0.9, q ^ 1.4)
-          vp.BackgroundColor3 = RGB(255, 190, 120):Lerp(VP_BG, math.clamp(q * 3, 0, 1))
+          vp.BackgroundColor3 = RGB(110, 66, 40):Lerp(VP_BG, math.clamp(q * 3, 0, 1))
         else A.fb.Transparency = 1 end
       end
     end
@@ -135916,6 +136515,7 @@ function WtHud.init(G)
         elseif not H.done then
           H.done = true
           for _, q in ipairs(H.ps or { H }) do q.p.Color, q.p.Transparency, q.p.Size = xrSub(H.col, q.g, H.s or 2, H.cat), H.tr, q.size end
+          for _, e in ipairs(H.edges or {}) do e.Transparency = 0.05 end   -- 打坏 / 受损的：外面一圈橙框
         end
       end
     end
@@ -135926,7 +136526,7 @@ function WtHud.init(G)
         A.boom.Size = V3(1, 1, 1) * lerp(1, A.boomR, ease(q))
         A.boom.Color = heat(q, WHITE, ORANGE, EMBER, 0.3)
         A.boom.Transparency = lerp(0.05, 1, q ^ 1.5)
-        vp.BackgroundColor3 = RGB(255, 170, 90):Lerp(VP_BG, math.clamp(q * 3, 0, 1))
+        vp.BackgroundColor3 = RGB(110, 66, 40):Lerp(VP_BG, math.clamp(q * 3, 0, 1))
       else A.boom.Transparency = 1 end
     end
     if A.fire and t >= A.fireT then
@@ -135937,17 +136537,18 @@ function WtHud.init(G)
         F.p.Transparency = 0.25
       end
     end
-    -- 字幕
-    if ti >= 0 and not A.said then A.said = true xInfo.Text, xInfo.TextColor3, xInfo.Visible = A.info, INFO, true end
-    if A.info2 and not A.said2 and t >= (A.boomT or (TIk + Pk)) + 0.15 then A.said2 = true xInfo.Text, xInfo.TextColor3 = A.info2, KILL end
-    xSlow.Visible = t < TIk + Pk + 0.5
-    -- 镜头：从斜侧面推近到命中点、跟一点弹芯，打完拉回来看整辆车、慢慢绕；打上那一下一震
-    xrSpin += dt * ((t < TIk + Pk) and math.rad(7) or math.rad(16))
-    local back = ease((t - (TIk + Pk + 0.3)) / 1.1)
-    local focus = A.chan and (p0 + dv * math.min((A.deep or 0) * 0.35 * ease(math.max(ti, 0) / Pk), 3)) or p0
-    local tgt = focus:Lerp(xrC, back)
-    local dist = lerp(lerp(xrDist * 0.95, xrDist * 0.5, ease(t / TIk)), xrDist, back)
-    local eye = tgt + CFrame.Angles(0, xrSpin, 0) * xrDir * dist + V3(0, dist * 0.32, 0)
+    dotsStep(A, t)
+    redGlowStep(A, ti)
+    dmgStep(t)
+    -- 字幕（左下小字）；击毁的原因换到上面正中的标题
+    if ti >= 0 and not A.said then A.said = true setInfo(A.info) xInfo.TextColor3, xInfo.Visible = INFO, true end
+    if A.info2 and not A.said2 and t >= (A.boomT or (TIk + Pk)) + 0.15 then A.said2 = true xTitle.Text, xTitle.TextColor3 = A.info2, KILLC end
+    -- 镜头（同射流）：一直贴着命中的那一块，从来弹方向斜上方推近、跟一点弹芯，打完稍微退一点；打上那一下一震
+    xrSpin += dt * math.rad(5)
+    local back = ease((t - (TIk + Pk + 0.6)) / 2.2)
+    local tgt = A.chan and (p0 + dv * math.min((A.deep or 0) * 0.35 * ease(math.max(ti, 0) / Pk), 3)) or p0
+    local dist = lerp(lerp(xrDist * 1.3, xrDist, ease(t / TIk)), xrDist * 1.32, back)
+    local eye = tgt + CFrame.Angles(0, xrSpin, 0) * xrDir * dist + V3(0, dist * 0.42, 0)
     if ti >= 0 and ti < 0.45 then
       local k = (1 - ti / 0.45) ^ 2 * ((K.blast and 0.5) or (K.small and 0.12) or 0.3)
       eye += V3(math.sin(t * 91) * k, math.sin(t * 73 + 1) * k, math.sin(t * 57 + 2) * k)
@@ -135984,6 +136585,30 @@ function WtHud.init(G)
     return out
   end
   G.wtGhostParts = ghostParts   -- 测试用
+  local function ball(pos, r, col, tr)
+    local b = box(V3(r, r, r), CF(pos), col, tr or 0, Enum.Material.Neon)
+    b.Shape = Enum.PartType.Ball
+    return b
+  end
+  local function staticShot(d, yaw, p0, dv, x, pen)
+    line(p0 - dv * 9, p0, RGB(255, 120, 40), 0.16)
+    if pen then
+      local core = (x.core or 0) * W.M
+      if core > 0 then
+        line(p0, p0 + dv * core, RGB(255, 150, 50), 0.2)
+        for _, h in ipairs(W.trace(d, yaw, p0 + dv * 0.1, dv, core, true)) do ball(p0 + dv * (0.1 + h.t), 0.36, FRAG) end
+      end
+      for i, rv in ipairs(W.cone(dv, x.half or 18, x.n or 0, x.seed)) do
+        local len = (1.4 + (i % 4) * 0.35) * W.M
+        local hits = W.trace(d, yaw, p0 + dv * 0.1, rv, len, true)
+        local l2 = hits[1] and math.max(0.3, hits[1].t + 0.4) or len
+        line(p0, p0 + rv * l2, SPALL, 0.06)
+        if hits[1] then ball(p0 + dv * 0.1 + rv * hits[1].t, 0.36, FRAG) end
+      end
+      ball(p0 + dv * 0.3, 1.9, RGB(255, 46, 36), 0.4)
+    end
+    box(V3(0.5, 0.5, 0.5), CF(p0), RGB(255, 240, 200), 0, Enum.Material.Neon)
+  end
   -- 机枪 / 机炮连着打穿同一辆（用户 11-28「机枪连续贯穿车体的话 x光就同一个角度然后一直放各种子弹打进去的x透视吧」）：
   --   1.5 秒内同一辆的下一发小弹不重画、不换角度——这一发的弹道、弹芯、破片接着画进去，打到的乘员 / 模块按现在的状态改色，镜头停住不绕
   local xrBurst = nil   -- { id, t, n }
@@ -135993,18 +136618,7 @@ function WtHud.init(G)
     local p0 = V3(x.p[1], x.p[2], x.p[3])
     local dv = V3(x.d[1], x.d[2], x.d[3]).Unit
     local yaw = x.ty or 0
-    line(p0 - dv * 9, p0, RGB(255, 120, 40), 0.16)
-    if m.r == "pen" or m.kill then
-      local core = (x.core or 0) * W.M
-      if core > 0 then line(p0, p0 + dv * core, RGB(255, 150, 50), 0.2) end
-      for i, rv in ipairs(W.cone(dv, x.half or 18, x.n or 0, x.seed)) do
-        local len = (1.4 + (i % 4) * 0.35) * W.M
-        local hits = W.trace(d, yaw, p0 + dv * 0.1, rv, len, true)
-        local l2 = hits[1] and math.max(0.3, hits[1].t + 0.4) or len
-        line(p0, p0 + rv * l2, RGB(255, 226, 90), 0.06)
-      end
-    end
-    box(V3(0.5, 0.5, 0.5), CF(p0), RGB(255, 240, 200), 0, Enum.Material.Neon)
+    staticShot(d, yaw, p0, dv, x, m.r == "pen" or m.kill)
     local st = states(entModel(m.id), d, m)
     for it, P in pairs(xrParts) do
       local sv = st[it] or 2
@@ -136012,12 +136626,18 @@ function WtHud.init(G)
       local col = xrCol(P.kind, P.cat or "other", sv, hit)
       local tr = xrTr(P.kind, sv, hit)
       for _, q in ipairs(P.ps or { { p = P.p } }) do q.p.Color, q.p.Transparency = xrSub(col, q.g, sv, P.cat), tr end
+      if hit and P.kind ~= "crew" and not P.edges then P.edges = edgeBox(P.F or CF(), P.ps or { { p = P.p, size = P.p.Size } }, false) end
     end
     xrBurst.n += 1
     xrBurst.t = os.clock()
     xrUntil = math.max(xrUntil, os.clock() + 2.5)
-    xSlow.Visible = false
-    xInfo.Text, xInfo.Visible = T("wt.xrBurst", xrBurst.n), true
+    setInfo(T("wt.xrBurst", xrBurst.n))
+    xInfo.Visible = true
+    local w, c, rk = resultWord(m, false)   -- 这几发里最好的结果（打穿过一发就一直写击穿）
+    if rk >= (xrBurst.rank or 0) then xTitle.Text, xTitle.TextColor3, xrBurst.rank = w, c, rk end
+    dmgFill(m)
+    dmgStep(99)
+    crewLine(st, W.layout(d))
   end
   local function showXray(m)
     local d = VD.get and VD.get(m.veh) or VD[m.veh]
@@ -136031,9 +136651,8 @@ function WtHud.init(G)
     table.clear(xrParts)
     xa = nil
     vp.BackgroundColor3 = VP_BG
-    if xStroke then xStroke.Color = XR_LINE end
-    xInfo.Visible, xSlow.Visible = false, false
-    xSlow.Text = T("wt.xrSlow")
+    xInfo.Visible = false
+    dmgReset()
     local lay = W.layout(d)
     local yaw = x.ty or 0
     local base = CF()   -- 回放里车底座在原点
@@ -136057,11 +136676,11 @@ function WtHud.init(G)
     end
     if n == 0 then
       local hH = lay.hH
-      local b1 = box(V3(d.W, hH - (d.clear or 1.2), d.L), CF(0, ((d.clear or 1.2) + hH) / 2, 0), RGB(150, 190, 220), 0.85)
+      local b1 = box(V3(d.W, hH - (d.clear or 1.2), d.L), CF(0, ((d.clear or 1.2) + hH) / 2, 0), GHOST.col, 0.86)
       b1:SetAttribute("XrGhost", true)
       if d.turret then
         local tcf = CF(W.fromTur(d, V3(), yaw)) * CFrame.Angles(0, -math.rad(yaw), 0)
-        local b2 = box(lay.ts, tcf * CF(0, lay.ts.Y / 2, 0), RGB(150, 190, 220), 0.8)
+        local b2 = box(lay.ts, tcf * CF(0, lay.ts.Y / 2, 0), GHOST.col, 0.84)
         b2:SetAttribute("XrGhost", true)
       end
     end
@@ -136111,9 +136730,10 @@ function WtHud.init(G)
       local cat = (it.kind == "crew") and "crew" or (x2 and x2.cat) or "other"
       local col = xrCol(it.kind, cat, s, hitK[it.k])
       local tr = xrTr(it.kind, s, hitK[it.k])
-      local ps = nil
+      local ps, F = nil, nil
       if x2 and x2.specs and #x2.specs > 0 then
-        ps = partsOf(x2.specs, FR[x2.frame] or FR.hull, function(g) return xrSub(col, g, s, cat) end, tr)
+        F = FR[x2.frame] or FR.hull
+        ps = partsOf(x2.specs, F, function(g) return xrSub(col, g, s, cat) end, tr)
       end
       local p
       if ps and #ps > 0 then
@@ -136122,6 +136742,7 @@ function WtHud.init(G)
         local size = it.hi - it.lo
         local c = (it.lo + it.hi) / 2
         local cf = it.tur and (CF(W.fromTur(d, c, yaw)) * CFrame.Angles(0, -math.rad(yaw), 0)) or CF(c)
+        F = it.tur and tF or CF()
         p = box((it.kind == "crew") and size * 0.8 or size, cf, col, tr)
         if it.kind == "crew" then
           local sm = Instance.new("SpecialMesh")
@@ -136130,9 +136751,11 @@ function WtHud.init(G)
         end
         ps = nil
       end
-      xrParts[it] = { p = p, ps = ps, kind = it.kind, cat = cat }
+      -- 这一发打坏 / 打伤的模块：外面一圈橙框（慢放的到那一刻才亮）
+      local edges = (hitK[it.k] and it.kind ~= "crew" and s < 2) and edgeBox(F, ps or { { p = p, size = p.Size } }, anim) or nil
+      xrParts[it] = { p = p, ps = ps, kind = it.kind, cat = cat, F = F, edges = edges }
       if anim and hitK[it.k] then
-        table.insert(hitP, { p = p, ps = ps, it = it, col = col, tr = tr, size = p.Size, cat = cat, s = s })
+        table.insert(hitP, { p = p, ps = ps, it = it, col = col, tr = tr, size = p.Size, cat = cat, s = s, edges = edges })
         local c0 = xrCol(it.kind, cat, 2, true)   -- 射流 / 破片到之前：没事的样子
         for _, q in ipairs(ps or { { p = p } }) do q.p.Color, q.p.Transparency = xrSub(c0, q.g, 2, cat), 0 end
       end
@@ -136155,40 +136778,66 @@ function WtHud.init(G)
       xa = xkBuild(m, x, d, yaw, p0, dv, hitP, sub)
       xa.step = xkStep
     else
-      line(p0 - dv * 9, p0, RGB(255, 120, 40), 0.16)
-      if m.r == "pen" or m.kill then
-        local core = (x.core or 0) * W.M
-        if core > 0 then line(p0, p0 + dv * core, RGB(255, 150, 50), 0.2) end
-        for i, rv in ipairs(W.cone(dv, x.half or 18, x.n or 0, x.seed)) do
-          local len = (1.4 + (i % 4) * 0.35) * W.M
-          local hits = W.trace(d, yaw, p0 + dv * 0.1, rv, len, true)
-          local l2 = hits[1] and math.max(0.3, hits[1].t + 0.4) or len
-          line(p0, p0 + rv * l2, RGB(255, 226, 90), 0.06)
+      staticShot(d, yaw, p0, dv, x, m.r == "pen" or m.kill)
+      if m.r == "ric" then   -- 跳弹：照装甲面的法线反射，弹开的那一截（渐淡的橙线）
+        local zone, _, _, nn = W.where(d, p0, dv, yaw)
+        if zone == "tur" and nn then nn = W.fromTur(d, nn, yaw) - W.fromTur(d, V3(), yaw) end
+        if nn and nn.Magnitude > 0.5 then
+          nn = nn.Unit
+          local rv = dv - nn * 2 * dv:Dot(nn)
+          if rv.Magnitude > 0.1 then
+            rv = rv.Unit
+            line(p0, p0 + rv * 4, RGB(255, 150, 60), 0.12)
+            line(p0 + rv * 4, p0 + rv * 9, RGB(255, 196, 140), 0.07)
+          end
         end
       end
-      box(V3(0.5, 0.5, 0.5), CF(p0), RGB(255, 240, 200), 0, Enum.Material.Neon)
     end
-    -- 镜头：从来弹方向、稍高一点看车中心，慢慢绕（射流动画先从斜侧面推近，见 xaStep）
-    xrC = V3(0, (d.H or 7) * 0.45, 0)
-    xrDist = math.max(d.L, d.W) * 1.32 + 3   -- 11-28：窗口放大了、车也拉近一点（原来 × 1.55 + 4，车只占一半）
+    -- 镜头（战雷的回放）：贴近命中点看——车长的六成左右远（原来 1.3 倍车长看整辆车），从来弹方向斜上方、偏开 30 度左右（弹道不缩成一个点）；
+    --   没放慢放的绕着命中点和车中心之间那一点慢慢转
+    local cen = V3(0, (d.H or 7) * 0.45, 0)
+    xrC = anim and p0 or p0:Lerp(cen, 0.3)
+    xrDist = math.clamp(math.max(d.L, d.W) * 0.62, 9, 16)
     xrDir = (-dv * V3(1, 0, 1))
     if xrDir.Magnitude < 0.1 then xrDir = V3(0, 0, 1) end
     xrDir = xrDir.Unit
-    xrSpin = anim and math.rad(50) or 0
+    xrSpin = math.rad(anim and 32 or 26)
     local nm = (m.tk and T("tree." .. m.tk) ~= "tree." .. m.tk) and T("tree." .. m.tk) or T("veh." .. m.veh)   -- 科技树出的车写科技树里的名字
-    xTitle.Text = T("wt.xrTitle", nm, m.dist or 0)
+    -- 字：上面正中结果字；左下小字第一行车名 · 距离、第二行弹种和穿深（慢放的打上那一刻写）；窗口下面车组、损伤行
+    local w, c, rk = resultWord(m, anim)
+    xTitle.Text, xTitle.TextColor3 = w, c
+    xName = T("wt.xrName", nm, m.dist or 0)
+    setInfo(nil)
+    xInfo.TextColor3, xInfo.Visible = INFO, not anim
+    if not anim and m.pen and m.arm then setInfo(T("wt.mm", m.arm, m.pen)) end
+    local atK = {}
+    for _, H in ipairs(hitP) do atK[H.it.k] = H.at end
+    dmgFill(m, xa and function(p)
+      if not p then return (xa.boomT or xa.fireT or ((xa.TI or TI) + (xa.P or JD))) + 0.2 end
+      return (atK[p.k] or ((xa.TI or TI) + (xa.P or JD))) + 0.25
+    end or nil)
+    dmgStep(xa and 0 or 99)
+    crewLine(st, lay)
+    -- 摆在哪：右上（小地图在右上时——步兵、开飞机——挪到它下面）
+    if not mobile then
+      local box0 = G.hudParts and G.hudParts.miniBox
+      local y = 18
+      if box0 and box0.Visible and box0.AnchorPoint.X > 0.5 and box0.Position.X.Scale > 0.5 and box0.Position.Y.Scale < 0.5 then
+        y = box0.Position.Y.Offset + box0.Size.Y.Offset + 12
+      end
+      xr.Position = UD2(1, -20, 0, y)
+    end
     xr.Visible = true
-    xrUntil = os.clock() + (anim and (m.kill and 7 or 6.2) or (m.kill and 5.5 or 4.5))
-    xrBurst = (x.sub == "ac") and { id = m.id, t = os.clock(), n = 1 } or nil   -- 机枪 / 机炮：接下来 1.5 秒内的同一辆往里叠
-    xrHold = x.sub == "ac"
-    if xrHold then xrSpin = 0 end
+    xrUntil = os.clock() + (anim and (m.kill and 7 or 6.2) or (m.kill and 5.5 or ((m.r == "pen") and 4.5 or 3.2)))   -- 跳弹 / 没击穿短一点
+    xrBurst = (x.sub == "ac") and { id = m.id, t = os.clock(), n = 1, rank = rk } or nil   -- 机枪 / 机炮：接下来 1.5 秒内的同一辆往里叠
+    xrHold = x.sub == "ac"   -- 连发：镜头停在这个角度
     if xa then G.try_(xa.step, 0, 0) end   -- 先摆好第一帧（不然头一帧是没藏好的件）
     local _ = base
   end
 
   ---------------------------------------------------------------- 左下：自己这辆车的车组 / 模块
 
-  local panel = frame(gui, UDim2.fromOffset(226, 96), mobile and UD2(0, 12, 1, -238) or UD2(0, 254, 1, -24), RGB(6, 10, 12), 0.35, V2(0, 1))
+  local panel = frame(gui, UDim2.fromOffset(254, 96), mobile and UD2(0, 12, 1, -238) or UD2(0, 254, 1, -24), RGB(6, 10, 12), 0.35, V2(0, 1))
   panel.Name = "WtCrew"
   panel.Visible = false
   do
@@ -136207,7 +136856,7 @@ function WtHud.init(G)
     f.Name = "Crew_" .. r
     crewIcons[r] = { f = f, l = l }
   end
-  local MOD_ROW = { "engine", "trans", "track", "barrel", "breech", "tdrive", "ammo", "fuel" }
+  local MOD_ROW = { "engine", "trans", "track", "barrel", "breech", "tdrive", "edrive", "ammo", "fuel" }
   for i, k in ipairs(MOD_ROW) do
     local f = frame(panel, UDim2.fromOffset(25, 20), UD2(0, 6 + (i - 1) * 27, 0, 42), RGB(20, 30, 26), 0.2)
     local c = Instance.new("UICorner")
@@ -136358,7 +137007,9 @@ function WtHud.init(G)
       if G.wtVoice then   -- 车组语音（⑬，WtVoice.lua）
         G.wtVoice(m.kill and ((m.why == "ammo") and "killAmmo" or "kill") or ((m.r == "pen") and "pen" or ((m.r == "ric") and "ric" or ((m.r == "np") and "np" or "hit"))))
       end
-      if m.xr and (m.r == "pen" or m.kill) then G.try_(showXray, m) end
+      -- 命中回放：击穿 / 击毁，还有跳弹、没击穿（战雷也放：看弹打在哪、为什么没进去）——机枪 / 机炮的小弹没打穿的不放（一秒几十发刷屏）
+      local small = m.xr and m.xr.sub == "ac"
+      if m.xr and (m.r == "pen" or m.kill or ((m.r == "ric" or m.r == "np") and not small)) then G.try_(showXray, m) end
     elseif op == "wtHurt" then
       flashUntil = os.clock() + 1.2
       if G.wtVoice then   -- 车组语音（⑬）：被击穿 / 跳弹、着火、谁阵亡、哪个模块坏了
@@ -136427,9 +137078,9 @@ function WtHud.init(G)
       elseif xa then
         G.try_(xa.step or xaStep, t - xa.t0, dt)
       else
-        if not xrHold then xrSpin += dt * math.rad(16) end   -- 连发叠画时镜头停住（同一个角度）
+        if not xrHold then xrSpin += dt * math.rad(6) end   -- 连发叠画时镜头停住（同一个角度）
         local d = CFrame.Angles(0, xrSpin, 0) * xrDir
-        local eye = xrC + d * xrDist + V3(0, xrDist * 0.35, 0)
+        local eye = xrC + d * xrDist + V3(0, xrDist * 0.42, 0)
         vcam.CFrame = CFrame.lookAt(eye, xrC)
       end
     end
@@ -136441,7 +137092,7 @@ return WtHud
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="288">
+        <Item class="ModuleScript" referent="289">
           <Properties>
             <string name="Name">WtMap</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——M 键大地图页（用户 11-25：「交战给我改成这样的画面 按m放大地图」「按m打开地图是这样的」——
@@ -136662,7 +137313,7 @@ return WtMap
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="289">
+        <Item class="ModuleScript" referent="290">
           <Properties>
             <string name="Name">WtSkin</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——机库里选涂装、贴花（用户 11-25「全部都做」⑯）
@@ -136806,7 +137457,7 @@ return WtSkin
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="290">
+        <Item class="ModuleScript" referent="291">
           <Properties>
             <string name="Name">WtSpawn</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——局内出击页（战雷的「重生界面」）
@@ -137256,7 +137907,7 @@ return WtSpawn
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="291">
+        <Item class="ModuleScript" referent="292">
           <Properties>
             <string name="Name">WtTank</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——战雷式坦克界面（用户 11-24 夜「把整个游戏做成战雷」②：坦克战雷化）
@@ -137360,27 +138011,27 @@ function WtTank.init(G)
     return o
   end
 
-  ---------------------------------------------------------------- 准星（炮指的地方）
+  ---------------------------------------------------------------- 准星（照战雷：大圈 = 鼠标 / 镜头瞄的地方，小圈 = 炮这一刻开火真打到的地方）
+  --   用户 11-28「坦克准心不是有两个圈吗 中间还有个小十字去掉 然后 较大那个环改成鼠标光标的位置 跟战雷一样 中间那个小的是坦克炮口实际会打到的位置吧」：
+  --   大圈钉在鼠标那点（屏幕正中、镜头瞄的地方），装填弧、测距、装填秒数跟着它；小圈跟着炮管（炮塔还没转过来时在外面，转到位滑进大圈里），
+  --   小圈的颜色 = 打不打得穿，炮口被挡时小圈上画红叉。原来反着画：大圈在炮的落点、镜头那里一个小圈（VehHud 的 CamAim，战雷界面里收起）；
+  --   大圈左右下三道刻度、中心那一点去掉
   local AIM = {}
   AIM.root = frame(gui, UD2(0, 90, 0, 90), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))
   AIM.root.Name = "WtGunAim"
   AIM.scale = Instance.new("UIScale")
   AIM.scale.Parent = AIM.root
   -- 黑色的底：每一道白线后面垫一道半透明黑（亮沙地上白线会看不见）
-  stroke(round(frame(AIM.root, UD2(0, 25, 0, 25), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), INK, 3.4, 0.62)
-  AIM.ring = round(frame(AIM.root, UD2(0, 25, 0, 25), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5)))
+  stroke(round(frame(AIM.root, UD2(0, 28, 0, 28), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), INK, 3.4, 0.62)
+  AIM.ring = round(frame(AIM.root, UD2(0, 28, 0, 28), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5)))
   AIM.ringS = stroke(AIM.ring, WHITE, 1.6, 0.02)
-  AIM.ticks = {}
-  for _, e in ipairs({ { -1, 0 }, { 1, 0 }, { 0, 1 } }) do   -- 左、右、下三道刻度
-    local hz = e[1] ~= 0
-    local pos = UD2(0.5, e[1] * 21, 0.5, e[2] * 21)
-    frame(AIM.root, hz and UD2(0, 10, 0, 4) or UD2(0, 4, 0, 10), pos, INK, 0.62, V2(0.5, 0.5))
-    table.insert(AIM.ticks, frame(AIM.root, hz and UD2(0, 8, 0, 2) or UD2(0, 2, 0, 8), pos, WHITE, 0.02, V2(0.5, 0.5)))
-  end
-  stroke(round(frame(AIM.root, UD2(0, 3, 0, 3), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), INK, 1, 0.5)
-  AIM.dot = round(frame(AIM.root, UD2(0, 3, 0, 3), UD2(0.5, 0, 0.5, 0), WHITE, 0, V2(0.5, 0.5)))
-  -- 炮口被挡（用户 11-27「坦克准心对标战雷」）：炮塔转到位了，这一发却会打在前面的坡 / 墙上——圈里画一个叉（Drive gunImpact 判的）
-  AIM.block = frame(AIM.root, UD2(0, 20, 0, 20), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))
+  -- 小圈：炮真打到的地方（Drive gunImpact 的落点），颜色 = 打不打得穿
+  AIM.gun = frame(gui, UD2(0, 24, 0, 24), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))
+  AIM.gun.Name = "WtGunMark"
+  stroke(round(frame(AIM.gun, UD2(0, 11, 0, 11), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), INK, 3.8, 0.55)
+  AIM.gunS = stroke(round(frame(AIM.gun, UD2(0, 11, 0, 11), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), WHITE, 2, 0.02)
+  -- 炮口被挡（用户 11-27「坦克准心对标战雷」）：炮塔转到位了，这一发却会打在前面的坡 / 墙上——小圈上画一个红叉（Drive gunImpact 判的）
+  AIM.block = frame(AIM.gun, UD2(0, 20, 0, 20), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))
   AIM.block.Name = "WtGunBlocked"
   AIM.block.Visible = false
   for _, r in ipairs({ 45, -45 }) do
@@ -138446,9 +139097,14 @@ function WtTank.init(G)
     gui.Enabled = true
     local t = os.clock()
     if I and I.p then
+      -- 大圈：鼠标 / 镜头瞄的那点（第三人称鼠标锁在屏幕正中，镜头的瞄准射线就从这里出去）
+      local vp = cam.ViewportSize
+      AIM.root.Visible = true
+      AIM.root.Position = UD2(0, vp.X / 2, 0, vp.Y / 2)
+      -- 小圈：炮这一刻开火真打到的地方
       local sp, on = cam:WorldToViewportPoint(I.p)
-      AIM.root.Visible = on
-      AIM.root.Position = UD2(0, sp.X, 0, sp.Y)
+      AIM.gun.Visible = on
+      AIM.gun.Position = UD2(0, sp.X, 0, sp.Y)
       local col = WHITE
       AIM.block.Visible = on and I.blocked == true
       if I.blocked then
@@ -138457,8 +139113,7 @@ function WtTank.init(G)
         local ok, c = pcall(penColor, st, I)
         if ok and c then col = c end
       end
-      AIM.ringS.Color, AIM.dot.BackgroundColor3 = col, col
-      for _, tk in ipairs(AIM.ticks) do tk.BackgroundColor3 = col end
+      AIM.gunS.Color = col
       -- 装填：弧走着（琥珀），装好那一下圈涨一下
       local ready = I.ready ~= false
       if ready and not wasReady then
@@ -138484,7 +139139,7 @@ function WtTank.init(G)
         else AIM.rng.Text = T("wtt.rkey") end
       end
     else
-      AIM.root.Visible = false
+      AIM.root.Visible, AIM.gun.Visible = false, false
     end
     local ok, err = pcall(stepBar, st, I)
     if not ok and G.showError then G.showError("战雷弹药栏：" .. tostring(err)) end
@@ -138504,7 +139159,7 @@ return WtTank
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="292">
+        <Item class="ModuleScript" referent="293">
           <Properties>
             <string name="Name">WtVfx</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——战雷式车辆受伤的样子（用户 11-26「很多载具自带爆反……不同部位被击中也要有不同效果，如弹药舱燃烧、
@@ -138878,7 +139533,7 @@ return WtVfx
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="293">
+        <Item class="ModuleScript" referent="294">
           <Properties>
             <string name="Name">WtVoice</string>
             <ProtectedString name="Source"><![CDATA[-- Roblox全面大战场（客户端）——车组语音（用户 11-25「全部都做」⑬：战雷的「击穿！」「跳弹」「着火了」「炮长阵亡」「装填完毕」）
@@ -138984,7 +139639,7 @@ return WtVoice
 ]]></ProtectedString>
           </Properties>
         </Item>
-        <Item class="ModuleScript" referent="294">
+        <Item class="ModuleScript" referent="295">
           <Properties>
             <string name="Name">XrayOwn</string>
             <ProtectedString name="Source"><![CDATA[-- 全面大战场（客户端）——透视自己的车（按住 X 的 X 光）
@@ -139036,6 +139691,10 @@ for _, sx in ipairs({ -1, 1 }) do for _, sy in ipairs({ -1, 1 }) do for _, sz in
 -- 自己一组 Highlight 的子件（颜色跟大类不一样、要一眼分得出的）：弹头、发动机的深色件（排气、风扇、缸盖）、炮闩 / 炮管的鼓包和箍、观瞄的玻璃
 local SUBOK = { engine_dk = true, breech_dk = true, barrel_dk = true, ammo_tip = true, optics_gl = true }
 XrayOwn.SUBOK = SUBOK
+-- 标识色（用户 11-28「给弹药 发动机都搞一下特殊颜色的标识吧 我自己x透视自己也要能看这个」「这个颜色你可以做的和战雷有些区别」）：
+--   弹药洋红、发动机电光蓝——一眼就跳出来，也不是战雷那套橙 / 绿；跟状态色（受损黄、打坏红 / 黑、阵亡红、起火橙）一个都不撞。
+--   按 X 的自己车透视、打别人的命中回放（WtHud.lua）用同一套
+XrayOwn.MARK = { ammo = Color3.fromRGB(236, 62, 196), engine = Color3.fromRGB(46, 156, 255) }
 
 local mods = {}
 local function req(name)
@@ -139568,6 +140227,25 @@ local function tdriveItem(x, ctx)
   x.specs = L
 end
 
+-- 高低机（炮塔系，用户 11-28「方向机也要能被打坏」加的）：炮耳后下方跟炮一起转的一段齿弧 + 减速箱 + 手轮
+local function edriveItem(x, ctx)
+  local it, d = x.it, ctx.d
+  local lo, hi = it.lo, it.hi
+  local c = (lo + hi) / 2
+  local gp = (d.gun and d.gun.pivot) or c
+  local L = {}
+  local R = 0.95
+  local N = 6
+  for i = 0, N - 1 do
+    local t0, t1 = math.rad(20 + i * 10), math.rad(20 + (i + 1) * 10)
+    bar(L, V3(c.X, gp.Y - math.sin(t0) * R, gp.Z + math.cos(t0) * R), V3(c.X, gp.Y - math.sin(t1) * R, gp.Z + math.cos(t1) * R), 0.16, 0.14)   -- 齿弧
+  end
+  blk(L, V3(0.52, 0.44, 0.6), c + V3(0, -0.12, 0.12))                     -- 减速箱
+  local sx = (c.X >= gp.X) and 1 or -1
+  disc(L, c + V3(sx * 0.34, 0.02, 0.32), 0.4, 0.07, "dk")                 -- 手轮
+  x.specs = L
+end
+
 -- 炮长瞄准镜（炮塔系）：镜头（装甲罩 + 窗口）、镜筒穿过炮塔顶一直到炮长眼前、目镜
 local function opticsItem(x, ctx)
   local d = ctx.d
@@ -139884,13 +140562,14 @@ local function catOf(it)
   if it.kind == "crew" then return "crew" end
   local k = it.k or ""
   if k == "engine" or k == "trans" or k == "breech" or k == "barrel" or k == "tdrive" or k == "optics" or k == "troops" then return k end
+  if k == "edrive" then return "tdrive" end   -- 高低机：同方向机一类（颜色、图例）
   if string.sub(k, 1, 4) == "fuel" then return "fuel" end
   if string.sub(k, 1, 4) == "ammo" then return "ammo" end
   if string.sub(k, 1, 5) == "track" then return "track" end
   return "other"
 end
 local BUILD = { engine = engineItem, trans = transItem, trackL = trackItem, trackR = trackItem, breech = breechItem, barrel = barrelItem,
-  tdrive = tdriveItem, optics = opticsItem, fuelL = fuelItem, fuelR = fuelItem, troops = troopsItem }
+  tdrive = tdriveItem, edrive = edriveItem, optics = opticsItem, fuelL = fuelItem, fuelR = fuelItem, troops = troopsItem }
 
 -- opts：{ M = VehModels 的模型信息（爆反块）、live = 弹的现况、limit = 零件上限（默认 LIMIT；命中回放的小窗用得少一点）}；返回 { items = { { k, cat, frame = hull / tur / gun, specs, ci / mi（WtC / WtM 第几位）… } }, total, A, R, lay }
 function XrayOwn.plan(d, opts)
@@ -140061,11 +140740,13 @@ function XrayOwn.init(G)
     if s and s ~= k then return s end
     return fb or k
   end
-  -- 类别的颜色——11-28（用户「目前x光效果还是不如战雷」）改成按真东西的质感、沉着一点（同 WtHud 命中回放的 XC）：
-  --   弹药黄铜、油箱橄榄、发动机钢灰、传动蓝灰、炮闩炮管炮钢、观瞄青色玻璃、乘员浅橄榄绿；原来紫的发动机、粉的弹药、青的油箱像卡通
+  -- 类别的颜色——11-28（用户「目前x光效果还是不如战雷」）改成按真东西的质感、沉着一点：
+  --   油箱橄榄、传动蓝灰、炮闩炮管炮钢、观瞄青色玻璃、乘员浅橄榄绿；弹药、发动机是醒目的标识色（XrayOwn.MARK：洋红、电光蓝，
+  --   用户 11-28「给弹药 发动机都搞一下特殊颜色的标识吧」）——别的都沉着，一眼先看到这两样
   --   （完好 / 受损 / 打坏的意思同 Theme：琥珀、红；阵亡近黑）
+  local MARK = XrayOwn.MARK
   local PAL = {
-    crew = RGB(160, 188, 136), engine = RGB(140, 148, 158), trans = RGB(122, 134, 150), fuel = RGB(114, 130, 98), ammo = RGB(206, 170, 102),
+    crew = RGB(160, 188, 136), engine = MARK.engine, trans = RGB(122, 134, 150), fuel = RGB(114, 130, 98), ammo = MARK.ammo,
     breech = RGB(124, 130, 138), barrel = RGB(114, 120, 128), tdrive = RGB(128, 136, 148), optics = RGB(96, 170, 180),
     era = RGB(186, 168, 126), track = RGB(94, 98, 104), troops = RGB(160, 188, 136), other = RGB(130, 138, 148),
   }
@@ -140085,7 +140766,7 @@ function XrayOwn.init(G)
   -- 图例：类别一行、状态一行
   local ORDER = { "crew", "engine", "trans", "fuel", "ammo", "breech", "barrel", "tdrive", "optics", "era", "track", "troops" }
   local LEG = { crew = { "xr.crew", "乘员" }, engine = { "xr.engine", "发动机" }, trans = { "xr.trans", "传动" }, fuel = { "xr.fuel", "油箱" },
-    ammo = { "xr.ammo", "弹药" }, breech = { "xr.breech", "炮闩" }, barrel = { "xr.barrel", "炮管" }, tdrive = { "xr.tdrive", "炮塔驱动" },
+    ammo = { "xr.ammo", "弹药" }, breech = { "xr.breech", "炮闩" }, barrel = { "xr.barrel", "炮管" }, tdrive = { "xr.drives", "方向机 / 高低机" },
     optics = { "xr.optics", "观瞄" }, era = { "xr.era", "爆反" }, track = { "xr.track", "履带 / 车轮" }, troops = { "xr.troops", "载员舱" },
     hurt = { "xr.hurt", "受损" }, broken = { "xr.broken", "打坏" }, kia = { "xr.kia", "阵亡" }, fire = { "xr.fire", "起火" } }
 
@@ -140124,6 +140805,8 @@ function XrayOwn.init(G)
     if key == "hurt" then return c, c:Lerp(WHITE, 0.3), 0.45, 0.1 end
     if key == "fire" then return c, RGB(255, 220, 140), 0.25, 0 end
     if key == "hover" then return c, WHITE, 0.4, 0 end
+    local mk = MARK[string.match(key, "^(%a+)") or ""]
+    if mk then return c, mk:Lerp(WHITE, 0.3), 0.45, 0 end   -- 弹药、发动机：上色重、描边实（标识色）；弹头那一组还是钢色，只描边是洋红
     return c, c:Lerp(WHITE, 0.45), 0.72, 0.3
   end
   local function group(c, key)
