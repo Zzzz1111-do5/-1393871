@@ -172,6 +172,17 @@ Config.Passes = {
   tablet = { id = 0, price = 99, item = "tablet" },   -- 战术平板（副武器）：召唤步战车、空投补给、呼叫火力
   b2 = { id = 0, price = 199, item = "b2" },          -- B-2 隐身轰炸机（守方）
 }
+-- 金币充值（R 币买金币：开发者产品 Developer Product；用户 11-28「你做个金币充值界面好了收robux」，服务器 Shop.lua、客户端 CoinShop.lua）：
+--   在创作者后台（Creator Dashboard → 这个体验 → 盈利 / Monetization → 开发者产品 / Developer Products）给每一档建一个产品，
+--   价格照 robux 填，把产品编号填进 id。id 还是 0 的那一档：充值页上写「未上架」、点不了
+--   coins 到账多少金币；bonus 比基础档（99 R 币 = 1 万）多送的那一截（只用来显示「赠送」）。充值页优先显示 Roblox 查到的真价钱
+Config.CoinPacks = {
+  { key = "c1", id = 0, robux = 99, coins = 10000 },
+  { key = "c2", id = 0, robux = 199, coins = 22000, bonus = 2000 },
+  { key = "c3", id = 0, robux = 499, coins = 60000, bonus = 10000 },
+  { key = "c4", id = 0, robux = 999, coins = 130000, bonus = 30000 },
+  { key = "c5", id = 0, robux = 1999, coins = 280000, bonus = 80000 },
+}
 Config.PassFor = {}   -- 物品 / 机型 → 通行证名
 for k, v in pairs(Config.Passes) do Config.PassFor[v.item] = k end
 Config.Soldier = { hp = 100, speed = 16, heavy = 15 }   -- 带着发射器（火箭筒、防空导弹、迫击炮）走慢一点

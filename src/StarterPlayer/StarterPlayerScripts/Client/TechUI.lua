@@ -720,8 +720,18 @@ function TechUI.init(G)
     local coin = frame(top, UDim2.new(0, CWd, 0, 22), UDim2.new(1, -M0 - CWd, 0, TY + (THh - 22) / 2), INK, 0.1)
     coin.Name = "Coins"
     slant(coin, CWd, 22)
-    local coinT = text(coin, "", UDim2.new(1, -34, 1, 0), UDim2.new(0, 22, 0, 0), TH.S.body, TH.C.TEXT)
+    local coinT = text(coin, "", UDim2.new(1, -46, 1, 0), UDim2.new(0, 22, 0, 0), TH.S.body, TH.C.TEXT)   -- 右头让给「+」
     coinT.Font = TH.F.mono
+    -- 「+」：金币充值（CoinShop.lua，用户 11-28「你做个金币充值界面好了收robux」）——金币条右头
+    local plus = Instance.new("TextButton")
+    plus.Name = "CoinShopBtn"
+    plus.Text, plus.Font, plus.TextSize, plus.TextColor3 = "+", TH.F.title, TH.S.body, RGB(24, 18, 8)
+    plus.Size, plus.Position = UDim2.new(0, 20, 0, 18), UDim2.new(1, -22, 0.5, -9)
+    plus.BackgroundColor3, plus.BorderSizePixel, plus.AutoButtonColor = RGB(236, 184, 64), 0, true
+    plus.ZIndex = coin.ZIndex + 2
+    plus.Parent = coin
+    do local c = Instance.new("UICorner") c.CornerRadius = UDim.new(0, 3) c.Parent = plus end
+    plus.MouseButton1Click:Connect(function() if G.openCoinShop then G.openCoinShop() end end)
     local disc = round(frame(top, UDim2.new(0, 26, 0, 26), UDim2.new(1, -M0 - CWd - 12, 0, TY + (THh - 26) / 2), RGB(226, 172, 48), 0))
     disc.Name = "Coin"
     edge(disc, RGB(140, 96, 18), 0, 1.5)
@@ -2192,8 +2202,11 @@ function TechUI.init(G)
       -- 金币不够（用户 11-26「金币不要设置成无限」）：按钮写还差多少、不是主按钮（点了服务器也会说差多少）
       local coins = me:GetAttribute("Coins")
       local short = (me:GetAttribute("CoinsInf") ~= true and type(coins) == "number") and (it.cost - coins) or 0
-      local bb = btn(short > 0 and (L("金币不够（还差 ", "Not enough coins (") .. fmtNum(short) .. L("）", " short)")) or (L("购买（", "Buy (") .. fmtNum(it.cost) .. ")"),
-        short <= 0, function() act("treeBuy", it.key) end)
+      -- 金币不够：点了打开金币充值（CoinShop.lua；用户 11-28「你做个金币充值界面好了收robux」）
+      local bb = btn(short > 0 and (L("金币不够（还差 ", "Not enough coins (") .. fmtNum(short) .. L("）· 充值", " short) · Top up")) or (L("购买（", "Buy (") .. fmtNum(it.cost) .. ")"),
+        short <= 0, function()
+          if short > 0 and G.openCoinShop then G.openCoinShop() else act("treeBuy", it.key) end
+        end)
       bb.Name = "Buy"
       if short > 0 then bb:SetAttribute("Short", short) end
     elseif stt == "own" then

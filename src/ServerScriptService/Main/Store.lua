@@ -224,6 +224,20 @@ function Store.init(G)
     if P.leaving then s.final = true end
     if not s.busy then task.spawn(writer, P) end
   end
+  -- 马上写一次、等它写完（金币充值 Shop.lua：存档写进去了才告诉 Roblox 发货成功——ProcessReceipt）；返回写进去没有
+  --   跟上面的写手并行也没事：UpdateAsync 一次一个、版本号在里面算；写进去的 JSON 记下（写手看到一样的就不再写）
+  function G.saveNow(P)
+    if not (store and P and P.data and P.canSave) then return false end
+    local data, js = snap(P)
+    if not data then return false end
+    local ok, err = writeOnce(P, data)
+    if ok then
+      stOf(P).js = js
+    else
+      warn("[存档] " .. tostring(P.pl and P.pl.Name) .. " 的存档马上写没写进去：" .. tostring(err))
+    end
+    return ok == true
+  end
   -- 离开：Round.lua 先发 left 再调 G.saveData，这里先记下「在离开」——那一次就是最后一次，马上写
   G.on("left", function(P) P.leaving = true end)
 
