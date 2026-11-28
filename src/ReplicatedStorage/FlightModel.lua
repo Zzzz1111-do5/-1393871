@@ -711,14 +711,16 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
       local gd = G0 / Vn * ((CLof(D, al, fl) * liftK) * qS / (m * G0) - uY)   -- 航迹现在往上转多快（负的：托不住，往下掉）
       local Mdn = abs(Me) * D.der * 0.8 + Tl * sin(tvP) - qSc * (D.Cm0 + D.Cma * sin(al))
       local qddD = math.max(Mdn / Iyy, 0.05)
-      local tRD = math.max(0, D.der * 0.8 - F.de) / D.rder   -- 平尾转到低头打满要多久
+      -- 平尾转过来的时间按全程算（保守：松手就刹得住）；教官、AI（cmd）按一半——它们的过载指令本来就是平滑给的，全程算拉起、卸载都慢一成多
+      local kR = (mode == "cmd") and 0.5 or 1
+      local tRD = math.max(0, D.der * 0.8 - F.de) / D.rder * kR   -- 平尾转到低头打满要多久
       local top = (fcs == "fbw" or mode == "cmd") and math.min(ac, aMaxC) or ac
       local mD = math.max(top - al, 0)
       local qcap = gd + qddD * (-tRD + sqrt(tRD * tRD + 2 * mD / qddD))   -- 先按这个角速度转 tRD 秒、再刹到零，正好停在 top
       if qc > qcap then qc = math.max(qcap, -1.5) end
       local Mup = abs(Me) * D.der + Tl * sin(tvP) + qSc * (D.Cm0 + D.Cma * sin(al))
       local qddU = math.max(Mup / Iyy, 0.05)
-      local tRU = math.max(0, F.de + D.der) / D.rder
+      local tRU = math.max(0, F.de + D.der) / D.rder * kR
       local mU = math.max(al - ac, 0)
       local qflo = gd - qddU * (-tRU + sqrt(tRU * tRU + 2 * mU / qddU))
       if qc < qflo then qc = math.min(qflo, 1.5) end
