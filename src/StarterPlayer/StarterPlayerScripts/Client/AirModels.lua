@@ -88,37 +88,23 @@ local function tvcOpen(t)
   return 0.15 + 0.85 * math.min(1, (t - 100) / 25)
 end
 AM.tvcOpen = tvcOpen
--- 马赫环（激波钻石；用户 11-27「去网上找飞机尾喷口马赫环照片然后自己做」）：照真机照片量的（F-16 / F-15 / F-22 / F-35 起飞和通场、
---   F100 / F414 / J58 试车台、SR-71 起飞；D = 喷口直径）——
---   · 只在开加力时有（军推的喷流里也有激波，但激波后面没有余油在烧，看不见）；加力越大越多、越亮
---   · 第一颗亮核离喷口约 0.6 D，往后一颗接一颗，间距约 1.1～1.3 D、往后略密；每颗是一团两头尖的柔光，宽约 0.5 D、往后变细：
---     前沿（激波那一面）亮得快、往后慢慢淡（白天深色背景下拍的 F-16 一颗颗像箭头）；两颗之间是暗的焰身。
---     亮核近白微暖、边上粉橙，越往后越淡、越偏橙红；一串比焰身的光柱长（尾巴上只剩一颗颗淡淡的钻石）
---   · 夜里 / 黄昏背景暗：满加力能数出八九颗；白天亮背景下淡得多（叠加发光在亮天空上自己就看不清了），看得清的四五颗；
---     高空空气稀（欠膨胀更厉害），一颗颗变大、变稀、个数变少
---   画法：每台发动机一串朝镜头的「纺锤」——每颗三段 Beam 折线（宽 0 → w → 0.7w → 0：前尖、亮核、后段、后尖），首尾相接共用挂点，
---     两头全透明、亮核最亮；叠加发光（LightEmission 1）、亮度超过 1，亮核在泛光（Lighting 的 NightBloom）里化开一圈柔光，
---     跟焰身的橙色光柱融在一起——没有硬边的环、片（用户以前不要「一节一节的马赫环」）。
---     亮度分 DIA_LV 档，透明度序列按档预先建好；油门、昼夜、高度、视角变了才挪挂点、换档（每帧只算一个状态码）；
---     镜头差不多顺着喷流看（光带缩成一条线、来回翻）时淡掉——从正后方看本来就只看见喷口里一团亮，一颗颗叠在一起分不出来
+-- 加力尾焰（用户 11-28「飞机尾喷的效果非常烂而且不是立体的」→「这个特效太卡通了吧」）——
+--   原来是几条正对镜头的光带（Beam：焰身、焰芯、拖尾，马赫环也是三段光带折成的纺锤）：一张永远朝着镜头的纸，侧面、斜后方一看就是扁的；
+--   试过一层层发光的椭球（真立体），但边是硬的、颜色是平的，像动画片。现在全用柔边的发光粒子（VfxLib 的 GLOW：白色柔边圆点，按颜色染）：
+--   · 焰身（AbBody）：从喷口往后喷的一股光点，锁在喷口上、一眨眼走完焰长——出来那一下跟喷口差不多粗、往后慢慢细、淡掉，
+--     颜色顺着烧（近喷口亮、往后橙红）；粒子永远朝着镜头，哪个角度看都是一团有厚度的、边是虚的、在跳的火
+--   · 焰芯（AbCore）：喷口后面短短一截更亮的（先进的发动机是蓝的）
+--   · 马赫环（AbDiamond）：焰身里一串固定位置的柔光团（照 F-16 / F-15 / F-22、F100 / J58 试车台的照片：第一颗离喷口约 0.6 D、
+--     间距 1.1～1.3 D、往后略密、往后变小变淡，D = 喷口直径），顺着气流稍微拉长；夜里亮、白天淡；高空一颗颗拉开、变大（欠膨胀）
+--   · 三种样子（PLUME_STYLE，按机型 AB_STYLE；用户 11-28「他先进的飞机尾喷不是这样的 没有那么明显的马赫环 都是淡淡的」
+--     「然后部分飞机又是中心蓝色的火焰」「然后有的飞机那个马赫环是非常浓烈的」）：
+--     blue 先进的发动机（四代半、五代：F-22、F-35、F-15、F-16、歼-20、歼-35、苏-57……）：淡淡的，中心一截蓝的，马赫环几乎看不出（夜里才看得出）；
+--     strong 老式涡喷 / 早期涡扇（歼-6、歼-8、米格-29、F-14）：橙黄、又浓又长，马赫环一颗颗非常亮；classic 其余：橙黄、马赫环淡淡几颗
+--   · 长短跟着加力（满加力约六个半喷口直径，夜里长一成）；军推以下不画（只有喷口里的热芯）；参数按档（加力 / 昼夜 / 高度 / 远近）变了才改；
+--     离镜头 700 格外只留焰身、少喷一点；二元喷口（F-22）焰身稍扁一点（粒子是圆的：喷口宽的那边多撒）
+--   · 「发动机中心还有小小的热浪」：喷口正中往后一小股热气（HeatShimmer，见下面建零件那段）
 local DC = require(RS:WaitForChild("DayClock"))
 local Lighting = game:GetService("Lighting")
-local DIA_N, DIA_LV = 9, 16           -- 每台发动机最多几颗；亮度分几档
-local DIA_P1, DIA_P2 = 0.36, 0.68     -- 一颗里亮核、后段折点的位置（占这一颗的长）
-local DIA_W2 = 0.7                    -- 后段折点的宽（占亮核宽）
-local diaTrs = {}
--- 第 lv 档、第 j 段（1 前尖 → 亮核，2 亮核 → 后段，3 后段 → 后尖）的透明度：尖上全透明，亮核最亮
-local function diaTr(lv, j)
-  local s = diaTrs[lv]
-  if not s then
-    local a, NK = lv / DIA_LV, NumberSequenceKeypoint.new
-    s = { NumberSequence.new({ NK(0, 1), NK(0.5, 1 - a * 0.35), NK(1, 1 - a) }),
-      NumberSequence.new({ NK(0, 1 - a), NK(0.5, 1 - a * 0.68), NK(1, 1 - a * 0.42) }),
-      NumberSequence.new({ NK(0, 1 - a * 0.42), NK(0.5, 1 - a * 0.12), NK(1, 1) }) }
-    diaTrs[lv] = s
-  end
-  return s[j]
-end
 local diaDay, diaDayT = 1, -math.huge
 local function dayNow()   -- 0 夜里 ～ 1 白天（DayNight.lua 写的钟点；一秒查一次）
   local t = os.clock()
@@ -128,64 +114,110 @@ local function dayNow()   -- 0 夜里 ～ 1 白天（DayNight.lua 写的钟点�
   end
   return diaDay
 end
--- 摆一台发动机的那串钻石：out 焰身挂点零件的位置（+Z 朝后），ab 加力 0～1（0 = 不画），cam 镜头
-local function diaPose(it, out, ab, cam)
-  local fade = 0
-  if ab > 0.02 and cam then
-    local v = cam.CFrame.Position - out.Position
-    local m = v.Magnitude
-    local c = (m > 1e-3) and math.abs(out.ZVector:Dot(v)) / m or 1
-    fade = math.clamp((0.985 - c) / 0.055, 0, 1)   -- 和喷流夹角 10° 以内看不见，20° 以外全亮
+local GLOW_TX = "rbxasset://textures/particles/explosion01_implosion_main.dds"   -- 白色柔边圆点（同 VfxLib 的 TX.GLOW）
+local NK, CK = NumberSequenceKeypoint.new, ColorSequenceKeypoint.new
+-- 三种样子：body 焰身（tr 出来时的透明度、W 出来时多粗（占 D）、色、亮度）、core 焰芯（L 长、W 粗、色、透明度、亮度）、
+--   dia 马赫环第一颗白天 / 夜里的不透明度、头尾颜色、W 粗（占 D）；len 整股火长短的倍数；blast 喷到地上吹起的尘土、映的光的倍数（AirFx）
+local PLUME_STYLE = {
+  classic = {
+    body = { tr = 0.5, W = 1.0, br = 1.2, le = 0.55, col = ColorSequence.new({ CK(0, RGB(255, 222, 170)), CK(0.3, RGB(255, 160, 80)), CK(0.7, RGB(250, 112, 52)), CK(1, RGB(210, 76, 44)) }) },
+    core = { L = 0.3, W = 0.62, tr = 0.32, br = 1.4, le = 0.7, col = ColorSequence.new(RGB(255, 236, 200), RGB(255, 190, 130)) },
+    dia = { A = 0.32, An = 0.5, col0 = RGB(255, 240, 210), col1 = RGB(255, 182, 124), W = 0.42 },
+    len = 1, blast = 1,
+  },
+  strong = {
+    body = { tr = 0.4, W = 1.06, br = 1.4, le = 0.6, mid = 0.45, col = ColorSequence.new({ CK(0, RGB(255, 232, 186)), CK(0.35, RGB(255, 168, 74)), CK(0.75, RGB(250, 114, 42)), CK(1, RGB(220, 80, 36)) }) },
+    core = { L = 0.34, W = 0.66, tr = 0.2, br = 1.8, le = 0.75, col = ColorSequence.new(RGB(255, 242, 212), RGB(255, 200, 136)) },
+    dia = { A = 0.88, An = 0.96, col0 = RGB(255, 250, 230), col1 = RGB(255, 198, 120), W = 0.56, br = 1.7 },
+    len = 1.12, blast = 1.35,
+  },
+  blue = {
+    body = { tr = 0.72, W = 0.96, br = 1.0, le = 0.5, col = ColorSequence.new({ CK(0, RGB(150, 170, 255)), CK(0.25, RGB(226, 170, 200)), CK(0.6, RGB(255, 154, 112)), CK(1, RGB(244, 116, 84)) }) },
+    core = { L = 0.4, W = 0.56, tr = 0.44, br = 1.2, le = 0.5, col = ColorSequence.new(RGB(64, 112, 255), RGB(110, 136, 255)) },
+    dia = { A = 0.14, An = 0.28, col0 = RGB(255, 226, 240), col1 = RGB(250, 176, 168), W = 0.38 },
+    len = 0.85, blast = 0.8,
+  },
+}
+-- 哪种样子（没写的：隐身机 blue，别的 classic）
+local AB_STYLE = { f22 = "blue", f35 = "blue", f15 = "blue", f16 = "blue", j20 = "blue", j35 = "blue", j36 = "blue", su57 = "blue",
+  j6 = "strong", j8 = "strong", mig29 = "strong", f14 = "strong" }
+local DIA_N = 6   -- 每台发动机最多几颗马赫环
+AM.PLUME_STYLE, AM.AB_STYLE, AM.DIA_N = PLUME_STYLE, AB_STYLE, DIA_N
+function AM.plumeStyle(d) return AB_STYLE[d.id] or (d.stealth and "blue") or "classic" end
+-- 一台发动机的尾焰按档摆：P 这台的整套（P.D 喷口直径、P.style、P.body / P.core 两股粒子、P.dia 马赫环）；on 开着加力；ab 0～1；
+--   dk 0 夜里 ～ 1 白天；hk 0～1 高度；near 离镜头近
+local function plumePose(P, on, ab, dk, hk, near)
+  local D = P.D
+  local S = PLUME_STYLE[P.style] or PLUME_STYLE.classic
+  local Lv = D * (2.2 + 4.3 * ab) * (1.1 - 0.1 * dk) * S.len                     -- 焰身多长
+  P.Lv = Lv
+  local fade = 0.35 + 0.65 * ab                                                   -- 加力小的时候淡
+  -- 焰身：0.12～0.18 秒走完焰长的九成（后一成淡出去）
+  local B, Bs = P.body, S.body
+  B.Enabled = on
+  if on then
+    local life = 0.15
+    B.Lifetime = NumberRange.new(life * 0.87, life * 1.13)
+    B.Speed = NumberRange.new(Lv * 0.9 / life * 0.94, Lv * 0.9 / life * 1.06)
+    local w0 = D * Bs.W * (0.9 + 0.1 * ab)
+    B.Size = NumberSequence.new({ NK(0, w0), NK(0.5, w0 * 0.88), NK(1, w0 * 0.62) })   -- 往后淡、不怎么细（细了尾巴断成一颗颗火星）
+    local t0 = 1 - (1 - Bs.tr) * fade
+    local tm = t0 + (1 - t0) * (Bs.mid or 0.25)   -- 老式发动机：过了第一颗马赫环焰身暗下去，后面一颗颗亮核跳出来
+    B.Transparency = NumberSequence.new({ NK(0, t0), NK(0.28, tm), NK(0.75, tm + (1 - tm) * 0.55), NK(1, 1) })
+    B.Color = Bs.col
+    B.Brightness = Bs.br
+    B.LightEmission = Bs.le or 0.6   -- 一半叠加发光、一半照常盖上去：白天亮天空下颜色不被冲成白的
+    B.Rate = math.floor((near and (200 + 160 * ab) or (60 + 50 * ab)) + 0.5)
   end
-  local dk = dayNow()
-  local fb = 1 - 0.3 * (1 - dk)   -- 焰身光柱夜里暗三成：夜里的照片上一颗颗钻石比焰身亮得多（白天差不多亮）
-  if it.fillBr ~= fb then
-    it.fillBr = fb
-    it.fill.Brightness = fb
+  -- 焰芯：短、亮
+  local C, Cs = P.core, S.core
+  C.Enabled = on and near
+  if on and near then
+    local life = 0.1
+    C.Lifetime = NumberRange.new(life * 0.8, life * 1.2)
+    C.Speed = NumberRange.new(Lv * Cs.L / life * 0.9, Lv * Cs.L / life * 1.1)
+    local w0 = D * Cs.W
+    C.Size = NumberSequence.new({ NK(0, w0), NK(1, w0 * 0.45) })
+    local t0 = 1 - (1 - Cs.tr) * fade
+    C.Transparency = NumberSequence.new({ NK(0, t0), NK(0.6, t0 + (1 - t0) * 0.4), NK(1, 1) })
+    C.Color = Cs.col
+    C.Brightness = Cs.br
+    C.LightEmission = Cs.le or 0.7
+    C.Rate = 90
   end
-  local hk = math.clamp((out.Position.Y / 2.8 - 1500) / 9000, 0, 1)   -- 高度（米，1 米 2.8 格，同 Fly.lua 的飞行物理）：1500 米往上慢慢变
-  local key = (fade <= 0) and -1 or (math.floor(ab * 24 + 0.5) * 4096 + math.floor(dk * 8 + 0.5) * 256 + math.floor(hk * 6 + 0.5) * 32 + math.floor(fade * 8 + 0.5))
-  if key == it.diaKey then return end   -- 没变：一个属性都不碰
-  it.diaKey = key
-  local D = it.diaD
-  local s = D * (1.05 + 0.2 * ab) * (1 + 0.6 * hk)                             -- 间距：满加力 1.25 D，高空拉长
-  local w = D * 0.52 * (1 + 0.25 * hk)                                           -- 亮核的宽
-  local tau = (3 + 1.5 * (1 - dk)) * (0.45 + 0.55 * ab) * (1 - 0.35 * hk)       -- 往后几颗淡到 1/e：满加力夜里 4.5 颗、白天 3 颗
-  local A = (0.18 + 0.62 * ab ^ 0.8) * (0.88 + 0.12 * (1 - dk)) * fade          -- 第一颗亮核的不透明度
-  local br = 1.5 + 0.5 * (1 - dk)                                                -- 亮度超过 1：亮核在泛光里化开一圈柔光（夜里更亮）
-  local z = D * 0.12                                                             -- 第一颗的前尖：贴着出口
-  local zEnd = (it.diaL or math.huge) * 1.45                                     -- 排到焰身光柱的一倍半为止
-  it.dia0.Position = V(0, 0, z)
-  for k, dm in ipairs(it.dia) do
-    local lv = (key < 0) and 0 or math.floor(A * math.exp(-(k - 1) / tau) * DIA_LV + 0.5)
-    if lv < 1 + math.floor(2.5 * dk) then lv = 0 end   -- 白天亮天空下最淡的那几颗看不见（夜里一颗颗都数得出）
-    local sk = s * (1 - 0.03 * (k - 1))                                          -- 往后略密
-    if z + sk * DIA_P1 > zEnd then lv, zEnd = 0, -1 end
-    local on = lv >= 1
-    local B = dm.bm
-    if on then
-      local wk = w * (1 - 0.04 * (k - 1))                                        -- 往后变细
-      local P = dm.p
-      P[1].Position, P[2].Position, P[3].Position = V(0, 0, z + sk * DIA_P1), V(0, 0, z + sk * DIA_P2), V(0, 0, z + sk)
-      z += sk
-      B[1].Width0, B[1].Width1, B[2].Width0, B[2].Width1, B[3].Width0, B[3].Width1 = wk * 0.45, wk, wk, wk * DIA_W2, wk * DIA_W2, wk * 0.2
-      if dm.lv ~= lv then
-        dm.lv = lv
-        local l = math.min(lv, DIA_LV)
-        for j = 1, 3 do B[j].Transparency = diaTr(l, j) end
-      end
-      if dm.br ~= br then
-        dm.br = br
-        for j = 1, 3 do B[j].Brightness = br end
-      end
+  -- 马赫环
+  local s = D * (1.05 + 0.2 * ab) * (1 + 0.6 * hk)                                -- 间距：满加力 1.25 D，高空拉长
+  local tau = (3 + 1.5 * (1 - dk)) * (0.45 + 0.55 * ab) * (1 - 0.35 * hk)          -- 往后几颗淡到 1/e
+  local A0 = (S.dia.A * dk + S.dia.An * (1 - dk)) * (0.35 + 0.65 * ab ^ 0.8)       -- 第一颗的不透明度
+  for k1, dm in ipairs(P.dia) do
+    local k = k1 - 1
+    local z = D * 0.6 + s * k * (1 - 0.015 * k)
+    local a = A0 * math.exp(-k / tau)
+    local show = on and near and a >= 0.05 and z <= Lv * 1.02                        -- 太淡的不画；排到焰尾为止
+    dm.z, dm.a, dm.on = z, a, show
+    dm.pe.Enabled = show
+    if show then
+      dm.att.Position = V(0, 0, z)
+      local w = D * S.dia.W * (1 - 0.07 * k) * (1 + 0.25 * hk)
+      dm.w = w
+      dm.pe.Size = NumberSequence.new(w)
+      dm.pe.Transparency = NumberSequence.new({ NK(0, 1 - a), NK(0.7, 1 - a * 0.8), NK(1, 1) })
+      dm.pe.Color = ColorSequence.new(S.dia.col0:Lerp(S.dia.col1, k / (DIA_N - 1)))
+      dm.pe.Brightness = (S.dia.br or 1.1) + 0.8 * (1 - dk)
     end
-    if B[1].Enabled ~= on then for j = 1, 3 do B[j].Enabled = on end end
   end
-  -- 拖尾：焰身光柱后半截到最后一颗钻石，一层很淡的光把一颗颗连起来（照片上钻石之间不是全黑的）
-  local L = it.diaL or 0
-  local tail = key >= 0 and z > L * 1.05
-  if tail then it.tailA.Position, it.tailB.Position = V(0, 0, L * 0.55), V(0, 0, z) end
-  if it.tail.Enabled ~= tail then it.tail.Enabled = tail end
+end
+-- 测试 / 截图用：每台发动机尾焰现在的样子
+function AM.plumeInfo(M)
+  local out = {}
+  for _, P in ipairs(M.plumes or {}) do
+    local o = { D = P.D, style = P.style, on = P.body.Enabled, core = P.core.Enabled, Lv = P.Lv, src = P.src, body = P.body, coreE = P.core, dia = {} }
+    for _, dm in ipairs(P.dia) do
+      if dm.on then table.insert(o.dia, { z = dm.z, a = dm.a, w = dm.w, wp = dm.att.WorldPosition, pe = dm.pe }) end
+    end
+    table.insert(out, o)
+  end
+  return out
 end
 -- 原模型自己的尾喷口（tools/models/sf_gear.py 拆的：外筒 + 按方位分组的调节片；用户 11-26「很多飞机的发动机不止可以缩放 还可以3纬运动」）：
 --   整个喷口绕喉道（外筒前沿的圆心 S.p）偏转，S.a 是喷口朝后的轴；S.tv = "3d" 全向（苏-57 的 AL-41F1），"pl" 只在外倾 S.cant 度的斜面里偏
@@ -1042,95 +1074,72 @@ function AM.build(d, team, load)
         core.p.Transparency = 1
         table.insert(M.flames, core)
         if d.ab and not E.cold then
-          -- 加力尾焰（用户 11-24 夜：「尾喷也要重做」，给了战雷里米格-29 开加力的截图；11-23 那版照歼-20 截图做的紫色焰身、蓝边管子、
-          --   一节一节的马赫环不要了）：照新截图——
-          --   ① 喷口里：开加力烧得发橙粉色（热芯，下面每帧那段），军推以下照旧暗红 → 橙
-          --   ② 焰身：一条长长的、半透明的橙色光柱（Beam，正对镜头），跟喷口差不多粗、往后慢慢细一点，橙 → 橘红、越往后越淡；
-          --      长短跟着加力（满加力约七个喷口直径），每帧长短轻轻抖一点（火在跳）
-          --   ③ 焰芯：喷口后面短短一截更亮的粉白（离喷口近的地方最热），也是 Beam
+          -- 加力尾焰：柔边发光粒子的焰身、焰芯、一串马赫环（见文件头「加力尾焰」）；挂在喷口出口的一个空零件上（推力矢量喷口跟着出口偏），
+          --   +Z 朝后；每帧 plumePose 按档改参数（状态没变一个属性都不碰）
           local r = E.r
-          local flat = E.flat
           local src = newPart(m, V(0.2, 0.2, 0.2), RGB(255, 255, 255), MAT.SmoothPlastic, nil, 1)
-          src.Name = "Plume"
+          src.Name = "AbPlume"
           src.CastShadow = false
-          local it = add(src, base, "ab", hotItem({ plume = true }))
-          local function att(name, z)
-            local a = Instance.new("Attachment")
-            a.Name = name
-            a.Position = V(0, 0, z)
-            a.Parent = src
-            return a
+          local function emitter(name, parent)
+            local pe = Instance.new("ParticleEmitter")
+            pe.Name = name
+            pe.Texture = GLOW_TX
+            pe.LockedToPart = true   -- 跟着飞机走（不锁就被几百格每秒的飞机甩成一长条）
+            pe.EmissionDirection = Enum.NormalId.Back   -- +Z：往机尾喷
+            pe.LightEmission, pe.LightInfluence = 1, 0
+            pe.Rotation = NumberRange.new(0, 360)
+            pe.RotSpeed = NumberRange.new(-120, 120)
+            pe.Rate = 0
+            pe.Enabled = false
+            pe.Parent = parent
+            return pe
           end
-          local function beam(name, a0, a1, col, tr, w0, w1, emit)
-            local bm = Instance.new("Beam")
-            bm.Name = name
-            bm.Attachment0, bm.Attachment1 = a0, a1
-            bm.FaceCamera = true
-            bm.Segments = 8
-            bm.LightEmission, bm.LightInfluence = emit or 1, 0
-            bm.Color, bm.Transparency = col, tr
-            bm.Width0, bm.Width1 = w0, w1
-            bm.Enabled = false
-            bm.Parent = src
-            return bm
-          end
-          local p0 = att("P0", 0)
-          it.fillEnd = att("FillEnd", 1)
-          it.fill = beam("AbFill", p0, it.fillEnd,
-            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 176, 120)), ColorSequenceKeypoint.new(0.45, RGB(255, 132, 76)), ColorSequenceKeypoint.new(1, RGB(236, 86, 52)) }),
-            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(0.35, 0.48), NumberSequenceKeypoint.new(0.75, 0.74), NumberSequenceKeypoint.new(1, 1) }),
-            r * (flat and 1.2 or 1.9), r * (flat and 0.9 or 1.4), 0.8)
-          it.coreEnd = att("CoreEnd", 1)
-          it.coreB = beam("AbCore", p0, it.coreEnd,
-            ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 232, 214)), ColorSequenceKeypoint.new(1, RGB(255, 150, 120)) }),
-            NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.12), NumberSequenceKeypoint.new(0.6, 0.55), NumberSequenceKeypoint.new(1, 1) }),
-            r * (flat and 0.9 or 1.45), r * (flat and 0.4 or 0.7), 1)
-          -- ⑤ 马赫环（激波钻石，见文件头 DIA_N 那段）：焰身里一串柔光纺锤，首尾相接（后一颗的前尖就是前一颗的后尖），
-          --    挂点、宽、亮度档在每帧 diaPose 里按油门 / 昼夜 / 高度摆（状态没变不动）；颜色按第几颗定死（往后偏橙红）
-          it.diaD = flat and r * 1.3 or r * 2   -- 喷口直径（二元喷口按等面积的圆：2.1r × 0.85r）
-          it.dia0 = att("Dia0", 0)
-          it.dia = {}
-          local prev = it.dia0
+          local P = { D = E.flat and r * 1.3 or r * 2, flat = E.flat, style = AM.plumeStyle(d), src = src, dia = {} }   -- 二元喷口按等面积的圆：2.1r × 0.85r
+          P.body = emitter("AbBody", src)
+          P.body.SpreadAngle = E.flat and Vector2.new(6, 1.5) or Vector2.new(2.5, 2.5)   -- 二元喷口：宽的那边多撒一点
+          P.core = emitter("AbCore", src)
+          P.core.SpreadAngle = Vector2.new(1.5, 1.5)
           for k = 1, DIA_N do
-            local u = (k - 1) / (DIA_N - 1)
-            local cC = RGB(255, 246, 232):Lerp(RGB(255, 210, 166), u)   -- 亮核：近白微暖
-            local cT = RGB(255, 158, 118):Lerp(RGB(248, 114, 72), u)    -- 尖上、边上：粉橙 → 橙红
-            local cQ = cT:Lerp(cC, 0.55)
-            local P = { att("DiaC" .. k, 0), att("DiaB" .. k, 0), att("DiaT" .. k, 0) }   -- 亮核、后段折点、后尖
-            local B = {
-              beam("AbDiamond", prev, P[1], ColorSequence.new(cT, cC), diaTr(1, 1), 0.45, 1, 1),
-              beam("AbDiamond", P[1], P[2], ColorSequence.new(cC, cQ), diaTr(1, 2), 1, 1, 1),
-              beam("AbDiamond", P[2], P[3], ColorSequence.new(cQ, cT), diaTr(1, 3), 1, 0, 1),
-            }
-            for j = 1, 3 do B[j].Segments = 2 end
-            it.dia[k] = { p = P, bm = B }
-            prev = P[3]
+            local at = Instance.new("Attachment")
+            at.Name = "AbDia" .. k
+            at.Parent = src
+            local pe = emitter("AbDiamond", at)
+            pe.Orientation = Enum.ParticleOrientation.VelocityParallel   -- 顺着气流稍微拉长（柔光团，不是圆片）
+            pe.Squash = NumberSequence.new(0.9)
+            pe.Speed = NumberRange.new(0.05)
+            pe.Lifetime = NumberRange.new(0.08, 0.12)
+            pe.RotSpeed = NumberRange.new(0)
+            pe.Rate = 40
+            P.dia[k] = { att = at, pe = pe }
           end
-          it.tailA, it.tailB = att("TailA", 0), att("TailB", 1)
-          it.tail = beam("AbTail", it.tailA, it.tailB, ColorSequence.new(RGB(255, 178, 138), RGB(240, 126, 92)),
-            NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.3, 0.86), NumberSequenceKeypoint.new(0.75, 0.9), NumberSequenceKeypoint.new(1, 1) }),
-            r * (flat and 1.0 or 1.6), r * (flat and 0.6 or 0.9), 1)
-          -- ④ 焰身的体积（用户 11-25「尾喷焰火也假」：光带正对镜头，从后面、斜后方看是扁的一条）：喷口往后一股锁在喷口上的发光火焰粒子，
-          --    很密、很短命（零点一秒左右走完焰长），从粗到细、从黄白到橙红到透明——哪个角度看都是一团有厚度、在跳的火；跟着加力变长变密
+          add(src, base, "ab", hotItem({ plume2 = P }))
+          M.plumes = M.plumes or {}
+          table.insert(M.plumes, P)
+        end
+        -- 喷口正中一小股热浪（见文件头「发动机中心还有小小的热浪」）：顺着气流拉长的细丝，很淡；开不开加力都有
+        if not E.cold then
+          local hp = newPart(m, V(0.2, 0.2, 0.2), RGB(255, 255, 255), MAT.SmoothPlastic, nil, 1)
+          hp.Name = "HeatSrc"
+          hp.CastShadow = false
+          local D0 = E.flat and E.r * 1.3 or E.r * 2
           local pe = Instance.new("ParticleEmitter")
-          pe.Name = "AbBody"
-          pe.Texture = "rbxasset://textures/particles/fire_main.dds"
+          pe.Name = "HeatShimmer"
+          pe.Texture = "rbxasset://textures/particles/smoke_main.dds"
           pe.LockedToPart = true
-          pe.EmissionDirection = Enum.NormalId.Back   -- +z：往机尾喷
-          pe.SpreadAngle = Vector2.new(3, 3)
-          pe.LightEmission, pe.LightInfluence = 1, 0
-          pe.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 236, 200)), ColorSequenceKeypoint.new(0.3, RGB(255, 170, 90)),
-            ColorSequenceKeypoint.new(0.7, RGB(255, 110, 60)), ColorSequenceKeypoint.new(1, RGB(200, 60, 40)) })
-          pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, r * (flat and 1.1 or 1.5)), NumberSequenceKeypoint.new(0.5, r * (flat and 0.9 or 1.2)), NumberSequenceKeypoint.new(1, r * 0.45) })
-          pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.35), NumberSequenceKeypoint.new(0.4, 0.55), NumberSequenceKeypoint.new(1, 1) })
-          pe.Lifetime = NumberRange.new(0.08, 0.12)
-          pe.Rotation = NumberRange.new(0, 360)
-          pe.RotSpeed = NumberRange.new(-200, 200)
+          pe.EmissionDirection = Enum.NormalId.Back   -- +Z：往机尾
+          pe.Orientation = Enum.ParticleOrientation.VelocityParallel   -- 顺着气流
+          pe.Squash = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1.4), NumberSequenceKeypoint.new(1, 2.2) })   -- 压细、拉长：一缕一缕，不是圆团
+          pe.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, D0 * 0.22), NumberSequenceKeypoint.new(1, D0 * 0.5) })
+          pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.93), NumberSequenceKeypoint.new(0.35, 0.9), NumberSequenceKeypoint.new(1, 1) })
+          pe.Color = ColorSequence.new(RGB(214, 212, 208))
+          pe.LightEmission, pe.LightInfluence = 0, 1
+          pe.Lifetime = NumberRange.new(0.16, 0.26)
+          pe.Speed = NumberRange.new(D0 * 9, D0 * 13)   -- 一两个喷口直径就散了
+          pe.SpreadAngle = Vector2.new(5, 5)
           pe.Rate = 0
           pe.Enabled = false
-          pe.Parent = src
-          it.pe = pe
-          table.insert(M.flames, it)
+          pe.Parent = hp
+          add(hp, base, "ab", hotItem({ haze = pe, hazeD = D0 }))
         end
         -- 热浪不画了（用户 11-18：飞机喷口有怪异的泡泡——气流粒子是一团团烟雾贴图，从后面看就是一串半透明的圆泡；
         --   之前的玻璃球也是这样）。Roblox 的粒子做不出空气的折射，假的只会像泡泡
@@ -1799,57 +1808,30 @@ function AM.pose(M, cf, c, now, world)
           local col = (ab > 0) and RGB(255, 150, 84):Lerp(RGB(255, 184, 160), math.min(1, ab * 1.4)) or RGB(150, 40, 20):Lerp(RGB(255, 118, 42), math.clamp(t / 100, 0, 1))
           if it.p.Color ~= col then it.p.Color = col end
         end
-      elseif it.tube then   -- 焰身的蓝边管子：长短跟着加力（尺寸只在加力变了时改，抖动交给里面的光）
-        local L = r * 2 * (1.4 + 2.4 * ab)
-        local a0, a1 = (it.tube == 1) and 0 or 0.55, (it.tube == 1) and 0.55 or 1
-        local len = math.max(0.1, L * (a1 - a0))
-        out = cf * b0 * CF(0, 0, 0.15 + L * (a0 + a1) / 2) * ALONG_Z
-        if math.abs((it.len or 0) - len) > 0.05 then
-          it.len = len
-          local sz = it.p.Size
-          local k = (it.tube == 1) and 1 or 0.82   -- 后段细一点
-          it.sz0 = it.sz0 or sz
-          it.p.Size = V(len, it.sz0.Y * k, it.sz0.Z * k)
-        end
-        tr = (ab > 0.02) and (((it.tube == 1) and 0.05 or 0.45) + (1 - ab) * 0.45) or 1
-      elseif it.ring then   -- 马赫环：一节一节往后排，加力越大出来的越多；越往后越淡
-        local i = it.ring
-        local th0 = 0.2 + 0.15 * (i - 1)
-        local z = 0.15 + r * 2 * (0.62 + 0.86 * (i - 1)) * (0.9 + 0.1 * ab)
-        out = cf * b0 * CF(0, 0, z) * ALONG_Z
-        if ab > th0 then
-          local k = math.clamp((ab - th0) / 0.2, 0, 1)
-          tr = math.clamp(0.12 + 0.16 * (i - 1) + (1 - k) * 0.8 + 0.05 * math.sin((now or 0) * 23 + i * 1.9), 0, 1)
-        end
-      elseif it.plume then   -- 加力焰身、焰芯、火焰粒子：长短跟着加力，每帧轻轻抖一点；马赫环按油门 / 昼夜摆（diaPose）
-        out = cf * b0 * CF(0, 0, 0.1)
-        local on = ab > 0.02
-        if on ~= it.on then
-          it.on = on
-          it.fill.Enabled = on
-          if it.coreB then it.coreB.Enabled = on end
-          if it.pe then it.pe.Enabled = on and M.near ~= false end
-        end
-        if on then   -- 光柱：满加力约七个喷口直径长（夜里长一成半：暗背景下淡出去的那截尾巴也看得见）；焰芯一个半
-          local fl = 1 + 0.05 * math.sin((now or 0) * 37 + r) + 0.03 * math.sin((now or 0) * 61)
-          local Ln = r * 2 * (2.2 + 4.8 * ab) * (1.15 - 0.15 * dayNow())
-          it.diaL = Ln   -- 马赫环排到焰身尽头为止
-          local L = Ln * fl
-          it.fillEnd.Position = V(0, 0, L)
-          if it.coreEnd then it.coreEnd.Position = V(0, 0, r * 2 * (0.6 + 0.9 * ab) * (2 - fl)) end
-          if it.pe then   -- 火焰粒子：0.1 秒走完焰长的八成（后两成是光带淡出去的尾巴）；远处的不放（M.near：700 格以内）
-            local want = M.near ~= false
-            if it.pe.Enabled ~= want then it.pe.Enabled = want end
-            local sp = L * 0.8 / 0.1
-            if math.abs((it.peSp or 0) - sp) > sp * 0.08 then
-              it.peSp = sp
-              it.pe.Speed = NumberRange.new(sp * 0.9, sp * 1.1)
-            end
-            it.pe.Rate = 70 + 90 * ab
+      elseif it.haze then   -- 喷口正中的热浪：油门过三成才有、越大越多；离镜头远了、挂载编辑器里不放
+        out = cf * b0 * CF(0, 0, it.hazeD * 0.15)
+        local want = (M.near == true) and t > 30   -- 发动机打坏、没油：Fly.lua 把油门当 0
+        if it.haze.Enabled ~= want then it.haze.Enabled = want end
+        if want then
+          local rate = math.floor(18 + 30 * math.clamp((t - 30) / 95, 0, 1) + 0.5)
+          if it.hazeRate ~= rate then
+            it.hazeRate = rate
+            it.haze.Rate = rate
           end
         end
-        -- 马赫环：离镜头 700 格以外（M.near）、挂载编辑器里不画
-        if it.dia then diaPose(it, out, (on and M.near) and ab or 0, cam) end
+      elseif it.plume2 then   -- 加力尾焰（见文件头「加力尾焰」）：空零件挂在喷口出口，参数按档改
+        out = cf * b0 * CF(0, 0, 0.05)
+        local P = it.plume2
+        local on = ab > 0.02
+        local dk = dayNow()
+        local hk = math.clamp((cf.Position.Y / 2.8 - 1500) / 9000, 0, 1)   -- 高度（米，1 米 2.8 格，同 Fly.lua）：1500 米往上慢慢变
+        local near = M.near == true
+        local key = on and (math.floor(ab * 20 + 0.5) * 1024 + math.floor(dk * 4 + 0.5) * 128 + math.floor(hk * 4 + 0.5) * 8 + (near and 1 or 0)) or -1
+        if key ~= P.key then
+          P.key = key
+          plumePose(P, on, ab, dk, hk, near)
+        end
+        tr = 1
       end
       if math.abs(it.p.Transparency - tr) > 0.01 then it.p.Transparency = tr end
     else out = cf * it.cf0 end

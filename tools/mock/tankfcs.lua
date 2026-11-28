@@ -160,13 +160,23 @@ local function sample()
     if q.Z < -1 then table.insert(track.pts, { x = q.X / -q.Z, y = q.Y / -q.Z, d = -q.Z / S }) end
   end
 end
+local lastShell = nil   -- 打出去的这一发（服务器 G.launch 那一刻记下：打中了它就从 G.shots 里收走了，事后翻不到）
+do
+  local launch0 = G.launch
+  G.launch = function(sh, ...)
+    local r = launch0(sh, ...)
+    if type(sh) == "table" and sh.kind == "shell" then lastShell = r or sh end
+    return r
+  end
+end
 local function shoot(wantAmmo)
   local hp0 = tgt.hp
   local nShots = #G.shots
+  lastShell = nil
   R.as("client", function() C.driveTryFire() end)
   R.run(1 / 60)
-  local s = G.shots[#G.shots]
-  local v0 = s and s.vel.Magnitude / S or 0
+  local s = lastShell or G.shots[#G.shots]
+  local v0 = s and s.vel and s.vel.Magnitude / S or 0
   for _ = 1, 260 do
     R.run(1 / 60)
     sample()
@@ -205,7 +215,7 @@ tgt.hp = 1e6   -- 靶车打不坏（几发都打同一辆）
 check(st.fcs.am == BAL.GUN.gun120[1] or VEH ~= "m1a2", "默认弹种 " .. tostring(st.fcs.am))
 local hit, v0 = shoot()
 -- 钢针（用户 11-28「钢针打出去的效果跟尾烟要有区别」）：M829A3 打出去炮口外面弹托三瓣飞开、弹芯细（不冒烟）
-local sab = G.shots[#G.shots] and G.shots[#G.shots].sab
+local sab = lastShell and lastShell.sab
 check(sab == "fs", "服务器认得这是钢针（尾翼稳定脱壳穿甲弹，sab = " .. tostring(sab) .. "）")
 check(C.fxSabotSeen ~= nil and C.fxSabotSeen >= 3, "炮口外面弹托三瓣飞开（" .. tostring(C.fxSabotSeen) .. " 瓣）")
 -- 用户 11-28「然后钢针打出去的尾烟也改成战雷那样的」：后面拖一道细的淡白烟线（Trail），不是导弹那样一团团的烟
@@ -228,7 +238,11 @@ local midHeat = report("破甲弹")
 if midAp and midHeat then check(midHeat > midAp * 1.4, string.format("破甲弹弹道更弯：中段比瞄准线高 %.2f 密位（穿甲弹 %.2f）", midHeat * 1000, midAp * 1000)) end
 
 print("⑤ 不测距（战斗瞄准距离）打远处")
-for _ = 1, 3 do T.tap(Enum.KeyCode.Q) R.run(0.05) end   -- 换回穿甲弹（多用途、高爆多用途、穿甲）
+for _ = 1, 6 do   -- 换回穿甲弹（Q 一下下轮着换：多用途、高爆多用途、金属射流弹……，换到为止）
+  if st.fcs.am == "m829a3" then break end
+  T.tap(Enum.KeyCode.Q)
+  R.run(0.05)
+end
 check(st.fcs.am == "m829a3", "又换回 " .. tostring(st.fcs.am))
 st.fcs.R, st.fcs.laseT = nil, nil
 for _ = 1, 17 do aimAt(tc) R.run(0.4) end
@@ -243,7 +257,11 @@ else
 end
 check(tgt.hp <= hpB, "（剩 " .. math.floor(tgt.hp) .. "）")
 print("⑥ SEPv2 的第四种弹：M1028 霰弹（没有弹药数据链，没有 AMP）")
-for _ = 1, 3 do T.tap(Enum.KeyCode.Q) R.run(0.05) end   -- 穿甲 → 破甲 → 多用途 → 霰弹
+for _ = 1, 7 do   -- Q 一下下轮着换到霰弹为止（穿甲 → 破甲 → 多用途 → 霰弹 → 金属射流弹……，弹种表加过新弹）
+  if st.fcs.am == "m1028" then break end
+  T.tap(Enum.KeyCode.Q)
+  R.run(0.05)
+end
 check(st.fcs.am == "m1028", "Q 换到 " .. tostring(st.fcs.am))
 for _ = 1, 17 do aimAt(tc) R.run(0.4) end
 local nb, ns0 = 0, #G.shots

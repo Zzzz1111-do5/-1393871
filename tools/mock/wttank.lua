@@ -165,10 +165,12 @@ local e2 = G.newVehicle("atk", "t90m", G.vehBaseAt(d2, bx, bz - 180, V3(0, 0, 1)
 check(e2 ~= nil, "放了敌车")
 R.run(1.5)
 local ring = aim and aim:FindFirstChild("Frame") or nil
+-- 穿深指示的颜色在小圈上（用户 11-28：大圈是鼠标瞄的地方、小圈是炮真打到的地方——WtGunMark，粗 2 的那道白线）
+local mark = find("WtGunMark")
 local function ringColor()
-  for _, f in ipairs(aim:GetChildren()) do
+  for _, f in ipairs(mark and mark:GetChildren() or {}) do
     local s = f:FindFirstChildOfClass("UIStroke")
-    if s and s.Thickness > 1.5 and s.Thickness < 1.7 then return s.Color end
+    if s and s.Thickness > 1.9 and s.Thickness < 2.1 then return s.Color end
   end
 end
 -- 直接按炮口 → 敌车车体正面中间算一次（镜头在模拟器里不一定对着它）
