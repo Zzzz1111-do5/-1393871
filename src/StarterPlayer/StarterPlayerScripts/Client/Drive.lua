@@ -919,7 +919,8 @@ function Drive.init(G)
     local allow = st.allow or { 1, 2, 3, 4 }
     local i0 = table.find(allow, st.mode) or 0
     st.mode = allow[i0 % #allow + 1]
-    G.sightPref[nightNow() and "night" or "day"] = st.mode
+    -- 只有一档能切的车（11-28 起老坦克只有昼光镜）按 V 不算「自己换过」：不然记下「夜里用昼光」，以后开有热像的车夜里也不自动开热像
+    if #allow > 1 then G.sightPref[nightNow() and "night" or "day"] = st.mode end
     applyMode()
   end
   G.sightReapply = function() applyMode() end   -- WtVfx.lua：观瞄打坏 / 修好时重新套光电模式
