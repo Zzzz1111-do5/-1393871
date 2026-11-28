@@ -1756,7 +1756,7 @@ return {
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-28 01:38 ac6a418"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-28 02:59 077c288"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 -- 存档怎么写（Store.lua，用户 11-26「账号的载具解锁要能保留」）：gap 同一个人两次写至少隔几秒（Roblox 同一个键 6 秒才能写一次，多的排队）、
 --   auto 每隔几秒看一次存档变没变（变了就存）、closeWait 关服时最多等几秒把还没写完的写完（Roblox 给 BindToClose 30 秒）
@@ -2994,6 +2994,16 @@ local RAD = math.pi / 180
 local sin, cos, sqrt, abs, exp, atan2, asin = math.sin, math.cos, math.sqrt, math.abs, math.exp, math.atan2, math.asin
 FM.DT = 1 / 120
 FM.G = G0
+-- 收住滚转的刹车（1/秒，FM.sub 积分前那段；用户 11-28「滚筒做着突然不做 惯性要能收住」，又「你减少三分之一的角度」）：
+--   满速滚转松杆多滚的角度比只靠副翼时少三分之一（F-16 71° → 47°、苏-27 76° → 49°、歼-6 41° → 30°）——
+--   电传 / 增稳 / 教官飞 4.5，机械操纵松杆 2（没有飞控，同样的刹车对它们收得更狠）；各型可以在自己那一行写 rollBrake 改
+local ROLL_BRAKE, ROLL_BRAKE_MECH = 4.5, 2
+FM.ROLL_BRAKE = ROLL_BRAKE
+-- 转弯机动性（用户 11-28「我指的机动性 是我飞行转向的机动性 稍微高一点」；战雷的飞机也比真机灵一点）：
+--   整条升力曲线 × lift（失速迎角不变：同一个迎角升力多一成）、诱导阻力 × ind——升力限制的那一段（拐角速度以下）瞬时转弯率、
+--   推力限制的持续盘旋率各高约一成；过载限制、极速、零升阻力不变。FM.get 建表时乘（F-14 收后掠那一套 FM.sweep 里也乘）
+local AGILE = { lift = 1.1, ind = 0.83 }
+FM.AGILE = AGILE
 
 local function clamp(v, a, b) if v < a then return a elseif v > b then return b end return v end
 local function lerp(a, b, t) return a + (b - a) * t end
@@ -3230,6 +3240,8 @@ function FM.get(id, treeKey)
   if D.prop and not D.Tm then D.Tm = D.prop.Tst end
   D.Ta = D.Ta or D.Tm
   D.vne = D.vne or 400
+  D.CLa, D.CLm = D.CLa * AGILE.lift, D.CLm * AGILE.lift   -- 转弯机动性（见上面 AGILE）
+  if D.K then D.K = D.K * AGILE.ind else D.e = D.e / AGILE.ind end
   FM.finish(D)
   cache[key] = D
   return D
@@ -3282,8 +3294,8 @@ function FM.sweep(D, M)
     local t = k / 50
     E = setmetatable({}, { __index = D })
     E.b = lerp(D.b, W.b, t)
-    E.CLa = lerp(D.CLa, W.CLa, t)
-    E.CLm = lerp(D.CLm, W.CLm, t)
+    E.CLa = lerp(D.CLa, W.CLa * AGILE.lift, t)   -- 收后掠那一套也乘转弯机动性（D 的已经在 FM.get 里乘过）
+    E.CLm = lerp(D.CLm, W.CLm * AGILE.lift, t)
     E.aS = lerp(D.aS, W.aS, t)
     E.Mcr = lerp(D.Mcr, W.Mcr, t)
     E.CDw = lerp(D.CDw, W.CDw, t)
@@ -3764,6 +3776,22 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
   local az = (rZ * Fy - uZ * Fz - bZ * Fx) / m
   Vx, Vy, Vz = Vx + ax * h, Vy + ay * h, Vz + az * h
   F.vx, F.vy, F.vz = Vx, Vy, Vz
+  -- 收住滚转（用户 11-28「惯性的意思是 飞机滚筒做着 然后突然不做滚筒 惯性要能收住」，照战雷）：
+  --   要的滚转角速度（电传 / 教官：前置滤波后的指令；机械操纵：松杆就是 0）比现在的小、或者反过来——另加一个刹车力矩把多出来的那截收掉，
+  --   不受副翼偏度、偏转速率限制（只靠副翼：打满反向要零点几秒，满速滚转松手还要多滚 40～76°；战雷里一松手十几二十度就停）。
+  --   只在「要停 / 要慢下来」时起作用（加速滚转不管，满杆滚转角速度照旧）；接近失速（掉翼、自转）时不刹，掉翼照样掉
+  do
+    local pWant
+    if cmdLaw then
+      pWant = F.pf
+    elseif abs(inp.sx or 0) < 0.02 and not inp.levelHard then
+      pWant = 0
+    end
+    if pWant and (abs(pWant) < abs(p) or pWant * p < 0) then
+      -- 接近失速迎角（八成起）就逐渐不刹：掉翼、自转照真的来（机械操纵低速拉满杆一边机翼先掉，滚过去机头才掉得下来、改得出）
+      Lm = Lm - Ixx * (D.rollBrake or (cmdLaw and ROLL_BRAKE or ROLL_BRAKE_MECH)) * (1 - smooth(0.8 * D.aSr, D.aSr, aa)) * (p - pWant)
+    end
+  end
   p = p + (Lm + (Iyy - Izz) * q * r) / Ixx * h
   q = q + (Mm + (Izz - Ixx) * p * r) / Iyy * h
   r = r + (Nm + (Ixx - Iyy) * p * q) / Izz * h
@@ -4105,7 +4133,7 @@ local V = Vector3.new
 --   rate 两发间隔、burst 一个点射几发、pause 点射之间歇多久；range 射程；spread 散布（度）、spreadPer 每格距离多几度
 FortDefs.W = {
   hmg = { kind = "gun", dmg = 34, rate = 0.12, burst = { 5, 9 }, pause = { 1.0, 1.8 }, range = 820, spread = 1.2, spreadPer = 0.0035,
-    vs = { inf = 1, light = 0.5, armor = 0.04, air = 0.4, ship = 0.05, fort = 0.12 }, fx = "lmg", head = 1 },
+    vs = { inf = 1, light = 0.5, armor = 0.04, air = 0.4, ship = 0.05, fort = 0.12 }, fx = "lmg", head = 1, snd = "mg127" },   -- snd：客户端声音（Fx.lua G.gunSnd）
   naval127 = { kind = "shell", dmg = 520, speed = 950, gscale = 0.5, splash = 15, rate = 10, range = 3300, minR = 160,   -- rate 原来 8：攻方还没有舰艇压制岸防炮
     vs = { inf = 1, light = 1.4, armor = 0.9, air = 0, ship = 1.4, fort = 1 }, fx = "tank" },
   flak35 = { kind = "flak", dmg = 70, speed = 1150, gscale = 0.15, splash = 11, rate = 0.25, range = 2300, fuse = 9, spread = 1.1,
@@ -9570,8 +9598,8 @@ add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己�
   "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold RMB (or C) and drag to look around · M keyboard flight · Shift/Ctrl/mouse wheel throttle (hold Ctrl at idle on the ground to back up) · B airbrake · LMB gun (fires along the nose; the small circle ahead of enemy planes is the lead) · F missile / bomb (radar missiles: R picks a target on the radar screen, Alt+F locks it; beaming breaks the lock) · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · Alt+arrows / Alt+wheel aim the radar antenna · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
 add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 滚轮 油门 · B 减速板 · 按住右键拖动自由看（看的方向不跟着飞机转，松开回到身后） · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 · 1-6 选弹 · R 换目标 · Alt+R 雷达开关 · Alt+Q 雷达量程 · Alt+E 雷达模式（RWS / TWS / ACM）· Alt+Z 扫描方式 · Alt+方向键 / Alt+滚轮 挪雷达天线 · Alt+C 天线回中 · Alt+T 选雷达目标 · Alt+F 雷达锁定 / 解锁 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
   "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · hold RMB and drag to look around (view stays put while the plane maneuvers) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · Alt+arrows / Alt+wheel aim the radar antenna · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
-add("air.helpHeli", "鼠标准心 决定机头朝向：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· E 升 / Q 降 · A/D 侧飞 · W/S 也能前推后拉 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
-  "Aim decides where the nose points: aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · E up / Q down · A/D sidestep · W/S also push / pull the cyclic · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
+add("air.helpHeli", "鼠标准心 定方向（同战雷）：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· W 升 / S 降（松开自动定高）· A/D 侧飞 · Q/E 转机头 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
+  "Aim sets the direction (like War Thunder): aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · W up / S down (holds altitude when released) · A/D sidestep · Q/E turn the nose · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
 add("hud.spd", "速度 km/h", "SPD km/h")
 add("hud.alt", "高度 m", "ALT m")
@@ -9673,6 +9701,7 @@ add("juice.streak", "连续击杀 {1}", "{1} kill streak")
 
 add("coach.cyclic", "前倾 / 刹车", "Tilt fwd / brake")
 add("coach.strafe", "侧飞", "Sidestep")
+add("coach.yawNose", "转机头", "Turn nose")
 add("coach.rockets", "火箭 / 导弹", "Rockets / missiles")
 add("coach.stowPad", "收起平板", "Close tablet")
 add("coach.telegraph", "车钟（一档一档加减速）", "Engine order")
@@ -9713,8 +9742,8 @@ add("coach.card.jet.1", "Shift 推油门（推满进加力），A / D 在跑道�
 add("coach.card.jet.2", "速度到 {1} km/h 按住 S 抬头离地，起落架会自动收起；W 低头、S 抬头、A / D 滚转，压坡度再拉 S 就转弯", "At {1} km/h hold S to lift off — the gear retracts by itself. W nose down, S nose up, A / D roll; bank and pull S to turn")
 add("coach.card.jet.3", "左键机炮（打机头标记那里），F 导弹（1–6 换挂载，先锁定），X 热诱弹；回去降落：G 放起落架、Ctrl 收油门、机头对着跑道，停稳就补弹修理", "LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them), F missile (1–6 stores, lock first), X flares. To land: G gear down, Ctrl throttle down, point the nose at the runway, stop to rearm and repair")
 add("coach.card.heli.1", "先等旋翼转起来（平显上的转速到 100%）", "Wait for the rotor to spin up (RPM 100% on the HUD)")
-add("coach.card.heli.2", "按住 E 升、Q 降；准心往下机头前倾往前飞，准心往上往后仰减速；A / D 侧飞", "Hold E to climb, Q to descend; aim lower to dip the nose and fly ahead, aim higher to pitch back and slow; A / D sidestep")
-add("coach.card.heli.3", "速度有惯性：松杆不会马上停，按 S 往后带杆刹车。左键机炮，F 火箭 / 导弹，空格下飞机", "It keeps its momentum: hold S to flare and brake. LMB gun, F rockets / missiles, Space to get out")
+add("coach.card.heli.2", "按住 W 升、S 降（同战雷）；准心往下机头前倾往前飞，准心往上往后仰减速；A / D 侧飞、Q / E 转机头", "Hold W to climb, S to descend (like War Thunder); aim lower to dip the nose and fly ahead, aim higher to pitch back and slow; A / D sidestep, Q / E turn")
+add("coach.card.heli.3", "速度有惯性：不会马上停，准心往上一抬机头后仰刹车。左键机炮，F 火箭 / 导弹，空格下飞机", "It keeps its momentum: aim higher to flare and brake. LMB gun, F rockets / missiles, Space to get out")
 add("coach.card.uav.1", "你端着平板遥控无人机，人还站在原地——当心被打", "You fly the drone from a tablet while standing where you are — stay covered")
 add("coach.card.uav.2", "鼠标管方向，W / S 加速减速，A / D 滚转", "The mouse steers, W / S speed, A / D roll")
 add("coach.card.uav.3", "右键 / V 切镜头、Z 变焦，F 发导弹，空格收起平板", "RMB / V camera, Z zoom, F missile, Space to put the tablet away")
@@ -20011,6 +20040,19 @@ return {
 		src = "ProSoundEffects：Rifle Single Shots 1–4" },
 	hmg = { ids = { 90006135469253, 133704528245805 }, vol = 1, s = { 0.95, 1.05 }, len = 2.5,
 		src = "Obamacaremathlab：50 Caliber heavy machine gun fire once (2)、50 Caliber HMG fire once sound effect (3)" },
+	-- 车上的机枪、机关炮（用户 11-28「机枪机炮的音效不太好听」，照战雷；Fx.lua G.gunSnd）：
+	--   并列机枪（7.62）：M4A1 的整段连发录音（描述写着「Crack of Automatic Fire……Bigger Low End」的两条，录音里约 740 / 757 发 / 分）——
+	--   按住时循环其中整数发的那一段（cut.loop：起止都在两发之间的过零点，接缝不响），松开放最后一发起到回声完（cut.tail 起、cut.len 止）；
+	--   rpm 录音里的射速（按这挺枪的射速微调播放速度）。分析：下载 Ogg、按包络找每发的起点、自相关定射速、48 kHz 上对过零点
+	mg762 = { ids = { 9113185032, 9113183802 }, vol = 1, s = { 1, 1 }, len = 5.4,
+		rpm = { [9113185032] = 740, [9113183802] = 757 },
+		cut = { [9113185032] = { loop = { 0.16081, 0.73119 }, tail = 0.87009, len = 3.69 },
+			[9113183802] = { loop = { 0.3622, 1.59109 }, tail = 1.948, len = 5.36 } },
+		src = "ProSoundEffects：Assault Rifle 18、Assault Rifle 19（M4A1 Carbine, Crack of Automatic Fire, Series of Bursts, Bigger Low End）" },
+	--   大口径机枪、机关炮、慢的航炮：巴雷特 M82 的单发（.50 BMG，和 M2 重机枪同一种 12.7×99 毫米弹；开头一下很冲、0.1 秒后是回声，
+	--   30～300 赫兹占一半多）——一发一发按射速放，口径越大放得越慢越低沉；同上面 rifle 那四条
+	bmg50 = { ids = { 9118173739, 9118173999, 9118173988, 9118173992 }, vol = 1, s = { 0.98, 1.02 }, len = 3.4,
+		src = "ProSoundEffects：Rifle Single Shots 1–4（Barrett M82 .50 Cal, Single Shots）" },
 	missile = { ids = { 509177476, 101663861280893 }, vol = 1.3, s = { 0.95, 1.05 }, len = 5,
 		src = "ZuluCenturion：SeaRAM missile launch；ii1_z：ATGM Launch (Stugna-P) Missile" },
 	-- 子弹从耳边飞过、跳弹、打在金属上、音爆
@@ -21396,7 +21438,7 @@ VehDefs.W = {
     vs = { inf = 1, light = 1, armor = 0.24, air = 1.3, ship = 0.3, fort = 0.55 }, fx = "ac", cal = 0.18 },
   -- BRDM-2 的 KPVT 14.5 毫米重机枪（BPU-1 单人炮塔，一节弹链 50 发、车里一共 500 发，约 600 发 / 分；B-32 穿甲燃烧弹 500 米约 32 毫米）
   kpvt = { kind = "gun", dmg = 62, rate = 0.1, mag = 50, reload = 6, reserve = 450, range = 1600, spread = 0.4,
-    vs = { inf = 1, light = 0.8, armor = 0.08, air = 0.6, ship = 0.1, fort = 0.25 }, fx = "lmg" },
+    vs = { inf = 1, light = 0.8, armor = 0.08, air = 0.6, ship = 0.1, fort = 0.25 }, fx = "lmg", snd = "mg145" },
   -- 铠甲-S1 的两门 2A38M 双管 30 毫米高炮（一门一分钟两千五百发，两门一起打）：打飞机为主，地面也能扫
   ac30aa = { kind = "shell", dmg = 44, speed = 1320, drop = 0.15, splash = 4.5, rate = 0.03, mag = 350, reload = 6, reserve = 1050, range = 2600,
     vs = { inf = 0.9, light = 0.8, armor = 0.12, air = 2.3, ship = 0.25, fort = 0.35 }, fx = "ac", cal = 0.2 },
@@ -21431,10 +21473,12 @@ VehDefs.W = {
   --   86 式的红箭-73（仿 9M14「婴儿」：约 425 毫米、120 米 / 秒、3 公里，炮上导轨一枚 + 车里四枚）
   tow1 = { kind = "atgm", dmg = 750, speed = 778, splash = 4, rate = 2.5, mag = 2, reload = 14, reserve = 5, range = 10500, fx = "msl", turn = 2.4 },
   hj73 = { kind = "atgm", dmg = 620, speed = 336, splash = 3, rate = 1, mag = 1, reload = 25, reserve = 4, range = 8400, fx = "msl", turn = 1.3 },
+  -- snd：声音类别（客户端 Fx.lua G.gunSnd，用户 11-28「机枪机炮的音效不太好听」）——mg762 并列机枪：真录音连发循环 + 松开的收尾；
+  --   mg127 / mg145 大口径机枪：.50 真录音单发一发一发按射速放（14.5 慢一成、更低沉）
   coax = { kind = "gun", dmg = 24, rate = 0.08, mag = 200, reload = 5, reserve = 2000, range = 900, spread = 0.45,
-    vs = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }, fx = "lmg" },
+    vs = { inf = 1, light = 0.15, armor = 0, air = 0.1, ship = 0, fort = 0.04 }, fx = "lmg", snd = "mg762" },
   hmg = { kind = "gun", dmg = 40, rate = 0.11, mag = 100, reload = 5, reserve = 900, range = 1200, spread = 0.5,
-    vs = { inf = 1, light = 0.5, armor = 0.04, air = 0.4, ship = 0.05, fort = 0.12 }, fx = "lmg" },
+    vs = { inf = 1, light = 0.5, armor = 0.04, air = 0.4, ship = 0.05, fort = 0.12 }, fx = "lmg", snd = "mg127" },
   how155 = { kind = "arty", dmg = 340, splash = 26, rate = 7, mag = 1, reload = 0, reserve = 40, minR = 300, maxR = 3600, flight = 6,
     vs = { inf = 1, light = 1, armor = 0.6, air = 0, ship = 0.5, fort = 1.2 } },
   mlrs = { kind = "arty", dmg = 180, splash = 22, rate = 0.45, mag = 12, reload = 25, reserve = 24, minR = 500, maxR = 4000, flight = 7, scatter = 40,
@@ -24378,7 +24422,7 @@ function AIVeh.init(G)
         G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },
           life = math.max(w.range / w.speed + 0.5, 4000 * BAL.S / w.speed) })   -- 没有弹道表的炮（机关炮、73 毫米）：也飞 4 公里（原来射程 ÷ 初速，一公里多就没了）
       end
-      G.fx({ k = "vfire", p = mz.Position, d = dir, f = w.fx, id = e.id })
+      G.fx({ k = "vfire", p = mz.Position, d = dir, f = w.fx, id = e.id, r = (w.rate < 0.5) and w.rate or nil, c = w.cal })   -- r、c：机关炮的射速、口径（客户端声音按它）
     else
       G.botShot(mz.Position, mz.Position + spread(mz.LookVector, (w.spread or 0.5) * 1.6 * optK) * (w.range or 600), w, S, { e.model }, 0)
     end
@@ -26610,8 +26654,9 @@ function Armor.init(G)
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
           life = 60 })   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
       end
-      G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id })
+      G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id, r = (w.rate < 0.5) and w.rate or nil, c = w.cal })   -- r、c：机关炮的射速、口径（客户端声音按它）
     elseif w.kind == "gun" then
+      S.own = true   -- 他自己的客户端已经本地画了、响了（Weapons.lua botShot 给这一发带上 by）
       G.botShot(mz.Position, mz.Position + spreadDir(gdir, w.spread) * w.range, w, S, { e.model, P.char }, 0)
     elseif w.kind == "sam" then
       -- 地空导弹（铠甲-S1 的 57E6）：要客户端用防空火控雷达锁住的那架飞机（msg.tgt，AaFcs 的 Q 锁定）——服务器看一眼（敌方、飞机、射程里），
@@ -32347,7 +32392,7 @@ function Forts.init(G)
     local d2 = spreadDir(dir, w.spread)
     G.launch({ kind = "shell", pos = mz, vel = d2 * w.speed, grav = true, gscale = w.gscale, w = w, src = srcOf(e), ignore = ignoreOf(e),
       life = w.range / w.speed + 0.5, step = flakStep, team = e.team, tfuse = tfuse or (w.range / w.speed), byEnt = e.id })
-    G.fx({ k = "vfire", p = mz, d = dir, f = "ac", id = e.id })
+    G.fx({ k = "vfire", p = mz, d = dir, f = "ac", id = e.id, r = ((w.rate or 1) < 0.5) and w.rate or nil, c = w.cal or 0.2 })   -- 高炮：客户端声音按射速、口径
   end
 
   -- 榴弹炮：落点散布随距离变大；返回 false 是超出射程
@@ -41441,8 +41486,10 @@ function Weapons.init(G)
     local rw = P and G.rewindShot and G.rewindShot(P, from, dir, w.range or 500, res)
     local hit = (rw and rw.pos) or (res and res.Position) or (from + dir * (w.range or 500))
     local B = srcInfo and srcInfo.bot
+    -- s：车上、工事上机枪的声音类别（VehDefs 的 snd，客户端 Fx.lua G.gunSnd 接成连发）；by：真人开的车上的机枪（srcInfo.own，Armor.lua）——
+    --   他自己的客户端开火那一刻已经本地画了曳光、放了声音（Drive.lua），回来的这一发跳过（原来又在枪口响一遍）
     G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit, t = srcInfo and srcInfo.team, ent = B and B.e and B.e.id or nil,   -- ent：哪个小兵开的（客户端画后坐、枪口焰）
-      h = surfOf(rw, res) })
+      h = surfOf(rw, res), s = w.snd, by = (srcInfo and srcInfo.own and P and P.pl) and P.pl.UserId or nil })
     if G.treeRay then G.treeRay(from, hit, w) end   -- 钢城：车上的机枪、工事打在树干上（Trees.lua）
     if rw then
       G.hitRewound(rw, w, w.dmg, srcInfo, w.head or 1)
@@ -51084,7 +51131,7 @@ function Coach.init(G)
     jet = { { "W/S", "coach.pitch" }, { "A/D", "coach.roll" }, { "Shift/Ctrl", "coach.throttle" }, { "LMB", "coach.gun" }, { "F", "coach.missile" } },
     jetLand = { { "G", "coach.gearDown" }, { "Ctrl", "coach.throttleDown" } },
     heliSpool = { { nil, "coach.spool" } },
-    heli = { { "Mouse", "coach.nose" }, { "E/Q", "coach.updown" }, { "W/S", "coach.cyclic" }, { "A/D", "coach.strafe" }, { "LMB", "coach.gun" } },
+    heli = { { "Mouse", "coach.nose" }, { "W/S", "coach.updown" }, { "A/D", "coach.strafe" }, { "Q/E", "coach.yawNose" }, { "LMB", "coach.gun" } },   -- 同战雷（11-28）
     uav = { { "Mouse", "coach.aimSteer" }, { "W/S", "coach.speed" }, { "A/D", "coach.roll" }, { "LMB", "coach.gun" }, { "F", "coach.missile" }, { "Space", "coach.stowPad" } },
     ship = { { "W/S", "coach.telegraph" }, { "A/D", "coach.rudder" }, { "LMB", "coach.fire" }, { "2", "coach.asm" }, { "Space", "coach.leaveShip" } },
     fort = { { "Mouse", "coach.aim" }, { "LMB", "coach.fire" }, { "RMB", "coach.sight" }, { "Space", "coach.leave" } },
@@ -55613,16 +55660,30 @@ function Drive.init(G)
     G.R.Drive:FireServer({ op = "fire", w = wid, dir = mz.LookVector, aim = st.aimPt, ty = st.ty, gp = st.gp, my = st.my, mp = st.mp,
       am = BAL.GUN[wid] and st.fcs.am or nil, tgt = samTgt,
       disp = (st.arty and G.artyBloom) and G.artyBloom() or nil })   -- 炮兵视角里散布圈胀开了多少（0～1，服务器按它散落点）   -- am 坦克炮这一发是什么弹（服务器按它的初速、阻力打出去）；tgt 地空导弹的目标
+    -- 声音（用户 11-28「机枪机炮的音效不太好听」，Fx.lua G.gunSnd）：自己打的本地马上放——机枪按 VehDefs 的 snd（并列机枪连发循环、
+    --   大口径单发连放），连发的机关炮一发一发放 .50 真录音、按口径放慢；服务器回来的那一发跳过（机枪 by、机关炮看车的 id）
+    local autoGun = (w.rate or 1) < 0.5
+    local snd = nil
+    if G.gunSnd then
+      if w.kind == "gun" and w.snd then
+        snd = G.gunSnd("me:" .. wid, w.snd, mz.Position, w.rate, nil, true)
+        if snd and w.snd == "mg762" then
+          st.gsOn = st.gsOn or {}
+          st.gsOn[wid] = true   -- 松开扳机时收尾（下面每帧看）
+        end
+      elseif w.kind == "shell" and autoGun and (w.fx == "ac" or w.fx == "agun") then
+        if not G.gunSnd("me:" .. wid, "ac", mz.Position, w.rate * rofK * crewK * rackK, w.cal, true) and G.playSound then G.playSound("lmg", mz.Position) end
+      end
+    end
     if w.kind == "gun" and G.gunFx then   -- 自己打的机枪：本地马上画曳光（服务器发回来的特效会跳过自己打的，原来开车打机枪什么都看不见）
       local dir = mz.LookVector
       local ex = rayEx()
       aimParams.FilterDescendantsInstances = ex
       local res = G.rayFar(mz.Position, dir * (w.range or 900), aimParams)
-      G.gunFx(wid, mz.Position, res and res.Position or (mz.Position + dir * (w.range or 900)), true)
+      G.gunFx(wid, mz.Position, res and res.Position or (mz.Position + dir * (w.range or 900)), true, nil, nil, nil, snd)
     end
     -- 连发的机炮（射击间隔 < 0.5 秒：M2A3 25 毫米、BMP 30 毫米、防空炮……）开火不晃镜头、不后坐、不推车身
     --   （用户 11-27「机炮开打的时候屏幕不要往前拉 就正常就行 也别搞后坐力」）；单发的主炮照旧（11-25 要的战雷手感）
-    local autoGun = (w.rate or 1) < 0.5
     if (w.kind == "shell" or w.kind == "arty") and autoGun then
       if G.vehRecoil then G.vehRecoil(st.id) end   -- 炮管往后一缩（模型上的，不动镜头）
       st.fireT = t
@@ -56051,6 +56112,16 @@ function Drive.init(G)
     if st.mgFiring then   -- 按住空格：机枪连发
       local mw = mgWeapon()
       if mw then tryFire(mw) end
+    end
+    if st.gsOn and next(st.gsOn) and G.gunSndOff then   -- 并列机枪松开扳机（左键、空格都没按着它）：连发循环马上收尾（Fx.lua）
+      local a = st.firing and weaponId() or nil
+      local b = st.mgFiring and mgWeapon() or nil
+      for wid in pairs(st.gsOn) do
+        if wid ~= a and wid ~= b then
+          G.gunSndOff("me:" .. wid)
+          st.gsOn[wid] = nil
+        end
+      end
     end
     -- 报给服务器（每秒 15 次）
     st.sendT -= dt
@@ -57588,7 +57659,7 @@ return FarLod
 --       开着光电吊舱、飞出作战区自动掉头时也是按给的方向自动飞（教官）；
 --       速度不够失速（机头往下掉）、爬升掉速、俯冲加速、拉杆转弯掉能量；跑道 / 甲板上：油门加速，速度够了按 S 抬头离地；
 --       放着起落架、下沉不快、速度不快、姿态平就能落地（落在自己的机场 / 甲板上停 5 秒补弹修理）
---     直升机：W / S 前后、A / D 转向（快的时候压坡度转弯）、E 升 / Q 降，旋翼先转起来才飞得动；鼠标转镜头、机头炮塔跟着镜头瞄
+--     直升机（11-28 起照战雷的鼠标瞄准）：鼠标准心定方向（往下往前飞、往上减速）、W 升 / S 降、A / D 侧飞、Q / E 转机头（快的时候压坡度转弯），旋翼先转起来才飞得动；机头炮塔跟着镜头瞄
 --     武器：鼠标左键 机炮（直升机机头炮塔跟着鼠标瞄）；F 发导弹 / 火箭 / 炸弹（1～6 选用哪种；导弹、制导炸弹要锁定：目标在导引头视场里待够锁定时间），
 --       R 换目标；X 热诱弹；G 起落架；空格 下飞机（在天上跳伞）
 --     平显：速度、高度、油门、准星（机头指向）、锁定框、炸弹落点、失速 / 拉起 / 导弹来袭 / 飞出作战区警告（鼠标瞄准圈只有无人机画）
@@ -59643,7 +59714,7 @@ function Fly.init(G)
   -- 直升机（用户：直升机操作感觉不太真实）：按真直升机的道理飞——旋翼拉力沿桨盘法线，桨盘往哪倾就往哪加速：
   --   W / S 前推后拉驾驶杆（低头加速、抬头减速 / 后退）；姿态有惯性（二阶弹簧），松杆自动回平；
   --   低速（悬停附近）松杆时自动往反方向带一点把飘移收住，快的时候松杆就保持平飞、靠阻力慢慢减速（要停下来得抬头拉一下）；
-  --   E / Q 总距（E 升、Q 降）：拉力大小（同样的总距，机身一倾、竖直方向的拉力就小了，会掉高度）；不按时自动把升降速度收到 0（定高）；
+  --   W / S 总距（W 升、S 降；11-28 前是 E / Q）：拉力大小（同样的总距，机身一倾、竖直方向的拉力就小了，会掉高度）；不按时自动把升降速度收到 0（定高）；
   --   A / D 脚蹬：偏航角速度，有惯性；速度上来以后压坡度就会转弯（协调转弯），尾翼让机头顺着来流（风标效应）；
   --   平移升力（二十几格每秒以上旋翼效率高一点）、地效（离地一个旋翼直径以内托得更稳）；最高平飞速度、爬升率照型号表
   local function heliPhysics(dt)
@@ -59653,14 +59724,24 @@ function Fly.init(G)
     local auto = st.out and not st.ground   -- 熄火自转下滑：还能往前飘一点，快落地时拉总距（空格）下沉慢一些
     -- 用户：桨盘对着哪里往哪飞（按受力算，要有物理引擎的感觉），准心决定机头朝向——
     --   鼠标转准心（镜头），机头跟着准心转：尾桨有惯性，最快 d.yaw 度 / 秒，起转、停住都要一会儿（按住 Alt 自由看，机头不跟）
-    --   W / S 桨盘前倾 / 后仰（往前飞 / 带杆刹车、倒飞），A / D 桨盘左右倾（侧飞）；E 升、Q 降（Ctrl / C 也降）；空格下飞机
+    --   准心往下 / 往上：桨盘前倾 / 后仰（往前飞 / 带杆刹车、倒飞），A / D 桨盘左右倾（侧飞）；W 升、S 降；空格下飞机
     --   拉力顺着桨盘法线：倾得越多水平推力越大、往上托的越少（猛一推杆先掉一点高度）；速度有惯性，松杆桨盘回平但人还往前冲，靠阻力慢慢停
     --   快速前飞时转机头，桨盘自动往那边压坡度（协调转弯），航迹跟着机头弯过去；侧面阻力大，侧飞快不起来
-    local fwdIn = (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0)
+    -- 照战雷的鼠标瞄准（用户 11-28「直升机……反正就弄成和战雷一样就行」；战雷开发日志：鼠标定直升机要去的方向，
+    --   教官管周期变距和脚蹬，总距玩家自己管）：W / S 总距（升 / 降，松开自动定高）、鼠标准心定方向（往下前倾往前飞、往上后仰减速）、
+    --   A / D 侧飞、Q / E 转机头（直接转准心，机头跟过去、不会被拽回去）。原来 E / Q 升降、W / S 前推后拉
+    local fwdIn = 0
     local sideIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
     local yawIn = 0
-    local upIn = ((key(Enum.KeyCode.E) or (touch and touch.up)) and 1 or 0)
-      - ((key(Enum.KeyCode.Q) or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.C) or (touch and touch.down)) and 1 or 0)
+    local upIn = ((key(Enum.KeyCode.W) or (touch and touch.up)) and 1 or 0)
+      - ((key(Enum.KeyCode.S) or (touch and touch.down)) and 1 or 0)
+    if not G.mobile then
+      local qe = (key(Enum.KeyCode.E) and 1 or 0) - (key(Enum.KeyCode.Q) and 1 or 0)
+      if qe ~= 0 then   -- Q / E：转准心的方位（按住 Alt 自由看时转机头记着的那个方位）
+        local dy = -qe * rad(d.yaw) * dt
+        if st.noseYaw then st.noseYaw += dy else st.camYaw = (st.camYaw or st.yaw) + dy end
+      end
+    end
     if G.mobile and controls then
       local ok, mv = pcall(function() return controls:GetMoveVector() end)
       if ok and typeof(mv) == "Vector3" then
@@ -59692,7 +59773,7 @@ function Fly.init(G)
     -- 驾驶杆 → 桨盘想要的倾角（俯仰：负的是低头 = 往前倾）；松杆桨盘回平
     --   用户 11-22：「准心决定机头对准哪里——鼠标准心往下，螺旋桨对准前面，往前飞；准心突然往上，直升机受力往后和往上」：
     --   电脑上俯仰跟着准心（镜头的俯仰）：准心比平常那个略往下看的角度（AIM0）低多少，机头、桨盘就往前倾多少（到型号的最大倾角为止），
-    --   高多少就往后仰多少；W / S 照样能前推后拉（加在准心上，合起来不超过最大倾角）；按住 Alt 自由看时停在按下那一刻的俯仰；手机没有鼠标照旧用摇杆前后
+    --   高多少就往后仰多少（W / S 是总距，不再前推后拉）；按住 Alt 自由看时停在按下那一刻的俯仰；手机没有鼠标照旧用摇杆前后
     local tP = -fwdIn * maxT
     if not G.mobile then
       local AIM0 = -0.15   -- 坐进来时镜头的俯仰（略往下看）：这时桨盘是平的
@@ -61315,23 +61396,28 @@ function Fx.init(G)
   pcall(function() SL = require(game:GetService("ReplicatedStorage"):WaitForChild("SoundLib", 5)) or {} end)
   local REAL, REALLEN = {}, {}   -- [键] = { 载上了的 SoundId… }；[SoundId] = 秒
   task.spawn(function()
-    local list, byId = {}, {}
+    local list, byId = {}, {}   -- byId[SoundId] = { 键… }：同一条录音可以给好几个键用（巴雷特单发：rifle、bmg50），一条只预载一次
     for key, cfg in pairs(SL) do
       for _, id in ipairs(cfg.ids or {}) do
-        local s = Instance.new("Sound")
-        s.SoundId = "rbxassetid://" .. tostring(id)
-        table.insert(list, s)
-        byId[s.SoundId] = key
-        REALLEN[s.SoundId] = cfg.len or 3
+        local sid = "rbxassetid://" .. tostring(id)
+        if not byId[sid] then
+          local s = Instance.new("Sound")
+          s.SoundId = sid
+          table.insert(list, s)
+          byId[sid] = {}
+          REALLEN[sid] = cfg.len or 3
+        end
+        table.insert(byId[sid], key)
       end
     end
     if #list == 0 then return end
     local ok = pcall(function()
       game:GetService("ContentProvider"):PreloadAsync(list, function(cid, status)
-        local key = byId[cid]
-        if key and status == Enum.AssetFetchStatus.Success then
-          REAL[key] = REAL[key] or {}
-          table.insert(REAL[key], cid)
+        if byId[cid] and status == Enum.AssetFetchStatus.Success then
+          for _, key in ipairs(byId[cid]) do
+            REAL[key] = REAL[key] or {}
+            if not table.find(REAL[key], cid) then table.insert(REAL[key], cid) end
+          end
         end
       end)
     end)
@@ -61626,6 +61712,12 @@ function Fx.init(G)
     return { id = EXP, vol = 1, s = { sp, sp }, loop = { a, a + per * sp }, eq = { (per > 0.03) and 7 or 4, 0, (per < 0.02) and 2 or -3 } }
   end
   function G.gunLoop(key, gid, p, on)
+    local w0 = AD.W[gid or ""]
+    if on and w0 and (w0.rate or 0) >= 0.045 and G.gunClock(key, "ac", p, true, w0.rate, w0.cal) then
+      on = false   -- 射得慢的（一秒不到 22 发：直升机的 M230、2A42、M197……）改成一发一发放真录音（下面 G.gunClock）：这一挺的循环声停掉
+    elseif not on then
+      G.gunClock(key, nil, nil, false)   -- 松开：一发一发放的那挺也停（最后一发的回声照样拖完）
+    end
     local g = guns[key]
     if g and (not on or g.gid ~= gid) then
       g.snd:Destroy()
@@ -61649,6 +61741,252 @@ function Fx.init(G)
     local t = os.clock()
     for k, g in pairs(guns) do
       if t > g.till then G.gunLoop(k, nil, nil, false) end
+    end
+  end
+
+  ---------------------------------------------------------------- 车上的机枪、机关炮，慢的航炮（用户 11-28「机枪机炮的音效不太好听」，照战雷）
+  --   原来每一发放一次「打一枪」的录音（重机枪单发拉快一点），一秒十来发叠在一起、又被每 0.1 秒 8 个的上限掐掉一些：节奏乱、声音薄；
+  --   自己开车打的并列机枪放的还是步枪声，服务器回来的那一发又在枪口响一遍。现在（录音见 SoundLib 的 mg762、bmg50）：
+  --   · 并列机枪 mg762：真录音的整段连发循环（一挺一个 Sound，循环其中整数发的那一段），松开放最后一发起到回声完的那截
+  --   · 大口径机枪 mg127 / mg145、机关炮 ac：巴雷特 .50 单发一发一发按射速放（14.5 慢一成，机关炮按口径放慢、更低沉）；每打一发，
+  --     前一发很快淡掉（只留开头那一下），最后一发不淡、回声拖完——松开扳机就是一声带回声的收尾；一挺 4 个 Sound 轮流用，不每发新建
+  --   别人的：服务器每一发一个事件，同一挺按 key（机关炮：车的 id）或位置（14 格内、同一类）认，停了一阵算松开；网络一帧里挤进来的
+  --     几发按射速一发一发排开放（最多欠 3 发，多的不补）。慢的航炮（服务器不是每发都发）按射速自己打拍子（G.gunClock）
+  --   同时最多 GS_MAX 挺在响（满了顶掉离镜头最远的那挺），远过 GS_FAR 的不响；录音没载上返回 false（调用的照旧放原来的声音）
+  local GS_MAX, GS_FAR, GS_N = 8, 1900, 4
+  local GS_RATE = { mg762 = 0.08, mg127 = 0.11, mg145 = 0.1, ac = 0.2 }   -- 没带射速时按类别（VehDefs：coax 0.08、hmg 0.11、kpvt 0.1）
+  local gsList, gsPool = {}, { shot = {}, loop = {} }
+  G.gunSndState = function() return gsList end   -- 测试用
+  local function shotTone(cls, cal)   -- 单发的速度（音高）、音量、低音（分贝）
+    if cls == "mg127" then return 1, 1, 0 end
+    if cls == "mg145" then return 0.9, 1.1, 1 end
+    local c = cal or 0.18   -- 机关炮、航炮：VehDefs / AirDefs 的 cal（0.14 约 20 毫米 … 0.22 约 30 毫米）
+    return math.clamp(0.95 - (c - 0.12) * 3.5, 0.55, 0.9), 1.25, 3
+  end
+  G.gunShotTone = shotTone   -- 测试用
+  local function gsRelease(g)   -- 收回池里（打完了、回声也完了，或者被顶掉）
+    for _, sd in ipairs(g.voices) do sd:Stop() end
+    g.holder.CFrame = CFrame.new(0, -2600, 0)
+    local i = table.find(gsList, g)
+    if i then table.remove(gsList, i) end
+    table.insert(gsPool[g.kind], g)
+  end
+  local function gsGet(kind, key, cls, p)
+    for _, g in ipairs(gsList) do
+      if g.kind == kind and g.cls == cls then
+        if key ~= nil then
+          if g.key == key then return g end
+        elseif g.key == nil and g.p and p and (g.p - p).Magnitude < 14 then
+          return g
+        end
+      end
+    end
+    local cp = cam.CFrame.Position
+    local d = p and (p - cp).Magnitude or 0
+    if d > GS_FAR then return nil end
+    if #gsList >= GS_MAX then   -- 满了：顶掉最远的那挺（这一挺比它还远就不响）
+      local far, fd = nil, -1
+      for _, g in ipairs(gsList) do
+        local gd = g.p and (g.p - cp).Magnitude or 0
+        if gd > fd then far, fd = g, gd end
+      end
+      if not far or fd <= d then return nil end
+      gsRelease(far)
+    end
+    local g = table.remove(gsPool[kind])
+    if not g then
+      g = { kind = kind, voices = {}, eqs = {},
+        holder = part(nil, V(0.2, 0.2, 0.2), CFrame.new(0, -2600, 0), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1) }
+      g.holder.Name = "GunSnd"
+      for i = 1, (kind == "shot") and GS_N or 2 do   -- 单发：轮流用的 4 个；循环：循环那个 + 收尾那个
+        local sd = Instance.new("Sound")
+        sd.RollOffMinDistance, sd.RollOffMaxDistance = 40, 2600
+        local eq = Instance.new("EqualizerSoundEffect")
+        eq.LowGain, eq.MidGain, eq.HighGain = 0, 0, 0
+        eq.Parent = sd
+        sd.Parent = g.holder
+        g.voices[i], g.eqs[i] = sd, eq
+      end
+    end
+    local t = os.clock()
+    g.key, g.cls, g.p, g.own = key, cls, p, nil
+    g.i, g.pend, g.nextT, g.lastT, g.lastShot, g.till, g.on = 0, 0, 0, t, t, nil, false
+    g.fade, g.live, g.vb, g.shots, g.tails = {}, {}, {}, 0, 0
+    table.insert(gsList, g)
+    return g
+  end
+  -- 远处的高音被吃掉、近处刚炸过发闷（Shock.lua 的 G.muffle）、自己在车里 / 炮长镜里打的闷一点：返回 高音分贝、音量倍数
+  local function gsHi(g)
+    local d = g.p and (g.p - cam.CFrame.Position).Magnitude or 0
+    local muf = G.muffle and G.muffle() or 0
+    local inside = (g.own and ((G.interiorOn and G.interiorOn()) or (G.drive and G.drive.sight))) and -6 or 0
+    return math.max(-80, -math.min(18, d / 90) - 34 * muf + inside), 1 - 0.55 * muf
+  end
+  local function gsShoot(g, t)   -- 单发：轮到的那个 Sound 从头放；前一发开始淡掉
+    local ids = REAL.bmg50
+    if not ids or #ids == 0 then return end
+    g.i = g.i % GS_N + 1
+    local v, eq = g.voices[g.i], g.eqs[g.i]
+    local id = ids[(g.i - 1) % #ids + 1]   -- 四条录音轮着（同一挺每一发不完全一样）
+    if v.SoundId ~= id then v.SoundId = id end
+    local hi, mv = gsHi(g)
+    v:Stop()
+    v.TimePosition = 0
+    v.PlaybackSpeed = g.sp * (0.985 + 0.03 * math.random())
+    v.Volume = math.min(10, g.vol * mv)
+    eq.LowGain, eq.HighGain = g.low, hi
+    v:Play()
+    g.fade[g.i], g.live[g.i], g.vb[g.i] = nil, true, v.Volume
+    local pi = (g.i - 2) % GS_N + 1   -- 前一发：只留开头那一下（最后一发没有后一发接它，回声拖完）
+    if g.live[pi] and not g.fade[pi] then g.fade[pi] = t end
+    g.lastShot = t
+    g.shots += 1
+  end
+  local function gsLoopStart(g)   -- 并列机枪按下：随机挑一条连发录音，从头放（头两发是自然的起头），到循环段尾跳回循环段头
+    local ids = REAL.mg762
+    local cfg = SL.mg762
+    if not ids or #ids == 0 or not cfg or not cfg.cut then return false end
+    local rid = ids[math.random(#ids)]
+    local num = tonumber(string.match(rid, "%d+$"))
+    local cut = num and cfg.cut[num]
+    if not cut then return false end
+    g.rid, g.cut = rid, cut
+    g.sp = math.clamp((60 / g.rate) / ((cfg.rpm and cfg.rpm[num]) or 750), 0.9, 1.12)   -- 按这挺枪的射速微调（7.62 并列机枪多在 650～800 发 / 分）
+    g.vol = (cfg.vol or 1) * (g.own and 0.85 or 1)
+    local v, eq = g.voices[1], g.eqs[1]
+    local hi, mv = gsHi(g)
+    v:Stop()
+    v.SoundId = rid
+    v.PlaybackRegionsEnabled = true
+    v.PlaybackRegion = NumberRange.new(0, cut.len)
+    v.LoopRegion = NumberRange.new(cut.loop[1], cut.loop[2])
+    v.Looped = true
+    v.PlaybackSpeed = g.sp
+    v.Volume = math.min(10, g.vol * mv)
+    eq.LowGain, eq.HighGain = 1, hi
+    v.TimePosition = 0
+    v:Play()
+    g.on = true
+    return true
+  end
+  local function gsLoopStop(g, t)   -- 松开：循环停，接着放同一条录音里最后一发起到回声完的那截
+    g.on = false
+    local v, tl, eq = g.voices[1], g.voices[2], g.eqs[2]
+    v:Stop()
+    local hi, mv = gsHi(g)
+    tl:Stop()
+    tl.SoundId = g.rid
+    tl.Looped = false
+    tl.PlaybackRegionsEnabled = true
+    tl.PlaybackRegion = NumberRange.new(g.cut.tail, g.cut.len)
+    tl.PlaybackSpeed = g.sp
+    tl.Volume = math.min(10, g.vol * mv)
+    eq.LowGain, eq.HighGain = 1, hi
+    tl.TimePosition = g.cut.tail
+    tl:Play()
+    g.lastShot = t
+    g.tails += 1
+  end
+  -- 机枪 / 机关炮开了一发（车上、工事上的；自己打的在 Drive.lua 本地马上放，服务器回来的那一发跳过）：
+  --   key 哪一挺（自己的 "me:武器"、别人的机关炮 "v车 id"；nil 按位置认），cls 类别（VehDefs 的 snd：mg762 / mg127 / mg145；机关炮 "ac"），
+  --   p 枪口，rate 射击间隔（秒），cal 口径（机关炮定音高），own 自己打的。放了（或者太远、挤不下不放）返回 true；录音没载上返回 false
+  function G.gunSnd(key, cls, p, rate, cal, own)
+    local loop = cls == "mg762"
+    local need = REAL[loop and "mg762" or "bmg50"]
+    if not need or #need == 0 or typeof(p) ~= "Vector3" then return false end
+    local t = os.clock()
+    local g = gsGet(loop and "loop" or "shot", key, cls, p)
+    if not g then return true end   -- 太远、挤不下：不响（也不放原来那声）
+    g.p, g.own, g.lastT = p, own, t
+    g.holder.CFrame = CFrame.new(p)
+    g.rate = rate or g.rate or GS_RATE[cls] or 0.1
+    if loop then
+      g.timeout = own and (g.rate * 1.3 + 0.03) or math.max(0.16, g.rate * 1.6 + 0.05)   -- 别人的：网络一帧帧来，多等一点
+      if not g.on and not gsLoopStart(g) then
+        gsRelease(g)
+        return false
+      end
+      return true
+    end
+    g.sp, g.vol, g.low = shotTone(cls, cal)
+    if own then g.vol *= 0.85 end
+    g.till = nil
+    g.pend = math.min(g.pend + 1, 3)
+    if t >= g.nextT then
+      gsShoot(g, t)
+      g.pend -= 1
+      g.nextT = t + g.rate * 0.85
+    end
+    return true
+  end
+  -- 自己松开扳机（Drive.lua：这一帧没按住了）：并列机枪的循环马上停、放收尾（不等超时，不多响一两发）
+  function G.gunSndOff(key)
+    for _, g in ipairs(gsList) do
+      if g.key == key and g.kind == "loop" and g.on then gsLoopStop(g, os.clock()) end
+    end
+  end
+  -- 按射速自己打拍子（慢的航炮：服务器不是每一发都发事件）：on 时开着——自己的（key "me"，p nil 在耳边）一直开到 off，别人的 0.25 秒没再收到就停
+  function G.gunClock(key, cls, p, on, rate, cal)
+    if not on then
+      for _, g in ipairs(gsList) do if g.key == key and g.till then g.till = 0 end end
+      return true
+    end
+    if not (REAL.bmg50 and #REAL.bmg50 > 0) then return false end
+    local t = os.clock()
+    local g = gsGet("shot", key, cls, p)
+    if not g then return true end
+    g.p = p
+    if p then g.holder.CFrame = CFrame.new(p) end
+    g.rate = rate or 0.1
+    g.sp, g.vol, g.low = shotTone(cls, cal)
+    if key == "me" then g.vol *= 0.7 end
+    if not g.till or g.till < t then g.nextT = t end   -- 刚按下：马上打第一发
+    g.till = (key == "me") and math.huge or (t + 0.25)
+    g.lastT = t
+    return true
+  end
+  local function stepGunSnd()
+    if #gsList == 0 then return end
+    local t = os.clock()
+    for i = #gsList, 1, -1 do
+      local g = gsList[i]
+      if not g.p then g.holder.CFrame = cam.CFrame end   -- 自己开的飞机：在耳边
+      if g.kind == "shot" then
+        if g.till then   -- 打拍子
+          if t <= g.till and t >= g.nextT then
+            gsShoot(g, t)
+            g.nextT = math.max(g.nextT + g.rate, t - g.rate * 0.5)
+          end
+        elseif g.pend > 0 and t >= g.nextT then   -- 欠着的（一帧里挤进来的）
+          gsShoot(g, t)
+          g.pend -= 1
+          g.nextT = t + g.rate * 0.85
+        end
+        local fl = math.clamp(g.rate * 1.8, 0.03, 0.22)   -- 淡掉要多久（四个 Sound 轮一圈之前淡完）
+        for k = 1, GS_N do
+          local f = g.fade[k]
+          if f then
+            local q = 1 - (t - f) / fl
+            if q <= 0 then
+              g.voices[k]:Stop()
+              g.fade[k], g.live[k] = nil, false
+            else
+              g.voices[k].Volume = (g.vb[k] or g.vol) * q * q
+            end
+          end
+        end
+        local busy = (g.till and t <= g.till) or g.pend > 0
+        if not busy and t - g.lastShot > 3.6 / g.sp then gsRelease(g) end   -- 打完了、最后一发的回声也完了
+      else   -- 循环（并列机枪）
+        if g.on and t - g.lastT > g.timeout then gsLoopStop(g, t) end
+        if g.on then   -- 跟着距离、震荡变
+          local hi, mv = gsHi(g)
+          g.voices[1].Volume = math.min(10, g.vol * mv)
+          g.eqs[1].HighGain = hi
+        elseif t - g.lastShot > (g.cut.len - g.cut.tail) / g.sp + 0.3 then
+          gsRelease(g)
+        end
+      end
     end
   end
 
@@ -61832,7 +62170,7 @@ function Fx.init(G)
   local IMPK = { hmg = 1.7, coax = 1.4, ciws = 2, agun = 2, ac = 2, sniper = 1.3, lmg = 1.1 }   -- 弹着点的大小（按口径：步枪 1）
   -- h：打在什么上面（HitSurf 代号；别人打的服务器给，nil 是什么都没打中；自己打的不给，本地探一下）
   -- pel：霰弹的其余弹丸（只画曳光和弹着点，枪口火、枪声那一发已经有了）
-  function G.gunFx(id, a, b, mine, h, quiet, pel)
+  function G.gunFx(id, a, b, mine, h, quiet, pel, nosnd)   -- nosnd：声音已经放过了（车上的机枪：G.gunSnd 连发循环 / 单发连放）
     local d = b - a
     local L = d.Magnitude
     if L < 0.5 then return end
@@ -61887,7 +62225,7 @@ function Fx.init(G)
         end)
       end
     end
-    if pel then return end
+    if pel or nosnd then return end
     if mine and (id == "m4" or id == "sniper" or id == "rifle" or id == "qbz191") then   -- 自己开的：耳边叠层的枪声，弹壳过一会儿落地
       G.sfx(quiet and ((id == "sniper") and "sniperSdMe" or "rifleSdMe") or ((id == "sniper") and "sniperMe" or "rifleMe"), nil, { must = true })
       if math.random() < 0.35 then G.sfx("brass", nil, { delay = 0.35 + math.random() * 0.25 }) end
@@ -63255,7 +63593,15 @@ function Fx.init(G)
         G.muzzleSmall((f == "ac" or f == "agun" or f == "ciws" or f == "msl") and "a" or "h", M + dir * 0.6, dir)
       end
       flash(M + dir, RGB(255, 190, 110), 16, 4, 0.1)
-      G.playSound("lmg", M)
+      -- 声音（用户 11-28「机枪机炮的音效不太好听」）：机关炮 / 高炮一发一发放 .50 真录音、按口径放慢（G.gunSnd，同一辆车的同一门接成一串）；
+      --   自己开的车打的已经在 Drive.lua 本地放过（不等服务器那一来一回）；车上发导弹的那一声在新弹出现时放（newShot），这里不再放机枪声
+      local f = e.f
+      local myV = G.drive ~= nil and G.drive.id ~= nil and G.drive.id == e.id
+      if f == "ac" or f == "agun" then
+        if not myV and not G.gunSnd(e.id and ("v" .. tostring(e.id) .. ":" .. tostring(e.g or "")) or nil, "ac", M, e.r, e.c) then G.playSound("lmg", M) end
+      elseif f ~= "msl" then
+        G.playSound("lmg", M)
+      end
       if G.vehRecoil and e.id then G.vehRecoil(e.id, e.g) end
       return
     end
@@ -63523,7 +63869,9 @@ function Fx.init(G)
         end
         if e.by ~= me.UserId then
           nearMiss(e)
-          G.gunFx(e.w, e.a, e.b, false, e.h, e.q, e.pel)
+          -- 车上、工事上的机枪（服务器 botShot 带 s = VehDefs 的 snd）：连发循环 / 单发连放（G.gunSnd），放了就不再放原来那一声
+          local snd = e.s and not e.pel and typeof(e.a) == "Vector3" and G.gunSnd(nil, e.s, e.a) or nil
+          G.gunFx(e.w, e.a, e.b, false, e.h, e.q, e.pel, snd)
           if G.radarShot then G.radarShot(e.a, e.t, e.q) end   -- 雷达：敌人开枪的地方闪一下（Hud.lua）
         end
       elseif k == "boom" then
@@ -63683,6 +64031,7 @@ function Fx.init(G)
     VL.step(dt or 1 / 60)
     stepShots(dt or 1 / 60)
     stepGuns()
+    stepGunSnd()
     if #drops > 0 then stepDrops(dt or 1 / 60) end
   end
 end
