@@ -528,6 +528,9 @@ function View.init(G)
     if T.fxH and T.fxH.Parent then T.fxH.CFrame = T.cf end
   end
   G.stepToss = stepToss
+  -- 残骸烧的三段（用户 11-28「然后有浓烈的烟雾我持续冒」，见 stepVeh 里那段）：车身火、黑烟每秒几颗；超过 WRECK_THICK 处的烟柱细一档
+  local WRECK_FIRE, WRECK_BLACK, WRECK_THIN, WRECK_THICK = { 30, 14, 5 }, { 8, 7, 5 }, 2.5, 10
+  G.wreckBurnRates = { fire = WRECK_FIRE, black = WRECK_BLACK, thin = WRECK_THIN, thick = WRECK_THICK }   -- 测试用
   -- 残骸车身黑烟的 Rate：远近两个发射器（WreckFx.lua 的 G.wreckBlackRate：镜头近的喷小一号那根，另一根 0）
   local function setBlack(M, r)
     if G.wreckBlackRate then G.wreckBlackRate(M, r) elseif M.black then M.black.Rate = r end
@@ -962,8 +965,8 @@ function View.init(G)
       --   11-27 复核：原来判的是 v.cookT——wreckCook 离镜头 4000 格外直接不管（不建舱口火柱），这里也不设，残骸 40 秒不冒黑烟、6000 格外连火也没有
       --   （沙海一两公里外开镜看自己打掉的 T-72、开飞机在高处都看不到烟柱）；远处的照别的残骸一样马上烧起来
       if not v.cookJets then
-        M.fire.Rate = 30
-        setBlack(M, 6)
+        M.fire.Rate = WRECK_FIRE[1]
+        setBlack(M, WRECK_BLACK[1])
       end
       -- 殉爆的大火球、钢板碎块、接连殉爆、舱口窜火、浓黑烟柱、地面烧焦（WreckFx.lua，用户 11-25「载具爆炸效果不够猛画风不够战雷」）
       if G.wreckFx and not v.cookT then G.try_(G.wreckFx, v, whyW, base0) end   -- 先烧再炸的（转盘车殉爆）：大火球等烧完那一下再画
@@ -1000,18 +1003,24 @@ function View.init(G)
     else
       v.fireT0 = nil
     end
-    -- 残骸整局留着（服务器 Armor.lua keepWreck）：烧四十秒火小下去，七十秒只剩一缕黑烟、火光灭——几十辆车壳一直大火客户端吃不消
-    if v.wreckT and not v.burnt2 then
+    -- 残骸整局留着（服务器 Armor.lua keepWreck）。用户 11-28（战雷截图）「然后有浓烈的烟雾我持续冒」：打爆的车一直冒浓黑的烟柱——
+    --   原来烧四十秒火小下去、七十秒只剩一缕烟；改成：前 60 秒大火 + 浓烟柱（WreckFx heavyBurn 定的），60 秒火小一半、烟照样浓，
+    --   150 秒以后小火苗 + 烟柱一直冒到残骸没了（火光这时灭），不再只剩一缕。
+    --   几十辆车壳一起冒浓烟客户端吃不消：同时最多 WRECK_THICK 处按上面冒，再多的（最早打掉的先）细一档——还是一根看得见的烟柱（stepFireShadows 每半秒排）
+    if v.wreckT then
       local age = os.clock() - v.wreckT
-      if age > 40 and not v.burnt1 then
-        v.burnt1 = true
-        if M.fire then M.fire.Rate = 6 end
-        if M.black then setBlack(M, 3) end
-      elseif age > 70 then
-        v.burnt2 = true
-        if M.fire then M.fire.Rate = 0 end
-        if M.black then setBlack(M, 1.2) end
-        if v.fireLight then v.fireLight:Destroy() v.fireLight = nil end
+      local stage = (age > 150 and 2) or (age > 60 and 1) or 0
+      local thin = v.smokeThin == true
+      local key = stage * 2 + (thin and 1 or 0)
+      if key ~= (v.burnKey or 0) then
+        v.burnKey = key
+        v.burnt1 = (stage >= 1) or nil
+        v.burnt2 = (stage >= 2) or nil
+        local fireR, blackR = WRECK_FIRE[stage + 1], WRECK_BLACK[stage + 1]
+        if thin then fireR, blackR = math.min(fireR, 5), WRECK_THIN end
+        if M.fire then M.fire.Rate = fireR end
+        if M.black then setBlack(M, blackR) end
+        if stage >= 2 and v.fireLight then v.fireLight:Destroy() v.fireLight = nil end
       end
       -- 镜头 60 格内黑烟小一号（贴脸的大烟团最费：半透明叠太多层）；半秒看一次，进 55 / 出 70 才换。
       --   11-27 审查 7：两个发射器换着喷（M.black 远、M.blackN 小一号的；WreckFx.lua 的 G.wreckBlackRate），不改 Size——
@@ -1151,6 +1160,11 @@ function View.init(G)
       local want = i == 1 and it.d < 200 * 200 and (G.perfK or 1) >= 0.8
       if it.pl.Shadows ~= want then it.pl.Shadows = want end
     end
+    -- 冒浓烟的残骸最多 WRECK_THICK 处（最近打掉的优先），再早的细一档（stepVeh 按 v.smokeThin 换 Rate）
+    local wr = {}
+    for _, v in pairs(views) do if v.wreckT then wr[#wr + 1] = v end end
+    if #wr > WRECK_THICK then table.sort(wr, function(a, b) return a.wreckT > b.wreckT end) end
+    for i, v in ipairs(wr) do v.smokeThin = (i > WRECK_THICK) or nil end
   end
 
   function G.stepView(dt)

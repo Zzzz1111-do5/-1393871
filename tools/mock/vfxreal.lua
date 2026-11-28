@@ -111,7 +111,7 @@ check(nAtt == 8 and nPL == 8, string.format("闪光灯池：%d 个 Attachment、
 do
 T.runUntil(function() return VL.warmLeft() == 0 end, 10)
 check(VL.warmLeft() == 0 and VL.stat.warm >= 100, string.format("进局分几帧预建好了（%d 个，一帧 4 个；还剩 %d 个没建）", VL.stat.warm, VL.warmLeft()))
-local warmKeys = { "mBall#0", "mFlash#0", "gFan#0d", "gRise#0d", "eBall#0", "eCol#0v", "eCloud#0d", "Imp_grass", "Imp_grassL", "wCore#0", "wCore#-1", "tFire", "kFurrow#4d" }
+local warmKeys = { "mBall#0", "mFlash#0", "gFan#0d", "gRise#0d", "eBall#0", "eCol#0v", "eCloud#0d", "Imp_grass", "Imp_grassL", "wCore#1", "wCore#2", "wHeart#2", "tFire", "kFurrow#4d" }
 local missing = {}
 for _, k in ipairs(warmKeys) do if not VL.pools[k] then missing[#missing + 1] = k end end
 check(#missing == 0, "开炮、榴弹、殉爆、机枪打地常用的层都预建了（没建的：" .. table.concat(missing, ",") .. "）")
@@ -485,7 +485,7 @@ check(bigLights == 1, "殉爆只点一盏大灯（Range ≥ 60 的亮着 " .. bi
 check(srvSkip == true, "服务器殉爆那一下的大爆炸（c = wreck）：火球交给 WreckFx，不重复画")
 check(st.toss >= 1 and has(Lw3, "tFire") and has(Lw3, "tSpark"), "掀炮塔的火柱、火星走池（tFire、tSpark）")
 check(st.big == big0 + 1, "殉爆：大火球（样子 " .. tostring(st.last) .. "，测试强制最费的连爆）")
-for _, nm in ipairs({ "wFlash", "wCore", "wFire", "wSoot", "wSpark", "wDust", "wShock" }) do check(has(Lw3, nm), "有 " .. nm) end
+for _, nm in ipairs({ "wFlash", "wHeart", "wCore", "wFire", "wSoot", "wSpark", "wDust", "wShock" }) do check(has(Lw3, nm), "有 " .. nm) end   -- wHeart：火球中心白热（用户 11-28「战雷的火中心偏白」）
 local wf = find(Lw3, "wFire")
 check(wf and wf.tex == "fire_main" and wf.li == 0 and wf.bright >= 3, "火：fire_main 不受光照、亮度 " .. tostring(wf and wf.bright))
 local ws = find(Lw3, "wSoot")

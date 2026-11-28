@@ -100,6 +100,14 @@ local vPart = vView and vView.M and vView.M.parts[1] and vView.M.parts[1][1]
 check(vPart and vPart.CollisionGroup == "VfxActor", string.format("车的样子放进 VfxActor（%s）", tostring(vPart and vPart.CollisionGroup)))
 check(st and (st.jets >= 1 or (cook > 0 and (st.cook or 0) >= 1)), "舱口窜火（转盘车：先烧的那两个舱口接着喷）")
 check(st and st.scorch >= 1, "地面烧焦一块")
+-- 用户 11-28（战雷截图）：火球大到占满半个屏幕（约一个车长）、烧着的碎块甩出一道道拖着黑烟的弧（Trail 烟带）
+check(st and (st.lastR or 0) >= math.min(28, math.max(def.L, def.W)) - 0.01,
+  string.format("火球半径约一个车长（%.1f 格，车长 %.1f）", st and st.lastR or -1, def.L))
+local nTr = 0
+for _, c in ipairs(C.wreckChunkList()) do
+  if c.tr and c.tr.Parent == c.p and c.tr.Enabled and c.tr.FaceCamera and c.tr.Lifetime >= 2.5 then nTr = nTr + 1 end
+end
+check(nTr >= 4, string.format("烧着的碎块拖着烟带（%d 条 Trail）", nTr))
 
 print("② 接连殉爆")
 R.run(6)
@@ -134,6 +142,33 @@ R.run(20)
 local still = 0
 for _, c in ipairs(mine) do if c.p.Parent and not c.dead and c.p.Transparency < 0.5 then still = still + 1 end end
 check(still == #mine, string.format("残骸还在：碎块一直留着（过 20 秒还剩 %d / %d 块）", still, #mine))
+-- 碎块落地以后烟带不再往后拖（已经拖出来的自己淡掉）
+local trOn = 0
+for _, c in ipairs(mine) do if c.tr and c.tr.Enabled then trOn = trOn + 1 end end
+check(trOn == 0, "落地了：烟带不再拖新的（还开着 " .. trOn .. " 条）")
+-- 用户 11-28「然后有浓烈的烟雾我持续冒」：原来七十秒只剩一缕烟——改成 60 秒火小一半、烟照样浓，150 秒以后小火 + 烟柱一直冒
+do
+  local BR = C.wreckBurnRates
+  local function rates()
+    local M = vView and vView.M
+    local b, bn = M and M.black, M and M.blackN
+    return (M and M.fire and M.fire.Rate) or -1, ((b and b.Rate) or 0) + ((bn and bn.Rate) or 0)
+  end
+  local f0, b0 = rates()
+  check(BR ~= nil and f0 == BR.fire[1] and b0 == BR.black[1], string.format("打爆二十来秒：大火 %s、浓烟 %s 颗 / 秒", tostring(f0), tostring(b0)))
+  vView.wreckT = vView.wreckT - 45   -- 当作烧了一分多钟
+  R.run(0.3)
+  local f1, b1 = rates()
+  check(f1 == BR.fire[2] and b1 == BR.black[2], string.format("一分钟以后：火小一半（%s）、烟照样浓（%s）", tostring(f1), tostring(b1)))
+  vView.wreckT = vView.wreckT - 120   -- 两分半以后
+  R.run(0.3)
+  local f2, b2 = rates()
+  check(f2 == BR.fire[3] and b2 == BR.black[3] and b2 >= 5, string.format("两分半以后：小火苗（%s）、烟柱接着冒（%s 颗 / 秒，不是一缕）", tostring(f2), tostring(b2)))
+  vView.wreckT = vView.wreckT - 600
+  R.run(0.6)
+  local _, b3 = rates()
+  check(b3 == BR.black[3], string.format("十几分钟了还在冒（%s 颗 / 秒）", tostring(b3)))
+end
 G.removeEnt(e)
 R.run(0.5)
 local gone = 0

@@ -39,6 +39,8 @@ function WreckFx.init(G)
   local DAY = { day = VL.DAY_MUL_BIG }   -- 殉爆的灯白天最多亮 1.5 倍
   -- 写实的颜色：火是白热 → 金黄 → 橙红，烟是煤黑 → 灰褐（不要纯黑、不要发紫）
   local FIRE_MID, FIRE_DARK = RGB(255, 158, 64), RGB(150, 52, 22)
+  -- 火的中心偏白（用户 11-28「战雷的火中心偏白」）：刚喷出来（在火团中心）近乎白热，往外飘、变老才转金黄 → 橙 → 暗红
+  local FIRE_WHITE, FIRE_PALE = RGB(255, 250, 238), RGB(255, 226, 158)
 
   local function holder(cf)
     local p = Instance.new("Part")
@@ -130,15 +132,21 @@ function WreckFx.init(G)
   end)
   VL.def("wCore", function(q)   -- A1 火球芯：从车里一个球里往外胀开
     local R = 14 * q
-    return { tex = TX.CORE, life = { 0.4, 0.75 }, spd = { R * 0.6, R * 1.6 }, spread = 180, drag = 6, acc = V(0, R * 0.8, 0), rot = 120,
+    return { tex = TX.CORE, life = { 0.5, 0.9 }, spd = { R * 0.6, R * 1.6 }, spread = 180, drag = 6, acc = V(0, R * 0.8, 0), rot = 120,
       size = seq(0, R * 0.6, 0.3, R * 1.3, 1, R * 1.5), tr = seq(0, 0, 0.6, 0.3, 1, 1),
-      col = cs(0, RGB(255, 244, 214), 0.3, RGB(255, 170, 70), 0.65, RGB(170, 64, 26), 1, RGB(70, 36, 22)),
-      le = 0.9, li = 0, bright = 3, z = 3, shape = { "Sphere", "Volume", "Outward" }, box = V(R * 0.8, R * 0.8, R * 0.8), prio = 1 }
+      col = cs(0, FIRE_WHITE, 0.32, RGB(255, 238, 196), 0.55, RGB(255, 172, 72), 0.8, RGB(170, 64, 26), 1, RGB(70, 36, 22)),
+      le = 0.95, li = 0, bright = 4, z = 3, shape = { "Sphere", "Volume", "Outward" }, box = V(R * 0.8, R * 0.8, R * 0.8), prio = 1 }
+  end)
+  VL.def("wHeart", function(q)   -- A1′ 白热的芯（用户 11-28「战雷的火中心偏白」）：火球正中几团叠加发光的白光，比火球芯活得久一点，慢慢转金黄、淡掉
+    local R = 14 * q
+    return { tex = TX.GLOW, life = { 0.55, 0.95 }, spd = { 0, R * 0.25 }, spread = 180, drag = 4, acc = V(0, R * 0.5, 0),
+      size = seq(0, R * 0.8, 0.35, R * 1.35, 1, R * 1.1), tr = seq(0, 0.15, 0.55, 0.4, 1, 1),
+      col = cs(0, RGB(255, 255, 250), 0.5, RGB(255, 244, 214), 1, RGB(255, 200, 120)), le = 1, li = 0, bright = 4, z = 3, prio = 1 }
   end)
   VL.def("wFire", function(q)   -- A2 翻滚的火：往外滚、被空气挡住、往上卷
     local R = 14 * q
-    return { tex = TX.FIRE, life = { 0.8, 1.6 }, spd = { R * 0.8, R * 2.4 }, spread = 180, drag = 4, acc = V(0, R * 1.1, 0), rot = 70,
-      size = seq(0, R * 0.5, 0.25, R * 1.1, 1, R * 0.7), tr = seq(0, 0.05, 0.5, 0.25, 1, 1), col = cs(0, RGB(255, 222, 160), 0.35, FIRE_MID, 1, FIRE_DARK),
+    return { tex = TX.FIRE, life = { 1.0, 2.0 }, spd = { R * 0.8, R * 2.4 }, spread = 180, drag = 4, acc = V(0, R * 1.1, 0), rot = 70,
+      size = seq(0, R * 0.5, 0.25, R * 1.1, 1, R * 0.7), tr = seq(0, 0.05, 0.5, 0.25, 1, 1), col = cs(0, FIRE_WHITE, 0.2, FIRE_PALE, 0.5, FIRE_MID, 1, FIRE_DARK),
       le = 0.9, li = 0, bright = 3.5, z = 2, prio = 1 }
   end)
   VL.def("wSoot", function(q)   -- A3 黑烟蘑菇：从火球外面翻上去，越升越大、越淡，顺风歪
@@ -159,7 +167,7 @@ function WreckFx.init(G)
   VL.def("wPillar", function(q)   -- B 座圈火柱
     local R = 14 * q
     return { tex = TX.FIRE, life = { 0.9, 1.4 }, spd = { 40, 80 }, spread = 12, drag = 1.5, acc = V(0, 8, 0), rot = 80,
-      size = seq(0, R * 0.35, 0.4, R * 0.7, 1, R * 0.2), tr = seq(0, 0.05, 0.6, 0.3, 1, 1), col = cs(0, RGB(255, 240, 200), 0.35, FIRE_MID, 1, FIRE_DARK),
+      size = seq(0, R * 0.35, 0.4, R * 0.7, 1, R * 0.2), tr = seq(0, 0.05, 0.6, 0.3, 1, 1), col = cs(0, FIRE_WHITE, 0.3, FIRE_PALE, 0.6, FIRE_MID, 1, FIRE_DARK),
       le = 0.95, li = 0, bright = 3, z = 2, prio = 1 }
   end)
   VL.def("wDust", function(q, v)   -- A8 贴地往外推的一圈土（按残骸脚下的地上色）
@@ -187,7 +195,7 @@ function WreckFx.init(G)
   VL.def("wPopFire", function(_, v)
     local b = v == "B"
     return { tex = TX.FIRE, life = { 0.4, 0.8 }, spd = { 6, b and 26 or 14 }, spread = 35, drag = 2.5, acc = V(0, 18, 0), rot = 60,
-      size = b and seq(0, 4, 0.4, 7, 1, 1.5) or seq(0, 2.5, 0.4, 4, 1, 1), tr = seq(0, 0.05, 1, 1), col = cs(RGB(255, 226, 170), FIRE_DARK),
+      size = b and seq(0, 4, 0.4, 7, 1, 1.5) or seq(0, 2.5, 0.4, 4, 1, 1), tr = seq(0, 0.05, 1, 1), col = cs(0, FIRE_WHITE, 0.35, FIRE_PALE, 1, FIRE_DARK),
       le = 0.9, li = 0, bright = 3, prio = 2 }
   end, true)
   VL.def("wPopSmoke", function(_, v)
@@ -202,7 +210,7 @@ function WreckFx.init(G)
   -- 烧毁：发动机舱窜一下火、冒一大团黑烟；乘员打光：一缕黑烟
   VL.def("wFireBurst", function()
     return { tex = TX.FIRE, life = { 0.6, 1.2 }, spd = { 6, 18 }, spread = 30, drag = 2, acc = V(0, 14, 0), rot = 60, size = seq(0, 3, 0.4, 7, 1, 2),
-      tr = seq(0, 0.05, 1, 1), col = cs(0, RGB(255, 226, 170), 0.4, FIRE_MID, 1, FIRE_DARK), le = 0.9, li = 0, bright = 3, prio = 1 }
+      tr = seq(0, 0.05, 1, 1), col = cs(0, FIRE_WHITE, 0.25, FIRE_PALE, 0.55, FIRE_MID, 1, FIRE_DARK), le = 0.9, li = 0, bright = 3, prio = 1 }
   end, true)
   VL.def("wFireSmoke", function()
     return { tex = TX.SOOT, life = { 4, 7 }, spd = { 6, 14 }, spread = 25, drag = 1.2, acc = V(0, 4, 0), wind = true, rot = 15,
@@ -288,6 +296,7 @@ function WreckFx.init(G)
   local function fireball(p, R, k, style, L)
     local q = R / 14
     local function blast(at, m)
+      VL.emit("wHeart", q, CF(at + V(0, R * 0.15, 0)), N(4 * m, k))
       VL.emit("wCore", q, CF(at), N(12 * m, k))
       VL.emit("wFire", q, CF(at), N(22 * m, k))
       VL.emit("wSoot", q, CF(at + V(0, R * 0.2, 0)), N(18 * m, k))
@@ -392,6 +401,29 @@ function WreckFx.init(G)
     vf.Parent = c
     return vf
   end
+  -- 碎块拖的烟带（Trail）：两个附着点隔 1.2 格（宽度 = 间距 × WidthScale），越往后越宽、越淡、越灰（烟散开了）；
+  --   一直对着镜头；烧完（burnT）以后不再拖新的，已经拖出来的照常淡掉。贴图是烟团，按 4 格一段重复（看上去是一团团连着的浓烟）
+  local function smokeTrail(c, big)
+    local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+    a0.Position, a1.Position = V(0, 0.6, 0), V(0, -0.6, 0)
+    a0.Parent, a1.Parent = c, c
+    local t = Instance.new("Trail")
+    t.Attachment0, t.Attachment1 = a0, a1
+    t.Texture = TX.SOOT
+    pcall(function() t.TextureMode = Enum.TextureMode.Wrap end)
+    t.TextureLength = 4
+    t.FaceCamera = true
+    t.Lifetime = big and 3.4 or 2.6
+    t.MinLength = 0.2
+    t.WidthScale = seq(0, big and 1.3 or 0.9, 0.3, big and 2.6 or 1.8, 1, big and 5 or 3.6)
+    t.Transparency = seq(0, 0.2, 0.08, 0.04, 0.6, 0.35, 1, 1)
+    t.Color = cs(0, RGB(255, 236, 200), 0.04, RGB(34, 31, 28), 0.5, RGB(52, 48, 44), 1, RGB(92, 88, 84))   -- 头上一点被火照亮
+    t.LightEmission, t.LightInfluence = 0, 1
+    t.Parent = c
+    stat.trails = (stat.trails or 0) + 1
+    return t
+  end
+  G.wreckSmokeTrail = smokeTrail   -- 测试用
   local function chunks(p, R, k, n, owner, wheels)
     n = N(n, k)
     local room = cap(n + (wheels or 0))
@@ -409,22 +441,25 @@ function WreckFx.init(G)
       pcall(function() c.CustomPhysicalProperties = PhysicalProperties.new(7.8, 0.6, 0.15) end)   -- 钢：重、不怎么弹（模拟器没有这个类型）
       c.Parent = G.fxFolder or workspace
       local vf = lift(c)
+      -- 11-28 用户给了战雷殉爆的截图：烧着的碎块往四面八方甩出一道道弧、拖着浓黑的烟——飞得更高更远（往上 50～95、往旁边 18～55 格 / 秒）
       local ang = math.random() * 6.28
-      local hs = 15 + math.random() * 25
-      local lv = V(math.cos(ang) * hs, 40 + math.random() * 30, math.sin(ang) * hs)
+      local hs = 18 + math.random() * 37
+      local lv = V(math.cos(ang) * hs, 50 + math.random() * 45, math.sin(ang) * hs)
       local av = V((math.random() - 0.5) * 18, (math.random() - 0.5) * 18, (math.random() - 0.5) * 18)
       pcall(function() c.AssemblyLinearVelocity = lv end)
       pcall(function() c.AssemblyAngularVelocity = av end)
-      -- 拖着的火和黑烟
-      local f, sm
+      -- 拖着的火和黑烟：一多半烧着（原来大块 + 四分之一），每块一条烟带（Trail：连成一整道弧，不是一团团的烟——颗粒不算进预算）
+      --   + 头上的火、稀稀的几团烟（落地以后接着冒一会儿）
+      local f, sm, tr
       local burnT = 2.5 + math.random() * 3
-      if big or math.random() < 0.25 then
-        f = emitter(c, { tex = TX.FIRE, rate = big and 8 or 6, secs = burnT, life = { 0.25, 0.5 }, spd = { 0.5, 2 }, spread = 40, acc = V(0, 6, 0),
-          size = seq(0, big and 2.2 or 1.3, 1, 0.3), tr = seq(0, 0.1, 1, 1), col = cs(RGB(255, 210, 140), FIRE_DARK), le = 0.9, li = 0, bright = 3, prio = 2 })
-        sm = emitter(c, { tex = TX.SOOT, rate = big and 4 or 2, secs = 11, life = { 1.4, 2.6 }, spd = { 0.5, 2 }, spread = 30, acc = V(0, 3, 0), drag = 0.8, wind = true,
+      if big or math.random() < 0.55 then
+        f = emitter(c, { tex = TX.FIRE, rate = big and 8 or 5, secs = burnT, life = { 0.25, 0.5 }, spd = { 0.5, 2 }, spread = 40, acc = V(0, 6, 0),
+          size = seq(0, big and 2.2 or 1.4, 1, 0.3), tr = seq(0, 0.1, 1, 1), col = cs(0, FIRE_WHITE, 0.35, FIRE_PALE, 1, FIRE_DARK), le = 0.9, li = 0, bright = 3, prio = 2 })
+        sm = emitter(c, { tex = TX.SOOT, rate = big and 2 or 1, secs = 11, life = { 1.4, 2.6 }, spd = { 0.5, 2 }, spread = 30, acc = V(0, 3, 0), drag = 0.8, wind = true,
           size = seq(0, big and 1.6 or 1, 1, big and 6 or 4), tr = seq(0, 0.1, 1, 1), col = cs(RGB(255, 255, 255)), rot = 20, prio = 2 })
+        tr = smokeTrail(c, big)
       end
-      table.insert(chunkList, { p = c, f = f, sm = sm, vf = vf, t0 = os.clock(), owner = owner, burnT = burnT })
+      table.insert(chunkList, { p = c, f = f, sm = sm, tr = tr, vf = vf, t0 = os.clock(), owner = owner, burnT = burnT })
       stat.chunks += 1
     end
     -- 负重轮（战雷 Drone Age：飞出去的零件里有主动轮、负重轮，拖着烟，落地还会滚）
@@ -470,6 +505,7 @@ function WreckFx.init(G)
       else
         local age = now - c.t0
         if c.f and age > c.burnT and c.f.Enabled then c.f.Enabled = false end
+        if c.tr and c.tr.Enabled and (age > c.burnT + 1.5 or (c.land and now - c.land > 0.5)) then c.tr.Enabled = false end   -- 烧完 / 落地：不再拖新的烟带
         if c.sm and not c.smThin and age > c.burnT + 1 then
           c.smThin = true
           c.sm.Rate = c.wheel and 0 or math.min(c.sm.Rate, 1.5)
@@ -541,7 +577,7 @@ function WreckFx.init(G)
     local h = holder(CFrame.lookAt(p, p + V(0, 1, 0)))
     local f = emitter(h, { tex = TX.FIRE, rate = strong and 26 or 16, secs = secs + secs * 1.2 * 0.3, life = { 0.45, 0.9 }, spd = { strong and 16 or 9, strong and 34 or 18 }, spread = 14,
       dir = Enum.NormalId.Front, drag = 1.5, acc = V(0, 8, 0), size = seq(0, 2.6, 0.4, strong and 6 or 4, 1, 1.5), tr = seq(0, 0.05, 0.7, 0.35, 1, 1),
-      col = cs(0, RGB(255, 236, 190), 0.35, FIRE_MID, 1, FIRE_DARK), le = 0.95, li = 0, bright = 3.5, rot = 80, z = 2, prio = 1 })
+      col = cs(0, FIRE_WHITE, 0.3, FIRE_PALE, 0.6, FIRE_MID, 1, FIRE_DARK), le = 0.95, li = 0, bright = 3.5, rot = 80, z = 2, prio = 1 })
     stat.jets += 1
     task.delay(secs, function() f.Rate = f.Rate * 0.3 end)
     task.delay(secs * 2.2, function() f.Enabled = false end)
@@ -552,7 +588,8 @@ function WreckFx.init(G)
   --   black 换成深灰的烟贴图、受光照、跟着风。
   --   镜头 60 格内黑烟小一号（审查 7：原来是改 Size——Size 是整条曲线，一改连已经在飘的四十来颗一起缩放，走过那条线整根烟柱一下变小）：
   --   两个发射器，M.black 远处那根、M.blackN 小一号的那根，View.lua 按远近换着喷（G.wreckBlackRate：一个给 Rate、另一个 0）
-  --   每辆车稳定时：前 40 秒 fire 30 + black 6（约 60 颗），40 秒后 6 + 3（约 25 颗），70 秒后只剩 black 1.2（View.lua 的节奏）
+  --   每辆车稳定时（View.lua 的节奏，用户 11-28「然后有浓烈的烟雾我持续冒」）：前 60 秒 fire 30 + black 8，60 秒后 14 + 7，150 秒以后 5 + 5 一直冒到残骸没了；
+  --   同时冒浓烟的最多 10 处，再早的 black 2.5（还是一根烟柱）
   local function blackRate(M, r, near)
     if r ~= nil then M.blackRate = r end
     if near ~= nil then M.blackIsNear = near end
@@ -595,18 +632,19 @@ function WreckFx.init(G)
       f.SpreadAngle = Vector2.new(25, 25)
       f.Acceleration = V(0, 7, 0)
       f.Transparency = seq(0, 0.05, 0.6, 0.35, 1, 1)
-      f.Color = cs(0, RGB(255, 226, 170), 0.35, FIRE_MID, 1, FIRE_DARK)
+      f.Color = cs(0, FIRE_WHITE, 0.25, FIRE_PALE, 0.55, FIRE_MID, 1, FIRE_DARK)
       f.RotSpeed = NumberRange.new(-60, 60)
       f.Rotation = NumberRange.new(0, 360)
     end
     local acc = V(0, 2.4, 0)
     if VL.wind().Magnitude < 0.5 then acc = V(2.6, 2.4, 1.2) end   -- 地图没设风：照旧写死顺风歪过去
-    local s0, s1, s2 = strong and 6 or 4.5, strong and 16 or 12, strong and 44 or 32
+    -- 烟柱（11-28 用户「浓烈的烟雾我持续冒」）：粗一点、高一点（活 5.5～8.5 秒、往上冲得快一点，四五十米高的一根），越往上越大越淡、顺风歪
+    local s0, s1, s2 = strong and 7 or 5, strong and 18 or 13, strong and 50 or 36
     for _, e in ipairs({ b or false, bn or false }) do
       if e then
         local kk = (e == bn) and 0.7 or 1
-        e.Lifetime = NumberRange.new(5, 8)
-        e.Speed = NumberRange.new(8, 14)
+        e.Lifetime = NumberRange.new(5.5, 8.5)
+        e.Speed = NumberRange.new(9, 15)
         e.SpreadAngle = Vector2.new(12, 12)
         e.Acceleration = acc
         e.Size = seq(0, s0 * kk, 0.25, s1 * kk, 1, s2 * kk)
@@ -615,7 +653,12 @@ function WreckFx.init(G)
         e.Rotation = NumberRange.new(0, 360)
       end
     end
-    if b then blackRate(M, b.Rate + ((bn and bn.Rate) or 0)) end
+    if b then
+      local r = b.Rate + ((bn and bn.Rate) or 0)
+      local BR = G.wreckBurnRates   -- 殉爆、烧毁的：烟柱至少是头一分钟那一档（转盘车先烧那几秒是 6）
+      if strong and BR then r = math.max(r, BR.black[1]) end
+      blackRate(M, r)
+    end
   end
 
   -- 样子 A / B / C：按车的编号定（大家看到的一样）
@@ -662,7 +705,7 @@ function WreckFx.init(G)
       local h = holder(CFrame.lookAt(q, q + V(0, 1, 0)))
       local f = emitter(h, { tex = TX.FIRE, rate = 10, secs = secs + 5, life = { 0.35, 0.7 }, spd = { 6, 12 }, spread = 10, dir = Enum.NormalId.Front,
         drag = 1.4, acc = V(0, 8, 0), size = seq(0, 1.6, 0.4, 3, 1, 1), tr = seq(0, 0.05, 0.7, 0.35, 1, 1),
-        col = cs(0, RGB(255, 240, 200), 0.35, FIRE_MID, 1, FIRE_DARK), le = 0.95, li = 0, bright = 3.5, rot = 80, z = 2, prio = 1 })
+        col = cs(0, FIRE_WHITE, 0.3, FIRE_PALE, 0.6, FIRE_MID, 1, FIRE_DARK), le = 0.95, li = 0, bright = 3.5, rot = 80, z = 2, prio = 1 })
       local s2 = emitter(h, { tex = TX.SOOT, rate = 3, secs = secs + 5, life = { 2.5, 4 }, spd = { 5, 9 }, spread = 14, drag = 1, acc = V(0, 4, 0), wind = true,
         size = seq(0, 2, 1, 10), tr = seq(0, 0.1, 1, 1), col = cs(RGB(255, 255, 255)), rot = 15, prio = 2 })
       table.insert(jets, { h = h, f = f, s = s2, r = -1 })
@@ -719,7 +762,10 @@ function WreckFx.init(G)
     if d > 6000 then return end
     local ammo = why == "ammo" or (why == nil and d0.cat == "tank")
     if ammo then
-      local R = math.clamp(math.max(L, W) * 0.55, 9, 22)   -- 火球半径（格）：主战坦克 13～16
+      -- 火球半径（格）：用户 11-28 给了战雷殉爆的截图（离得近时火球占满大半个屏幕）——原来车长的 0.55 倍（主战坦克 11 格、约 4 米）太小，
+      --   改成约一个车长（主战坦克 20 格上下、约 7 米）；各层的速度、大小都按它放大，颗数不变（第一秒的预算照旧）
+      local R = math.clamp(math.max(L, W) * 1.0, 13, 28)
+      stat.lastR = R
       local style = G.wreckStyleOverride or styleOf(v)
       stat.big += 1
       stat.style[style] = (stat.style[style] or 0) + 1
@@ -731,7 +777,7 @@ function WreckFx.init(G)
       if d < 1500 and liveBig < 3 then
         liveBig += 1
         task.delay(16, function() liveBig -= 1 end)
-        chunks(p, R, k, 12, M.model, (d0.arch == "tracked") and (1 + ((style == "C") and 1 or 0)) or 0)
+        chunks(p, R, k, 14, M.model, (d0.arch == "tracked") and (1 + ((style == "C") and 1 or 0)) or 0)
       end
       if v.cookJets then cookJetsDown(v.cookJetList) else hatchJet(base, H, 3.5, true) end   -- 转盘车先烧的那两个舱口还在喷：小下去接着喷，不另加
       cookOff(v, base, L, W, H, k, d)
@@ -765,7 +811,7 @@ function WreckFx.init(G)
     end
   end
 
-  -- 预建（审查 12）：殉爆、掀炮塔那几层进局时分几帧建好（主战坦克的火球半径 11～14 格：q 0.83 / 1 两档），第一次殉爆不用现建；
+  -- 预建（审查 12）：殉爆、掀炮塔那几层进局时分几帧建好（11-28 火球放大以后主战坦克的半径 17～24 格：q 1.2 / 1.44 两档），第一次殉爆不用现建；
   --   贴地那圈土按地面分（土、草、沙、石；雪山加雪）——地图进服以后才投出来的，换图（G.onMap）时补排新地面的（同 Fx.lua）
   do
     local list = {}
@@ -773,13 +819,14 @@ function WreckFx.init(G)
     local function dustFor(code)
       if warmed[code] then return end
       warmed[code] = true
-      for _, q in ipairs({ 0.83, 1 }) do list[#list + 1] = { "wDust", q, code } end
+      for _, q in ipairs({ 1.2, 1.44 }) do list[#list + 1] = { "wDust", q, code } end
       list[#list + 1] = { "tDust", 1, code }
     end
     local function mapCodes() return Map.NAME == "snow" and { "d", "v", "r", "i" } or { "d", "v", "n", "r" } end
-    for _, q in ipairs({ 0.83, 1 }) do
-      for _, nm in ipairs({ "wFlash", "wCore", "wFire", "wSoot", "wEdge", "wPillar", "wShock" }) do list[#list + 1] = { nm, q } end
+    for _, q in ipairs({ 1.2, 1.44 }) do
+      for _, nm in ipairs({ "wFlash", "wHeart", "wCore", "wFire", "wSoot", "wEdge", "wPillar", "wShock" }) do list[#list + 1] = { nm, q } end
     end
+    list[#list + 1] = { "wFlash", 1 }   -- 连爆后几下的小闪光（q × 0.7）
     for _, nm in ipairs({ "wSpark", "wCrackle", "wFireBurst", "wFireSmoke", "wCrewSmoke", "tFire", "tSpark", "tSmoke", "tRing", "tLandSpark" }) do list[#list + 1] = { nm, 1 } end
     for _, nm in ipairs({ "wPopFlash", "wPopSpark", "wPopFire", "wPopSmoke" }) do
       list[#list + 1] = { nm, 1 }

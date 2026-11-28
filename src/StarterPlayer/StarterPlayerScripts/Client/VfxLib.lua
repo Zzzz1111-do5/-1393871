@@ -662,7 +662,7 @@ function VfxLib.new(G, FXF)
       local h = holder("Burner")
       local f = Instance.new("ParticleEmitter")
       apply(f, { tex = TX.FIRE, life = { 0.6, 1.2 }, spd = { 2, 6 }, spread = 25, acc = V(0, 6, 0), size = L.ns(0, 3, 1, 0.5),
-        tr = L.ns(0, 0.2, 1, 1), col = L.cs(RGB(255, 196, 120), RGB(255, 96, 40)), le = 0.9, li = 0, bright = 3, rot = 60 })
+        tr = L.ns(0, 0.2, 1, 1), col = L.cs(0, RGB(255, 248, 230), 0.3, RGB(255, 200, 120), 1, RGB(255, 96, 40)), le = 0.9, li = 0, bright = 3, rot = 60 })   -- 中心偏白（用户 11-28）
       f.Parent = h
       local k = Instance.new("ParticleEmitter")
       apply(k, { tex = TX.SOOT, life = { 4, 6 }, spd = { 3, 6 }, spread = 15, acc = V(0, 3, 0), drag = 1, wind = true, size = L.ns(0, 4, 1, 16),

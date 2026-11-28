@@ -130,7 +130,9 @@ function WtVfx.init(G)
     F.engSmoke = emitter(F.engP, { tex = SMOKE, col = ColorSequence.new(RGB(150, 148, 144)), size = NS({ NK(0, 2), NK(1, 9) }), life = { 2.5, 4 }, speed = { 3, 6 }, spread = 14, wind = true })
     F.engBlack = emitter(F.engP, { tex = SOOT, col = ColorSequence.new(RGB(255, 255, 255)), size = NS({ NK(0, 2.4), NK(1, 11) }), life = { 3, 4.5 }, speed = { 3, 7 }, spread = 14, wind = true,
       tr = NS({ NK(0, 0.1), NK(1, 1) }) })
-    F.fire = emitter(F.engP, { tex = FIRE, col = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 220, 150)), ColorSequenceKeypoint.new(0.5, RGB(255, 120, 40)), ColorSequenceKeypoint.new(1, RGB(160, 40, 20)) }),
+    -- 火的中心偏白（用户 11-28「战雷的火中心偏白」）：刚喷出来近乎白热，往上飘才转金黄 → 橙 → 暗红
+    F.fire = emitter(F.engP, { tex = FIRE, col = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 250, 236)), ColorSequenceKeypoint.new(0.25, RGB(255, 222, 150)),
+      ColorSequenceKeypoint.new(0.55, RGB(255, 126, 42)), ColorSequenceKeypoint.new(1, RGB(160, 40, 20)) }),
       size = NS({ NK(0, 2.6), NK(0.6, 3.4), NK(1, 0.8) }), life = { 0.45, 0.8 }, speed = { 4, 8 }, spread = 18, emit = 0.9, bright = 3, acc = V(0, 6, 0),
       tr = NS({ NK(0, 0.15), NK(0.7, 0.45), NK(1, 1) }) })
     F.fireSmoke = emitter(F.engP, { tex = SOOT, col = ColorSequence.new(RGB(255, 255, 255)), size = NS({ NK(0, 3.5), NK(1, 18) }), life = { 3.5, 5.5 }, speed = { 6, 10 }, spread = 16, acc = V(0, 4, 0),
