@@ -1070,7 +1070,10 @@ def("Terrain", "BasePart", {
     local want = region.Size / 4
     if math.abs(want.X - sx) > 0.01 or math.abs(want.Y - sy) > 0.01 or math.abs(want.Z - sz) > 0.01 then error("WriteVoxels 数组大小和区域对不上", 2) end
     R.voxelsWritten = (R.voxelsWritten or 0) + sx * sy * sz
-    if R.voxelLog then table.insert(R.voxelLog, { n = R.stepNo, v = sx * sy * sz, cols = sx * sz }) end   -- 测试开着才记（第几步、多少体素）
+    if R.voxelLog then   -- 测试开着才记（第几步、多少体素、写的是哪一片：x0 / z0 / x1 / z1）
+      local mn, mx = region._min, region._max
+      table.insert(R.voxelLog, { n = R.stepNo, v = sx * sy * sz, cols = sx * sz, x0 = mn and mn._x, z0 = mn and mn._z, x1 = mx and mx._x, z1 = mx and mx._z })
+    end
     -- 小块的写入（开服的网格器校准平台）：每一列记下各层的占有率，射线按 R.surfFrac（假装的网格器）算地面在哪
     if sx * sy * sz <= 60000 and region._min._y < -1000 then   -- 只有地图下面很深的试验平台（地图本身的块不记）
       R.voxCols = R.voxCols or {}

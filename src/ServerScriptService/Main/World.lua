@@ -599,6 +599,29 @@ local function terrainDesert(T, onProgress, G)
     end
     return v
   end
+  -- 起伏小块写全之前垫的那层薄底（后台写到它之前这里不是个窟窿：车、人不会掉下去，天上看不到洞）：原来一律在平地往下 8 格铺沙——
+  --   雪山图的「沙」染成了黑沙滩的深灰，没写到的一块块成了深灰的大坑，车、树、靶车悬在半空（用户 11-28 晚截图「雪山图这一块一直加载不」）。
+  --   图上开了 Map.UNDERLAY_FOLLOW（雪山）：按这一块 3 × 3 个点里最低的地面往下 3 格铺、用这一块中间的地面材质（雪），
+  --   后台写全之前看着是一块略低一点的雪地，写的时候整块盖掉
+  local function underlay(x0, z0)
+    local yTop, mat = PH, MAT.Sand
+    if Map.UNDERLAY_FOLLOW then
+      local hf = Map.voxelHeight or Map.height
+      local lo = math.huge
+      for i = 0, 2 do
+        for k = 0, 2 do
+          local h = hf(x0 + 16 + i * 112, z0 + 16 + k * 112)
+          if h < lo then lo = h end
+        end
+      end
+      if lo > 2 and lo < 1e6 then
+        yTop = math.floor((lo - 3) / 4) * 4
+        mat = Map.material(x0 + CH / 2, z0 + CH / 2, lo, 0)
+        if mat == MAT.Water or mat == MAT.Air then mat = MAT.Snow end
+      end
+    end
+    T:FillBlock(CF(x0 + CH / 2, yTop - 2, z0 + CH / 2), V(CH, 4, CH), mat)
+  end
   local function tileFlat(ix, iz, onRelief)
     local tk = ix * 4096 + iz
     if tileDone[tk] then return false end
@@ -608,6 +631,7 @@ local function terrainDesert(T, onProgress, G)
     for i = 0, 7 do
       for k = 0, 7 do
         K[i * 8 + k + 1] = kindAt(tx + i * CH, tz + k * CH)
+        if bg and k % 2 == 1 then step() end   -- 后台：一块要打 81 个点，64 块一口气算完要几十毫秒（服务器顿一下）
       end
     end
     local used = {}
@@ -634,7 +658,7 @@ local function terrainDesert(T, onProgress, G)
           local x0, z0 = tx + i * CH, tz + k * CH
           -- onRelief 返回 true：这块马上就写全，不用垫；否则先垫一层薄底——后台写到它之前这里不是个窟窿（车、人不会掉下去，天上看不到洞）
           if not reliefDone[ckey(x0, z0)] and not (onRelief and onRelief(x0, z0)) then
-            T:FillBlock(CF(x0 + CH / 2, PH - 2, z0 + CH / 2), V(CH, 4, CH), MAT.Sand)
+            underlay(x0, z0)
             diag.fills += 1
             if bg then step() else pace() end
           end
@@ -717,37 +741,65 @@ local function terrainDesert(T, onProgress, G)
     local bgT0, bgSay = os.clock(), os.clock() + 30
     local urgentTiles, urgentRelief = {}, {}
     local seen = {}
-    local function want(p)   -- 这一点身边 ±6 个小块：还没铺的大块、还没写的起伏块排进插队
+    -- 这一点身边 ±6 个小块：还没铺的大块、还没写的起伏块排进插队。pri 0：真人（和他开的车、试驾的靶子）——先写；
+    --   pri 1：电脑开的车、机器人（开车按 Map.height 算，不用看画面）——真人身边的都写完了再写。用户 11-28 晚截图「雪山图这一块一直加载不」：
+    --   原来真人和十几辆电脑车身边的块混在一起按离各自多远排，真人身边那几块要跟两千多块抢
+    local function want(p, pri, rad)
+      pri, rad = pri or 0, rad or 6
       local cx0, cz0 = math.floor(p.X / CH), math.floor(p.Z / CH)
-      local here = ckey(cx0, cz0)
+      local here = ckey(cx0, cz0) * 2 + pri
       if seen[here] then return end   -- 好几个人挤在同一块：看一次就够
       seen[here] = true
-      for dx = -6, 6 do
-        for dz = -6, 6 do
+      for dx = -rad, rad do
+        for dz = -rad, rad do
           local x0, z0 = (cx0 + dx) * CH, (cz0 + dz) * CH
           if math.abs(x0 + CH / 2) < SR and math.abs(z0 + CH / 2) < SR then
             local ix, iz = tileOf(x0 + 1, z0 + 1)
             if not tileDone[ix * 4096 + iz] then urgentTiles[ix * 4096 + iz] = { ix, iz } end
             local k = ckey(x0, z0)
             if kindOf[k] == nil then step() end   -- 这块的地貌还没算过（要打 81 个点）：算之前看一眼预算，扫描不再一口气算几千个点
-            if not reliefDone[k] and not urgentRelief[k] and kindAt(x0, z0) == false then urgentRelief[k] = { x0, z0, (dx * dx + dz * dz) } end
+            if not reliefDone[k] and kindAt(x0, z0) == false then
+              local sc = dx * dx + dz * dz + pri * 1000
+              local u = urgentRelief[k]
+              if not u then urgentRelief[k] = { x0, z0, sc } elseif sc < u[3] then u[3] = sc end
+            end
           end
         end
       end
     end
+    -- 每帧给后台多少：真人身边还有没写的块——8 毫秒（先把他身边写出来）；一个真人都没在场上（都在机库、主菜单）——12 毫秒（趁没人在打多写点）；
+    --   别的时候照旧 4 毫秒（开打以后服务器不卡）
+    local function setBudget()
+      local mine = false
+      for _, c in pairs(urgentRelief) do if c[3] < 1000 then mine = true break end end
+      local anyAlive = false
+      for _, Q in pairs(G and G.P or {}) do if Q.alive then anyAlive = true break end end
+      budget = (mine and 0.008) or ((not anyAlive) and 0.012) or BG_BUDGET
+      if G then G.terrainBudget, G.terrainMinePending = budget, mine end
+    end
     local function scan()
       table.clear(seen)
+      -- 真人（和他开的车、试驾的靶子）先扫、先定预算：身边 ±6 块（一千五百格）。原来十几辆电脑车也一样 ±6 块、按实体的顺序扫——
+      --   头一回扫到一块要打 81 个点定地貌，十辆车两千来块，扫完才轮到真人
       for _, pl in ipairs(Players:GetPlayers()) do
         local ch = pl.Character
         local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-        if hrp then want(hrp.CFrame.Position) end
+        if hrp then want(hrp.CFrame.Position, 0) end
       end
+      local others = {}
       for _, e in ipairs(G and G.ents or {}) do   -- 机器人、车、飞机（飞得高的不管：底下没铺好看着是远景，不会掉下去）
         if e.alive and e.root and e.root.Parent then
           local p = e.root.CFrame.Position
-          if not e.air or p.Y < (Map.PLAIN or 12) + 600 then want(p) end
+          if not e.air or p.Y < (Map.PLAIN or 12) + 600 then
+            if (e.driver ~= nil and e.driver.pl ~= nil) or e.testDummy == true or e.testDrive == true then want(p, 0)
+            else others[#others + 1] = p end
+          end
         end
       end
+      setBudget()
+      -- 电脑开的车、机器人：身边 ±3 块（开车按 Map.height 算、不用看画面；炮弹打到它们附近的地面要有地形）
+      for _, p in ipairs(others) do want(p, 1, 3) end
+      setBudget()
     end
     local function urgentStep()
       for k, t in pairs(urgentTiles) do
@@ -768,6 +820,9 @@ local function terrainDesert(T, onProgress, G)
       return false
     end
     local scanAt, ti, ri, sorted = 0, 1, 1, false
+    -- 据点一带的起伏块：铺大块时排进来、一块一块写（原来在铺大块那一下里一口气写全——一个大块里几十块、一块六十多毫秒，
+    --   按每帧 4 毫秒要十几秒，这期间不看真人在哪：用户 11-28 晚截图「雪山图这一块一直加载不」，真人身边那块一直排不上）
+    local hotQ, hi = {}, 1
     while true do
       if os.clock() >= scanAt then
         scanAt = os.clock() + 0.5
@@ -775,16 +830,23 @@ local function terrainDesert(T, onProgress, G)
         if not okS then warn("[地形] 插队扫描出错：" .. tostring(errS)) end
       end
       if not urgentStep() then
-        if ti <= #tilesLeft then
+        if hi <= #hotQ then
+          local c = hotQ[hi]
+          hi += 1
+          local k = ckey(c[1], c[2])
+          if not reliefDone[k] then
+            reliefDone[k] = true
+            reliefBg(c[1], c[2])
+          end
+        elseif ti <= #tilesLeft then
           -- ②③ 大块：据点一带的先（tilesLeft 按离据点的距离排好了）；据点圈里的起伏块跟着写全
           local t = tilesLeft[ti]
           ti += 1
           local hot = t[3] <= TILE
           local did = tileFlat(t[1], t[2], function(x0, z0)
             if hot and distTo(hots, x0 + CH / 2, z0 + CH / 2) <= 0 then
-              reliefDone[ckey(x0, z0)] = true
-              reliefBg(x0, z0)
-              return true
+              table.insert(hotQ, { x0, z0 })   -- 先垫底，紧接着一块一块写（上面 hotQ）
+              return false
             end
             queueRelief(x0, z0)
             return false
@@ -810,7 +872,7 @@ local function terrainDesert(T, onProgress, G)
         end
       end
       if G then
-        G.terrainRest = math.max(0, #tilesLeft - ti + 1) + math.max(0, #reliefQ - ri + 1)
+        G.terrainRest = math.max(0, #tilesLeft - ti + 1) + math.max(0, #reliefQ - ri + 1) + math.max(0, #hotQ - hi + 1)
         G.terrainTilesLeft = math.max(0, #tilesLeft - ti + 1)   -- 还没铺的大块（只减不增；terrainRest 里的起伏块是铺大块时才排进来的）
       end
       if os.clock() >= bgSay then   -- 每 30 秒说一声还剩多少（卡不卡、是不是在铺地形，对照 Output 就知道）
@@ -2925,12 +2987,16 @@ end
 -- 开服时建整张地图；地形分块写（要好几秒），写完才让人出生
 -- 小零件不投影子（用户 11-28「现在感觉有点卡」）：雪山一张图三万多块零件、一万六千块投影子——阴影图每帧要把它们再画一遍；
 --   一两格大的木桩、铁丝网、沙袋、栏杆、碎块投下的影子几乎看不出来。最长边不到 3 格、或者体积不到 6 立方格的不投影子（房子、墙、车壳照旧投）
+--   11-28 晚（「这个图非常卡顿」）：量过还有一万块在投（两边基地的防爆墙一边一千二、营房六百、谷里的工事五百）——门槛放宽：
+--   最长边不到 8 格（约 3 米）、体积不到 60 立方格、或者薄板（最薄的一边不到半格、最长边不到 24 格：栅栏、木板、铁皮）都不投；
+--   房子的墙、屋顶、桥、大的掩体照旧投
 function World.trimShadows(root)
   local n = 0
   for _, d in ipairs(root:GetDescendants()) do
     if d:IsA("BasePart") and d.CastShadow then
       local s = d.Size
-      if math.max(s.X, s.Y, s.Z) < 3 or s.X * s.Y * s.Z < 6 then
+      local mx, mn = math.max(s.X, s.Y, s.Z), math.min(s.X, s.Y, s.Z)
+      if mx < 8 or s.X * s.Y * s.Z < 60 or (mn < 0.5 and mx < 24) then
         d.CastShadow = false
         n += 1
       end

@@ -38,6 +38,9 @@ Map.SEA_FAR_COLOR = Color3.fromRGB(24, 58, 72)  -- 客户端远处那圈海面�
 Map.SHELF = 0
 Map.MAXH = 4500        -- 最高的地形（Map.rayGround 只在这以下一步步找落点）：两座角峰四千三
 Map.RES = 4
+-- 后台还没写到的起伏块先垫的那层薄底（World.lua terrainDesert 的 underlay）：按这一块最低的地面往下 3 格、用雪铺（原来一律在平地往下 8 格铺沙——
+--   这张图的「沙」是黑沙滩的深灰，没写到的一块块成了深灰的大坑，用户 11-28 晚截图「雪山图这一块一直加载不」）
+Map.UNDERLAY_FOLLOW = true
 Map.CEIL = 7200        -- 飞机最高飞到多高（Fly.lua、Air.lua：钢城、沙海 2600；这里角峰四千多格，上面还要留两三千格飞）
 Map.HALF = 12000
 local PLAIN = 12       -- 谷底平地（4 的倍数：FillBlock 铺出来和逐列写的一样高）

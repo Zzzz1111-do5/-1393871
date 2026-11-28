@@ -212,6 +212,18 @@ function Fx.init(G)
     return { id = id, vol = (cfg.vol or 1) * (vol or 1), s = { cfg.s[1] * sp, cfg.s[2] * sp } }
   end
   G.realLayer = realLayer   -- 核爆（Nuke.lua）叠自己的声音用
+  -- 真录音的一层，带这条录音自己的截取段（SoundLib 的 reg[编号]：起爆前一点点到下一个声音之前）
+  local function realCut(key, sp, vol)
+    local id, cfg = real(key)
+    if not id then return nil end
+    sp = sp or 1
+    local L = { id = id, vol = (cfg.vol or 1) * (vol or 1), s = { cfg.s[1] * sp, cfg.s[2] * sp } }
+    local n = tonumber(string.match(id, "%d+$"))
+    local r = cfg.reg and n and cfg.reg[n]
+    if r then L.reg = { r[1], r[2] } end
+    return L
+  end
+  G.realCut = realCut
   G.sndIds = { EXP = EXP, TICK = TICK, WIND = WIND, THUD = THUD, WATER = WATER }
   -- 发动机之类的循环真录音（Drive / Sail / Fly 用）：没载上返回 nil（照旧用叠出来的）
   function G.realLoop(key, parent)
@@ -317,8 +329,8 @@ function Fx.init(G)
     snd.Volume = math.min(10, L.vol * (o.vol or 1)) * (1 - 0.55 * muf)
     local sp = (L.s[1] + (L.s[2] - L.s[1]) * math.random()) * (o.speed or 1)
     snd.PlaybackSpeed = sp
-    snd.RollOffMinDistance = o.rmin or 40
-    snd.RollOffMaxDistance = o.rmax or 1800
+    snd.RollOffMinDistance = L.rmin or o.rmin or 40   -- 一层自己的衰减距离（坦克炮：回声、远处那一记传得远）
+    snd.RollOffMaxDistance = L.rmax or o.rmax or 1800
     if L.reg or L.loop then
       snd.PlaybackRegionsEnabled = true
       if L.reg then snd.PlaybackRegion = NumberRange.new(L.reg[1], L.reg[2]) end
@@ -327,7 +339,7 @@ function Fx.init(G)
         snd.LoopRegion = NumberRange.new(L.loop[1], L.loop[2])
       end
     end
-    local hi = (L.eq and L.eq[3] or 0) + (o.hiCut or 0) - 34 * muf
+    local hi = (L.eq and L.eq[3] or 0) + (o.hiCut or 0) + (L.hc or 0) - 34 * muf   -- L.hc：这一层自己再吃掉多少高音
     if L.eq or hi ~= 0 then
       local e = Instance.new("EqualizerSoundEffect")
       e.LowGain, e.MidGain, e.HighGain = L.eq and L.eq[1] or 0, L.eq and L.eq[2] or 0, math.max(-80, hi)
@@ -387,6 +399,49 @@ function Fx.init(G)
     end
     if o.delay and o.delay > 0.03 then task.delay(o.delay, go) else go() end
   end
+
+  -- 坦克炮的声音（用户 11-28 晚「坦克开炮声音 炮弹击中地面的声音和效果没有还原战雷」；vfire 调）：原来只放一条二战 88 炮的车外录音。
+  --   现在照战雷那样几层叠（都是真录音，SoundLib.lua）：
+  --   ① 炸裂 gunCrack：一下尖的 + 一记沉的（炮口那一下；离得越远高音吃得越多，一两公里外听不见）
+  --   ② 炮声本体 tankGun：真坦克炮的车外录音
+  --   ③ 低频冲击 gunSub：压力波那一记「咚」，近处最重
+  --   ④ 回声 gunTail：撞到山、楼上滚回来的一长串低沉轰隆，比本体晚 0.15～0.4 秒，离得越远占得越多（雪山河谷两边是山）
+  --   ⑤ 两百米起渐渐换成远处的 gunFar，一千五百米外只剩一记闷的「咚」+ 回声
+  --   口径越小放得越快越脆、越轻（k：120 / 125 毫米 = 1，105 毫米 0.86，76 毫米 0.71，57 毫米 0.62）；都按声速晚到（每秒 960 格 = 343 米）
+  --   自己在车里 / 炮长镜里开炮（inside）：车内录音 tankGunIn + 更重的低频 + 压掉高音的炸裂 + 0.3 秒后炮闩、抛壳的咔嗒 + 一点闷的回声
+  --   真录音一条都没载上：照旧放 SFX.tankGun 叠出来的
+  local function tankGunSnd(M, dd, k, inside)
+    k = math.clamp(k or 1, 0.6, 1.15)
+    local sp = (1 / k) ^ 0.35
+    local vk = 0.65 + 0.35 * k
+    local far = math.clamp((dd - 600) / 3600, 0, 1)   -- 0 近（两百米内）→ 1 一千五百米外：一公里上下还听得见一点闷了的炸裂
+    local hc = -math.min(26, dd / 55)
+    local L = {}
+    local function add(x, o2)
+      if not x then return end
+      for kk, v in pairs(o2) do x[kk] = v end
+      L[#L + 1] = x
+    end
+    if inside then
+      add(realLayer("tankGunIn", sp, vk) or realLayer("tankGun", sp, 0.8 * vk), { hc = -10, rmin = 60, rmax = 600 })
+      add(realCut("gunSub", sp, 1.3 * vk), { rmin = 80, rmax = 600 })
+      add(realCut("gunCrack", sp, 0.55 * vk), { hc = -18, rmin = 60, rmax = 600 })
+      add(realCut("gunMech", 1, 1), { delay = 0.3 + math.random() * 0.08, rmin = 30, rmax = 200 })
+      add(realCut("gunTail", sp, 0.3), { hc = -12, delay = 0.25, rmin = 100, rmax = 800 })
+    else
+      if far < 1 then
+        add(realCut("gunCrack", sp, 0.85 * vk * (1 - far)), { hc = hc, rmin = 70, rmax = 3200 })
+        add(realLayer("tankGun", sp, 0.9 * vk * (1 - 0.7 * far)), { hc = hc * 0.7, rmin = 90, rmax = 4200 })
+        add(realCut("gunSub", sp, 0.9 * vk * (1 - 0.6 * far)), { rmin = 120, rmax = 3600 })
+      end
+      if far > 0 then add(realCut("gunFar", sp, 1.1 * far * vk), { hc = hc * 0.4, rmin = 400, rmax = 9000 }) end
+      add(realCut("gunTail", sp, (0.4 + 0.6 * far) * vk), { hc = hc * 0.5, delay = 0.15 + 0.25 * math.random() + dd / 6000, rmin = 260, rmax = 9000 })
+    end
+    if #L == 0 then L = SFX.tankGun end
+    G.lastTankGun = L   -- 测试用
+    G.sfx(L, M, { must = true, delay = dd / 960, rmax = 4000 })
+  end
+  G.tankGunSnd = tankGunSnd
 
   -- 航炮：每架开火的飞机一个循环声（自己开的在耳边，别人的在炮口那里）；循环的是爆炸声起爆那一小段，一圈 = 一发（射速）
   local guns = {}
@@ -1175,7 +1230,7 @@ function Fx.init(G)
   G.impact = impact   -- 测试用
 
   -- 爆炸声按大小：小的脆，大的低沉、带回声，炸弹再叠一层滚雷似的闷响；水里的加一声哗；远处的晚一点到（声速）、高音被吃掉
-  local function boomSound(p, r, c, d, water)
+  local function boomSound(p, r, c, d, water, ground)
     if c == "gun" and d > 900 then return end
     local L
     if c == "gun" then L = { { id = EXP, vol = 0.32, s = { 1.6, 1.9 }, reg = { 0.04, 0.55 } } }
@@ -1190,6 +1245,19 @@ function Fx.init(G)
     if c ~= "gun" then   -- 真录音的爆炸：按大小挑（水里照旧叠一层水声）
       local RL = realLayer((r < 13 and "boomS") or (r < 26 and "boomM") or "boomL", (c == "bomb") and 0.92 or 1, 1)
       if RL then L = water and { RL, { id = WATER, vol = 0.9, s = { 0.62, 0.72 }, delay = 0.06 } } or { RL } end
+      -- 炸在土里（不是钢甲上、半空、水里；用户 11-28 晚「炮弹击中地面的声音……没有还原战雷」）：爆炸声底下再叠一层土被掀起来、
+      --   砸下来的声音（dirtBlast）；三百格（一百米）内半秒后碎土、石子哗啦啦落一地（debrisRain）
+      if ground and not water and r >= 9 and c ~= "flak" then
+        local DB = realCut("dirtBlast", (r >= 26) and 0.85 or 0.95, math.clamp(r / 16, 0.6, 1.3))
+        if DB then L[#L + 1] = DB end
+        if d < 300 then
+          local DR = realCut("debrisRain", 1, math.clamp(r / 20, 0.4, 1) * (1 - d / 300))
+          if DR then
+            DR.delay = 0.45 + math.random() * 0.25
+            L[#L + 1] = DR
+          end
+        end
+      end
     end
     local far = math.clamp((d - 300) / 2500, 0, 1)
     G.sfx(L, p, { delay = math.max(0, d - 250) / 960, hiCut = -16 * far, rmin = 40 + r * 6, rmax = (c == "bomb") and 9000 or 4500, must = r >= 18 })
@@ -1464,7 +1532,7 @@ function Fx.init(G)
     local water = gy < 0.3 and p.Y < 5 and not metal   -- 打在船身上（吃水线附近）算打在钢甲上，不是水柱
     local surf = (gy < 0.3) and 0 or math.max(gy, 0)
     local air = c == "flak" or ((not metal) and (p.Y - surf) > math.max(6, r * 0.6))
-    boomSound(p, r, c, d, water and not air)
+    boomSound(p, r, c, d, water and not air, not (metal or air or water))
     if d > ((c == "gun") and 1600 or ((c == "bomb" or c == "wreck") and 9000 or 5000)) then return end
     if c ~= "gun" then   -- 离得近震一下
       local shR = r * 12 + 60
@@ -1592,8 +1660,9 @@ function Fx.init(G)
   --   水面一柱细高的水。s 口径（坦克炮 2 上下、航炮 1）；一处最多 70 颗
   VL.def("kFount", function(s, v)
     local P = GPAL[v] or GPAL.d
-    return { tex = TX.SMOKE, life = { 0.9 * P.life, 1.9 * P.life }, spd = { 16 * s, 34 * s }, spread = 14, drag = 1.5, acc = V(0, -36, 0), rot = 40,
-      size = nseq(0, 0.8 * s, 0.35, 2.4 * s, 1, 4 * s), tr = nseq(0, 0.1, 0.55, 0.35, 1, 1), col = cseq(P.dust, P.dust2), prio = 2 }
+    -- 11-28 晚（「炮弹击中地面的……效果没有还原战雷」）：大一圈、留久一点、起头更实（战雷里钢针扎进土里是一股又高又实的土）
+    return { tex = TX.SMOKE, life = { 1.1 * P.life, 2.4 * P.life }, spd = { 16 * s, 34 * s }, spread = 14, drag = 1.5, acc = V(0, -36, 0), rot = 40,
+      size = nseq(0, 1.0 * s, 0.35, 3.0 * s, 1, 5 * s), tr = nseq(0, 0.05, 0.55, 0.3, 1, 1), col = cseq(P.dust, P.dust2), prio = 2 }
   end)
   VL.def("kClod", function(s, v)
     local P = GPAL[v] or GPAL.d
@@ -1602,13 +1671,13 @@ function Fx.init(G)
   end)
   VL.def("kRing", function(s, v)
     local P = GPAL[v] or GPAL.d
-    return { tex = TX.SMOKE, life = { 1.2 * P.life, 2.4 * P.life }, spd = { 6 * s, 13 * s }, dir = NID.Front, spread = { 180, 6 }, drag = 2, acc = V(0, 1.2, 0),
-      wind = true, rot = 20, size = nseq(0, 1.1 * s, 1, 4.2 * s), tr = nseq(0, 0.35, 1, 1), col = cseq(P.dust2), sq = nseq(0, -0.5, 1, -0.5), prio = 2 }
+    return { tex = TX.SMOKE, life = { 1.2 * P.life, 2.6 * P.life }, spd = { 6 * s, 13 * s }, dir = NID.Front, spread = { 180, 6 }, drag = 2, acc = V(0, 1.2, 0),
+      wind = true, rot = 20, size = nseq(0, 1.3 * s, 1, 5 * s), tr = nseq(0, 0.3, 1, 1), col = cseq(P.dust2), sq = nseq(0, -0.5, 1, -0.5), prio = 2 }
   end)
   VL.def("kHang", function(s, v)
     local P = GPAL[v] or GPAL.d
     return { tex = TX.SMOKE, life = { 6 * P.life, 10 * P.life }, spd = { 1, 3 }, spread = 60, drag = 1, wind = true, rot = 10,
-      size = nseq(0, 2 * s, 1, 6 * s), tr = nseq(0, 0.55, 1, 1), col = cseq(P.dust2), prio = 2 }
+      size = nseq(0, 2.5 * s, 1, 7.5 * s), tr = nseq(0, 0.45, 1, 1), col = cseq(P.dust2), prio = 2 }
   end)
   VL.def("kFurrow", function(s, v)
     local P = GPAL[v] or GPAL.d
@@ -1636,11 +1705,35 @@ function Fx.init(G)
       size = nseq(0, 0.8 * s, 1, 3.2 * s), tr = nseq(0, 0.3, 1, 1), col = cseq(RGB(238, 244, 248)), prio = 2 }
   end)
   local kinT, kinN = 0, 0
+  -- 穿甲弹、钢针扎进地里的声音（用户 11-28 晚「炮弹击中地面的声音和效果没有还原战雷」）：一下脆的「砰」+ 掀起来的土噼里啪啦落下
+  --   （真录音 dirtHit，口径大的沉一点；雪地闷一点），五十多米内再落一阵碎土（debrisRain）；石头上一声跳弹、冰面叮一声；
+  --   一公里内都听得见，远的按声速晚到、吃掉高音——原来只是 Roblox 自带的爆炸声截一小段拉快（又薄又尖），250 米外就没声了。
+  --   跟画面分开：远处画面只剩一小团土（LOD），声音照样放
+  local function kinSound(p, d, s, code, P)
+    if d > 2800 then return end
+    local L
+    local a = realCut("dirtHit", 1.12 - 0.06 * s, 0.55 + 0.2 * s)
+    if a then
+      a.hc = P.snow and -5 or 0
+      L = { a }
+      if d < 160 then
+        local b = realCut("debrisRain", 1, 0.25 + 0.1 * s)
+        if b then
+          b.delay = 0.25 + math.random() * 0.15
+          L[2] = b
+        end
+      end
+    else
+      L = { { id = EXP, vol = 0.5, s = { 1.45, 1.7 }, reg = { 0.03, 0.5 } } }
+    end
+    G.sfx(L, p, { rmin = 25 + 8 * s, rmax = 3000, delay = d / 960, hiCut = -math.min(22, d / 80) })
+    if P.spark and d < 300 then G.sfx("shellRic", p, { vol = 0.8, rmax = 500 })
+    elseif P.ice and d < 300 then G.sfx("ping", p, { vol = 0.7, rmax = 400 }) end
+  end
   local function kineticHit(p, nrm, dv, hs, s)
     if typeof(p) ~= "Vector3" then return end
     s = math.clamp(tonumber(s) or 2, 1, 3)
     local tl, d, de = VL.lod(p)
-    if de > 3500 then return end
     local t = os.clock()
     if t - kinT > 0.25 then kinT, kinN = t, 0 end
     kinN += 1
@@ -1648,6 +1741,8 @@ function Fx.init(G)
     nrm = (typeof(nrm) == "Vector3" and nrm.Magnitude > 0.5) and nrm.Unit or UP
     local du = (typeof(dv) == "Vector3" and dv.Magnitude > 0.5) and dv.Unit or -nrm
     local code = (hs == "w") and "w" or codeOf(hs)
+    if code ~= "w" then kinSound(p, d, s, code, GPAL[code] or GPAL.d) end
+    if de > 3500 then return end
     if tl >= 3 then   -- 远：一小团土（开镜看得见打在哪）
       if tl == 3 then
         if code == "w" then VL.emit("kWCol", s, upCF(p, UP), 2) else VL.emit("kFount", s, upCF(p + nrm * 0.2, nrm), 2, code) end
@@ -1709,12 +1804,11 @@ function Fx.init(G)
     -- 弹芯跳起来接着飞（擦着地打的多；硬地、冰面更多）
     local ricP = ((hard and 0.75) or (P.ice and 0.6) or 0.35) * (1 - cosI)
     if d < 900 and math.random() < ricP then ricochet(p + nrm * 0.3, refl, s * 1.3, d) end
-    -- ⑥ 一声闷响（远的晚一点到），打在石头上还有一声跳弹、冰面叮的一声；离得近震一下
-    if d < 700 then
-      G.sfx({ { id = EXP, vol = 0.5, s = { 1.45, 1.7 }, reg = { 0.03, 0.5 } } }, p, { rmin = 15, rmax = 700, delay = d / 960 })
-      if hard and d < 300 then G.sfx("shellRic", p, { vol = 0.8, rmax = 500 })
-      elseif P.ice and d < 300 then G.sfx("ping", p, { vol = 0.7, rmax = 400 }) end
+    -- ⑥ 一个小弹坑（翻出来的土；雪地是底下的冻土，冰面上只是一小块）：同榴弹的焦痕，60 秒后淡掉（声音在上面 kinSound）
+    if tl <= 2 then
+      VL.scorch(p + nrm * 0.02, (2.4 + 0.8 * s) * (P.ice and 0.6 or 1), P.soot, math.min(0.8, P.scorch + 0.12), nrm)
     end
+    -- 离得近震一下
     if d < 45 then G.shake(0.12 * (1 - d / 45)) end
   end
   G.kineticHit = kineticHit
@@ -2444,8 +2538,8 @@ function Fx.init(G)
       VL.emit("mHang", k, look, 2)
       muzzleDust(M, dir, k, false, tl, false, false, pk)
     end
-    -- L11 声音：脆响 + 低沉的轰隆 + 回声（远处的晚一点到、高音被吃掉）；车体后坐、离得近震屏
-    G.sfx("tankGun", M, { must = true, rmax = 2600, delay = dd / 1100, hiCut = -math.min(18, dd / 80) })
+    -- L11 声音（tankGunSnd）：炸裂 + 本体 + 低频冲击 + 回声，远了换成一记闷响；自己在车里 / 炮长镜里是车内的；车体后坐、离得近震屏
+    tankGunSnd(M, dd, k, mine and (sight or (G.interiorOn ~= nil and G.interiorOn() == true)))
     if G.vehRecoil and e.id then G.vehRecoil(e.id, e.g) end
     if dd < 200 then G.shake(0.38 * (1 - dd / 200)) end
   end
