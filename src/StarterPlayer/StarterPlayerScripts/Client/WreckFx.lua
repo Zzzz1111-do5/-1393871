@@ -452,7 +452,9 @@ function WreckFx.init(G)
       --   + 头上的火、稀稀的几团烟（落地以后接着冒一会儿）
       local f, sm, tr
       local burnT = 2.5 + math.random() * 3
-      if big or math.random() < 0.55 then
+      -- 11-28 晚：原来大块 + 小块各 55% 的机会——运气不好十块里只有三块冒烟（殉爆改成一打中就炸以后测试里正好抽到这一回）；
+      --   现在保底：大块、隔一块的小块一定烧，其余三成机会（十块里六七块拖着烟带甩出去）
+      if big or i % 2 == 0 or math.random() < 0.3 then
         f = emitter(c, { tex = TX.FIRE, rate = big and 8 or 5, secs = burnT, life = { 0.25, 0.5 }, spd = { 0.5, 2 }, spread = 40, acc = V(0, 6, 0),
           size = seq(0, big and 2.2 or 1.4, 1, 0.3), tr = seq(0, 0.1, 1, 1), col = cs(0, FIRE_WHITE, 0.35, FIRE_PALE, 1, FIRE_DARK), le = 0.9, li = 0, bright = 3, prio = 2 })
         sm = emitter(c, { tex = TX.SOOT, rate = big and 2 or 1, secs = 11, life = { 1.4, 2.6 }, spd = { 0.5, 2 }, spread = 30, acc = V(0, 3, 0), drag = 0.8, wind = true,

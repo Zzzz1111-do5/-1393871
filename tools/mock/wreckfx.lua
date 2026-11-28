@@ -207,7 +207,7 @@ check(hrp ~= nil and hrp.CollisionGroup == "VfxActor", string.format("出生的�
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "):sub(1, 600))
 -- 用户 11-28 晚「炮塔炮管子都要崩飞」：弹在炮塔尾舱 / 车体里的西方坦克殉爆也掀炮塔、炮管单独飞（放最后：多等的几秒不碍前面碎块烟带那几项）
 do   -- 弹在炮塔尾舱 / 车体里的西方坦克（原来殉爆炮塔不飞）
-  local VEH2 = "de_leo2a6"
+  local VEH2 = "leo2a6"   -- VehDefs 的型号（科技树的键是 de_leo2a6）
   local def2 = VD.get(VEH2)
   if def2 and def2.turret then
     local x2, z2 = spot(110)

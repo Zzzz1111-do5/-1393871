@@ -950,7 +950,9 @@ function Fx.init(G)
     n = { dust = RGB(206, 182, 134), dust2 = RGB(230, 214, 180), clod = RGB(176, 150, 108), life = 1.4, soot = RGB(96, 80, 60), scorch = 0.35, gk = 1.4, dustK = 1 },
     d = { dust = RGB(124, 104, 80), dust2 = RGB(160, 142, 116), clod = RGB(58, 46, 34), life = 1.0, soot = RGB(34, 28, 22), scorch = 0.25, gk = 1.0, dustK = 1 },
     v = { dust = RGB(120, 110, 86), dust2 = RGB(150, 140, 116), clod = RGB(74, 86, 50), life = 0.8, soot = RGB(34, 28, 22), scorch = 0.25, gk = 0.45, dustK = 0.9, grass = true },
-    i = { dust = RGB(238, 242, 248), dust2 = RGB(226, 232, 242), clod = RGB(214, 222, 234), life = 1.3, soot = RGB(58, 50, 44), scorch = 0.15, gk = 1.5, dustK = 1, snow = true },
+    -- 雪（11-28 晚用户「炮弹和炸弹炸到地面没有战雷那种效果 包括机枪打到地面也没有」——现在只剩雪山图：原来全是白的，白雪地上看不出来）：
+    --   第二色带一点灰蓝的阴影、焦痕从 0.15 加深到 0.55（炸过的地方一块黑），翻出来的冻土另画（下面 EARTH）
+    i = { dust = RGB(238, 242, 248), dust2 = RGB(196, 205, 218), clod = RGB(214, 222, 234), life = 1.3, soot = RGB(44, 38, 33), scorch = 0.55, gk = 1.5, dustK = 1, snow = true },
     j = { dust = RGB(222, 232, 242), dust2 = RGB(236, 242, 248), clod = RGB(210, 224, 236), life = 0.6, soot = RGB(58, 50, 44), scorch = 0.3, gk = 0.4, dustK = 0.4, ice = true },
     r = { dust = RGB(150, 148, 142), dust2 = RGB(186, 184, 178), clod = RGB(104, 102, 98), life = 0.8, soot = RGB(40, 38, 36), scorch = 0.5, gk = 0.35, dustK = 0.8, spark = true },
     c = { dust = RGB(162, 160, 154), dust2 = RGB(198, 196, 190), clod = RGB(124, 122, 116), life = 0.9, soot = RGB(40, 38, 36), scorch = 0.5, gk = 0.35, dustK = 0.8, spark = true },
@@ -1065,6 +1067,8 @@ function Fx.init(G)
   -- 哪种地面用哪套尘、哪种碎渣
   local IMPNAME = { d = "dirt", v = "grass", n = "sand", i = "snow", j = "ice", r = "rock", c = "rock", g = "rock", o = "wood", f = "dirt" }
   local IMPBITS = { d = "chips", v = "grassBits", n = "sandGrain", i = "snowGlint", j = "iceChips", r = "gravel", c = "gravel", g = "gravel", o = "splinter" }
+  -- 打在雪上再加的：雪底下的冻土屑（深色，白地上一眼看得见打在哪；11-28 晚）
+  local IMPBITS2 = { i = "chips" }
 
   -- 弹着点打中的是什么零件、朝哪（沿弹道在落点前后各探 3 格）：客户端的样子（View 的文件夹）、特效、自己的角色不算
   local probe = RaycastParams.new()
@@ -1154,6 +1158,8 @@ function Fx.init(G)
       VL.emit("Imp_" .. name, 1, cf, (h == "f") and 1 or IMPD[name].n * cnt, big)
       local bits = IMPBITS[h]
       if bits then VL.emit("Imp_" .. bits, 1, cf, IMPB[bits].n * cnt, big) end
+      local bits2 = IMPBITS2[h]
+      if bits2 then VL.emit("Imp_" .. bits2, 1, cf, 3 * cnt, big) end
       if cosI < 0.35 and (h == "d" or h == "n" or h == "i" or h == "v") then   -- 擦地：顺着弹道往前再拖一道
         local fw = (refl * 0.85 + nrm * 0.25)
         fw = (fw.Magnitude > 1e-3) and fw.Unit or up
@@ -1208,7 +1214,7 @@ function Fx.init(G)
   VL.def("eCol", function(S, v)
     local P = GPAL[v:sub(1, 1)] or GPAL.d
     local c0, c1, c2 = P.clod:Lerp(P.dust, 0.3), P.dust, P.dust2
-    if P.snow then c0, c1, c2 = RGB(120, 112, 104), RGB(186, 186, 190), RGB(226, 232, 242) end   -- 脏雪：下暗上白
+    if P.snow then c0, c1, c2 = RGB(70, 61, 53), RGB(150, 146, 144), RGB(222, 228, 238) end   -- 脏雪：下面一截翻出来的冻土（11-28 晚加深）、上白
     if v:sub(2, 2) == "g" then
       local gr = RGB(140, 138, 134)
       c0, c1, c2 = c0:Lerp(gr, 0.35), c1:Lerp(gr, 0.35), c2:Lerp(gr, 0.35)
@@ -1532,7 +1538,11 @@ function Fx.init(G)
       VL.emit("eCol", S, upCF(p, up), n(21 * ((heat and 0.6) or (mp and 0.8) or 1) * P.dustK), code .. ((heat or mp) and "g" or ""))
       if heat or mp then VL.emit("eJet", S, upCF(p, dirU), n(heat and 7 or 4)) end
       if P.spark and d < 1500 then VL.emit("eSpark", S, upCF(p, up), n(8 + r / 2)) end
-      if P.snow then VL.emit("eIce", 1, upCF(p, up), n(12)) end
+      if P.snow then
+        VL.emit("eIce", 1, upCF(p, up), n(12))
+        -- 雪底下的冻土（11-28 晚）：一股褐色的土跟着雪一起掀起来——白地上看得见炸在哪
+        VL.emit("eCol", S, upCF(p, up), n(8 * ((heat and 0.6) or (mp and 0.8) or 1)), "d" .. ((heat or mp) and "g" or ""))
+      end
     end
     -- E4 黑烟（破甲弹灰烟）
     if heat then VL.emit("eGrey", S, upCF(p, up), n(3.5))
@@ -1542,9 +1552,9 @@ function Fx.init(G)
       if G.wreckChunks and d < 1500 then G.wreckChunks(p, R, K, 6) end
     elseif tl == 1 then
       local cn = n(24 * ((heat and 0.5) or (mp and 0.75) or 1))
-      if P.snow then
-        VL.emit("eClod", S, upCF(p, up), cn * 0.7, code)
-        VL.emit("eClod", S, upCF(p, up), cn * 0.3, code .. "D")
+      if P.snow then   -- 雪块、冻土块一半一半（原来七三：白地上看不出土块）
+        VL.emit("eClod", S, upCF(p, up), cn * 0.5, code)
+        VL.emit("eClod", S, upCF(p, up), cn * 0.5, code .. "D")
       else
         VL.emit("eClod", S, upCF(p, up), cn, code)
       end
@@ -1671,6 +1681,10 @@ function Fx.init(G)
     -- ② 土块、碎石（木头是木屑、雪地是雪块、冰面是冰屑）
     if tl == 1 then VL.emit("kClod", s, upCF(p + nrm * 0.2, up), n(nC), code) end
     if P.snow and tl == 1 then VL.emit("kIce", 1, upCF(p + nrm * 0.2, up), n(8)) end
+    if P.snow then   -- 雪底下的冻土（11-28 晚）：一股深色的土跟着白雪一起掀起来、几块冻土块
+      VL.emitK("kFount", s, upCF(p + nrm * 0.2, up), n(nF * 0.45), "d", nil, 8 + 12 * cosI)
+      if tl == 1 then VL.emit("kClod", s, upCF(p + nrm * 0.2, up), n(nC * 0.5), "d") end
+    end
     -- ③ 贴地一圈扬尘（往四周推开、慢慢散）、一团留着随风飘的灰
     VL.emit("kRing", s, lookCF(p + nrm * 0.8, V(1, 0, 0)), n(7 + 3 * s), code)
     VL.emit("kHang", s, upCF(p + nrm * 0.8, nrm), n(2 + s), code)
