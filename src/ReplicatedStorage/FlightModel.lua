@@ -25,6 +25,10 @@ local RAD = math.pi / 180
 local sin, cos, sqrt, abs, exp, atan2, asin = math.sin, math.cos, math.sqrt, math.abs, math.exp, math.atan2, math.asin
 FM.DT = 1 / 120
 FM.G = G0
+-- 收住滚转的刹车（1/秒，FM.sub 积分前那段；用户 11-28「滚筒做着突然不做 惯性要能收住」）：满速滚转松杆多滚约 p / ROLL_BRAKE 弧度；
+--   各型可以在自己那一行写 rollBrake 改
+local ROLL_BRAKE = 20
+FM.ROLL_BRAKE = ROLL_BRAKE
 
 local function clamp(v, a, b) if v < a then return a elseif v > b then return b end return v end
 local function lerp(a, b, t) return a + (b - a) * t end
@@ -795,6 +799,22 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
   local az = (rZ * Fy - uZ * Fz - bZ * Fx) / m
   Vx, Vy, Vz = Vx + ax * h, Vy + ay * h, Vz + az * h
   F.vx, F.vy, F.vz = Vx, Vy, Vz
+  -- 收住滚转（用户 11-28「惯性的意思是 飞机滚筒做着 然后突然不做滚筒 惯性要能收住」，照战雷）：
+  --   要的滚转角速度（电传 / 教官：前置滤波后的指令；机械操纵：松杆就是 0）比现在的小、或者反过来——另加一个刹车力矩把多出来的那截收掉，
+  --   不受副翼偏度、偏转速率限制（只靠副翼：打满反向要零点几秒，满速滚转松手还要多滚 40～76°；战雷里一松手十几二十度就停）。
+  --   只在「要停 / 要慢下来」时起作用（加速滚转不管，满杆滚转角速度照旧）；接近失速（掉翼、自转）时不刹，掉翼照样掉
+  do
+    local pWant
+    if cmdLaw then
+      pWant = F.pf
+    elseif abs(inp.sx or 0) < 0.02 and not inp.levelHard then
+      pWant = 0
+    end
+    if pWant and (abs(pWant) < abs(p) or pWant * p < 0) then
+      -- 接近失速迎角（八成起）就逐渐不刹：掉翼、自转照真的来（机械操纵低速拉满杆一边机翼先掉，滚过去机头才掉得下来、改得出）
+      Lm = Lm - Ixx * (D.rollBrake or ROLL_BRAKE) * (1 - smooth(0.8 * D.aSr, D.aSr, aa)) * (p - pWant)
+    end
+  end
   p = p + (Lm + (Iyy - Izz) * q * r) / Ixx * h
   q = q + (Mm + (Izz - Ixx) * p * r) / Iyy * h
   r = r + (Nm + (Ixx - Iyy) * p * q) / Izz * h
