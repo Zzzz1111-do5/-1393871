@@ -38,6 +38,11 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWBP]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日起 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～八包、E 第一～七包，新的在上面）
+  11-28 这一包（挂载表、局内出击页、金币充值、T-90A「窗帘-1」红灯、车被打爆照战雷、开镜黑框 / 望远镜缩放、弹药架起火殉爆、PGL-625……）：
+    只换游戏文件（或者「三、只换脚本」），不用导模型。
+    金币充值要上架才能真的收 R 币：创作者后台（create.roblox.com → 这个体验 → 盈利 / Monetization → 开发者产品 / Developer Products）建 5 个产品，
+    价格照 99 / 199 / 499 / 999 / 1999 R 币填（想改价钱就照自己的填，充值页显示 Roblox 查到的真价钱），把 5 个产品编号按顺序填进
+    ReplicatedStorage → Config 里 Config.CoinPacks 的 id（现在都是 0：充值页上写「未上架」）。Studio 里测试购买不花钱。
   E 11-26 深夜这一包：新地图「雪山」（选地图界面投票选它）要导的 11 个文件，都是「导入 3D」导进 Workspace，开服自动收好——
     · snow/rockscan.glb、icy.glb、wmsnow.glb：谷边的雪山（3 种模型拼成连绵的山脊，原模型不减面，一共约 70 MB；块叫 P_<键>__c<号>，
       收进 ReplicatedStorage.Imported.Peaks）。游戏里在你自己的电脑上把它们转着拼成一百七十来座，一直铺到四十多公里外。
