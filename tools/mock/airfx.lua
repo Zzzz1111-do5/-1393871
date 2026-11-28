@@ -184,7 +184,7 @@ for _, d in ipairs(v.M.model:GetDescendants()) do
 end
 check(hotOk, "喷口里烧得发橙粉色")
 
-print("⑤ 导弹视角小窗：自己打出去的弹，右上角从弹上看目标；命中写「命中」，停一会儿关掉")
+print("⑤ 自己打出去的弹：不再自动开小窗，提示按 L 跟踪（11-25 起；按 L 镜头跟着弹走的那套在 mslcam.lua）")
 do
   local p0 = st.cf.Position
   local foe = G.spawnAircraft("def", "f22", CF(p0.X + 600, p0.Y + 40, p0.Z - 900), nil, nil)
@@ -198,30 +198,13 @@ do
     R.as("client", function() C.onMyShot({ id = id, tg = foe.id, w = "pl15", p = mpos, by = st.id }) end)
     R.run(0.2)
     local gui = me.PlayerGui:FindFirstChild("MslCam")
-    local vpf = gui and gui:FindFirstChild("View", true)
-    local cl = vpf and vpf:FindFirstChild("Model")
-    check(gui and gui.Enabled, "开了导弹视角小窗")
-    check(cl ~= nil, "小窗里复制了一份目标（白热）")
-    local cam2 = vpf and vpf.CurrentCamera
-    local okLook = false
-    if cam2 and cl then
-      local sum, n = V3(0, 0, 0), 0
-      for _, d in ipairs(cl:GetDescendants()) do if d:IsA("BasePart") then sum = sum + d.Position n = n + 1 end end
-      local pv = sum / math.max(n, 1)
-      okLook = (pv - cam2.CFrame.Position).Unit:Dot(cam2.CFrame.LookVector) > 0.97
-    end
-    check(okLook, "小窗的镜头对着目标")
-    local info = gui and gui:FindFirstChild("Info", true)
-    check(info and info.Text:find("km", 1, true), "写着目标多远、还剩几秒：" .. tostring(info and info.Text))
-    -- 命中：弹飞到目标身上没了
-    C.flyingShots[id].p = foe.root.CFrame.Position + V3(3, 0, 0)
-    R.as("client", function() C.onShotEnd(id, C.flyingShots[id]) end)
+    check(not (gui and gui.Enabled), "小窗没有自己弹出来（用户 11-25）")
+    local hint = false
+    for _, t in ipairs(T.texts()) do if t == C.T("mcam.followHint") then hint = true end end
+    check(hint and C.mslFollowAvail and C.mslFollowAvail(), "提示按 L 跟踪这一发，这时按 L 跟得上")
     C.flyingShots[id] = nil
-    R.run(0.2)
-    local res = gui and gui:FindFirstChild("Result", true)
-    check(res and res.Text == C.T("mcam.hit"), "写着「命中」")
+    R.as("client", function() C.onShotEnd(id, { p = foe.root.CFrame.Position }) end)
     R.run(1.5)
-    check(not gui.Enabled, "过一会儿关掉了")
   end
 end
 
