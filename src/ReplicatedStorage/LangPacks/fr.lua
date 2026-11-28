@@ -1,4 +1,4 @@
--- 自动生成（tools/i18n/build.py），别手改：fr 的译文（2231 / 2403 条）
+-- 自动生成（tools/i18n/build.py），别手改：fr 的译文（2235 / 2407 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -1158,13 +1158,17 @@ return {
     ["tree.needRes"] = "Recherchez-le d'abord",
     ["tree.notInLineup"] = "Pas dans votre équipe",
     ["tree.notOwned"] = "Vous ne possédez pas ce véhicule",
-    ["tree.rangeBusy"] = "Le terrain d'essai est encore en préparation (serveur tout juste lancé) — réessayez dans quelques secondes",
+    ["tree.rangeBusy"] = "Le terrain d'essai est encore en préparation (serveur tout juste lancé) — l'essai démarrera tout seul dès qu'il sera prêt",
+    ["tree.rangeMatch"] = "Une bataille se déroule en ce moment sur Pics enneigés : cet essai se fera sur le terrain d'essai",
     ["tree.rp"] = "{1} points de recherche gagnés",
+    ["tree.snowBusy"] = "La carte Pics enneigés est encore en cours de génération (serveur tout juste lancé) — l'essai démarrera tout seul dès qu'elle sera prête",
     ["tree.testInAir"] = "Vol d'essai : {1} (toutes les modifications ; pas de place sur la piste / l'héliport, vous partez donc en vol avec la zone cible devant ; trois avions cibles y tournent et une rangée de cibles est au sol ; aucun ne riposte ; évacuez pour revenir)",
+    ["tree.testMatch"] = "Une bataille commence sur Pics enneigés : fin de l'essai, retour au hangar",
     ["tree.testOn"] = "Terrain d'essai : {1} (toutes les modifications ; sept véhicules cibles dans votre couloir à 300-2000 m, dont deux en mouvement ; trois avions cibles au-dessus ; aucun ne riposte ; descendez du véhicule pour revenir)",
     ["tree.testOnAir"] = "Vol d'essai : {1} (toutes les modifications ; départ sur la piste du terrain d'essai, mettez les gaz pour décoller ; trois avions cibles tournent au-dessus de la zone cible au nord et une rangée de cibles est au sol ; aucun ne riposte ; évacuez pour revenir)",
     ["tree.testOnPad"] = "Vol d'essai : {1} (toutes les modifications ; départ sur l'héliport du terrain d'essai, levez le collectif pour décoller ; trois avions cibles tournent au-dessus de la zone cible au nord et une rangée de cibles est au sol ; aucun ne riposte ; évacuez pour revenir)",
     ["tree.testOnSky"] = "Vol d'essai : {1} (toutes les modifications ; à pleine charge il ne décolle pas de la piste, vous partez donc en vol au sud de la zone cible, cap droit dessus ; trois avions cibles y tournent et une rangée de cibles est au sol ; aucun ne riposte ; évacuez pour revenir)",
+    ["tree.testOnSnow"] = "Essai sur Pics enneigés : {1} (toutes les modifications ; véhicules cibles dans votre couloir de quelques centaines de mètres à 1-2 km, dont deux en mouvement ; trois avions cibles au-dessus ; aucun ne riposte ; descendez du véhicule pour revenir)",
     ["tree.useHangar"] = "Déployez un véhicule de votre équipe au hangar",
     ["tree.waitDeploy"] = "Déploiement dans {1} s",
     ["tree.walkIn"] = "Véhicule prêt — approchez et appuyez sur E",

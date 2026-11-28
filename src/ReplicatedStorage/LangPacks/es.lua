@@ -1,4 +1,4 @@
--- 自动生成（tools/i18n/build.py），别手改：es 的译文（2233 / 2403 条）
+-- 自动生成（tools/i18n/build.py），别手改：es 的译文（2237 / 2407 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -1163,13 +1163,17 @@ return {
     ["tree.needRes"] = "Investígalo primero",
     ["tree.notInLineup"] = "No está en tu alineación",
     ["tree.notOwned"] = "No tienes este vehículo",
-    ["tree.rangeBusy"] = "El campo de pruebas aún se está preparando (el servidor acaba de arrancar): inténtalo en unos segundos",
+    ["tree.rangeBusy"] = "El campo de pruebas aún se está preparando (el servidor acaba de arrancar): la prueba empezará sola en cuanto esté listo",
+    ["tree.rangeMatch"] = "Ahora hay una batalla en Picos Nevados: esta prueba será en el campo de pruebas",
     ["tree.rp"] = "Ganaste {1} puntos de investigación",
+    ["tree.snowBusy"] = "El mapa Picos Nevados aún se está generando (el servidor acaba de arrancar): la prueba empezará sola en cuanto esté listo",
     ["tree.testInAir"] = "Vuelo de prueba: {1} (todas las modificaciones; no había sitio en la pista / helipuerto, así que empiezas en el aire con la zona de blancos delante; allí giran tres aviones blanco y hay una fila de blancos en tierra; ninguno dispara; eyéctate para volver)",
+    ["tree.testMatch"] = "Empieza una batalla en Picos Nevados: prueba terminada, vuelta al hangar",
     ["tree.testOn"] = "Campo de pruebas: {1} (todas las modificaciones; siete vehículos blanco en tu calle a 300-2000 m, dos en movimiento; tres aviones blanco en el cielo; ninguno dispara; bájate del vehículo para volver)",
     ["tree.testOnAir"] = "Vuelo de prueba: {1} (todas las modificaciones; empiezas en la pista del campo de pruebas, acelera para despegar; tres aviones blanco giran sobre la zona de blancos al norte y hay una fila de blancos en tierra; ninguno dispara; eyéctate para volver)",
     ["tree.testOnPad"] = "Vuelo de prueba: {1} (todas las modificaciones; empiezas en el helipuerto del campo de pruebas, sube el colectivo para despegar; tres aviones blanco giran sobre la zona de blancos al norte y hay una fila de blancos en tierra; ninguno dispara; eyéctate para volver)",
     ["tree.testOnSky"] = "Vuelo de prueba: {1} (todas las modificaciones; con carga completa no despega de la pista, así que empiezas en el aire al sur de la zona de blancos, rumbo directo a ella; allí giran tres aviones blanco y hay una fila de blancos en tierra; ninguno dispara; eyéctate para volver)",
+    ["tree.testOnSnow"] = "Prueba en Picos Nevados: {1} (todas las modificaciones; vehículos blanco en tu calle desde unos cientos de metros hasta 1-2 km, dos en movimiento; tres aviones blanco en el cielo; ninguno dispara; bájate del vehículo para volver)",
     ["tree.useHangar"] = "Despliega un vehículo de tu alineación del hangar",
     ["tree.waitDeploy"] = "Desplegando en {1} s",
     ["tree.walkIn"] = "Vehículo listo: acércate y pulsa E",

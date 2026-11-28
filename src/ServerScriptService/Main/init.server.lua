@@ -260,6 +260,11 @@ function G.ensureRange()
 end
 task.spawn(function()
   if G.placesWait then G.placesWait(10) end
+  -- 战场就是雪山图（只剩这一张，开服就定；测试台 MapName）：主界面试驾就在这张图上（Tech.lua chooseRM，用户 11-28「为什么训练场现在还是没有雪山地图」），
+  --   不先建训练场区块（省开服的 CPU、内存、体素：用户 11-28 晚「现在太卡了」）——这张图上正在打一局、有人点试驾时才建（Tech.lua 按需 G.ensureRange）
+  local t0 = os.clock()
+  while not G.mapId and os.clock() - t0 < 2 do task.wait(0.1) end
+  if G.testBattleSnow and G.testBattleSnow() then return end
   if not G.wantLocalRange or G.wantLocalRange() then G.ensureRange() end
 end)
 
@@ -273,6 +278,9 @@ task.spawn(function()
       G.testRange = require(script:WaitForChild("SnowRange")).new(G.Map)
       G.rangeReady = G.testRange ~= nil
     end)
+  elseif G.testBattleSnow and G.testBattleSnow() then
+    -- 别的服务器、战场是雪山图：这张图上没在打一局的时候试驾就在这上面（同训练场服务器那一套靶道，Tech.lua chooseRM）
+    G.try("试驾（战场的雪山图）", function() G.battleRange = require(script:WaitForChild("SnowRange")).new(G.Map) end)
   end
   if G.farLodPublish then G.try("远景替身", G.farLodPublish) end   -- 流式加载时远处的楼画替身（FarLod.lua）
   if G.depotsBuild then G.try("生成点", G.depotsBuild) end   -- 载具生成点（要等舰队甲板建好）

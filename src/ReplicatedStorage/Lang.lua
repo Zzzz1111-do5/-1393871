@@ -437,7 +437,12 @@ add("tree.testOnAir", "训练场试飞：{1}（改装全装上；在训练场跑
 add("tree.testOnSky", "训练场试飞：{1}（改装全装上；满油满弹在训练场的跑道上滑不起来，直接在空中出发：在靶区南边朝北飞，靶区就在正前方；三架靶机绕圈、地上一排靶车，都不还手；下飞机回机库）", "Test flight: {1} (all modifications; fully loaded it can't get off the test range runway, so you start in the air south of the target area, heading straight for it; three target aircraft circle there and a row of targets sits on the ground; none shoot back; bail out to return)")
 add("tree.testInAir", "训练场试飞：{1}（改装全装上；跑道 / 直升机坪上没摆下，直接在空中出发，靶区就在前面；三架靶机绕圈、地上一排靶车，都不还手；下飞机回机库）", "Test flight: {1} (all modifications; there was no room on the runway / helipad, so you start in the air with the target area ahead; three target aircraft circle there and a row of targets sits on the ground; none shoot back; bail out to return)")
 add("tree.testOnPad", "训练场试飞：{1}（改装全装上；在训练场直升机坪上，拉总距起飞；北边靶区三架靶机绕圈、地上一排靶车，都不还手；下飞机回机库）", "Test flight: {1} (all modifications; you start on the test range helipad, raise the collective to lift off; three target aircraft circle over the target area to the north and a row of targets sits on the ground; none shoot back; bail out to return)")
-add("tree.rangeBusy", "训练场还在准备（刚开服），稍等几秒再试驾", "The test range is still being set up (server just started) — try again in a few seconds")
+add("tree.rangeBusy", "训练场还在准备（刚开服），好了自动开始试驾", "The test range is still being set up (server just started) — your test drive starts by itself when it's ready")
+-- 战场是雪山图的服务器：主界面试驾就在这张图上（Tech.lua chooseRM，用户 11-28「为什么训练场现在还是没有雪山地图」）
+add("tree.snowBusy", "雪山图还在生成（刚开服），好了自动开始试驾", "The Snow Peaks map is still being generated (server just started) — your test drive starts by itself when it's ready")
+add("tree.rangeMatch", "雪山图上正在打一局：这次在训练场试驾", "A battle is on the Snow Peaks map right now: this test drive is on the test range")
+add("tree.testMatch", "雪山图要开打一局了：试驾结束，回到机库", "A battle is starting on the Snow Peaks map: test drive over, back to the hangar")
+add("tree.testOnSnow", "雪山图上试驾：{1}（改装全装上；靶道前面几百米到一两公里摆着靶车，两辆在跑；天上三架靶机；都不还手；下车回机库）", "Test drive on Snow Peaks: {1} (all modifications; target vehicles down your lane from a few hundred metres out to 1-2 km, two moving; three target aircraft overhead; none shoot back; leave the vehicle to return)")
 add("wt.needParts", "修不了：这辆车还没研究改装「零件」", "Can't repair: research the \"Parts\" modification first")
 add("wt.needFpe", "灭不了火：这辆车还没研究改装「灭火器」", "No extinguisher: research the \"FPE\" modification first")
 add("ui.youKilled", "击毙 {1}", "Killed {1}")

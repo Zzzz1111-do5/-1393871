@@ -1293,6 +1293,26 @@ function Round.init(G)
 
   function G.roundStep(dt)
     local t = now()
+    -- 战雷式对局（匹配）：这一局的真人都走了（「退出战斗」、掉线）——电脑车自己打下去没人看，白占服务器（用户 11-28 晚「现在太卡了」），
+    --   战场那张雪山图也一直被这一局占着、主界面试驾只能退回训练场区块（「为什么训练场现在还是没有雪山地图」，Tech.lua chooseRM）：
+    --   收掉这一局（车、残骸照开局那样清掉），回到匹配中
+    if (R.phase == "prep" or R.phase == "battle") and G.matchOn and G.matchOn() and not G.pve then
+      local any = false
+      for _, Q in pairs(G.P) do
+        if Q.match == R.n and Q.pl and Q.pl.Parent then any = true break end
+      end
+      if any then
+        R.emptyT = nil
+      else
+        R.emptyT = (R.emptyT or 0) + dt
+        if R.emptyT >= 5 then
+          R.emptyT = nil
+          print("[全面大战场] 这一局的真人都走了：收掉，回到匹配中")
+          G.roundStart()
+          return
+        end
+      end
+    end
     if R.phase == "queue" then   -- 匹配中：匹配够了（WtMatch.lua 的 queueStep）开准备阶段，排着的人坐进自己点的车
       if G.queueStep and G.queueStep(t) then
         R.phase = "prep"

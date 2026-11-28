@@ -60,8 +60,8 @@ local q1 = T.join("P2", 9912, false)
 local q2 = T.join("P3", 9913, false)
 R.run(2)
 local Q1, Q2 = G.P[q1], G.P[q2]
-T.actAs(q1, "testDrive", key)
-T.actAs(q2, "testDrive", key)   -- 同一帧：第一个人还没生出来、没登记
+T.actAsRemote(q1, "testDrive", key)   -- 照真游戏走远程事件（服务器那边一个人一个线程：雪山图上的靶道第一次用到要算几帧）
+T.actAsRemote(q2, "testDrive", key)   -- 同一帧：第一个人还没生出来、没登记
 T.runUntil(function() return Q1.vehicle ~= nil and Q2.vehicle ~= nil end, 30)
 local v1, v2 = Q1.vehicle, Q2.vehicle
 local gap = (v1 and v2) and (v1.root.Position - v2.root.Position).Magnitude or 0

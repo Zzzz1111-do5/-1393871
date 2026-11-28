@@ -1,4 +1,4 @@
--- 自动生成（tools/i18n/build.py），别手改：de 的译文（2216 / 2403 条）
+-- 自动生成（tools/i18n/build.py），别手改：de 的译文（2220 / 2407 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -1162,13 +1162,17 @@ return {
     ["tree.needRes"] = "Zuerst erforschen",
     ["tree.notInLineup"] = "Nicht in deiner Aufstellung",
     ["tree.notOwned"] = "Du besitzt dieses Fahrzeug nicht",
-    ["tree.rangeBusy"] = "Das Testgelände wird noch aufgebaut (Server gerade gestartet) — versuche es in ein paar Sekunden erneut",
+    ["tree.rangeBusy"] = "Das Testgelände wird noch aufgebaut (Server gerade gestartet) — die Testfahrt startet von selbst, sobald es bereit ist",
+    ["tree.rangeMatch"] = "Auf Schneegipfel läuft gerade ein Gefecht: diese Testfahrt findet auf dem Testgelände statt",
     ["tree.rp"] = "{1} Forschungspunkte erhalten",
+    ["tree.snowBusy"] = "Die Karte Schneegipfel wird noch erzeugt (Server gerade gestartet) — die Testfahrt startet von selbst, sobald sie bereit ist",
     ["tree.testInAir"] = "Testflug: {1} (alle Modifikationen; auf Piste / Hubschrauberlandeplatz war kein Platz, daher Start in der Luft mit dem Zielgebiet voraus; dort kreisen drei Zielflugzeuge, am Boden steht eine Reihe Ziele; keiner schießt zurück; aussteigen, um zurückzukehren)",
+    ["tree.testMatch"] = "Auf Schneegipfel beginnt ein Gefecht: Testfahrt beendet, zurück in den Hangar",
     ["tree.testOn"] = "Testgelände: {1} (alle Modifikationen; sieben Zielfahrzeuge auf deiner Bahn auf 300-2000 m, zwei fahren; drei Zielflugzeuge am Himmel; keiner schießt zurück; steig aus, um zurückzukehren)",
     ["tree.testOnAir"] = "Testflug: {1} (alle Modifikationen; Start auf der Piste des Testgeländes, Schub geben zum Abheben; drei Zielflugzeuge kreisen über dem Zielgebiet im Norden, am Boden steht eine Reihe Ziele; keiner schießt zurück; aussteigen, um zurückzukehren)",
     ["tree.testOnPad"] = "Testflug: {1} (alle Modifikationen; Start auf dem Hubschrauberlandeplatz des Testgeländes, Kollektiv anheben zum Abheben; drei Zielflugzeuge kreisen über dem Zielgebiet im Norden, am Boden steht eine Reihe Ziele; keiner schießt zurück; aussteigen, um zurückzukehren)",
     ["tree.testOnSky"] = "Testflug: {1} (alle Modifikationen; voll beladen hebt es von der Piste nicht ab, daher Start in der Luft südlich des Zielgebiets mit Kurs darauf; dort kreisen drei Zielflugzeuge, am Boden steht eine Reihe Ziele; keiner schießt zurück; aussteigen, um zurückzukehren)",
+    ["tree.testOnSnow"] = "Testfahrt auf Schneegipfel: {1} (alle Modifikationen; Zielfahrzeuge auf deiner Bahn von einigen hundert Metern bis 1-2 km, zwei fahren; drei Zielflugzeuge am Himmel; keiner schießt zurück; steig aus, um zurückzukehren)",
     ["tree.useHangar"] = "Setze ein Fahrzeug aus deiner Hangar-Aufstellung ein",
     ["tree.waitDeploy"] = "Einsatz in {1} s",
     ["tree.walkIn"] = "Fahrzeug bereit — hingehen und E drücken",

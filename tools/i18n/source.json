@@ -1737,8 +1737,28 @@
 },
 {
 "key": "tree.rangeBusy",
-"zh": "训练场还在准备（刚开服），稍等几秒再试驾",
-"en": "The test range is still being set up (server just started) — try again in a few seconds"
+"zh": "训练场还在准备（刚开服），好了自动开始试驾",
+"en": "The test range is still being set up (server just started) — your test drive starts by itself when it's ready"
+},
+{
+"key": "tree.snowBusy",
+"zh": "雪山图还在生成（刚开服），好了自动开始试驾",
+"en": "The Snow Peaks map is still being generated (server just started) — your test drive starts by itself when it's ready"
+},
+{
+"key": "tree.rangeMatch",
+"zh": "雪山图上正在打一局：这次在训练场试驾",
+"en": "A battle is on the Snow Peaks map right now: this test drive is on the test range"
+},
+{
+"key": "tree.testMatch",
+"zh": "雪山图要开打一局了：试驾结束，回到机库",
+"en": "A battle is starting on the Snow Peaks map: test drive over, back to the hangar"
+},
+{
+"key": "tree.testOnSnow",
+"zh": "雪山图上试驾：{1}（改装全装上；靶道前面几百米到一两公里摆着靶车，两辆在跑；天上三架靶机；都不还手；下车回机库）",
+"en": "Test drive on Snow Peaks: {1} (all modifications; target vehicles down your lane from a few hundred metres out to 1-2 km, two moving; three target aircraft overhead; none shoot back; leave the vehicle to return)"
 },
 {
 "key": "wt.needParts",
@@ -15190,7 +15210,11 @@
 "Test flight: {1} (all modifications; fully loaded it can't get off the test range runway, so you start in the air south of the target area, heading straight for it; three target aircraft circle there and a row of targets sits on the ground; none shoot back; bail out to return)",
 "Test flight: {1} (all modifications; there was no room on the runway / helipad, so you start in the air with the target area ahead; three target aircraft circle there and a row of targets sits on the ground; none shoot back; bail out to return)",
 "Test flight: {1} (all modifications; you start on the test range helipad, raise the collective to lift off; three target aircraft circle over the target area to the north and a row of targets sits on the ground; none shoot back; bail out to return)",
-"The test range is still being set up (server just started) — try again in a few seconds",
+"The test range is still being set up (server just started) — your test drive starts by itself when it's ready",
+"The Snow Peaks map is still being generated (server just started) — your test drive starts by itself when it's ready",
+"A battle is on the Snow Peaks map right now: this test drive is on the test range",
+"A battle is starting on the Snow Peaks map: test drive over, back to the hangar",
+"Test drive on Snow Peaks: {1} (all modifications; target vehicles down your lane from a few hundred metres out to 1-2 km, two moving; three target aircraft overhead; none shoot back; leave the vehicle to return)",
 "Can't repair: research the \"Parts\" modification first",
 "No extinguisher: research the \"FPE\" modification first",
 "Killed {1}",

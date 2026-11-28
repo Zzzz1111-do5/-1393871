@@ -1,4 +1,4 @@
--- 自动生成（tools/i18n/build.py），别手改：pt 的译文（2234 / 2403 条）
+-- 自动生成（tools/i18n/build.py），别手改：pt 的译文（2238 / 2407 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -1164,13 +1164,17 @@ return {
     ["tree.needRes"] = "Pesquise primeiro",
     ["tree.notInLineup"] = "Não está na sua escalação",
     ["tree.notOwned"] = "Você não possui este veículo",
-    ["tree.rangeBusy"] = "O campo de testes ainda está sendo preparado (servidor acabou de iniciar): tente de novo em alguns segundos",
+    ["tree.rangeBusy"] = "O campo de testes ainda está sendo preparado (servidor acabou de iniciar): o teste começa sozinho assim que estiver pronto",
+    ["tree.rangeMatch"] = "Há uma batalha em Picos Nevados agora: este teste será no campo de testes",
     ["tree.rp"] = "Você ganhou {1} pontos de pesquisa",
+    ["tree.snowBusy"] = "O mapa Picos Nevados ainda está sendo gerado (servidor acabou de iniciar): o teste começa sozinho assim que estiver pronto",
     ["tree.testInAir"] = "Voo de teste: {1} (todas as modificações; não havia espaço na pista / heliponto, então você começa no ar com a área de alvos à frente; lá circulam três aeronaves-alvo e há uma fileira de alvos no solo; nenhum revida; ejete para voltar)",
+    ["tree.testMatch"] = "Uma batalha vai começar em Picos Nevados: teste encerrado, de volta ao hangar",
     ["tree.testOn"] = "Campo de testes: {1} (todas as modificações; sete veículos-alvo na sua pista a 300-2000 m, dois em movimento; três aeronaves-alvo no céu; nenhum revida; saia do veículo para voltar)",
     ["tree.testOnAir"] = "Voo de teste: {1} (todas as modificações; você começa na pista do campo de testes, acelere para decolar; três aeronaves-alvo circulam sobre a área de alvos ao norte e há uma fileira de alvos no solo; nenhum revida; ejete para voltar)",
     ["tree.testOnPad"] = "Voo de teste: {1} (todas as modificações; você começa no heliponto do campo de testes, suba o coletivo para decolar; três aeronaves-alvo circulam sobre a área de alvos ao norte e há uma fileira de alvos no solo; nenhum revida; ejete para voltar)",
     ["tree.testOnSky"] = "Voo de teste: {1} (todas as modificações; carregado ao máximo não decola da pista, então você começa no ar ao sul da área de alvos, rumo direto a ela; lá circulam três aeronaves-alvo e há uma fileira de alvos no solo; nenhum revida; ejete para voltar)",
+    ["tree.testOnSnow"] = "Teste em Picos Nevados: {1} (todas as modificações; veículos-alvo na sua pista de algumas centenas de metros até 1-2 km, dois em movimento; três aeronaves-alvo no céu; nenhum revida; saia do veículo para voltar)",
     ["tree.useHangar"] = "Implante um veículo da sua escalação no hangar",
     ["tree.waitDeploy"] = "Implantando em {1} s",
     ["tree.walkIn"] = "Veículo pronto: aproxime-se e aperte E",

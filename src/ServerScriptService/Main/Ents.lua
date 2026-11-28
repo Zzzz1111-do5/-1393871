@@ -290,6 +290,32 @@ function Ents.init(G)
   end
   G.rocketAm = rocketAm   -- 测试用
 
+  -- 坦克炮（全口径炮弹）、反坦克导弹 / 火箭弹（破甲战斗部）直接打中飞机、直升机：一发打下来
+  --   （用户 11-28「然后坦克炮打到直升机为什么直升机还有可能活」）——原来照血算：120 毫米炮一发 640 × 对空 0.8 = 512，
+  --   直升机 900～1350 血，打在机身中段（发动机、油箱那块）只掉一半血、部件也没打断，照样飞走；战雷里坦克炮弹（榴弹、破甲弹、穿甲弹都一样）
+  --   打中直升机就是散架掉下去。航炮、高炮这些小口径照旧按血、按部件（WtAir.lua）一下一下算；近炸、溅射照旧按 G.explode
+  local function heavyOnAir(s)
+    local w = s.w or {}
+    if s.kind == "shell" then return w.fx == "tank" or (w.cal or 0) >= 0.25 end
+    if s.kind == "rocket" or s.kind == "missile" then
+      local am = rocketAm(s)
+      return am == "heat" or am == "atgm"
+    end
+    return false
+  end
+  local function airOneShot(s, inst)
+    local e = inst and G.entOf(inst)
+    if not (e and e.alive and e.air) or not heavyOnAir(s) then return false end
+    if s.src and s.src.team == e.team then return false end   -- 自己人：照旧不伤（damageEnt 也拦）
+    G.wtRaw = true   -- 直接判毁（不再走 WtAir 的部件、机身血）
+    local ok, err = pcall(G.damageEnt, e, 1e9, s.src)
+    G.wtRaw = nil
+    if not ok then G.reportError("坦克炮打飞机", err) end
+    if not e.alive then G.airOneShots = (G.airOneShots or 0) + 1 end   -- 测试用
+    return not e.alive
+  end
+  G.airOneShot = airOneShot
+
   local shotN = 0
   function G.launch(s)
     s.t = 0
@@ -434,7 +460,7 @@ function Ents.init(G)
           local hitE = res.Instance and G.eraShell and G.entOf(res.Instance)
           local ek = hitE and G.eraShell(hitE, s, res.Position)   -- 重型爆反挡穿甲弹（Era.lua）
           if ek then G.dmgK = { [hitE] = ek } end
-          if res.Instance then hitThing(res.Instance, s.w, s.w.dmg, s.src, 1, res.Position) end
+          if res.Instance and not airOneShot(s, res.Instance) then hitThing(res.Instance, s.w, s.w.dmg, s.src, 1, res.Position) end
           -- 炮弹、航炮直接打在车、船、飞机上：钢甲上迸一团白热的火花（客户端 Fx 的 spark；大小按口径：坦克炮 2 倍，航炮 1.25 倍）
           local hs = res.Instance and HitSurf.of(res.Instance, res.Material)
           if hs and HitSurf.METAL[hs] then
@@ -466,6 +492,7 @@ function Ents.init(G)
           -- 火箭弹、导弹：爆反按来向找块，这一发的爆炸和直接命中都按它打折（G.dmgK 在两下之间都留着）
           local m = G.eraBlast and G.eraBlast(res.Position, s.w, s.vel)
           if m then G.dmgK = m end
+          if res.Instance then airOneShot(s, res.Instance) end   -- 反坦克导弹 / 火箭弹直接打中飞机、直升机：一发打下来（上面 airOneShot）
           local hs2 = res.Instance and HitSurf.of(res.Instance, res.Material)
           -- 按材质、来向、战斗部画（钢甲上也带：客户端画打在车上的那一套）；11-27 审查 10：带上弹种（rocketAm）——炮射导弹、反坦克导弹、
           --   火箭筒这些破甲战斗部的客户端按破甲弹画，原来一律画成榴弹
