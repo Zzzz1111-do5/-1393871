@@ -96,21 +96,6 @@ local function tossCheck(ent, name)
   end
 end
 tossCheck(e, VEH)
-do   -- 弹在炮塔尾舱 / 车体里的西方坦克（原来殉爆炮塔不飞）
-  local VEH2 = "de_leo2a6"
-  local def2 = VD.get(VEH2)
-  if def2 and def2.turret then
-    local x2, z2 = spot(110)
-    local e2 = G.newVehicle("atk", VEH2, G.vehBaseAt(def2, x2, z2, V3(0, 0, -1)))
-    R.run(1.5)
-    killAs(e2, "ammo")
-    R.run(0.25)
-    tossCheck(e2, VEH2)
-    R.run(4)
-    local vv = viewOfE(e2)
-    check(vv and vv.gtoss and vv.gtoss.rest, VEH2 .. "：炮管落地躺平（" .. tostring(vv and vv.gtoss and vv.gtoss.rest) .. "）")
-  end
-end
 local nc = chunks()
 check(nc >= 6, "钢板碎块飞出去了（" .. nc .. " 块真零件）")
 local list = C.wreckChunkList()
@@ -220,4 +205,20 @@ R.run(1.5)
 local hrp = me.Character and me.Character:FindFirstChild("HumanoidRootPart")
 check(hrp ~= nil and hrp.CollisionGroup == "VfxActor", string.format("出生的角色放进 VfxActor（%s）", tostring(hrp and hrp.CollisionGroup)))
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "):sub(1, 600))
+-- 用户 11-28 晚「炮塔炮管子都要崩飞」：弹在炮塔尾舱 / 车体里的西方坦克殉爆也掀炮塔、炮管单独飞（放最后：多等的几秒不碍前面碎块烟带那几项）
+do   -- 弹在炮塔尾舱 / 车体里的西方坦克（原来殉爆炮塔不飞）
+  local VEH2 = "de_leo2a6"
+  local def2 = VD.get(VEH2)
+  if def2 and def2.turret then
+    local x2, z2 = spot(110)
+    local e2 = G.newVehicle("atk", VEH2, G.vehBaseAt(def2, x2, z2, V3(0, 0, -1)))
+    R.run(1.5)
+    killAs(e2, "ammo")
+    R.run(0.25)
+    tossCheck(e2, VEH2)
+    R.run(4)
+    local vv = viewOfE(e2)
+    check(vv and vv.gtoss and vv.gtoss.rest, VEH2 .. "：炮管落地躺平（" .. tostring(vv and vv.gtoss and vv.gtoss.rest) .. "）")
+  end
+end
 T.summary()

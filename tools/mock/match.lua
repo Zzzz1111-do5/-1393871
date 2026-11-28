@@ -70,7 +70,10 @@ check(P.match == G.round.n, "记成这一局的人")
 R.run(1)
 check(not C.hangarGui.Visible and not spawnOn(), "坐在车里：机库、出击页都收起")
 check(C.S.inMatch == true and C.wtHold ~= nil and C.wtHold(), "准备阶段：锁住（这一局算自己的、坐在车里）")
-local cdBox = T.findNamed("PrepCountdown")
+local function findAny(name)   -- T.findNamed 只找按钮：倒计时是一块 Frame
+  for _, d in ipairs(R.localPlayer.PlayerGui:GetDescendants()) do if d.Name == name then return d end end
+end
+local cdBox = findAny("PrepCountdown")
 check(cdBox ~= nil and cdBox.Visible, "屏幕正中倒计时")
 check(#T.texts("战斗将在") > 0, "写着「战斗将在 N 秒后开始」")
 local mvP = P.vehicle
@@ -86,7 +89,7 @@ check(math.abs(br - myBr) < 0.01, string.format("本局战斗等级 = 我阵容�
 print("③ 开打：放开、电脑车补满")
 T.runUntil(function() return G.round.phase == "battle" end, 60, 1 / 10)
 R.run(0.5)
-check(not C.wtHold() and not T.findNamed("PrepCountdown").Visible, "开战：放开、倒计时收起")
+check(not C.wtHold() and findAny("PrepCountdown") ~= nil and not findAny("PrepCountdown").Visible, "开战：放开、倒计时收起")
 do
   local mv0 = P.vehicle
   local q0 = mv0 and mv0.root.Position
