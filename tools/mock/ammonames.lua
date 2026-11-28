@@ -113,6 +113,9 @@ local zhTags = 0
 for _, t in ipairs(tags) do if t:find("[\228-\233]") then zhTags = zhTags + 1 end end
 check(#tags >= nAm and zhTags >= nAm, string.format("主炮 %d 种弹每格都写着中文弹种（%d 格有字、%d 格中文）", nAm, #tags, zhTags))
 check(plate ~= nil and plate.Text:find("尾翼稳定脱壳穿甲弹", 1, true) ~= nil, "名牌：M829A3 · 尾翼稳定脱壳穿甲弹")
+local seen, dup = {}, nil
+for _, t in ipairs(tags) do if seen[t] then dup = t end seen[t] = true end
+check(dup == nil, "每一格的短名都不一样（M830 多用途破甲弹、M830A1 多用途反坦克弹分得开）" .. (dup and ("：重复的「" .. dup .. "」") or ""))
 C.lang = "en"
 local nm, ty, tg = C.ammoInfo("m829a3")
 check(nm == "M829A3" and ty == "APFSDS" and tg == "APFSDS", string.format("换成英文：%s · %s（短名 %s）", tostring(nm), tostring(ty), tostring(tg)))
