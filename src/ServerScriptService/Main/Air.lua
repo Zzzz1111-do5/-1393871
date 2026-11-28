@@ -514,12 +514,45 @@ function Air.init(G)
     local w = s.w
     if w.seeker == "radar" and w.act and s.ref then arhStep(s, dt) end
     local spd = s.vel.Magnitude
-    -- 发动机开着（助推 / 主发动机、霹雳-15 的第二次脉冲、巡航弹一直开）往最快加；关了按阻力掉速（∝ 速度²，各型的 bleed 不一样：
-    --   大的弹掉得慢；用户 11-24 夜：「不同导弹尾烟 动能 速度都是不一样的」）
-    if AD.motorOn(w, s.age) then spd = math.min(w.speed, spd + w.speed * 1.4 * dt)
-    else spd = spd - (w.bleed or 0.12) * w.speed * (spd / w.speed) ^ 2 * dt end
-    spd = math.max(spd, w.speed * 0.22)
     local dir = s.vel.Unit
+    -- 导弹能量（用户 11-28「导弹能量都搞一下」，照战雷；11-24 夜「不同导弹尾烟 动能 速度都是不一样的」）：
+    --   发动机按各型（AirDefs MOTOR 的 mt / dv / pulse）：助推 + 续航（前 35% 猛推、后面顶住阻力）或单推力（整段匀着推）；双脉冲第二次再加一截；
+    --     从载机的速度往上加，载机越快弹越快（最多 1.3 倍额定速度）。巡航弹一直开、稳在额定速度
+    --   阻力 ∝ v²（满速时每秒掉 bleed 成，各型不一样：大的弹掉得慢；不分高低——用户 11-28「这个不需要引入空气密度差异」）；
+    --   重力沿弹道的分量：爬升掉速、俯冲加速；转弯：能拉的过载 ∝ v²、拉得越狠掉得越多（诱导阻力，见下）；
+    --   发动机关了、掉到各型的 out（默认 0.3）倍额定速度以下：没能量了——导引头放弃，再过 1 秒自毁（战雷的「导弹能量耗尽」；原来最低 0.22 倍一直飞）
+    local burn = math.max(w.burn or 3, 0.5)
+    local motor = AD.motorOn(w, s.age)
+    if w.cruise then
+      spd = spd + math.clamp(w.speed - spd, -w.speed * 0.5 * dt, w.speed * 0.8 * dt)
+    else
+      if motor then   -- 各型自己的发动机（AirDefs MOTOR：mt、dv、pulse.dv；用户 11-28「不同导弹的数据要不一样别忘了」）
+        local aT
+        if w.pulse and s.age >= w.pulse.at then   -- 双脉冲第二次点火（霹雳-15、K-77M）：再加一截，远距离还有能量
+          aT = w.speed * (w.pulse.dv or 0.4) / math.max(w.pulse.t or 4, 0.5)
+        elseif (w.mt or "bs") == "single" then   -- 单推力：整段匀着推
+          aT = w.speed * (w.dv or 0.95) / burn
+        elseif s.age < burn * 0.35 then   -- 助推：前 35% 一共加 dv 倍额定速度（地上发射的防空弹也够得到）
+          aT = w.speed * (w.dv or 0.9) / (burn * 0.35)
+        else   -- 续航：差不多顶住九成速度时的阻力
+          aT = w.speed * math.max(0.35 / burn, 0.8 * (w.bleed or 0.12))
+        end
+        spd = spd + aT * dt
+      end
+      spd = spd - (w.bleed or 0.12) * w.speed * (spd / w.speed) ^ 2 * dt
+      spd = spd - GRAV * dir.Y * dt
+      spd = math.min(spd, w.speed * 1.3)
+    end
+    s.spdK = spd / w.speed   -- 测试用：现在是额定速度的几成
+    if not motor and not w.cruise and spd < w.speed * (w.out or 0.3) then   -- 各型自己的「没能量」线（大弹翼面大、低速还能飞）
+      s.tgt, s.aimPt = nil, nil   -- 没能量了：导引头放弃
+      s.deadT = (s.deadT or 0) + dt
+      if s.deadT > 1 then
+        G.fx({ k = "boom", p = s.pos, s = 0.5, c = "msl" })   -- 自毁：一小团
+        return true
+      end
+    end
+    spd = math.max(spd, 1)
     local t = s.tgt
     if t and t.decoy then t.pos += t.vel * dt t.vel += V(0, -GRAV * 0.4, 0) * dt end
     local tp = tgtPos(t)
@@ -543,11 +576,12 @@ function Air.init(G)
         local k = (s.age < 0.25) and 0.4 or 1   -- 刚出架先稳一下
         -- 能拉多少过载按速度² 算（满速时 w.g 个 g）：后段掉了速的弹转不动——战雷里「拖到导弹没能量再急转」躲得掉；
         --   转弯也掉能量（诱导阻力）
-        local aMax = (w.g or 30) * GRAV * (spd / math.max(w.speed, 1)) ^ 2
+        local aMax = (w.g or 30) * GRAV * (spd / math.max(w.speed, 1)) ^ 2   -- 升力 ∝ v²：慢了拉不动
         local wMax = math.min(math.rad(w.turn), aMax / math.max(spd, 1))
         local nd = turnToward(dir, want, wMax * dt * k)
         local used = math.acos(math.clamp(nd:Dot(dir), -1, 1)) / math.max(dt, 1e-3)
-        spd = math.max(w.speed * 0.22, spd - 0.04 * (used * spd) ^ 2 / ((w.g or 30) * GRAV) * dt)
+        -- 诱导阻力：满过载转弯时每秒掉 0.15 × 满过载（30 g 的弹约 4.5 g 的减速；原来 0.04 几乎不掉，用户 11-28「导弹能量」）
+        spd = math.max(1, spd - 0.15 * (used * spd) ^ 2 / ((w.g or 30) * GRAV) * dt)
         dir = nd
       end
       local fuse = 8 + ((t and not t.decoy and t.root) and math.min(14, t.root.Size.Magnitude * 0.18) or 0)
@@ -858,8 +892,8 @@ function Air.init(G)
         -- 红外弹看热诱弹（三成被骗）；雷达弹看箔条（每组诱饵弹里都有：战雷那样）——只有开了导引头的才会被骗（数据链阶段不看），
         --   同时在置零（侧着飞）的话更容易（战雷里「置零 + 箔条」是躲雷达弹的标准动作）
         local chance
-        if s.w.seeker == "ir" then
-          chance = 0.33
+        if s.w.seeker == "ir" then   -- 按导引头（AirDefs band；用户 11-28「双波段的 可以单独搞一下」）：老式单色最好骗、双色难、成像几乎不上当
+          chance = ({ ["1"] = 0.45, ["1c"] = 0.33, ["2"] = 0.14, img = 0.05 })[s.w.band or "1c"] or 0.33
         elseif s.w.act then
           chance = s.active and ((s.notched or (s.notchT or 0) > 0) and 0.5 or 0.2) or 0
         else

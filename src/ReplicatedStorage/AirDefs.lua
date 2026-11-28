@@ -158,7 +158,7 @@ AirDefs.W = {
     shape = { L = 6.1, d = 0.45, fin = 0.7 } },
   shturm = { kind = "agm", eject = "tube", dmg = 800, splash = 9, speed = 350, range = 2000, lockTime = 1.4, cone = 22, turn = 30, burn = 5, life = 9, vs = VS_AGM,   -- 9M114 突击（米-24V）
     shape = { L = 6.0, d = 0.45, fin = 0.7 } },
-  vikhr = { kind = "agm", dmg = 950, splash = 10, speed = 520, range = 2800, lockTime = 1.4, cone = 25, turn = 35, burn = 6, life = 9, vs = VS_AGM,   -- 9K121 旋风（卡-52）：激光驾束、超音速
+  vikhr = { kind = "agm", beam = true, dmg = 950, splash = 10, speed = 520, range = 2800, lockTime = 1.4, cone = 25, turn = 35, burn = 6, life = 9, vs = VS_AGM,   -- 9K121 旋风（卡-52）：激光驾束、超音速
     shape = { L = 8.0, d = 0.4, fin = 0.7 } },
   hot3 = { kind = "agm", dmg = 850, splash = 9, speed = 280, range = 1900, lockTime = 1.3, cone = 25, turn = 35, burn = 5, life = 10, vs = VS_AGM,    -- HOT 3（虎式 UHT）：有线指令
     shape = { L = 3.6, d = 0.5, fin = 0.8 } },
@@ -192,23 +192,30 @@ end
 --   cruise 涡喷一直开（巡航弹，匀速飞），boost 它起飞那一下助推几秒（浓烟）；speed 最快（格 / 秒，不写照上面）；
 --   g 满速时最大过载（慢了按速度² 少：后段的弹转不动）；bleed 烧完以后掉速快慢（满速时每秒掉几成，越大的弹越小）；
 --   smoke 尾烟：low 低烟发动机（细、淡）/ med / heavy（老式发动机、助推器：又粗又浓）
+--   能量（用户 11-28「导弹能量都搞一下」「不同导弹的数据要不一样别忘了」，服务器 Air.lua guideMissile 按它算）：
+--     mt 发动机：bs 助推 + 续航（前 35% 燃烧时间猛推、后面续航顶住阻力，默认）/ single 单推力（整段燃烧时间匀着推，烧完那一刻最快）；
+--     dv 整段（助推段）一共加几倍额定速度；pulse.dv 双脉冲第二次点火再加几倍（霹雳-15、K-77M：远距离还有能量）；
+--     out 掉到几成额定速度以下算没能量（导引头放弃、一秒后自毁，默认 0.3：大弹翼面大、低速还能飞，小一点）
+--   红外导引头 band（用户 11-28「双波段的 可以单独搞一下」，服务器 Air.lua flare 按它算被热诱弹骗走的几率）：
+--     1 老式单色非制冷（霹雳-2、R-60：最好骗）/ 1c 单色制冷（R-73）/ 2 双色（红外 + 紫外或两个红外波段：毒刺、针、天燕-90、R-74M）/
+--     img 红外成像（AIM-9X、霹雳-10、91 式改：看得出诱饵的形状，几乎不上当）
 local MOTOR = {
-  pl2 = { burn = 2.2, g = 11, bleed = 0.24, smoke = "heavy" },
-  pl10 = { burn = 3.0, g = 55, bleed = 0.17, smoke = "low" },
-  aim9x = { burn = 3.4, g = 55, bleed = 0.16, smoke = "low" },
-  ty90 = { burn = 2.2, g = 25, bleed = 0.22, smoke = "med" },
-  aim92 = { burn = 2.4, g = 25, bleed = 0.2, smoke = "low" },
-  pl12 = { burn = 5.5, g = 32, bleed = 0.11, smoke = "med" },
-  aim120 = { burn = 6.5, g = 32, bleed = 0.095, smoke = "low" },
-  pl15 = { burn = 5.0, pulse = { at = 9, t = 4.5 }, speed = 820, g = 30, bleed = 0.08, smoke = "low" },
-  aim54 = { burn = 9, g = 18, bleed = 0.07, smoke = "heavy" },
-  r73 = { burn = 3.0, g = 50, bleed = 0.17, smoke = "med" },
-  r74 = { burn = 3.2, g = 55, bleed = 0.16, smoke = "low" },
-  r27r = { burn = 6, g = 25, bleed = 0.1, smoke = "med" },
-  k77m = { burn = 5.5, pulse = { at = 10, t = 4 }, speed = 840, g = 32, bleed = 0.08, smoke = "low" },   -- 双脉冲（同霹雳-15）
-  r27er = { burn = 7, g = 25, bleed = 0.09, smoke = "med" },
-  r77 = { burn = 6, g = 32, bleed = 0.1, smoke = "low" },
-  r60 = { burn = 2.4, g = 40, bleed = 0.2, smoke = "med" },
+  pl2 = { burn = 2.2, g = 11, bleed = 0.24, smoke = "heavy", mt = "single", dv = 0.85, out = 0.35, band = "1" },
+  pl10 = { burn = 3.0, g = 55, bleed = 0.17, smoke = "low", mt = "single", dv = 1.0, out = 0.3, band = "img" },
+  aim9x = { burn = 3.4, g = 55, bleed = 0.16, smoke = "low", mt = "single", dv = 1.0, out = 0.3, band = "img" },
+  ty90 = { burn = 2.2, g = 25, bleed = 0.22, smoke = "med", mt = "bs", dv = 0.85, out = 0.35, band = "2" },
+  aim92 = { burn = 2.4, g = 25, bleed = 0.2, smoke = "low", mt = "bs", dv = 0.85, out = 0.35, band = "2" },
+  pl12 = { burn = 5.5, g = 32, bleed = 0.11, smoke = "med", mt = "bs", dv = 0.9, out = 0.28 },
+  aim120 = { burn = 6.5, g = 32, bleed = 0.095, smoke = "low", mt = "bs", dv = 0.95, out = 0.27 },
+  pl15 = { burn = 5.0, pulse = { at = 9, t = 4.5, dv = 0.45 }, speed = 820, g = 30, bleed = 0.08, smoke = "low", mt = "bs", dv = 0.95, out = 0.25 },
+  aim54 = { burn = 9, g = 18, bleed = 0.07, smoke = "heavy", mt = "single", dv = 0.95, out = 0.22 },
+  r73 = { burn = 3.0, g = 50, bleed = 0.17, smoke = "med", mt = "single", dv = 0.95, out = 0.32, band = "1c" },
+  r74 = { burn = 3.2, g = 55, bleed = 0.16, smoke = "low", mt = "single", dv = 1.0, out = 0.3, band = "2" },
+  r27r = { burn = 6, g = 25, bleed = 0.1, smoke = "med", mt = "bs", dv = 0.85, out = 0.28 },
+  k77m = { burn = 5.5, pulse = { at = 10, t = 4, dv = 0.4 }, speed = 840, g = 32, bleed = 0.08, smoke = "low", mt = "bs", dv = 0.95, out = 0.25 },   -- 双脉冲（同霹雳-15）
+  r27er = { burn = 7, g = 25, bleed = 0.09, smoke = "med", mt = "bs", dv = 1.0, out = 0.25 },
+  r77 = { burn = 6, g = 32, bleed = 0.1, smoke = "low", mt = "single", dv = 0.95, out = 0.28 },
+  r60 = { burn = 2.4, g = 40, bleed = 0.2, smoke = "med", mt = "single", dv = 0.85, out = 0.35, band = "1" },
   kh29 = { burn = 6, g = 10, bleed = 0.05, smoke = "heavy" },
   s57e6 = { burn = 2.0, speed = 1100, g = 32, bleed = 0.045, smoke = "heavy" },   -- 两级：助推器烧完扔掉，弹体（没有发动机）高速滑翔、阻力小
   akd10 = { burn = 3.5, g = 15, bleed = 0.06, smoke = "med" },
@@ -218,8 +225,8 @@ local MOTOR = {
   vikhr = { burn = 3.5, g = 16, bleed = 0.05, smoke = "med" },
   hot3 = { burn = 2.5, g = 12, bleed = 0.08, smoke = "heavy" },
   tow = { burn = 2.0, g = 12, bleed = 0.08, smoke = "heavy" },
-  igla = { burn = 2.2, g = 22, bleed = 0.22, smoke = "med" },
-  type91 = { burn = 2.2, g = 24, bleed = 0.21, smoke = "low" },
+  igla = { burn = 2.2, g = 22, bleed = 0.22, smoke = "med", mt = "bs", dv = 0.85, out = 0.35, band = "2" },
+  type91 = { burn = 2.2, g = 24, bleed = 0.21, smoke = "low", mt = "bs", dv = 0.85, out = 0.35, band = "img" },
   agm65 = { burn = 4.5, g = 12, bleed = 0.06, smoke = "med" },
   kd88 = { cruise = true, boost = 1.5, g = 6, smoke = "low" },
   yj83k = { cruise = true, boost = 2.0, g = 6, smoke = "low" },

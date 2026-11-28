@@ -1485,7 +1485,9 @@ function Fx.init(G)
       end
       if not mine(e) and not aw.hyper then G.sfx((kind == "missile" and not e.ej) and "msl" or "bombRel", e.p) end   -- 抛射的：先是挂架弹开的一声
       flying[e.id] = { wm = mdl, glow = glow, half = (aw.shape and aw.shape.L or 5) / 2, p = e.p, v = e.v, gb = kind == "bomb", t = 0, kind = kind, trailT = 0,
-        burn = aw.burn or 4, aw = aw, cfs = table.create(#mdl.parts), tg = e.tg, w = e.w, my = mine(e) }   -- my：自己打出去的（Marks.lua 给自己的炸弹标落点）
+        burn = aw.burn or 4, aw = aw, cfs = table.create(#mdl.parts), tg = e.tg, w = e.w, my = mine(e),   -- my：自己打出去的（Marks.lua 给自己的炸弹标落点）
+        -- 指令 / 驾束制导的反坦克弹（突击、攻击、旋风……）绕纵轴顺时针转着飞（从后面看；用户 11-27「激光制导导弹是顺时针旋转着这样打过去的」）
+        spin = (kind == "missile" and (aw.guide == "cmd" or aw.beam == true)) and 15 or nil, roll = 0 }
       if aw.hyper and glow then   -- 高超音速（惊雷-1）：先掉一下不点火；点火后一大团白热尾焰 + 一条很长的尾迹（速度太快，一颗颗烟球连不起来）
         local fs = flying[e.id]
         fs.hyper, fs.lit = true, false
@@ -1601,6 +1603,17 @@ function Fx.init(G)
       if s.g then s.v += GRAV * (s.gs or 1) * dt end
       if s.dr then s.v -= s.v * math.min(0.5, s.dr * s.v.Magnitude * dt) end   -- 空气阻力（同服务器 Ents.lua，坦克炮弹）
       if s.gb or s.ejg then s.v += V(0, -27.5, 0) * dt end   -- 机载炸弹、还没点火的抛射弹：AirDefs.GRAV（不用 gb：Marks.lua 按它画炸弹落点）
+      if s.vT then   -- 导弹：服务器校过的速度按它最近的转弯角速度接着转（预测），本地的速度慢慢跟上去——不再一下拐个角
+        if s.om then s.vT = CFrame.fromAxisAngle(s.omAx, s.om * dt):VectorToWorldSpace(s.vT) end
+        if s.acc then s.vT = s.vT.Unit * math.max(1, s.vT.Magnitude + s.acc * dt) end
+        s.v = s.v:Lerp(s.vT, 1 - math.exp(-dt * 8))
+      end
+      if s.pErr then   -- 位置差慢慢补（0.2 秒左右补完），不一下跳过去
+        local c = s.pErr * (1 - math.exp(-dt * 7))
+        s.p += c
+        s.pErr -= c
+        if s.pErr.Magnitude < 0.3 then s.pErr = nil end
+      end
       s.p += s.v * dt
       if s.path then
         local pv, vv = pathAt(s)
@@ -1609,6 +1622,10 @@ function Fx.init(G)
       end
       if s.wm then   -- 按型号拼的弹：整枚一起挪，导弹尾焰烧完就灭、尾烟跟着淡
         local cf = CFrame.lookAt(s.p, s.p + ((s.v.Magnitude > 0.1) and s.v or V(0, -1, 0)))
+        if s.spin then   -- 自转（从后面看顺时针：绕弹轴转负角）
+          s.roll = (s.roll + s.spin * dt) % (math.pi * 2)
+          cf = cf * CFrame.Angles(0, 0, -s.roll)
+        end
         for i, o in ipairs(s.wm.offs) do s.cfs[i] = cf * o end
         workspace:BulkMoveTo(s.wm.parts, s.cfs, Enum.BulkMoveMode.FireCFrameChanged)
         if s.ejUntil and os.clock() >= s.ejUntil then ejIgnite(s) end
@@ -1715,8 +1732,27 @@ function Fx.init(G)
     local s = flying[e.id]
     if s and e.lost then s.lost = true end   -- 数据链断了 / 导引头丢了目标（雷达屏上只剩预计命中点那个小圈，Radar.lua）
     if not s or s.path or typeof(e.p) ~= "Vector3" or typeof(e.v) ~= "Vector3" then return end
-    if (s.p - e.p).Magnitude > 60 then s.p = e.p else s.p = s.p:Lerp(e.p, 0.6) end
-    s.v = e.v
+    -- 导弹拐弯不再一折一折（用户 11-27「导弹转弯貌似是一个个直角这样转弯的」）：原来每 0.3 秒把速度一下换成服务器的、位置拽过去六成，
+    --   急转的时候就是一段段直线连着拐角。现在：两次校正之间速度转了多少 → 转弯角速度（omAx、om）和加减速（acc），下一次校正之前照着接着转；
+    --   本地的速度、位置都是慢慢跟上去（stepShots）。差太远（掉线、刚出来）才一下跳过去
+    local now = os.clock()
+    if (s.p - e.p).Magnitude > 300 then
+      s.p, s.v, s.pErr = e.p, e.v, nil
+    else
+      s.pErr = e.p - s.p
+    end
+    if s.vFix and s.tFix and now - s.tFix > 0.05 and e.v.Magnitude > 1 and s.vFix.Magnitude > 1 then
+      local dtF = now - s.tFix
+      local c = math.clamp(s.vFix.Unit:Dot(e.v.Unit), -1, 1)
+      local ax = s.vFix:Cross(e.v)
+      if ax.Magnitude > 1e-6 and c < 0.99999 then
+        s.omAx, s.om = ax.Unit, math.min(math.acos(c) / dtF, math.rad(120))
+      else
+        s.om = nil
+      end
+      s.acc = math.clamp((e.v.Magnitude - s.vFix.Magnitude) / dtF, -2000, 2000)
+    end
+    s.vFix, s.tFix, s.vT = e.v, now, e.v
   end
   -- 热诱弹：一串亮点往后下方撒开，拖着白烟
   local function flares(e)   -- 一组几发（按住 X 连续放：服务器每 0.25 秒一组 2 发）
