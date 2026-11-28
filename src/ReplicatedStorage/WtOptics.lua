@@ -79,6 +79,9 @@ end
 --   返回 { nv = 夜视, ret = 分划, modes = { 能切的光电通道编号… }（1 昼光、2 微光、3 白热、4 黑热、5 主动红外）, east = 东方 }
 function O.kit(treeKey, vid, fcsGen, year, nat)
   local nv = (treeKey and O.TREE_NV[treeKey]) or (vid and O.VEH_NV[vid]) or O.nvByYear(year, nat)
+  -- 老坦克不给夜视（用户 11-28「老坦克别给夜视和光电系统了」，同战雷：早期的车只有昼光瞄准镜）：真车的主动红外（红外探照灯 + 变像管）不再给，
+  --   当没有夜视——开镜只有昼光，第三人称按 N 也没有夜视 / 热成像（Night.lua 看 G.driveNv）
+  if nv == "ir" then nv = "none" end
   local east = EAST[nat or ""] == true
   if nat == nil and treeKey then east = (string.sub(treeKey, 1, 3) == "cn_") or (string.sub(treeKey, 1, 3) == "ru_") end
   local g = fcsGen

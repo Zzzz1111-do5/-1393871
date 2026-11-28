@@ -29,7 +29,7 @@ function Settings.init(G)
   ---------------------------------------------------------------- 设置项和默认值
   -- airAim 固定翼操纵（mouse 战雷鼠标瞄准 / kb 纯键盘）、camRoll 纯键盘时镜头跟着机身滚转几成（0 地平线水平）
   local DEF = { sens = 1, aim = 1, invY = false, fov = 70, fovAir = 70, shake = true, vol = 1, voice = true, ui = 1, gamma = 0, lang = "",
-    airAim = "mouse", camRoll = 0, autoGear = true }
+    airAim = "mouse", camRoll = 0, autoGear = true, sensAir = 1, sensVeh = 1 }
   local P = {}
   for k, v in pairs(DEF) do P[k] = v end
 
@@ -112,6 +112,7 @@ function Settings.init(G)
     if P.lang == "zh" or P.lang == "en" then G.lang = P.lang end
     -- 空战：操纵方式、镜头滚转（Fly.lua 读；飞着的时候改了马上换）
     G.airMouseAim, G.camRollK, G.autoGearOff = P.airAim ~= "kb", P.camRoll, P.autoGear == false
+    G.sensAirK, G.sensVehK = P.sensAir, P.sensVeh   -- 开飞机 / 开车时再乘一档（用户 11-28「玩家要能调灵敏度」）
     if G.flyMouseAim then pcall(G.flyMouseAim, G.airMouseAim, true) end
     if G.uiScaleK ~= P.ui then
       G.uiScaleK = P.ui
@@ -123,6 +124,7 @@ function Settings.init(G)
   function G.mouseDelta(aim)
     local d = UIS:GetMouseDelta()
     local k = (G.sensK or 1) * (aim and (G.aimSensK or 1) or 1)
+    if G.fly then k = k * (G.sensAirK or 1) elseif G.drive then k = k * (G.sensVehK or 1) end   -- 开飞机 / 开车各自再乘一档
     return V2(d.X * k, d.Y * k * (G.invertY and -1 or 1))
   end
 
@@ -291,6 +293,10 @@ function Settings.init(G)
       note = L("机库、科技树、设置整体放大，字更清楚", "Scales the hangar, tech tree and settings") },
     { cat = "main", key = "gamma", kind = "slider", zh = "灰度校正", en = "Brightness", lo = -0.1, hi = 0.1, step = 0.01, fmt = function(v) return string.format("%+.2f", v) end },
     { cat = "ctl", key = "sens", kind = "slider", zh = "鼠标灵敏度", en = "Mouse sensitivity", lo = 0.25, hi = 2.5, step = 0.05, fmt = mult },
+    { cat = "ctl", key = "sensAir", kind = "slider", zh = "开飞机的鼠标灵敏度", en = "Aircraft mouse sensitivity", lo = 0.25, hi = 2.5, step = 0.05, fmt = mult,
+      note = L("鼠标瞄准时准星走多快（再乘上面的总灵敏度）", "How fast the mouse-aim reticle moves (times the overall setting)") },
+    { cat = "ctl", key = "sensVeh", kind = "slider", zh = "开车的鼠标灵敏度", en = "Vehicle mouse sensitivity", lo = 0.25, hi = 2.5, step = 0.05, fmt = mult,
+      note = L("坦克转炮塔、看四周（再乘上面的总灵敏度）", "Turret traverse and looking around (times the overall setting)") },
     { cat = "ctl", key = "aim", kind = "slider", zh = "开镜灵敏度", en = "Aim sensitivity", lo = 0.25, hi = 2, step = 0.05, fmt = mult,
       note = L("瞄准镜、光电吊舱里再乘一次", "Extra factor in sights and pods") },
     { cat = "ctl", key = "invY", kind = "check", zh = "反转鼠标上下", en = "Invert mouse Y" },

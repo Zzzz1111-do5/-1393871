@@ -199,9 +199,19 @@ function Night.init(G)
     if not hum or hum.Health <= 0 then return end
     -- 开地面载具（用户 11-22：坦克第三人称、第一人称都要有红外）：N 在 夜视 → 热成像（下面 vehThermal，白热）→ 关 之间切
     if G.drive and not G.fly and not G.sail then
+      -- 按这辆车真有的（WtOptics，用户 11-28「老坦克别给夜视和光电系统了」）：没有夜视的老车按 N 不理（提示一下）；
+      --   只有微光夜视的只能开夜视；有热像的 夜视 → 热成像 → 关
+      local nvk = G.driveNv and G.driveNv() or "th2"
+      if nvk == "none" then
+        if on then setOn(false) end
+        if G.vehThermal and G.vehThermal() then G.vehThermal(false) end
+        if G.toast then G.toast(G.T and G.T("drv.noNv") or "No night vision", "info") end
+        return
+      end
+      local thermal = nvk == "th1" or nvk == "th2" or nvk == "th3"
       if on then
         setOn(false)
-        G.vehThermal(true)
+        if thermal then G.vehThermal(true) end
       elseif G.vehThermal() then
         G.vehThermal(false)
       else

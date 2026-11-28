@@ -60,7 +60,7 @@ end
 print("① 表：各型的夜视、分划、通道（没走科技树的车按型号查年代）")
 do
   local k59 = OPT.kit("cn_59", "type59", 0, 1959, "cn")
-  check(k59.nv == "ir" and k59.ret == "sov" and #k59.modes == 2 and k59.modes[2] == 5, "59 式：主动红外、苏式分划、昼光 + 主动红外")
+  check(k59.nv == "none" and k59.ret == "sov" and #k59.modes == 1, "59 式：老坦克不给夜视（用户 11-28「老坦克别给夜视和光电系统了」）、苏式分划、只有昼光")
   local kA = OPT.kit("us_m1a2sep3", "m1a2", 4, 2017, "us")
   check(kA.nv == "th3" and kA.ret == "hk" and #kA.modes == 3, "M1A2 SEPv3：三代热像、猎歼分划、昼光 + 白热 + 黑热")
   local kG = OPT.kit("de_gepard", "gepard1a1", nil, 1976, "de")
@@ -86,8 +86,8 @@ check(spot ~= nil, "找到放车的平地")
 if not spot then T.summary() return end
 
 local CASES = {
-  { vid = "type59", nv = "ir", ret = "sov", night = "ir", cycle = { "day", "ir" }, digital = false },
-  { vid = "m60a1", nv = "ir", ret = "nato", night = "ir", cycle = { "day", "ir" }, digital = false },
+  { vid = "type59", nv = "none", ret = "sov", night = "day", cycle = { "day" }, digital = false },   -- 老坦克：只有昼光（11-28）
+  { vid = "m60a1", nv = "none", ret = "nato", night = "day", cycle = { "day" }, digital = false },
   { vid = "t72a", nv = "ii", ret = "lrf", night = "nv", cycle = { "day", "nv" }, digital = true },
   { vid = "leo2a4", nv = "th1", ret = "lrf", night = "whot", cycle = { "bhot", "day", "whot" }, digital = true },
   { vid = "t90m", nv = "th3", ret = "hk", night = "whot", cycle = { "bhot", "day", "whot" }, digital = true },
@@ -139,11 +139,8 @@ for i, cs in ipairs(CASES) do
       local amm = find("GsAmmo")
       check((amm ~= nil and amm.Visible) == cs.digital, cs.digital and "有火控计算机：下沿有弹种、距离读数" or "光学年代：没有数字读数（弹种、距离、待发方块都不显示）")
       local beam, scan, blur = find("IrBeam"), find("ThScan"), Lighting:FindFirstChild("SightBlur")
-      if cs.night == "ir" then
+      if cs.night == "ir" then   -- 11-28 起老坦克不给主动红外了，这一支留着不跑
         check(beam and beam.Visible, "主动红外：只有探照灯那一圈亮，外面压黑")
-        check(C.sightNv == true, "主动红外按夜视增亮（DayNight 的镜里夜视档）")
-        local hv = shownText("HintOptic")
-        check(hv and hv:find(C.T("sight.ir"), 1, true), "提示写着主动红外：" .. tostring(hv))
       else
         check(not (beam and beam.Visible), "不是主动红外：没有探照灯圈")
       end

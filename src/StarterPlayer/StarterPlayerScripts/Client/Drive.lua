@@ -923,6 +923,7 @@ function Drive.init(G)
     applyMode()
   end
   G.sightReapply = function() applyMode() end   -- WtVfx.lua：观瞄打坏 / 修好时重新套光电模式
+  G.driveNv = function() return st and st.kit and st.kit.nv or nil end   -- 这辆车的夜视（Night.lua 第三人称按 N 看它）
   local function smoke() G.R.Drive:FireServer({ op = "smoke" }) end
 
   local function begin(vs)
