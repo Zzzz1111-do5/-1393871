@@ -127,15 +127,13 @@ print("② 对局里被打下来：先跟残骸 5 秒，再转去看凶手（4 �
 e = flyHigh()
 check(e ~= nil, "第二次试驾坐进飞机（上一次判毁以后没卡住）")
 if e then
-  -- 训练场上空的靶机当凶手
-  local drone, dd = nil, math.huge
-  for _, x in ipairs(G.ents or {}) do
-    if x.alive and x.testDummy and x.air then
-      local d = (x.root.CFrame.Position - e.root.CFrame.Position).Magnitude
-      if d < dd then drone, dd = x, d end
-    end
-  end
-  check(drone ~= nil, string.format("找到当凶手的靶机（%.0f 格）", dd))
+  -- 凶手：另外摆一架敌方的苏-27 停在 1500 格外的天上（训练场的靶机不行：人一死试驾场连靶机一起收了，镜头没东西可看）
+  local enemy = (P.team == "atk") and "def" or "atk"
+  local kp0 = e.root.CFrame.Position + V3(1500, 150, -600)
+  local drone = G.spawnAircraftAir(enemy, "su27", R.CFrame.lookAt(kp0, kp0 + V3(0, 0, -1)), nil, nil, nil, 0)
+  local dd = drone and (drone.root.CFrame.Position - e.root.CFrame.Position).Magnitude or math.huge
+  check(drone ~= nil, string.format("摆了一架当凶手的敌机（%.0f 格）", dd))
+  R.run(1)
   e.model:SetAttribute("TestDrive", false)   -- 客户端当它是对局里的飞机
   R.run(0.3)
   local id = e.id
