@@ -1822,7 +1822,7 @@ return {
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-28 16:26 6b3bb1c"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-28 16:45 f75c635"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 -- 存档怎么写（Store.lua，用户 11-26「账号的载具解锁要能保留」）：gap 同一个人两次写至少隔几秒（Roblox 同一个键 6 秒才能写一次，多的排队）、
 --   auto 每隔几秒看一次存档变没变（变了就存）、closeWait 关服时最多等几秒把还没写完的写完（Roblox 给 BindToClose 30 秒）
@@ -1833,10 +1833,10 @@ Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、�
 --   Config.Map 是现在这张；跟着地图变的数（阶段表）由 Config.useMap(id) 换（服务器、客户端换地图时都调）
 -- 用户 11-26「做一个两边带机场的城市地图吧」：默认换成钢城（MapCity.lua）；沙海还在（Map.extra），测试台、Studio 设 MapName 能开
 Config.Map = "city"
-Config.MapDefault = "city"
+Config.MapDefault = "snow"   -- 11-28 晚：钢城先收起来（用户「城市地图暂时先不弄 先不显示这张图」），默认雪山
 -- 选地图投票（用户 11-23：「三张地图改成投票制，进去投票选地图」）：进服在选地图界面投票（能改票）——第一票投出后 time 秒按票数最多的开（平票随机挑），
 --   在场的人都投了就再等 grace 秒（还能改）提前开；没人投：空服几秒、有人不投 MapWaitMax 秒后按 MapDefault 开
-Config.MapVote = { time = 25, grace = 3, idle = 20 }   -- idle：有人在却没人投，进来就倒计时这么多秒，到点按 MapDefault 开（11-28：原来要等 MapWaitMax）
+Config.MapVote = { time = 25, grace = 3 }   -- 有人在却没人投：等他选（11-28 晚起不再进来二十秒就替人定，见 init.server.lua waitMap）
 -- 匹配（用户 11-26：「点开战先匹配，匹配一分钟后人不够就补人机，两边的人机的车辆要符合我匹配时带的最高权重的载具，跟战雷一样」，WtMatch.lua）：
 --   战雷式对局每一局先是「匹配中」（Round.lua 的 queue 阶段）——有人点「开战」起算 wait 秒，到点或者真人凑满两队（2 × Wt.teamSize）就开打；
 --   人不够一队 Wt.teamSize 的电脑开车补满（AIVeh.lua），电脑的车按匹配进来的人阵容里最高的战斗等级挑（Tech.lua treePickAi）；已经在打的一局点开战直接加入
@@ -10072,6 +10072,15 @@ add("place.sands", "沙海", "Sea of Sand")
 add("place.here.range", "训练场服务器 · 雪山", "Test range server · Snow Peaks")
 add("map.goto", "前往", "Go to")
 add("map.gotoNote", "这张图有自己的服务器：点了传送过去", "This map has its own server — you'll be teleported")
+-- 开战倒计时（用户 11-28 晚「点加入战斗就进入地图里面等着吧 等倒计时结束就开战」：WtBattle.lua）
+add("wtm.prepTitle", "准备阶段 · 原地待命", "PREPARATION · HOLD POSITION")
+add("wtm.prepIn", "战斗将在 {1} 秒后开始", "BATTLE STARTS IN {1}")
+-- 换图（用户 11-28 晚「然后目前没法切地图」：Places.lua G.switchMap、WtMatch.lua matchJoin）
+add("map.switch", "换到这张", "SWITCH")
+add("map.switchNew", "换到「{1}」：开一个新服务器传过去……", "Switching to {1}: moving you to a new server…")
+add("map.switchStudio", "Studio 里一个服务器只建一张图：停止后重新开始，进机库先在「这一局」那块选「{1}」", "In Studio a server builds only one map: stop, press Play again and pick {1} in the hangar's match box first")
+add("map.switchFail", "开新服务器没成功，留在这一局", "Couldn't open a new server — staying here")
+add("map.buildThenMatch", "按「{1}」开图，建好自动开始匹配", "Building {1} — matchmaking starts when it's ready")
 add("ammo.w.mg", "机枪", "MG")   -- 弹药栏里别的武器那几格（WtTank）
 add("ammo.w.ac", "机炮", "AC")
 add("ammo.w.sam", "防空导弹", "SAM")
@@ -11695,7 +11704,7 @@ return Lang
       <Item class="ModuleScript" referent="31">
         <Properties>
           <string name="Name">de</string>
-          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：de 的译文（2198 / 2385 条）
+          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：de 的译文（2216 / 2403 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -12335,6 +12344,7 @@ return {
     ["kitrole.rifle"] = "Schütze",
     ["kitrole.sniper"] = "Scharfschütze",
     ["map.back"] = "ZURÜCK",
+    ["map.buildThenMatch"] = "{1} wird gebaut — die Spielersuche startet, sobald sie fertig ist",
     ["map.cat"] = "SPIELEN",
     ["map.city.desc"] = "Jede Hauptbasis hat ihre eigene Piste, dazwischen liegt eine Stadt (etwa 2 km breit): Altstadt, Hochhäuser, ein Park, der Bahnhof, ein Stahlwerk und ein Fernsehturm · Bäume fallen beim Rammen oder Beschuss, Gebäude stürzen ein",
     ["map.city.mode"] = "HÄUSERKAMPF",
@@ -12356,6 +12366,10 @@ return {
     ["map.snow.mode"] = "ALPINER DURCHBRUCH",
     ["map.snow.name"] = "SCHNEEGIPFEL",
     ["map.sub"] = "Alle stimmen über die Karte dieses Servers ab (Stimme änderbar) — die meisten Stimmen gewinnen; Spätere steigen dort ein",
+    ["map.switch"] = "WECHSELN",
+    ["map.switchFail"] = "Neuer Server konnte nicht geöffnet werden — du bleibst hier",
+    ["map.switchNew"] = "Wechsel zu {1}: neuer Server wird geöffnet …",
+    ["map.switchStudio"] = "In Studio baut ein Server nur eine Karte: stoppen, erneut auf Play drücken und zuerst im Hangar {1} wählen",
     ["map.title"] = "KARTENABSTIMMUNG",
     ["map.vote"] = "ABSTIMMEN",
     ["map.voteIdle"] = "Die erste Stimme startet einen {1}-s-Countdown — die meisten Stimmen gewinnen (Gleichstand zufällig)",
@@ -13508,6 +13522,8 @@ return {
     ["wtm.mi.conq"] = "Eroberung (C einnehmen)",
     ["wtm.mi.dom"] = "Vorherrschaft (B, C, D halten)",
     ["wtm.mission"] = "Mission: {1}",
+    ["wtm.prepIn"] = "GEFECHT BEGINNT IN {1}",
+    ["wtm.prepTitle"] = "VORBEREITUNG · POSITION HALTEN",
     ["wtm.rewards"] = "Dieses Gefecht: Punkte {1}  ·  EP +{2}  ·  {3} SP verdient  ·  Bodenabschüsse {4}  ·  Luftabschüsse {5}",
     ["wtm.shotDown"] = "abgeschossen",
     ["wtm.used"] = "Keine Reserven",
@@ -13577,7 +13593,11 @@ return {
     ["  ·  Stats"] = "  ·  Daten",
     ["  ·  bots fill in"] = "  ·  Bots füllen auf",
     ["  ·  current"] = "  ·  aktuell",
+    ["  ·  switch here"] = "  ·  hierher wechseln",
+    ["  ·  then matchmaking"] = "  ·  danach Spielersuche",
     ["  ·  time left "] = "  ·  verbleibend ",
+    ["  ·  vote ends in "] = "  ·  Abstimmung endet in ",
+    ["  ·  voted"] = "  ·  gewählt",
     [" (done: "] = " (erforscht: ",
     [" (empty "] = " (leer ",
     [" (empty)"] = " (leer)",
@@ -13587,6 +13607,7 @@ return {
     [" (researched ones apply when you deploy)"] = " (erforschte gelten beim Einsatz)",
     [" (respawns: %d)"] = " (Respawns: %d)",
     [" (up to "] = " (bis ",
+    [" (voted)"] = " (gewählt)",
     [" XP"] = " EP",
     [" coins"] = " Münzen",
     [" kN (mil / AB)"] = " kN (Militär / NB)",
@@ -13597,6 +13618,7 @@ return {
     [" short) · Top up"] = " fehlen) · Aufladen",
     [" studs"] = " Studs",
     [" t·m² (roll/pitch/yaw)"] = " t·m² (Rollen/Nicken/Gieren)",
+    [" votes"] = " Stimmen",
     [" · AR "] = " · Streckung ",
     [" · AoA limit "] = " · AoA-Grenze ",
     [" · Crew"] = " · Besatzung",
@@ -13677,6 +13699,7 @@ return {
     ["Bonus +"] = "Bonus +",
     ["Bottom right: vote for the next map (decided by votes during preparation). To switch nation, click the flag at the top left to open the tech tree and pick a flag there. SPECTATE watches teammates."] = "Unten rechts für die nächste Karte abstimmen (entschieden durch Stimmen in der Vorbereitung). Nation wechseln: oben links auf die Flagge klicken, Technologiebaum öffnen und dort eine Flagge wählen. ZUSCHAUEN beobachtet Teammitglieder.",
     ["Brightness"] = "Helligkeit",
+    ["Building map "] = "Karte wird gebaut ",
     ["Buy ("] = "Kaufen (",
     ["Buy coins"] = "Münzen kaufen",
     ["CANCEL"] = "ABBRECHEN",
@@ -13923,6 +13946,8 @@ return {
     ["Paid with Robux. Coins arrive right after the purchase and can buy researched vehicles in the tech tree."] = "Bezahlt mit Robux. Die Münzen kommen direkt nach dem Kauf und kaufen erforschte Fahrzeuge im Technologiebaum.",
     ["Parts"] = "Ersatzteile",
     ["Performance"] = "Leistung",
+    ["Pick a map"] = "Karte wählen",
+    ["Pick a map above, "] = "Oben eine Karte wählen, ",
     ["Pick a slot, then press TO BATTLE: you spawn inside it at your base. Lose it and you come back here."] = "Platz wählen, dann INS GEFECHT: Du spawnst darin an deiner Basis. Verlierst du es, kommst du hierher zurück.",
     ["Points "] = "Punkte ",
     ["Preparation"] = "Vorbereitung",
@@ -14052,6 +14077,7 @@ return {
     ["VS CLEAN"] = "GGÜ. OHNE LASTEN",
     ["Vehicle mouse sensitivity"] = "Mausempfindlichkeit (Fahrzeuge)",
     ["Vitality"] = "Vitalität",
+    ["Voted. "] = "Abgestimmt. ",
     ["WEAPON SELECT"] = "WAFFENWAHL",
     ["WSO"] = "WAFFENSYSTEMOFFIZIER",
     ["War Thunder leaves gear to you (G); flaps are automatic"] = "In War Thunder fährst du das Fahrwerk selbst (G); Klappen sind automatisch",
@@ -14097,6 +14123,7 @@ return {
     ["stand-in"] = "Platzhalter",
     ["stores weight"] = "Lastengewicht",
     ["switch"] = "Schalter",
+    ["then TO BATTLE"] = "dann ZUM GEFECHT",
     ["top speed"] = "Höchstgeschwindigkeit",
     ["troop"] = "Infanterist",
     ["turn time"] = "Kurvenzeit",
@@ -14113,7 +14140,7 @@ return {
       <Item class="ModuleScript" referent="32">
         <Properties>
           <string name="Name">es</string>
-          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：es 的译文（2215 / 2385 条）
+          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：es 的译文（2233 / 2403 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -14751,6 +14778,7 @@ return {
     ["kitrole.rifle"] = "Fusilero",
     ["kitrole.sniper"] = "Francotirador",
     ["map.back"] = "VOLVER",
+    ["map.buildThenMatch"] = "Creando {1} — el emparejamiento empieza cuando esté listo",
     ["map.cat"] = "JUGAR",
     ["map.city.desc"] = "Cada base principal tiene su pista; en medio, una ciudad (unos 2 km): barrios viejos, torres, un parque, la estación de tren, una acería y una torre de televisión · los árboles caen al embestirlos o dispararles, los edificios se derrumban",
     ["map.city.mode"] = "COMBATE URBANO",
@@ -14772,6 +14800,10 @@ return {
     ["map.snow.mode"] = "RUPTURA ALPINA",
     ["map.snow.name"] = "PICOS NEVADOS",
     ["map.sub"] = "Todos votan el mapa de este servidor (puedes cambiar tu voto): gana el más votado; los que lleguen después se unen",
+    ["map.switch"] = "CAMBIAR",
+    ["map.switchFail"] = "No se pudo abrir un servidor nuevo — te quedas aquí",
+    ["map.switchNew"] = "Cambiando a {1}: pasando a un servidor nuevo…",
+    ["map.switchStudio"] = "En Studio un servidor solo crea un mapa: detén, pulsa Play de nuevo y elige primero {1} en el hangar",
     ["map.title"] = "VOTA UN MAPA",
     ["map.vote"] = "VOTAR",
     ["map.voteIdle"] = "El primer voto inicia una cuenta atrás de {1} s: gana el más votado (empates al azar)",
@@ -15951,6 +15983,8 @@ return {
     ["wtm.mi.conq"] = "Conquista (captura C)",
     ["wtm.mi.dom"] = "Dominación (mantén B, C, D)",
     ["wtm.mission"] = "Misión: {1}",
+    ["wtm.prepIn"] = "LA BATALLA EMPIEZA EN {1}",
+    ["wtm.prepTitle"] = "PREPARACIÓN · MANTÉN LA POSICIÓN",
     ["wtm.rewards"] = "Esta batalla: puntos {1}  ·  XP +{2}  ·  {3} SP ganados  ·  bajas terrestres {4}  ·  derribos {5}",
     ["wtm.shotDown"] = "derribó",
     ["wtm.used"] = "Sin reservas",
@@ -16020,7 +16054,11 @@ return {
     ["  ·  Stats"] = "  ·  Datos",
     ["  ·  bots fill in"] = "  ·  los bots completan",
     ["  ·  current"] = "  ·  actual",
+    ["  ·  switch here"] = "  ·  cambiar aquí",
+    ["  ·  then matchmaking"] = "  ·  luego emparejamiento",
     ["  ·  time left "] = "  ·  tiempo restante ",
+    ["  ·  vote ends in "] = "  ·  la votación acaba en ",
+    ["  ·  voted"] = "  ·  votado",
     [" (done: "] = " (hecho: ",
     [" (empty "] = " (vacío ",
     [" (empty)"] = " (vacío)",
@@ -16030,6 +16068,7 @@ return {
     [" (researched ones apply when you deploy)"] = " (las investigadas se aplican al desplegar)",
     [" (respawns: %d)"] = " (reapariciones: %d)",
     [" (up to "] = " (hasta ",
+    [" (voted)"] = " (votado)",
     [" coins"] = " monedas",
     [" kN (mil / AB)"] = " kN (militar / PC)",
     [" km/h (mil / AB, 1000 m)"] = " km/h (militar / PC, 1000 m)",
@@ -16039,6 +16078,7 @@ return {
     [" short) · Top up"] = " faltan) · Recargar",
     [" studs"] = " studs",
     [" t·m² (roll/pitch/yaw)"] = " t·m² (alabeo/cabeceo/guiñada)",
+    [" votes"] = " votos",
     [" · AR "] = " · alargamiento ",
     [" · AoA limit "] = " · límite de AoA ",
     [" · Crew"] = " · tripulación",
@@ -16119,6 +16159,7 @@ return {
     ["Bonus +"] = "Bonificación +",
     ["Bottom right: vote for the next map (decided by votes during preparation). To switch nation, click the flag at the top left to open the tech tree and pick a flag there. SPECTATE watches teammates."] = "Abajo a la derecha: vota el siguiente mapa (se decide por votos durante la preparación). Para cambiar de nación, pulsa la bandera de arriba a la izquierda, abre el árbol y elige allí una bandera. OBSERVAR mira a los compañeros.",
     ["Brightness"] = "Brillo",
+    ["Building map "] = "Creando mapa ",
     ["Buy ("] = "Comprar (",
     ["Buy coins"] = "Comprar monedas",
     ["CANCEL"] = "CANCELAR",
@@ -16365,6 +16406,8 @@ return {
     ["Paid with Robux. Coins arrive right after the purchase and can buy researched vehicles in the tech tree."] = "Se paga con Robux. Las monedas llegan justo tras la compra y sirven para comprar vehículos investigados del árbol.",
     ["Parts"] = "Piezas",
     ["Performance"] = "Prestaciones",
+    ["Pick a map"] = "Elegir mapa",
+    ["Pick a map above, "] = "Elige un mapa arriba, ",
     ["Pick a slot, then press TO BATTLE: you spawn inside it at your base. Lose it and you come back here."] = "Elige una casilla y pulsa A LA BATALLA: apareces dentro en tu base. Si lo pierdes, vuelves aquí.",
     ["Points "] = "Puntos ",
     ["Preparation"] = "Preparación",
@@ -16494,6 +16537,7 @@ return {
     ["VS CLEAN"] = "VS. LIMPIO",
     ["Vehicle mouse sensitivity"] = "Sensibilidad del ratón (vehículos)",
     ["Vitality"] = "Vitalidad",
+    ["Voted. "] = "Votado. ",
     ["WEAPON SELECT"] = "SELECCIÓN DE ARMA",
     ["WSO"] = "OFICIAL DE SISTEMAS DE ARMAS",
     ["War Thunder leaves gear to you (G); flaps are automatic"] = "En War Thunder el tren es manual (G); los flaps son automáticos",
@@ -16539,6 +16583,7 @@ return {
     ["stand-in"] = "provisional",
     ["stores weight"] = "peso de cargas",
     ["switch"] = "interruptor",
+    ["then TO BATTLE"] = "luego A LA BATALLA",
     ["top speed"] = "velocidad máx.",
     ["troop"] = "tropa",
     ["turn time"] = "tiempo de viraje",
@@ -16555,7 +16600,7 @@ return {
       <Item class="ModuleScript" referent="33">
         <Properties>
           <string name="Name">fr</string>
-          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：fr 的译文（2213 / 2385 条）
+          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：fr 的译文（2231 / 2403 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -17191,6 +17236,7 @@ return {
     ["kitrole.rifle"] = "Fusilier",
     ["kitrole.sniper"] = "Tireur d'élite",
     ["map.back"] = "RETOUR",
+    ["map.buildThenMatch"] = "Construction de {1} — le matchmaking démarre une fois prêt",
     ["map.cat"] = "JOUER",
     ["map.city.desc"] = "Chaque base principale a sa piste ; une ville entre les deux (environ 2 km) : vieux quartiers, tours, parc, gare, aciérie et tour de télévision · les arbres tombent quand on les percute ou les touche, les bâtiments s'effondrent",
     ["map.city.mode"] = "COMBAT URBAIN",
@@ -17212,6 +17258,10 @@ return {
     ["map.snow.mode"] = "PERCÉE ALPINE",
     ["map.snow.name"] = "PICS ENNEIGÉS",
     ["map.sub"] = "Tout le monde vote pour la carte de ce serveur (vote modifiable) — la plus votée l'emporte ; les retardataires la rejoignent",
+    ["map.switch"] = "CHANGER",
+    ["map.switchFail"] = "Impossible d'ouvrir un nouveau serveur — vous restez ici",
+    ["map.switchNew"] = "Passage à {1} : transfert vers un nouveau serveur…",
+    ["map.switchStudio"] = "Dans Studio, un serveur ne construit qu'une carte : arrêtez, relancez Play et choisissez d'abord {1} dans le hangar",
     ["map.title"] = "VOTEZ POUR UNE CARTE",
     ["map.vote"] = "VOTER",
     ["map.voteIdle"] = "Le premier vote lance un compte à rebours de {1} s — la plus votée gagne (égalité au hasard)",
@@ -18390,6 +18440,8 @@ return {
     ["wtm.mi.conq"] = "Conquête (capturer C)",
     ["wtm.mi.dom"] = "Domination (tenir B, C, D)",
     ["wtm.mission"] = "Mission : {1}",
+    ["wtm.prepIn"] = "LE COMBAT COMMENCE DANS {1}",
+    ["wtm.prepTitle"] = "PRÉPARATION · RESTEZ EN POSITION",
     ["wtm.rewards"] = "Cette bataille : score {1}  ·  XP +{2}  ·  {3} PA gagnés  ·  victimes au sol {4}  ·  victoires aériennes {5}",
     ["wtm.shotDown"] = "a abattu",
     ["wtm.sp"] = "PA {1}",
@@ -18460,7 +18512,11 @@ return {
     ["  ·  Stats"] = "  ·  Caractéristiques",
     ["  ·  bots fill in"] = "  ·  des bots complètent",
     ["  ·  current"] = "  ·  actuel",
+    ["  ·  switch here"] = "  ·  passer ici",
+    ["  ·  then matchmaking"] = "  ·  puis matchmaking",
     ["  ·  time left "] = "  ·  temps restant ",
+    ["  ·  vote ends in "] = "  ·  fin du vote dans ",
+    ["  ·  voted"] = "  ·  voté",
     [" (done: "] = " (fait : ",
     [" (empty "] = " (à vide ",
     [" (empty)"] = " (vide)",
@@ -18470,6 +18526,7 @@ return {
     [" (researched ones apply when you deploy)"] = " (les recherchées s'appliquent au déploiement)",
     [" (respawns: %d)"] = " (réapparitions : %d)",
     [" (up to "] = " (jusqu'à ",
+    [" (voted)"] = " (voté)",
     [" coins"] = " pièces",
     [" kN (mil / AB)"] = " kN (sec / PC)",
     [" km/h (mil / AB, 1000 m)"] = " km/h (sec / PC, 1000 m)",
@@ -18479,6 +18536,7 @@ return {
     [" short) · Top up"] = " manquantes) · Recharger",
     [" studs"] = " studs",
     [" t·m² (roll/pitch/yaw)"] = " t·m² (roulis/tangage/lacet)",
+    [" votes"] = " votes",
     [" · AR "] = " · allongement ",
     [" · AoA limit "] = " · limite d'incidence ",
     [" · Crew"] = " · équipage",
@@ -18559,6 +18617,7 @@ return {
     ["Bonus +"] = "Bonus +",
     ["Bottom right: vote for the next map (decided by votes during preparation). To switch nation, click the flag at the top left to open the tech tree and pick a flag there. SPECTATE watches teammates."] = "En bas à droite : votez pour la carte suivante (décidée par les votes pendant la préparation). Pour changer de nation, cliquez sur le drapeau en haut à gauche, ouvrez l'arbre et choisissez-y un drapeau. OBSERVER regarde les alliés.",
     ["Brightness"] = "Luminosité",
+    ["Building map "] = "Construction de la carte ",
     ["Buy ("] = "Acheter (",
     ["Buy coins"] = "Acheter des pièces",
     ["CANCEL"] = "ANNULER",
@@ -18805,6 +18864,8 @@ return {
     ["Paid with Robux. Coins arrive right after the purchase and can buy researched vehicles in the tech tree."] = "Payé en Robux. Les pièces arrivent juste après l'achat et permettent d'acheter les véhicules recherchés dans l'arbre.",
     ["Parts"] = "Pièces",
     ["Performance"] = "Performances",
+    ["Pick a map"] = "Choisir une carte",
+    ["Pick a map above, "] = "Choisissez une carte ci-dessus, ",
     ["Pick a slot, then press TO BATTLE: you spawn inside it at your base. Lose it and you come back here."] = "Choisissez un emplacement puis AU COMBAT : vous apparaissez dedans à votre base. Perdez-le et vous revenez ici.",
     ["Points "] = "Points ",
     ["Preparation"] = "Préparation",
@@ -18934,6 +18995,7 @@ return {
     ["VS CLEAN"] = "VS LISSE",
     ["Vehicle mouse sensitivity"] = "Sensibilité souris (véhicules)",
     ["Vitality"] = "Vitalité",
+    ["Voted. "] = "Vote enregistré. ",
     ["WEAPON SELECT"] = "SÉLECTION D'ARME",
     ["WSO"] = "OFFICIER SYSTÈMES D'ARMES",
     ["War Thunder leaves gear to you (G); flaps are automatic"] = "Dans War Thunder, le train est manuel (G) ; les volets sont automatiques",
@@ -18979,6 +19041,7 @@ return {
     ["stand-in"] = "provisoire",
     ["stores weight"] = "masse des emports",
     ["switch"] = "interrupteur",
+    ["then TO BATTLE"] = "puis AU COMBAT",
     ["top speed"] = "vitesse max.",
     ["troop"] = "troupe",
     ["turn time"] = "temps de virage",
@@ -18995,7 +19058,7 @@ return {
       <Item class="ModuleScript" referent="34">
         <Properties>
           <string name="Name">ja</string>
-          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ja 的译文（2294 / 2385 条）
+          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ja 的译文（2312 / 2403 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -19650,6 +19713,7 @@ return {
     ["kitrole.rifle"] = "小銃兵",
     ["kitrole.sniper"] = "狙撃手",
     ["map.back"] = "戻る",
+    ["map.buildThenMatch"] = "{1}を生成中 — 完成したらマッチング開始",
     ["map.cat"] = "プレイ",
     ["map.city.desc"] = "両軍の本拠地にそれぞれ滑走路、その間に都市（約 2 km 四方）：旧市街、高層ビル、公園、鉄道駅、製鉄所、テレビ塔 · 木は体当たりや射撃で倒れ、建物は崩れる",
     ["map.city.mode"] = "市街戦",
@@ -19671,6 +19735,10 @@ return {
     ["map.snow.mode"] = "山岳突破",
     ["map.snow.name"] = "スノーピークス",
     ["map.sub"] = "全員でこのサーバーのマップを投票（変更可）— 最多票のマップで開始。後から来た人はそれに参加",
+    ["map.switch"] = "切り替え",
+    ["map.switchFail"] = "新しいサーバーを開けませんでした — この試合に残ります",
+    ["map.switchNew"] = "{1}に切り替え：新しいサーバーへ移動中…",
+    ["map.switchStudio"] = "Studio では1つのサーバーにマップは1つだけ：停止して再生し直し、格納庫の「この試合」欄で先に{1}を選んでください",
     ["map.title"] = "マップ投票",
     ["map.vote"] = "投票",
     ["map.voteIdle"] = "最初の 1 票で {1} 秒のカウントダウン開始 — 最多票が勝ち（同票はランダム）",
@@ -20905,6 +20973,8 @@ return {
     ["wtm.mi.conq"] = "征服（C を占領）",
     ["wtm.mi.dom"] = "制圧（B、C、D を保持）",
     ["wtm.mission"] = "ミッション：{1}",
+    ["wtm.prepIn"] = "戦闘開始まで {1} 秒",
+    ["wtm.prepTitle"] = "準備段階 · その場で待機",
     ["wtm.rewards"] = "この戦闘：スコア {1}  ·  経験値 +{2}  ·  SP {3} 獲得  ·  地上撃破 {4}  ·  航空撃墜 {5}",
     ["wtm.shotDown"] = "撃墜",
     ["wtm.sp"] = "SP {1}",
@@ -20977,7 +21047,11 @@ return {
     ["  ·  Stats"] = "  ·  性能",
     ["  ·  bots fill in"] = "  ·  ボットが補充",
     ["  ·  current"] = "  ·  このラウンド",
+    ["  ·  switch here"] = "  ·  ここに切り替え",
+    ["  ·  then matchmaking"] = "  ·  完成後にマッチング",
     ["  ·  time left "] = "  ·  残り時間 ",
+    ["  ·  vote ends in "] = "  ·  投票終了まで ",
+    ["  ·  voted"] = "  ·  投票済み",
     [" (done: "] = " (研究済み：",
     [" (empty "] = " (空虚 ",
     [" (empty)"] = "（空）",
@@ -20987,6 +21061,7 @@ return {
     [" (researched ones apply when you deploy)"] = " (研究済みのものは出撃時に適用)",
     [" (respawns: %d)"] = " (再出撃回数：%d)",
     [" (up to "] = " (最大 ",
+    [" (voted)"] = "（投票済み）",
     [" XP"] = " 経験値",
     [" coins"] = " コイン",
     [" kN"] = " kN",
@@ -20999,6 +21074,7 @@ return {
     [" short) · Top up"] = " 不足) · チャージ",
     [" studs"] = " スタッド",
     [" t·m² (roll/pitch/yaw)"] = " t·m²（ロール/ピッチ/ヨー）",
+    [" votes"] = " 票",
     [" · AR "] = " · アスペクト比 ",
     [" · AoA limit "] = " · 迎角制限 ",
     [" · Crew"] = " 番 · 乗員",
@@ -21082,6 +21158,7 @@ return {
     ["Bonus +"] = "ボーナス +",
     ["Bottom right: vote for the next map (decided by votes during preparation). To switch nation, click the flag at the top left to open the tech tree and pick a flag there. SPECTATE watches teammates."] = "右下で次のマップに投票（準備段階の投票数で決定）。国を変えるには左上の国旗で技術ツリーを開き、そこで国旗を選ぶ。「観戦」で味方を見る。",
     ["Brightness"] = "明るさ",
+    ["Building map "] = "マップ生成中 ",
     ["Buy ("] = "購入 (",
     ["Buy coins"] = "コイン購入",
     ["CANCEL"] = "キャンセル",
@@ -21331,6 +21408,8 @@ return {
     ["Paid with Robux. Coins arrive right after the purchase and can buy researched vehicles in the tech tree."] = "Robux で支払い。購入後すぐにコインが届き、技術ツリーで研究済みの車両を購入できる。",
     ["Parts"] = "部品",
     ["Performance"] = "性能",
+    ["Pick a map"] = "マップを選ぶ",
+    ["Pick a map above, "] = "上でマップを選び、",
     ["Pick a slot, then press TO BATTLE: you spawn inside it at your base. Lose it and you come back here."] = "枠を選んで「出撃」：基地でその中に出現する。失うとここに戻る。",
     ["Points "] = "ポイント ",
     ["Preparation"] = "準備段階",
@@ -21460,6 +21539,7 @@ return {
     ["VS CLEAN"] = "クリーン比",
     ["Vehicle mouse sensitivity"] = "車両のマウス感度",
     ["Vitality"] = "体力",
+    ["Voted. "] = "投票済み。",
     ["WEAPON SELECT"] = "武器選択",
     ["WSO"] = "兵装システム士官",
     ["War Thunder leaves gear to you (G); flaps are automatic"] = "War Thunder では降着装置は手動（G）、フラップは自動",
@@ -21506,6 +21586,7 @@ return {
     ["stand-in"] = "代用",
     ["stores weight"] = "搭載重量",
     ["switch"] = "スイッチ",
+    ["then TO BATTLE"] = "「出撃」を押す",
     ["top speed"] = "最高速度",
     ["troop"] = "兵員",
     ["turn time"] = "旋回時間",
@@ -21522,7 +21603,7 @@ return {
       <Item class="ModuleScript" referent="35">
         <Properties>
           <string name="Name">ko</string>
-          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ko 的译文（2294 / 2385 条）
+          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ko 的译文（2312 / 2403 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -22177,6 +22258,7 @@ return {
     ["kitrole.rifle"] = "소총수",
     ["kitrole.sniper"] = "저격수",
     ["map.back"] = "뒤로",
+    ["map.buildThenMatch"] = "{1} 생성 중 — 완료되면 매칭 시작",
     ["map.cat"] = "플레이",
     ["map.city.desc"] = "양측 본진마다 활주로가 있고 그 사이에 도시(약 2 km 사방): 구시가, 고층 빌딩, 공원, 기차역, 제철소, TV 타워 · 나무는 들이받거나 쏘면 쓰러지고 건물은 무너진다",
     ["map.city.mode"] = "시가전",
@@ -22198,6 +22280,10 @@ return {
     ["map.snow.mode"] = "고산 돌파",
     ["map.snow.name"] = "설산",
     ["map.sub"] = "모두가 이 서버의 맵을 투표(변경 가능) — 최다 득표 맵으로 시작, 나중에 온 사람은 그대로 합류",
+    ["map.switch"] = "전환",
+    ["map.switchFail"] = "새 서버를 열지 못했습니다 — 이번 판에 남습니다",
+    ["map.switchNew"] = "{1}(으)로 전환: 새 서버로 이동 중…",
+    ["map.switchStudio"] = "Studio에서는 서버 하나에 맵 하나만 만듭니다: 중지 후 다시 시작하고 격납고의 '이번 판' 칸에서 먼저 {1}을(를) 고르세요",
     ["map.title"] = "맵 투표",
     ["map.vote"] = "투표",
     ["map.voteIdle"] = "첫 표가 들어오면 {1}초 카운트다운 시작 — 최다 득표가 승리(동점은 무작위)",
@@ -23432,6 +23518,8 @@ return {
     ["wtm.mi.conq"] = "정복(C 점령)",
     ["wtm.mi.dom"] = "제압(B, C, D 확보)",
     ["wtm.mission"] = "임무: {1}",
+    ["wtm.prepIn"] = "{1}초 후 전투 시작",
+    ["wtm.prepTitle"] = "준비 단계 · 제자리 대기",
     ["wtm.rewards"] = "이번 전투: 점수 {1}  ·  경험치 +{2}  ·  SP {3} 획득  ·  지상 격파 {4}  ·  공중 격추 {5}",
     ["wtm.shotDown"] = "격추",
     ["wtm.sp"] = "SP {1}",
@@ -23504,7 +23592,11 @@ return {
     ["  ·  Stats"] = "  ·  성능",
     ["  ·  bots fill in"] = "  ·  봇이 채움",
     ["  ·  current"] = "  ·  이번 라운드",
+    ["  ·  switch here"] = "  ·  여기로 전환",
+    ["  ·  then matchmaking"] = "  ·  완료 후 매칭",
     ["  ·  time left "] = "  ·  남은 시간 ",
+    ["  ·  vote ends in "] = "  ·  투표 마감까지 ",
+    ["  ·  voted"] = "  ·  투표함",
     [" (done: "] = " (연구 완료: ",
     [" (empty "] = " (공허 ",
     [" (empty)"] = " (비어 있음)",
@@ -23514,6 +23606,7 @@ return {
     [" (researched ones apply when you deploy)"] = " (연구된 것은 출격할 때 적용)",
     [" (respawns: %d)"] = " (재출격 횟수: %d)",
     [" (up to "] = " (최대 ",
+    [" (voted)"] = " (투표함)",
     [" XP"] = " 경험치",
     [" coins"] = " 코인",
     [" kN"] = " kN",
@@ -23526,6 +23619,7 @@ return {
     [" short) · Top up"] = " 부족) · 충전",
     [" studs"] = " 스터드",
     [" t·m² (roll/pitch/yaw)"] = " t·m²(롤/피치/요)",
+    [" votes"] = " 표",
     [" · AR "] = " · 종횡비 ",
     [" · AoA limit "] = " · 받음각 제한 ",
     [" · Crew"] = " · 승무원",
@@ -23609,6 +23703,7 @@ return {
     ["Bonus +"] = "보너스 +",
     ["Bottom right: vote for the next map (decided by votes during preparation). To switch nation, click the flag at the top left to open the tech tree and pick a flag there. SPECTATE watches teammates."] = "오른쪽 아래에서 다음 맵 투표(준비 단계 득표로 결정). 국가를 바꾸려면 왼쪽 위 국기로 기술 트리를 열고 거기서 국기를 고르세요. 「관전」으로 아군 관전.",
     ["Brightness"] = "밝기",
+    ["Building map "] = "맵 생성 중 ",
     ["Buy ("] = "구매 (",
     ["Buy coins"] = "코인 구매",
     ["CANCEL"] = "취소",
@@ -23858,6 +23953,8 @@ return {
     ["Paid with Robux. Coins arrive right after the purchase and can buy researched vehicles in the tech tree."] = "Robux로 결제. 구매 즉시 코인이 들어오며 기술 트리에서 연구한 차량을 살 수 있습니다.",
     ["Parts"] = "부품",
     ["Performance"] = "성능",
+    ["Pick a map"] = "맵 선택",
+    ["Pick a map above, "] = "위에서 맵을 고르고 ",
     ["Pick a slot, then press TO BATTLE: you spawn inside it at your base. Lose it and you come back here."] = "슬롯을 고르고 「출격」: 기지에서 그 안에 생성. 잃으면 여기로 돌아옴.",
     ["Points "] = "포인트 ",
     ["Preparation"] = "준비 단계",
@@ -23987,6 +24084,7 @@ return {
     ["VS CLEAN"] = "클린 대비",
     ["Vehicle mouse sensitivity"] = "차량 마우스 감도",
     ["Vitality"] = "체력",
+    ["Voted. "] = "투표 완료. ",
     ["WEAPON SELECT"] = "무기 선택",
     ["WSO"] = "무장 통제 장교",
     ["War Thunder leaves gear to you (G); flaps are automatic"] = "워썬더에서는 착륙장치는 직접(G), 플랩은 자동",
@@ -24033,6 +24131,7 @@ return {
     ["stand-in"] = "대체",
     ["stores weight"] = "장착 중량",
     ["switch"] = "스위치",
+    ["then TO BATTLE"] = "'출격'을 누르세요",
     ["top speed"] = "최고 속도",
     ["troop"] = "병력",
     ["turn time"] = "선회 시간",
@@ -24049,7 +24148,7 @@ return {
       <Item class="ModuleScript" referent="36">
         <Properties>
           <string name="Name">pt</string>
-          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：pt 的译文（2216 / 2385 条）
+          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：pt 的译文（2234 / 2403 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -24688,6 +24787,7 @@ return {
     ["kitrole.rifle"] = "Fuzileiro",
     ["kitrole.sniper"] = "Atirador de elite",
     ["map.back"] = "VOLTAR",
+    ["map.buildThenMatch"] = "Criando {1} — a busca de partida começa quando estiver pronto",
     ["map.cat"] = "JOGAR",
     ["map.city.desc"] = "Cada base principal tem sua pista; no meio, uma cidade (cerca de 2 km): quarteirões antigos, torres, um parque, a estação de trem, uma siderúrgica e uma torre de TV · as árvores caem ao serem atingidas, os prédios desabam",
     ["map.city.mode"] = "COMBATE URBANO",
@@ -24709,6 +24809,10 @@ return {
     ["map.snow.mode"] = "RUPTURA ALPINA",
     ["map.snow.name"] = "PICOS NEVADOS",
     ["map.sub"] = "Todos votam no mapa deste servidor (pode mudar o voto): vence o mais votado; quem chegar depois entra nele",
+    ["map.switch"] = "TROCAR",
+    ["map.switchFail"] = "Não foi possível abrir um novo servidor — você fica aqui",
+    ["map.switchNew"] = "Trocando para {1}: indo para um novo servidor…",
+    ["map.switchStudio"] = "No Studio um servidor só cria um mapa: pare, aperte Play de novo e escolha {1} primeiro no hangar",
     ["map.title"] = "VOTE EM UM MAPA",
     ["map.vote"] = "VOTAR",
     ["map.voteIdle"] = "O primeiro voto inicia uma contagem de {1} s: vence o mais votado (empates ao acaso)",
@@ -25888,6 +25992,8 @@ return {
     ["wtm.mi.conq"] = "Conquista (capture C)",
     ["wtm.mi.dom"] = "Dominação (segure B, C, D)",
     ["wtm.mission"] = "Missão: {1}",
+    ["wtm.prepIn"] = "A BATALHA COMEÇA EM {1}",
+    ["wtm.prepTitle"] = "PREPARAÇÃO · MANTENHA A POSIÇÃO",
     ["wtm.rewards"] = "Esta batalha: pontos {1}  ·  XP +{2}  ·  {3} SP ganhos  ·  abates terrestres {4}  ·  abates aéreos {5}",
     ["wtm.shotDown"] = "abateu",
     ["wtm.used"] = "Sem reservas",
@@ -25957,7 +26063,11 @@ return {
     ["  ·  Stats"] = "  ·  Dados",
     ["  ·  bots fill in"] = "  ·  bots completam",
     ["  ·  current"] = "  ·  atual",
+    ["  ·  switch here"] = "  ·  trocar para este",
+    ["  ·  then matchmaking"] = "  ·  depois busca de partida",
     ["  ·  time left "] = "  ·  tempo restante",
+    ["  ·  vote ends in "] = "  ·  votação termina em ",
+    ["  ·  voted"] = "  ·  votado",
     [" (done: "] = " (feito:",
     [" (empty "] = " (vazio",
     [" (empty)"] = " (vazio)",
@@ -25967,6 +26077,7 @@ return {
     [" (researched ones apply when you deploy)"] = " (as pesquisadas valem ao implantar)",
     [" (respawns: %d)"] = " (renascimentos: %d)",
     [" (up to "] = " (até",
+    [" (voted)"] = " (votado)",
     [" coins"] = " moedas",
     [" kN (mil / AB)"] = " kN (militar / PC)",
     [" km/h (mil / AB, 1000 m)"] = " km/h (militar / PC, 1000 m)",
@@ -25976,6 +26087,7 @@ return {
     [" short) · Top up"] = " faltam) · Recarregar",
     [" studs"] = " studs",
     [" t·m² (roll/pitch/yaw)"] = " t·m² (rolagem/arfagem/guinada)",
+    [" votes"] = " votos",
     [" · AR "] = " · alongamento",
     [" · AoA limit "] = " · limite de AoA",
     [" · Crew"] = " · tripulação",
@@ -26056,6 +26168,7 @@ return {
     ["Bonus +"] = "Bônus +",
     ["Bottom right: vote for the next map (decided by votes during preparation). To switch nation, click the flag at the top left to open the tech tree and pick a flag there. SPECTATE watches teammates."] = "Embaixo à direita: vote no próximo mapa (decidido pelos votos na preparação). Para trocar de nação, clique na bandeira no canto superior esquerdo, abra a árvore e escolha uma bandeira lá. ASSISTIR acompanha os aliados.",
     ["Brightness"] = "Brilho",
+    ["Building map "] = "Criando mapa ",
     ["Buy ("] = "Comprar (",
     ["Buy coins"] = "Comprar moedas",
     ["CANCEL"] = "CANCELAR",
@@ -26302,6 +26415,8 @@ return {
     ["Paid with Robux. Coins arrive right after the purchase and can buy researched vehicles in the tech tree."] = "Pago com Robux. As moedas chegam logo após a compra e compram veículos pesquisados na árvore.",
     ["Parts"] = "Peças",
     ["Performance"] = "Desempenho",
+    ["Pick a map"] = "Escolher mapa",
+    ["Pick a map above, "] = "Escolha um mapa acima, ",
     ["Pick a slot, then press TO BATTLE: you spawn inside it at your base. Lose it and you come back here."] = "Escolha um espaço e aperte PARA A BATALHA: você surge dentro dele na sua base. Se perdê-lo, volta para cá.",
     ["Points "] = "Pontos",
     ["Preparation"] = "Preparação",
@@ -26431,6 +26546,7 @@ return {
     ["VS CLEAN"] = "VS. LIMPO",
     ["Vehicle mouse sensitivity"] = "Sensibilidade do mouse (veículos)",
     ["Vitality"] = "Vitalidade",
+    ["Voted. "] = "Votado. ",
     ["WEAPON SELECT"] = "SELEÇÃO DE ARMA",
     ["WSO"] = "OFICIAL DE SISTEMAS DE ARMAS",
     ["War Thunder leaves gear to you (G); flaps are automatic"] = "No War Thunder o trem é manual (G); os flaps são automáticos",
@@ -26476,6 +26592,7 @@ return {
     ["stand-in"] = "provisório",
     ["stores weight"] = "peso das cargas",
     ["switch"] = "interruptor",
+    ["then TO BATTLE"] = "depois PARA A BATALHA",
     ["top speed"] = "velocidade máx.",
     ["troop"] = "tropa",
     ["turn time"] = "tempo de curva",
@@ -26492,7 +26609,7 @@ return {
       <Item class="ModuleScript" referent="37">
         <Properties>
           <string name="Name">ru</string>
-          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ru 的译文（2291 / 2385 条）
+          <ProtectedString name="Source"><![CDATA[-- 自动生成（tools/i18n/build.py），别手改：ru 的译文（2309 / 2403 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -27143,6 +27260,7 @@ return {
     ["kitrole.rifle"] = "Стрелок",
     ["kitrole.sniper"] = "Снайпер",
     ["map.back"] = "НАЗАД",
+    ["map.buildThenMatch"] = "Строится «{1}» — подбор начнётся, когда карта будет готова",
     ["map.cat"] = "ИГРАТЬ",
     ["map.city.desc"] = "У каждой стороны своя база с полосой, между ними город (около 2 км): старые кварталы, высотки, парк, вокзал, металлургический завод и телебашня · деревья падают от тарана и выстрелов, здания рушатся",
     ["map.city.mode"] = "ГОРОДСКОЙ БОЙ",
@@ -27164,6 +27282,10 @@ return {
     ["map.snow.mode"] = "ГОРНЫЙ ПРОРЫВ",
     ["map.snow.name"] = "СНЕЖНЫЕ ПИКИ",
     ["map.sub"] = "Все голосуют за карту этого сервера (голос можно сменить) — побеждает больше голосов; позже пришедшие присоединяются",
+    ["map.switch"] = "СМЕНИТЬ",
+    ["map.switchFail"] = "Не удалось открыть новый сервер — остаёмся здесь",
+    ["map.switchNew"] = "Смена на «{1}»: переход на новый сервер…",
+    ["map.switchStudio"] = "В Studio сервер строит только одну карту: остановите, снова нажмите «Играть» и сначала выберите «{1}» в ангаре",
     ["map.title"] = "ГОЛОСОВАНИЕ ЗА КАРТУ",
     ["map.vote"] = "ГОЛОСОВАТЬ",
     ["map.voteIdle"] = "Первый голос запускает отсчёт {1} с — побеждает больше голосов (при равенстве — случайно)",
@@ -28397,6 +28519,8 @@ return {
     ["wtm.mi.conq"] = "Завоевание (захватить C)",
     ["wtm.mi.dom"] = "Превосходство (удержать B, C, D)",
     ["wtm.mission"] = "Задача: {1}",
+    ["wtm.prepIn"] = "БОЙ НАЧНЁТСЯ ЧЕРЕЗ {1}",
+    ["wtm.prepTitle"] = "ПОДГОТОВКА · ОЖИДАЙТЕ НА МЕСТЕ",
     ["wtm.rewards"] = "Этот бой: очки {1}  ·  опыт +{2}  ·  получено ОВ {3}  ·  наземных {4}  ·  воздушных {5}",
     ["wtm.shotDown"] = "сбил",
     ["wtm.sp"] = "ОВ {1}",
@@ -28469,7 +28593,11 @@ return {
     ["  ·  Stats"] = "  ·  Характеристики",
     ["  ·  bots fill in"] = "  ·  боты добирают",
     ["  ·  current"] = "  ·  текущий",
+    ["  ·  switch here"] = "  ·  сменить на эту",
+    ["  ·  then matchmaking"] = "  ·  затем подбор",
     ["  ·  time left "] = "  ·  осталось ",
+    ["  ·  vote ends in "] = "  ·  до конца голосования ",
+    ["  ·  voted"] = "  ·  голос отдан",
     [" (done: "] = " (готово: ",
     [" (empty "] = " (пустой ",
     [" (empty)"] = " (пусто)",
@@ -28479,6 +28607,7 @@ return {
     [" (researched ones apply when you deploy)"] = " (исследованные действуют при выходе в бой)",
     [" (respawns: %d)"] = " (возрождений: %d)",
     [" (up to "] = " (до ",
+    [" (voted)"] = " (голос)",
     [" XP"] = " опыта",
     [" coins"] = " монет",
     [" kN"] = " кН",
@@ -28491,6 +28620,7 @@ return {
     [" short) · Top up"] = " не хватает) · Пополнить",
     [" studs"] = " стадов",
     [" t·m² (roll/pitch/yaw)"] = " т·м² (крен/тангаж/рыскание)",
+    [" votes"] = " голосов",
     [" · AR "] = " · удлинение ",
     [" · AoA limit "] = " · огр. УА ",
     [" · Crew"] = " · экипаж",
@@ -28574,6 +28704,7 @@ return {
     ["Bonus +"] = "Бонус +",
     ["Bottom right: vote for the next map (decided by votes during preparation). To switch nation, click the flag at the top left to open the tech tree and pick a flag there. SPECTATE watches teammates."] = "Справа внизу голосуйте за следующую карту (решается голосами в подготовке). Чтобы сменить нацию, нажмите флаг слева вверху, откройте дерево и выберите флаг там. НАБЛЮДАТЬ — смотреть за союзниками.",
     ["Brightness"] = "Яркость",
+    ["Building map "] = "Строится карта ",
     ["Buy ("] = "Купить (",
     ["Buy coins"] = "Купить монеты",
     ["CANCEL"] = "ОТМЕНА",
@@ -28823,6 +28954,8 @@ return {
     ["Paid with Robux. Coins arrive right after the purchase and can buy researched vehicles in the tech tree."] = "Оплата Robux. Монеты приходят сразу после покупки, на них можно купить исследованную технику в дереве.",
     ["Parts"] = "Запчасти",
     ["Performance"] = "Характеристики",
+    ["Pick a map"] = "Выбрать карту",
+    ["Pick a map above, "] = "Выберите карту выше, ",
     ["Pick a slot, then press TO BATTLE: you spawn inside it at your base. Lose it and you come back here."] = "Выберите слот и нажмите В БОЙ: вы появитесь в нём на базе. Потеряете — вернётесь сюда.",
     ["Points "] = "Очки ",
     ["Preparation"] = "Подготовка",
@@ -28952,6 +29085,7 @@ return {
     ["VS CLEAN"] = "ПРОТИВ ЧИСТОГО",
     ["Vehicle mouse sensitivity"] = "Чувствительность мыши (техника)",
     ["Vitality"] = "Живучесть",
+    ["Voted. "] = "Голос учтён. ",
     ["WEAPON SELECT"] = "ВЫБОР ОРУЖИЯ",
     ["WSO"] = "ШТУРМАН-ОПЕРАТОР",
     ["War Thunder leaves gear to you (G); flaps are automatic"] = "В War Thunder шасси убираете сами (G), закрылки — автоматически",
@@ -28998,6 +29132,7 @@ return {
     ["stand-in"] = "временная",
     ["stores weight"] = "масса подвесок",
     ["switch"] = "переключатель",
+    ["then TO BATTLE"] = "затем «В БОЙ»",
     ["top speed"] = "макс. скорость",
     ["troop"] = "десант",
     ["turn time"] = "время виража",
@@ -29800,6 +29935,7 @@ return {
     ["kitrole.rifle"] = "步槍兵",
     ["kitrole.sniper"] = "狙擊手",
     ["map.back"] = "返回",
+    ["map.buildThenMatch"] = "按「{1}」開圖，建好自動開始匹配",
     ["map.cat"] = "開始遊戲",
     ["map.city.desc"] = "兩邊基地各帶一條跑道，中間一座城（約 2 公里見方）：老城街坊、高樓、公園、火車站、鋼廠、電視塔 · 樹撞得倒、炸得倒，樓炸多了會塌",
     ["map.city.mode"] = "城市戰",
@@ -29821,6 +29957,10 @@ return {
     ["map.snow.mode"] = "高山突破",
     ["map.snow.name"] = "雪山",
     ["map.sub"] = "大家投票選這個伺服器打哪張（能改票），票最多的開；後進來的直接加入",
+    ["map.switch"] = "換到這張",
+    ["map.switchFail"] = "開新伺服器沒成功，留在這一局",
+    ["map.switchNew"] = "換到「{1}」：開一個新伺服器傳過去……",
+    ["map.switchStudio"] = "Studio 裡一個伺服器只建一張圖：停止後重新開始，進機庫先在「這一局」那塊選「{1}」",
     ["map.title"] = "投票選地圖",
     ["map.vote"] = "投這張",
     ["map.voteIdle"] = "投一票就開始倒計時：{1} 秒後按票數最多的開（平票隨機）",
@@ -31090,6 +31230,8 @@ return {
     ["wtm.mi.conq"] = "征服（搶鎮子 C 一個點）",
     ["wtm.mi.dom"] = "統治（搶 B、C、D 三個據點，據點多的扣對面兵力）",
     ["wtm.mission"] = "本局任務：{1}",
+    ["wtm.prepIn"] = "戰鬥將在 {1} 秒後開始",
+    ["wtm.prepTitle"] = "準備階段 · 原地待命",
     ["wtm.rewards"] = "本局：得分 {1}  ·  經驗 +{2}  ·  攢了 {3} SP  ·  擊毀地面 {4}  ·  擊落 {5}",
     ["wtm.shotDown"] = "擊落",
     ["wtm.sp"] = "SP {1}",
@@ -31162,6 +31304,10 @@ return {
     ["   ·   正在研究："] = "   ·   正在研究：",
     ["  ·  人不够补人机"] = "  ·  人不夠補人機",
     ["  ·  剩余时间 "] = "  ·  剩餘時間 ",
+    ["  ·  好了自动匹配"] = "  ·  好了自動匹配",
+    ["  ·  已投"] = "  ·  已投",
+    ["  ·  投票还剩 "] = "  ·  投票還剩 ",
+    ["  ·  换到这张"] = "  ·  換到這張",
     ["  ·  改装"] = "  ·  改裝",
     ["  ·  本局"] = "  ·  本局",
     ["  ·  资料卡"] = "  ·  資料卡",
@@ -31192,6 +31338,7 @@ return {
     [" 格"] = " 格",
     [" 毫秒"] = " 毫秒",
     [" 的模型和性能"] = " 的模型和效能",
+    [" 票"] = " 票",
     [" 级"] = " 級",
     [" 级 · "] = " 級 · ",
     [" 级车（"] = " 級車（",
@@ -31326,6 +31473,7 @@ return {
     ["固定翼"] = "固定翼",
     ["固定翼操纵"] = "固定翼操縱",
     ["地图"] = "地圖",
+    ["地图生成中 "] = "地圖生成中 ",
     ["地面车"] = "地面車",
     ["坦克"] = "坦克",
     ["坦克转炮塔、看四周（再乘上面的总灵敏度）"] = "坦克轉炮塔、看四周（再乘上面的總靈敏度）",
@@ -31359,6 +31507,7 @@ return {
     ["工具箱"] = "工具箱",
     ["左键："] = "左鍵：",
     ["已买下"] = "已買下",
+    ["已投这张，"] = "已投這張，",
     ["已研究，可以买"] = "已研究，可以買",
     ["已装 "] = "已裝 ",
     ["已装上"] = "已裝上",
@@ -31529,10 +31678,12 @@ return {
     ["炮长"] = "炮長",
     ["炸弹"] = "炸彈",
     ["点「开战」开始匹配"] = "點「開戰」開始匹配",
+    ["点「开战」开打"] = "點「開戰」開打",
     ["点「研究」，买下的车放进阵容"] = "點「研究」，買下的車放進陣容",
     ["点一下研究 · "] = "點一下研究 · ",
     ["点一下：把现在这一套存成这个方案"] = "點一下：把現在這一套存成這個方案",
     ["点一张卡片看详情：研究、购买、放进出击阵容、试驾"] = "點一張卡片看詳情：研究、購買、放進出擊陣容、試駕",
+    ["点上面选地图，"] = "點上面選地圖，",
     ["烟幕弹"] = "煙幕彈",
     ["热像 1 代"] = "熱像 1 代",
     ["热像 2 代"] = "熱像 2 代",
@@ -31659,6 +31810,7 @@ return {
     ["这棵树还没有找到能用的原模型，找到了再加上"] = "這棵樹還沒有找到能用的原模型，找到了再加上",
     ["这辆车每打一局，结束时它挣的研究点先给正在研究的那项改装（没选就按顺序自动研究）；研究完自动装上。每一级研究完两项，开下一级。"] = "這輛車每打一局，結束時它掙的研究點先給正在研究的那項改裝（沒選就按順序自動研究）；研究完自動裝上。每一級研究完兩項，開下一級。",
     ["退出战斗"] = "退出戰鬥",
+    ["选地图"] = "選地圖",
     ["重型 / 多用途"] = "重型 / 多用途",
     ["金币"] = "金幣",
     ["金币 +"] = "金幣 +",
@@ -31696,6 +31848,7 @@ return {
     ["鼠标瞄准（战雷式）"] = "滑鼠瞄準（戰雷式）",
     ["鼠标瞄准：准星随鼠标、飞机自己追过去，按 WASD 临时直接操纵；飞行中按 M 也能换"] = "滑鼠瞄準：準星隨滑鼠、飛機自己追過去，按 WASD 臨時直接操縱；飛行中按 M 也能換",
     ["（可出到 "] = "（可出到 ",
+    ["（已投）"] = "（已投）",
     ["（性能是本车的）"] = "（效能是本車的）",
     ["（放宽静稳定）"] = "（放寬靜穩定）",
     ["（模式 ×"] = "（模式 ×",
@@ -32463,8 +32616,23 @@ Map.id = "island"
 -- 用户 11-24：「沙漠风暴删掉」「全部默认沙海地图吧，登岛那个也删了」——只剩沙海；11-26：「改地图……这个图不适合对抗」「做一个两边带机场的城市地图吧」——
 --   换成「钢城」（MapCity）：开服直接建（只有一张就不用投票），沙海留着（extra：Studio、测试台给 Workspace 设 MapName = "sands" 还能开）
 -- 用户 11-26 晚：「我要求你做一个雪山地图 一定要做到极高质量」——加「雪山」（MapSnow），两张一起投票
-Map.ids = { "city", "snow" }
-Map.extra = { "sands" }
+-- 用户 11-28 晚：「然后城市地图暂时先不弄 先不显示这张图」——钢城先收起来（选地图、机库「这一局」里都没有），只剩雪山（只有一张：开服直接建，不投票）；
+--   钢城、沙海留在 extra（Studio、测试台给 Workspace 设 MapName = "city" 还能开）。Workspace 的属性 MapIds（「city,snow」）能换这一列（测试、Studio 里看）
+Map.ids = { "snow" }
+Map.extra = { "sands", "city" }
+do
+  local ok, o = pcall(function() return workspace:GetAttribute("MapIds") end)
+  if ok and type(o) == "string" and o ~= "" then
+    local ids = {}
+    for id in string.gmatch(o, "[^,%s]+") do table.insert(ids, id) end
+    if #ids > 0 then
+      Map.ids = ids
+      local extra = {}
+      for _, id in ipairs({ "city", "snow", "sands" }) do if not table.find(ids, id) then table.insert(extra, id) end end
+      Map.extra = extra
+    end
+  end
+end
 -- 选地图界面（MapPick.lua）用的：尺寸（公里）、模式
 Map.info = {
   city = { km = 6.2, mode = "assault", sea = false },    -- 「钢城」（MapCity）：两边基地带跑道，中间一座城，据点 A～E
@@ -44056,18 +44224,18 @@ function W.prof(d)
   return W.PROF[d.id] or W.CAT[d.cat] or W.CAT.apc
 end
 
----------------------------------------------------------------- 弹药殉爆时炮塔会被顶飞的车
--- 弹放在车体底下转盘式自动装弹机里（苏 / 俄 T-64、T-72、T-80、T-90，中国 96、99 系）：殉爆时整个炮塔连炮被顶上天
---   （用户 11-26「部分弹药架在下面的坦克被干掉炮塔飞起来吧 然后要先着火再飞」）——先烧 W.cookSecs 秒（发射药着火、舱口往外喷火），
---   再一下炸开、炮塔飞起来；弹在炮塔尾舱的（M1、豹 2、勒克莱尔、10 式……）有泄压板或者整车炸，炮塔不飞
+---------------------------------------------------------------- 弹放在车体底下转盘式自动装弹机里的车
+-- 苏 / 俄 T-64、T-72、T-80、T-90，中国 96、99 系。11-26 起（用户「部分弹药架在下面的坦克被干掉炮塔飞起来吧 然后要先着火再飞」）只有它们殉爆掀炮塔、
+--   先烧几秒；11-28 晚起（用户「坦克被穿透关键部位要直接爆 炮塔炮管子都要崩飞」）哪种坦克殉爆都一打中就炸、掀炮塔、炮管单独崩飞（View.lua）——
+--   这张表现在只给测试、资料卡认「弹在车体底下」
 W.CAROUSEL = { t64a = true, t64b = true, t72ural = true, t72a = true, t72b = true, t72b3 = true, t80b = true, t80u = true, t80bvm = true,
   t90m = true, t90a = true, ztz96 = true, ztz99a = true,
   ztz96base = true, ztz96a = true, ztz99base = true }   -- 11-27 拆出来的 96 式、96A、99 式（同样是车体底下的转盘式自动装弹机）
 -- 烧多久（2.2～3.4 秒）：按实体编号定，服务器、各个客户端算出来一样
+-- 11-28 晚起殉爆不再先烧（用户「坦克被穿透关键部位要直接爆」）：0 秒。函数留着（测试、老脚本按它算等多久）
 function W.cookSecs(id)
-  local h = 0
-  for c in tostring(id or ""):gmatch(".") do h = (h * 31 + string.byte(c)) % 100003 end
-  return 2.2 + (h % 97) / 96 * 1.2
+  local _ = id
+  return 0
 end
 
 ---------------------------------------------------------------- 弹的穿深（毫米）
@@ -45098,6 +45266,7 @@ local function waitMap()
   local emptyWait = Config.MapWaitEmpty or (game:GetService("RunService"):IsStudio() and 3 or 30)
   local grace = (Config.MapVote and Config.MapVote.grace) or 3
   local pushAt = 0
+  local joinChecked = {}   -- 进来的人看过一遍传送数据了没有
   while not G.mapId do
     -- 投票中半秒发一次状态（票数、倒计时、在场人数：有人进来、走了也跟着变）
     if os.clock() >= pushAt and #Players:GetPlayers() > 0 and G.pushAll then
@@ -45106,9 +45275,18 @@ local function waitMap()
     end
     local anyone = #Players:GetPlayers() > 0
     local waited = os.clock() - t0
-    -- 有人在、却没人投（用户 11-28「主页如果我不换 snowpeak 就没法进训练场」：没投票时要等 MapWaitMax 十五分钟才按默认开图，
-    --   图没开、训练场也不建，试驾一直「训练场还在准备」）：第一个人进来就开始倒计时，到点没人投按默认那张开
-    if anyone and not voteEnds then voteEnds = os.clock() + ((Config.MapVote and Config.MapVote.idle) or 20) end
+    -- 有人在、却没人投：等他选（用户 11-28 晚「然后目前没法切地图」）——11-28 一度改成进来二十秒没人投就按默认那张开（那时训练场要等战场的图），
+    --   机库里还没去点「这一局」选图，钢城就已经建起来了，之后点哪张都换不了。现在训练场开服就建、跟这张图没关系，不再替人定：
+    --   在机库「这一局」那块点一张就是投一票；没选图就点「开战」= 投默认那张（WtMatch.lua matchJoin）；一直没人管才 MapWaitMax 后按默认开
+    -- 从别的服务器传过来、带着要打的图（「换到这张图」开的新服务器：Places.lua G.switchMap）：直接投那张，在场的人都投了 → grace 秒后开
+    for _, pl in ipairs(Players:GetPlayers()) do
+      if G.mapVotes[pl] == nil and not joinChecked[pl] then
+        joinChecked[pl] = true
+        local ok, jd = pcall(function() return pl:GetJoinData() end)
+        local td = ok and type(jd) == "table" and jd.TeleportData or nil
+        if type(td) == "table" and type(td.map) == "string" then G.voteMap(pl, td.map) end
+      end
+    end
     if voteEnds then
       -- 在场的人都投了：再等 grace 秒（还能改票）就开
       local _, voters = voteCounts()
@@ -56968,6 +57146,47 @@ function Places.init(G)
     end)
     return true
   end
+  -- 换到另一张图（用户 11-28 晚「然后目前没法切地图」）：一个服务器开服只建一张图、建好以后换不了——
+  --   这张图有自己的地点：传送过去（上面 G.teleport）；没有：开一个这个地点的新服务器（预留服务器），带着要打的图传过去，
+  --   那边进来就按这张开（init.server.lua waitMap 读传送数据里的 map）；同一张图十分钟内都传进同一个新服务器（一起点的人到一处）。
+  --   Studio 里不能传送：告诉他停止后重新开始、进机库先在「这一局」那里选图
+  local reserved = {}   -- [图] = { code, t }
+  function G.switchMap(P, id)
+    if not P or not P.pl or type(id) ~= "string" then return false end
+    if G.placeFor(id) then return G.teleport(P, id, { map = id }) end
+    if not table.find(Map.ids or {}, id) then return false end   -- 收起来的图（钢城 11-28 晚先不显示）不换
+    if (studio and not G.placeLive) or G.placeTpOff then
+      G.msg(P.pl, "info", "map.switchStudio", { k = "map." .. id .. ".name" })
+      return false
+    end
+    if going[P.pl] then return false end
+    going[P.pl] = { role = id, data = { map = id }, t = os.clock() }
+    G.msg(P.pl, "info", "map.switchNew", { k = "map." .. id .. ".name" })
+    task.spawn(function()
+      if G.saveNow then pcall(G.saveNow, P) end
+      local r = reserved[id]
+      if not r or os.clock() - r.t > 600 then
+        local ok, code = pcall(function() return TS:ReserveServer(game.PlaceId) end)
+        if ok and type(code) == "string" then r = { code = code, t = os.clock() } reserved[id] = r else r = nil end
+      end
+      local ok, err = false, "预留服务器没开成"
+      if r then
+        ok, err = pcall(function()
+          local opt = Instance.new("TeleportOptions")
+          opt.ReservedServerAccessCode = r.code
+          opt:SetTeleportData({ from = G.placeRole, fromId = game.PlaceId, map = id })
+          TS:TeleportAsync(game.PlaceId, { P.pl }, opt)
+        end)
+      end
+      if not ok then
+        going[P.pl] = nil
+        reserved[id] = nil
+        warn("[地点] " .. P.pl.Name .. " 换图到「" .. id .. "」没成功：" .. tostring(err))
+        G.msg(P.pl, "bad", "map.switchFail")
+      end
+    end)
+    return true
+  end
   pcall(function()
     TS.TeleportInitFailed:Connect(function(pl, result, msg)
       local g = going[pl]
@@ -58727,6 +58946,12 @@ function Round.init(G)
       G.pushAll()
       return
     end
+    -- 图已经定了、点的是另一张（用户 11-28 晚「然后目前没法切地图」：原来这一票什么也不做）：换过去——有自己地点的传送、
+    --   没有的开个新服务器传过去，Studio 里提示重新开始（Places.lua G.switchMap）
+    if G.mapId and id ~= G.mapId and G.switchMap then
+      G.switchMap(P, id)
+      return
+    end
     -- 这个服务器在打 PvE 关卡（Pve.lua）：只有自己一个人 → 退出关卡、改打对战重新开一局；有别人在打 → 加入他们
     if G.pve and G.mapId then
       if G.pveRealN and G.pveRealN() <= 1 and G.pveExit then
@@ -59280,6 +59505,7 @@ function Round.init(G)
     --   客户端机库（TechUI.lua）就是选车页：主按钮「出击」、多一个「退出战斗」、先选中匹配时点的那一辆（pickPref）
     local inMatch = G.inMatch(P) and not P.testDeploy
     C.pick = (inMatch and not P.vehicle) or nil
+    C.inMatch = inMatch or nil   -- 这一局算他的（准备阶段坐在车里等开战：客户端 G.wtHold 锁住开车、起飞，WtBattle 正中倒计时）
     C.pickPref = C.pick and P.pickPref or nil
     C.myVote = (not G.mapId and G.mapVotes and G.mapVotes[P.pl]) or nil   -- 自己投的哪张（选地图界面高亮）
     C.rAtk, C.rDef = teamCount("atk", true), teamCount("def", true)   -- 选阵营界面：两边各有几个真人、能不能进
@@ -66938,16 +67164,12 @@ function Wt.init(G)
     e.wtWhy = why
     e.model:SetAttribute("WtWhy", why)   -- 客户端 View：殉爆才掀炮塔
     local base = baseOf(e)
-    if why == "ammo" then   -- 殉爆：一大团火（客户端 View / WreckFx 画残骸，这里多一声大的）
+    if why == "ammo" then   -- 殉爆：一大团火（客户端 View / WreckFx 画残骸、掀炮塔、炮管崩飞，这里多一声大的）
+      -- 用户 11-28 晚「坦克被穿透关键部位要直接爆 炮塔炮管子都要崩飞」：打中就炸（原来转盘车先烧两三秒再炸——11-26「要先着火再飞」那一版；
+      --   弹药架起火没灭的那条路照旧是先烧 8 秒再炸），哪种坦克都掀炮塔、炮管单独崩飞（View.lua）
       local tp = e.def.turret and e.def.turret.pivot or V(0, e.def.hullH or 4, 0)
       local at = (base * CF(tp)).Position
-      if W.CAROUSEL[e.def.id] and e.def.turret then   -- 弹在车体底下的：先烧几秒再炸、炮塔飞起来（客户端按 WtCook 同步）
-        local cook = W.cookSecs(e.id)
-        e.model:SetAttribute("WtCook", cook)
-        task.delay(cook, function() G.fx({ k = "boom", p = at, s = 4.6, c = "wreck" }) end)
-      else
-        G.fx({ k = "boom", p = at, s = 4.2, c = "wreck" })
-      end
+      G.fx({ k = "boom", p = at, s = 4.6, c = "wreck" })
     end
     e.wtLastDriver = e.driver   -- 车毁了以后车里的人就下车了：击杀信息、「你被击毁」那一发的 X 光要发给他们
     e.wtLastPass = e.pass and table.clone(e.pass) or nil
@@ -67083,7 +67305,10 @@ function Wt.init(G)
         local rl, rf = nil, nil
         if G.wtRackLeft then rl, rf = G.wtRackLeft(e, c.it.k) end   -- ④ 这一块弹架（待发 / 车体）现在有几发：空了打中也不炸
         if rl then frac = (rl <= 0) and 0 or math.clamp(rl / rf, 0.15, 1) end
-        if math.random() < k * frac then flags.ammo, flags.ammoK = true, c.it.k
+        -- 用户 11-28 晚「坦克被穿透关键部位要直接爆」：弹芯 / 射流直接钻进弹架（k ≥ 0.7 的那一下）——架上有弹就一定殉爆，不看少带弹
+        --   （原来按 0.7 × 带的弹多少：少带弹的车弹芯穿过弹架也常常只是起火）；破片、爆炸照旧按机会，没炸就起火（倒计时殉爆）
+        if k >= 0.7 * fx.amk - 1e-6 and frac > 0 then flags.ammo, flags.ammoK = true, c.it.k
+        elseif math.random() < k * frac then flags.ammo, flags.ammoK = true, c.it.k
         elseif frac > 0 and math.random() < k * frac * 0.9 then flags.ammoFire = flags.ammoFire or c.it.k end   -- 没炸：发射药烧起来（弹药架起火，11-26）
       end
       if (c.it.k == "engine" and math.random() < 0.28 * (k / 0.5) * fk) or ((c.it.k == "fuelL" or c.it.k == "fuelR") and math.random() < 0.4 * (k / 0.5) * fk) then
@@ -67118,7 +67343,7 @@ function Wt.init(G)
         if h then
           local c = S.byK[h.it.k]
           hurt(e, c, ((h.it.kind == "crew") and CREW_DMG.spall or MOD_DMG.spall) * fx.sd, out, src)
-          hitAmmo(c, 0.22)
+          hitAmmo(c, 0.4)   -- 破片打进弹架：11-28 晚 0.22 → 0.4（「打穿关键部位要直接爆」）
           if hits[2] and math.random() < 0.35 then   -- 有的破片穿过第一个还能伤后面一个
             local c2 = S.byK[hits[2].it.k]
             hurt(e, c2, ((hits[2].it.kind == "crew") and CREW_DMG.spall or MOD_DMG.spall) * 0.5 * fx.sd, out, src)
@@ -68497,6 +68722,19 @@ function WtMatch.init(G)
       G.msg(P.pl, "bad", "place.noBattle")
       return
     end
+    -- 这个服务器的图还没定 / 还在建（用户 11-28 晚「然后目前没法切地图」：不再进来二十秒就替人定图，init.server.lua）：
+    --   点「开战」= 投自己在「这一局」那块选过的那张（没选过：默认那张），先排上；图建好、开局（匹配中）时接着倒计时（下面 roundStart）
+    if R.phase == "boot" then
+      if not G.mapId and G.voteMap then   -- 先投图（这辆车排不上也照样开图：Tech.lua 自己说为什么排不上）
+        local want = (G.mapVotes and G.mapVotes[P.pl]) or P.wantMap or (Config.MapDefault or "snow")
+        if not G.voteMap(P.pl, want) then G.voteMap(P.pl, Config.MapDefault or "snow") end
+      end
+      if G.treeCanQueue and not G.treeCanQueue(P, key) then G.pushAll() return end
+      P.queued = key
+      G.msg(P.pl, "info", "map.buildThenMatch", { k = "map." .. tostring(G.mapId or (G.mapVotes and G.mapVotes[P.pl]) or Config.MapDefault or "snow") .. ".name" })
+      G.pushAll()
+      return
+    end
     if R.phase ~= "queue" then   -- 已经在打（准备 / 战斗）：进局、出选车界面（同战雷：「加入战斗」以后在局里选车）
       if P.testDeploy then if G.ACT.deployVeh then G.ACT.deployVeh(P, key) end return end
       if G.treeCanQueue and not G.treeCanQueue(P, key) then return end
@@ -68536,11 +68774,24 @@ function WtMatch.init(G)
       P.queued = nil
       P.pickPref = key
       enterMatch(P)
+      -- 用户 11-28 晚「点加入战斗就进入地图里面等着吧 等倒计时结束就开战」（同战雷）：不再先出局内选车页、再点「出击」——
+      --   直接坐进机库里点的那一辆出现在自己基地，准备阶段车开不了、炮打不了（客户端 G.wtHold、服务器 Armor.lua 开火只在开战以后），
+      --   屏幕正中倒计时（WtBattle.lua），倒计时完开战。出不来的（SP、阵容）照旧停在局内选车页
+      if key and G.ACT.deployVeh then
+        task.spawn(function() G.try("开局出击", G.ACT.deployVeh, P, key) end)
+      end
     end
     if G.treeRoundBr then pcall(G.treeRoundBr) end
     -- 不再在屏幕正中写「匹配完成：进入战斗（人不够的位置由人机补上）」（用户 11-26「把那串字去掉太难看」）：机库的主按钮变成「出击」就说明了
   end)
   G.on("left", function(P) P.queued = nil end)
+  -- 开局（匹配中）时已经有人排着（图还在建的时候点了「开战」）：接着起算匹配的倒计时（原来只在点开战那一下起算，开局又清掉了）
+  G.on("roundStart", function()
+    local R = G.round
+    if R and R.phase == "queue" and #queuedList() > 0 and not R.queueEnds then
+      R.queueEnds = now() + (MC.wait or 60)
+    end
+  end)
   -- 这一队这一局真打的人（匹配进来的、半路加入的；坐在车里的、活着的也算）——电脑补到 teamSize 时扣掉他们（AIVeh.lua）
   function G.matchPlayers(team)
     local R = G.round
@@ -77251,6 +77502,7 @@ function Drive.init(G)
       if G.touchDrive.str ~= 0 then str = G.touchDrive.str end
     end
     if G.interiorEngineOff then thr = 0 end   -- 驾驶员显示器上按了熄火（Interior.lua）：再按起动才走得了
+    if G.wtHold and G.wtHold() then thr, str = 0, 0 end   -- 准备阶段在出发点等开战（用户 11-28 晚，WtBattle.lua 倒计时）：开不了
     -- 没有炮塔的车（SU-100 这类，VehDefs turret.arc）：自己不打方向、瞄的地方在炮的射界外面——车体自己转过去对准（同战雷歼击车），
     --   超出 6° 以上满舵；按住 A / D 照常自己转
     if str == 0 and st.arcPull and st.arcPull ~= 0 and d.turret and (d.turret.arc or st.travDead) then
@@ -81736,6 +81988,8 @@ function Fly.init(G)
       dn = key(Enum.KeyCode.S) or kDn or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or (touch and touch.down)
     end
     st.thr = clamp(st.thr + ((up and 1 or 0) - (dn and 1 or 0)) * 55 * dt, 0, d.ab and 130 or 100)
+    -- 准备阶段在跑道上等开战（用户 11-28 晚「点加入战斗就进入地图里面等着吧 等倒计时结束就开战」，WtBattle.lua G.wtHold）：油门推不上去、滑不起来
+    if st.ground and G.wtHold and G.wtHold() then st.thr = 0 end
     -- 超速保护（用户 11-27「j6为什么这么容易坠机」：歼-6 低空加力平飞就快到撕翼速度，带着加力一俯冲就超、机翼被撕掉）：
     --   鼠标瞄准（教官飞）时，到了极限速度九成三先把加力关掉、九成七收到慢车，降回八成八再放开——玩家自己再推油门照样能推上去（下一帧又收）
     if mAim and not st.ground and st.fmD and st.fmD.vne then
@@ -105652,7 +105906,13 @@ function MapPick.init(G)
       status.Text = T("place.going", T("place." .. id))
       return
     end
-    if S and S.map and S.map ~= id then id = S.map end   -- 服务器已经在打另一张：按钮是「加入那张」
+    -- 服务器已经在打另一张：点「加入 X」那张卡（就是现在这张）照旧加入；点了别的图 = 换过去（用户 11-28 晚「然后目前没法切地图」：
+    --   原来点哪张都改成加入现在那张）——服务器 Places.lua G.switchMap：有自己地点的传送、没有的开个新服务器传过去，Studio 里提示重新开始
+    if S and S.map and S.map ~= id then
+      G.R.Act:FireServer("pickMap", id)
+      status.Text = T("map.switchNew", T("map." .. id .. ".name"))
+      return
+    end
     want = id
     G.R.Act:FireServer("pickMap", id)
     if S and S.map then status.Text = T("map.loading", 0) end
@@ -105789,7 +106049,7 @@ function MapPick.init(G)
         K.votes.Text = T("map.votes", nv)
         K.votes.TextColor3 = (nv > 0) and acc or MUTE
       else
-        K.go.Text = other and (T("map.join") .. "  " .. T("map." .. S.map .. ".name")) or T("map.join")
+        K.go.Text = other and T("map.switch") or T("map.join")
         K.go.BackgroundColor3, K.go.TextColor3 = WHITE, RGB(10, 10, 12)
         K.votes.Visible = false
       end
@@ -120711,7 +120971,7 @@ function TechUI.init(G)
       -- 用户 11-26「点开战先匹配」：匹配中点一下排上（带着选中的这一辆）、再点取消；已经打起来了就直接加入（WtMatch.lua）
       bb.MouseButton1Click:Connect(function()
         local S = G.S or {}
-        if S.phase == "queue" then
+        if S.phase == "queue" or S.phase == "boot" then   -- boot：图还没定 / 还在建——点了先排上（服务器按选的图开，WtMatch.lua）
           if S.queued then act("matchCancel") elseif H.goKey then act("matchJoin", H.goKey) end
         elseif H.goKey then
           act("deployVeh", H.goKey)
@@ -120755,7 +121015,7 @@ function TechUI.init(G)
         local Map = G.Map
         local ids = (Map and Map.ids) or { "sands" }
         local S = G.S or {}
-        local cur = S.map or (Map and Map.id)
+        local cur = S.map or S.myVote   -- 高亮：本局那张；还没定就是自己投的那张
         for i, id in ipairs(ids) do
           local b = Instance.new("TextButton")
           b.Name = "Map_" .. id
@@ -120768,7 +121028,18 @@ function TechUI.init(G)
           TH.corner(b)
           local nmT = (G.T and G.T("map." .. id .. ".name")) or id
           if nmT == "map." .. id .. ".name" then nmT = id end
-          local t = text(b, nmT .. ((id == cur) and L("  ·  本局", "  ·  current") or ""), UDim2.new(1, -16, 1, 0), UDim2.new(0, 10, 0, 0), TH.S.body, TH.C.TEXT)
+          -- 图还没定：投票（写票数，自己投的那张标「已投」）；定了：现在这张「本局」，别的「换到这张」（服务器 Places.lua G.switchMap：
+          --   有自己地点的传送、没有的开个新服务器传过去，Studio 里提示重新开始）
+          local tag
+          if not S.map then
+            local nv = (S.vote and S.vote.n and S.vote.n[id]) or 0
+            tag = ((S.myVote == id) and L("  ·  已投", "  ·  voted") or "") .. ((nv > 0) and ("  ·  " .. nv .. L(" 票", " votes")) or "")
+          elseif id == S.map then
+            tag = L("  ·  本局", "  ·  current")
+          else
+            tag = L("  ·  换到这张", "  ·  switch here")
+          end
+          local t = text(b, nmT .. tag, UDim2.new(1, -16, 1, 0), UDim2.new(0, 10, 0, 0), TH.S.body, TH.C.TEXT)
           t.ZIndex = 32
           b.MouseButton1Click:Connect(function()
             act("pickMap", id)
@@ -121017,9 +121288,10 @@ function TechUI.init(G)
   local function refreshMode()
     -- 11-25「把那个选择真实度的图改成选地图吧」：顶上这一局那块写地图（点了投下一局的图）；模式照旧按服务器的（默认历史）
     local S = G.S or {}
-    local mid = (S.map or (G.Map and G.Map.id)) or "sands"
+    local mid = S.map or S.myVote or (G.Map and G.Map.id) or "city"
     local mname = (G.T and G.T("map." .. mid .. ".name")) or mid
     if mname == ("map." .. mid .. ".name") then mname = mid end
+    if not S.map then mname = S.myVote and (mname .. L("（已投）", " (voted)")) or L("选地图", "Pick a map") end   -- 图还没定：等人选（11-28 晚）
     local cur = "rb"
     local inMatch = S.pick == true   -- 局内：只写这一局打的是什么图，不能点开选图（没有 ▼）
     H.mapT.Text = L("陆战 · ", "Ground · ") .. mname .. "  ·  " .. (MODE_NAME[cur] or MODE_NAME.rb) .. (inMatch and "" or "  ▼")
@@ -121634,7 +121906,15 @@ function TechUI.init(G)
       if S then
         local fmt = function(s) s = math.max(0, math.floor(s or 0)) return string.format("%d:%02d", s // 60, s % 60) end
         local Q = S.queue
-        if S.phase == "queue" then   -- 匹配中（用户 11-26）：还剩几秒、排了几个人（人不够补人机）
+        if S.phase == "boot" then   -- 图还没定（等人选，11-28 晚起不再替人定）/ 定了还在建
+          if not S.map then
+            local V = S.vote
+            local vl = (V and V.left) and (L("  ·  投票还剩 ", "  ·  vote ends in ") .. fmt(V.left)) or ""
+            H.phaseT.Text = (S.myVote and L("已投这张，", "Voted. ") or L("点上面选地图，", "Pick a map above, ")) .. L("点「开战」开打", "then TO BATTLE") .. vl
+          else
+            H.phaseT.Text = L("地图生成中 ", "Building map ") .. tostring(math.floor((S.progress or 0) * 100)) .. "%" .. (S.queued and L("  ·  好了自动匹配", "  ·  then matchmaking") or "")
+          end
+        elseif S.phase == "queue" then   -- 匹配中（用户 11-26）：还剩几秒、排了几个人（人不够补人机）
           H.phaseT.Text = ((Q and Q.left) and (L("匹配中 ", "Matchmaking ") .. fmt(Q.left) .. "  ·  " .. tostring(Q.n or 0) .. " / " .. tostring(Q.need or 16) .. L(" 人", ""))
             or L("点「开战」开始匹配", "Press TO BATTLE to queue")) .. (H.brStr and ("  ·  " .. H.brStr) or "")
         else
@@ -121649,9 +121929,13 @@ function TechUI.init(G)
           refreshHangar()
         end
         -- 主按钮：匹配中是「开战」（排着的时候「取消匹配」+ 倒计时），打起来以后「加入战斗」
-        if S.phase == "queue" then
+        if S.phase == "queue" or S.phase == "boot" then
           H.goT.Text = S.queued and L("取消匹配", "CANCEL") or L("开战", "TO BATTLE")
-          if S.queued then
+          if S.queued and S.phase == "boot" then
+            H.goSub.Text = L("地图生成中 ", "Building map ") .. tostring(math.floor((S.progress or 0) * 100)) .. "%"
+            H.goSub.TextColor3 = RGB(60, 42, 14)
+            if H.goBtn then H.goBtn.BackgroundTransparency = 0 end
+          elseif S.queued then
             H.goSub.Text = L("匹配中 ", "Matching ") .. fmt((Q and Q.left) or 0) .. L("  ·  人不够补人机", "  ·  bots fill in")
             H.goSub.TextColor3 = RGB(60, 42, 14)
             if H.goBtn then H.goBtn.BackgroundTransparency = 0 end
@@ -128361,6 +128645,54 @@ function View.init(G)
     if T.fxH and T.fxH.Parent then T.fxH.CFrame = T.cf end
   end
   G.stepToss = stepToss
+  -- 炮管崩飞（用户 11-28 晚「坦克被穿透关键部位要直接爆 炮塔炮管子都要崩飞」）：殉爆那一下炮（防盾 + 炮管）从炮塔上断开，自己飞——
+  --   顺着炮口方向甩出去 10～18 格 / 秒、往上 18～30，绕横轴打着转（每秒 4～8 弧度，长杆子那样一头一头翻），落地平躺着、朝向随机；
+  --   按编号定，大家看到的一样。炮塔照 startToss 往上顶，两样一前一后分开落地
+  local function startGunToss(v)
+    local gF = v.gF
+    if not gF or v.gtoss then return end
+    local seed = tonumber(v.id) or 0
+    if seed == 0 then for c in tostring(v.id):gmatch(".") do seed += string.byte(c) end end
+    local rng = Random.new(seed * 104729 + 33)
+    local fwd = gF.LookVector
+    local flat = V(fwd.X, 0, fwd.Z)
+    flat = (flat.Magnitude > 0.05) and flat.Unit or V(0, 0, -1)
+    local side = V(-flat.Z, 0, flat.X) * ((rng:NextNumber() - 0.5) * 6)
+    local vel = flat * (10 + rng:NextNumber() * 8) + side + V(0, 18 + rng:NextNumber() * 12, 0)
+    if v.toss then vel += V(v.toss.vel.X, 0, v.toss.vel.Z) * 0.5 end
+    local axis = V(-flat.Z, 0, flat.X)   -- 横轴（跟炮管垂直）：炮口往下一头一头翻
+    v.gtoss = {
+      cf = gF, vel = vel,
+      w = axis * (((rng:NextNumber() < 0.5) and 1 or -1) * (4 + rng:NextNumber() * 4)) + V(0, (rng:NextNumber() - 0.5) * 2, 0),
+      bounce = 0, rest = false,
+      restYaw = rng:NextNumber() * 2 * math.pi,
+    }
+    G.gunTossCount = (G.gunTossCount or 0) + 1   -- 测试用
+  end
+  local function stepGunToss(v, dt)
+    local T = v.gtoss
+    if not T or T.rest then return end
+    dt = math.min(dt, 1 / 20)
+    T.vel += V(0, -TOSS_G, 0) * dt
+    local p = T.cf.Position + T.vel * dt
+    local wm = T.w.Magnitude
+    local rot = (wm > 1e-4) and CFrame.fromAxisAngle(T.w.Unit, wm * dt) or CFrame.new()
+    local gy = math.max(Map.height(p.X, p.Z), -0.5)
+    if p.Y < gy + 0.35 and T.vel.Y < 0 then   -- 砸到地上：弹一下、再一下就躺平
+      p = V(p.X, gy + 0.35, p.Z)
+      T.bounce += 1
+      landFx(p)
+      if T.bounce >= 2 or math.abs(T.vel.Y) < 10 then
+        T.rest = true
+        -- 躺平：炮管水平、朝向随机（防盾那头稍微翘一点）
+        T.cf = CFrame.new(p) * CFrame.Angles(0, T.restYaw, 0) * CFrame.Angles(math.rad(4), 0, 0)
+        return
+      end
+      T.vel = V(T.vel.X * 0.5, -T.vel.Y * 0.3, T.vel.Z * 0.5)
+      T.w = T.w * 0.45
+    end
+    T.cf = CFrame.new(p) * rot * (T.cf - T.cf.Position)
+  end
   -- 残骸烧的三段（用户 11-28「然后有浓烈的烟雾我持续冒」，见 stepVeh 里那段）：车身火、黑烟每秒几颗；超过 WRECK_THICK 处的烟柱细一档
   --   11-28 晚（用户「现在感觉有点卡」）：浓烟柱是一颗颗几十格大的半透明烟团，几处叠在一起每个像素要画几十层——同时冒浓烟的从 10 处减到 6 处
   --   （机器跟不上、自动画质降下来时 3 处），每秒的颗数、细一档的烟都少一点；烟团的大小 WreckFx heavyBurn 也收了一成多
@@ -128571,6 +128903,10 @@ function View.init(G)
       tF = v.toss.cf
     end
     local gF = tF * CF(M.gpiv or d.gun.pivot) * CFrame.Angles(math.rad(v.gp), 0, 0) * CF(0, 0, v.recoil)
+    if v.gtoss then   -- 炮管崩飞了：自己飞（startGunToss）
+      stepGunToss(v, dt)
+      gF = v.gtoss.cf
+    end
     local rF = M.rpiv and (tF * CF(M.rpiv) * CFrame.Angles(0, -math.rad(v.my or 0), 0)) or nil
     local rgF = (rF and M.rgpiv) and (rF * CF(M.rgpiv) * CFrame.Angles(math.rad(v.mp or 0), 0, 0)) or nil
     v.hullF, v.tF, v.gF, v.rF, v.rgF = hullF, tF, gF, rF, rgF
@@ -128609,7 +128945,7 @@ function View.init(G)
       end
       v.plowA = cur
     end
-    local still = not plowMoving and not v.hasRadar and not (v.toss and not v.toss.rest) and v.recoil <= 0 and math.abs(v.speed) < 0.01
+    local still = not plowMoving and not v.hasRadar and not (v.toss and not v.toss.rest) and not (v.gtoss and not v.gtoss.rest) and v.recoil <= 0 and math.abs(v.speed) < 0.01
       and math.abs(v.steer - (v.putSteer or 1e9)) < 1e-4
       and sameCF(hullF, v.putH) and sameCF(tF, v.putT) and sameCF(gF, v.putG) and sameCF(rF, v.putR) and sameCF(rgF, v.putRG)
     if still then
@@ -128782,18 +129118,24 @@ function View.init(G)
         -- 战雷式伤害（服务器 Wt.lua）：只有弹放在车体底下（转盘式自动装弹机，WtDamage.CAROUSEL）的车殉爆才掀炮塔——
         --   用户 11-26「要先着火再飞」：先烧 WtCook 秒（舱口喷火、火星噼啪、黑烟往上冒），烧完一下炸开、炮塔飞起来；
         --   乘员打光、烧毁、弹在尾舱的车炮塔留着
+        --   用户 11-28 晚「坦克被穿透关键部位要直接爆 炮塔炮管子都要崩飞」：哪种坦克殉爆（WtWhy == "ammo"）都是打中就炸——炮塔顶上天、
+        --   炮管从炮塔上断开单独甩出去（原来只有转盘车掀炮塔、还要先烧两三秒；炮跟着炮塔一起飞）；服务器还在写 WtCook（老服务器）的照旧先烧
         if whyW ~= nil then
-          if whyW == "ammo" and WD.CAROUSEL[d.id] then
-            local cook = em:GetAttribute("WtCook") or WD.cookSecs(v.id)
+          local cook = (whyW == "ammo") and (em:GetAttribute("WtCook") or 0) or 0
+          if whyW == "ammo" and cook > 0 then
             v.cookT = os.clock() + cook
             if G.wreckCook then G.try_(G.wreckCook, v, base0, cook) end
             task.delay(cook, function()
               if v.toss or not (v.M and v.M.model and v.M.model.Parent) then return end
               startToss(v)
+              startGunToss(v)
               if G.wreckFx then G.try_(G.wreckFx, v, "ammo", base0) end
             end)
+          elseif whyW == "ammo" then
+            startToss(v)
+            startGunToss(v)
           end
-        elseif d.cat == "tank" or Random.new(seed * 31 + 7):NextNumber() < 0.4 then startToss(v) end
+        elseif d.cat == "tank" or Random.new(seed * 31 + 7):NextNumber() < 0.4 then startToss(v) startGunToss(v) end
       end
       if G.wreckPrepBurn then G.try_(G.wreckPrepBurn, M) end   -- 火推亮、黑烟换深灰的贴图、近处那根小一号的黑烟（WreckFx.lua）
       -- 先烧再炸的（转盘车）：wreckCook 真接手了（v.cookJets）才由它定烧的那几秒（火 14、烟 6），炸开以后 heavyBurn 接着。
@@ -135797,6 +136139,41 @@ function WtBattle.init(G)
   end)
   G.wtFeedRows = function() return feedList end   -- 测试用
 
+  ---------------------------------------------------------------- 开战倒计时（用户 11-28 晚「点加入战斗就进入地图里面等着吧 等倒计时结束就开战」，同战雷）
+  --   匹配到了直接坐进机库里选的那一辆、出现在自己基地（服务器 WtMatch.lua matchFound）；准备阶段车开不了、跑道上的飞机推不上油门
+  --   （G.wtHold：Drive.lua、Fly.lua 看它），炮打不了（服务器 Armor.lua / Air.lua 只在开战以后开火）；屏幕正中大字倒计时，最后三秒变色
+  local cdBox = frame(gui, UD2(0, 520, 0, 86), UD2(0.5, 0, 0.26, 0), INK, 1, V2(0.5, 0.5))
+  cdBox.Name = "PrepCountdown"
+  cdBox.Visible = false
+  local cdTitle = label(cdBox, "", UD2(1, 0, 0, 22), UD2(0.5, 0, 0, 0), 18, MUTE, MED, V2(0.5, 0), Enum.TextXAlignment.Center)
+  local cdNum = label(cdBox, "", UD2(1, 0, 0, 56), UD2(0.5, 0, 0, 24), 52, WHITE, BLACK, V2(0.5, 0), Enum.TextXAlignment.Center)
+  cdNum.TextStrokeTransparency, cdTitle.TextStrokeTransparency = 0.55, 0.7
+  local function myTest()
+    local st = G.drive or G.myVeh
+    return st and st.em and st.em:GetAttribute("TestDrive") == true
+  end
+  -- 这一刻要不要锁住：准备阶段、这一局算自己的（S.inMatch）、坐在车里 / 飞机里、不是试驾
+  function G.wtHold()
+    local S = G.S
+    if not S or S.phase ~= "prep" or not S.inMatch then return false end
+    if not (G.drive or G.myVeh) or myTest() then return false end
+    return true
+  end
+  local cdLast = nil
+  local function stepCountdown(S)
+    local on = S ~= nil and S.phase == "prep" and S.inMatch == true and (G.drive ~= nil or G.myVeh ~= nil) and not myTest()
+      and not ((G.menuShown and G.menuShown()) or (G.boardShown and G.boardShown()))
+    cdBox.Visible = on
+    if not on then cdLast = nil return end
+    local n = math.max(0, math.ceil(S.left or 0))
+    if n ~= cdLast then
+      cdLast = n
+      cdTitle.Text = T("wtm.prepTitle")
+      cdNum.Text = T("wtm.prepIn", n)
+      cdNum.TextColor3 = (n <= 3) and GOLD or WHITE
+    end
+  end
+
   ---------------------------------------------------------------- 每帧
   local chipTxt, chipY, chipW = nil, nil, nil
   G.frameConn("WtBattle", function()
@@ -135808,6 +136185,7 @@ function WtBattle.init(G)
     local S = G.S
     local w = S and S.wt
     if S then G.try_(stepResults, S) G.try_(stepStrip, S) end
+    G.try_(stepCountdown, S)
     -- 阵亡镜头里（DeathFx：跟着残骸、看凶手）整屏只留那一行字（用户 11-27「雷达什么图全部消失」）
     local covered = (G.menuShown and G.menuShown()) or (G.boardShown and G.boardShown()) or G.factionOpen or (G.deathFxOn and G.deathFxOn())
     local driving = G.drive ~= nil or G.myVeh ~= nil
