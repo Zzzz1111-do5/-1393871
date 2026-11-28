@@ -411,6 +411,7 @@ altKey(Enum.KeyCode.F)
 check(sF.rdLock == nil and C.flyRadarLockOn(foe2.model) == false and sF.rdLock == nil, "扫描区外、万向架里的新目标（上方 20°，没扫到过）锁不上")
 
 print("⑧ 边扫边跟（TWS）：两批航迹；对指定航迹打雷达弹不用 STT，对方告警器不报锁定、导引头开机才报导弹")
+foe.model:SetAttribute("Model", "mig29")   -- ⑧ ⑨ 测雷达本身：靶机换成 5 m² 的米格-29（F-22 隐身了，远处扫不到；⑩ 再换回去测 RCS）
 foe.driver = { pl = me }   -- 给靶机一个「驾驶员」：服务器发给它的 rwrLock / rwr 记在 R.sent 里
 foe.hp = 900
 local slotR, slotI
@@ -496,6 +497,7 @@ sF.lock, sF.lockT = nil, 0
 R.run(0.3)
 check(sF.lock ~= nil and sF.lock.em == fem and sF.lock.slaved == true, "换红外弹：导引头先咬雷达锁着的那架（不是离机头最近的那架）")
 print("⑩ RCS、敌我识别（用户 11-28「引入一下rcs这个概念」「iff」）")
+foe.model:SetAttribute("Model", "f22")
 altKey(Enum.KeyCode.E)   -- 近战 → RWS
 R.run(1 / 30)
 sF.rdLock, sF.lock, sF.rdSel = nil, nil, nil
