@@ -1136,7 +1136,9 @@ function WtTank.init(G)
     local anyBad = false
     for _, m in ipairs(SC.mods) do if m.last < 2 then anyBad = true break end end
     if em and em:GetAttribute("WtMob") == false then anyBad = true end
-    if fire then diTip.Text, diTip.TextColor3 = T("wt.tipFire"), ((t * 3) % 1 < 0.6) and PEN_NO or AMBER
+    local afLeft = em and em:GetAttribute("WtAFLeft")   -- 弹药架起火：几秒内不灭就殉爆（服务器 Wt.lua；用户 11-28「弹药架起火如果不及时灭火修要爆炸」）
+    if fire and type(afLeft) == "number" then diTip.Text, diTip.TextColor3 = T("wt.tipAmmoFire", afLeft), ((t * 5) % 1 < 0.6) and PEN_NO or WHITE
+    elseif fire then diTip.Text, diTip.TextColor3 = T("wt.tipFire"), ((t * 3) % 1 < 0.6) and PEN_NO or AMBER
     elseif fix then diTip.Text, diTip.TextColor3 = T("wt.tipFixing", math.floor(fix * 100)), AMBER
     elseif anyBad then diTip.Text, diTip.TextColor3 = T("wt.tipFix"), WHITE
     else diTip.Text = "" end

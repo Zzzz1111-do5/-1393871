@@ -28,6 +28,7 @@ function Wt.init(G)
   -- 科技树改装（WtMods，Tech.lua 出车时写的 e.wtFx）：工具箱修得快；没研究零件 / 灭火器修不了 / 灭不了
   local function fixTime(e) return FIX_T * ((e.wtFx and e.wtFx.repK) or 1) end
   local EXT_CD = 20       -- 灭火器冷却
+  local AMMO_FIRE = 8     -- 弹药架起火：几秒内不灭就殉爆（用户 11-28「弹药架起火如果不及时灭火修要爆炸」）
 
   local function baseOf(e) return e.root.CFrame * CF(0, -e.def.H / 2, 0) end
 
@@ -105,6 +106,7 @@ function Wt.init(G)
     m:SetAttribute("WtM", table.concat(ms))
     m:SetAttribute("WtF", S.fireT ~= nil)
     m:SetAttribute("WtAF", S.ammoFireT ~= nil)   -- 弹药架起火（客户端 WtVfx：舱口喷火）
+    m:SetAttribute("WtAFLeft", S.ammoBoomT and math.max(0, math.ceil(S.ammoBoomT - now())) or nil)   -- 还有几秒殉爆（车里的人看倒计时）
     m:SetAttribute("WtMob", S.mob)
     m:SetAttribute("WtGun", S.gun)
     m:SetAttribute("WtTrav", S.trav)
@@ -229,16 +231,18 @@ function Wt.init(G)
       return
     end
     -- 弹药架起火（11-26「弹药舱燃烧」）：发射药烧起来——带泄压板的尾舱照旧往上泄（人没事、这一架弹没了）；
-    --   别的：舱口往外喷火七到十秒（比普通起火凶：烧乘员快），烧完没灭（Y 灭火器）有四成会殉爆
+    --   别的：舱口往外喷火（比普通起火凶：烧乘员快），AMMO_FIRE 秒内不灭（Y 灭火器）就殉爆——用户 11-28「弹药架起火如果不及时灭火修要爆炸」
+    --   （原来烧完没灭只有四成会炸）。剩几秒写在车的 WtAFLeft 属性上（车里的人看倒计时，WtHud）
     if flags.ammoFire and not flags.ammo then
       local c = S.byK[flags.ammoFire]
       if c and c.it.blow then
         blowout(e, c, res)
-      else
+      elseif not S.ammoFireT then
         local t = now()
         S.fireT = S.fireT or t
         S.ammoFireT = t
-        S.fireUntil = math.max(S.fireUntil or 0, t + 7 + math.random() * 3)
+        S.ammoBoomT = t + AMMO_FIRE
+        S.fireUntil = math.max(S.fireUntil or 0, S.ammoBoomT + 1)
         res.fire, res.ammoFire = true, true
       end
     end
@@ -585,18 +589,19 @@ function Wt.init(G)
           end
           local eng = S.byK.engine
           if eng and eng.hp > 0 and not af then eng.hp = math.max(0, eng.hp - 4 * step) end
-          if t > (S.fireUntil or 0) then
-            S.fireT = nil
-            if af then
-              S.ammoFireT = nil
-              -- 烧完没灭：四成殉爆（弹架空了不炸）
-              local rl = G.wtRackLeft and select(1, G.wtRackLeft(e, "ammo"))
-              if (rl == nil or rl > 0) and math.random() < 0.4 then
-                destroy(e, e.lastHitBy, "ammo")
-                changed = false
-              end
+          if af and S.ammoBoomT and t >= S.ammoBoomT then
+            -- 弹药架起火没及时灭：殉爆（弹架打空了不炸，火照旧烧）
+            S.ammoFireT, S.ammoBoomT = nil, nil
+            local rl = G.wtRackLeft and select(1, G.wtRackLeft(e, "ammo"))
+            if rl == nil or rl > 0 then
+              destroy(e, e.lastHitBy, "ammo")
+              changed = false
             end
-            if e.alive then msgTo(e, { op = "wtFireOut" }) end
+          end
+          if e.alive and t > (S.fireUntil or 0) then
+            S.fireT = nil
+            S.ammoFireT, S.ammoBoomT = nil, nil
+            msgTo(e, { op = "wtFireOut" })
           end
           changed = true
           if e.alive and (alive(S) * 2 < S.total or alive(S) == 0) then destroy(e, e.lastHitBy, "fire") end
@@ -652,7 +657,7 @@ function Wt.init(G)
     if not S.fireT then return end
     if e.wtFx and not e.wtFx.ext then G.msg(P.pl, "bad", "wt.needFpe") return end   -- 原厂车：没研究「灭火器」只能等火烧完
     if now() < (S.extT or 0) then G.msg(P.pl, "bad", "wt.extCd", math.ceil(S.extT - now())) return end
-    S.fireT, S.ammoFireT = nil, nil
+    S.fireT, S.ammoFireT, S.ammoBoomT = nil, nil, nil
     S.extT = now() + EXT_CD
     msgTo(e, { op = "wtFireOut", ext = true })
     G.wtPush(e)

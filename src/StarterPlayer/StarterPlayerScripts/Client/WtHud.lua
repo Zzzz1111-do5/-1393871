@@ -871,11 +871,51 @@ function WtHud.init(G)
     return out
   end
   G.wtGhostParts = ghostParts   -- 测试用
+  -- 机枪 / 机炮连着打穿同一辆（用户 11-28「机枪连续贯穿车体的话 x光就同一个角度然后一直放各种子弹打进去的x透视吧」）：
+  --   1.5 秒内同一辆的下一发小弹不重画、不换角度——这一发的弹道、弹芯、破片接着画进去，打到的乘员 / 模块按现在的状态改色，镜头停住不绕
+  local xrBurst = nil   -- { id, t, n }
+  local xrHold = false  -- 镜头停住（连发时）
+  local xrParts = {}    -- 上一次完整画的乘员 / 模块：[布局项] = { p, ps }
+  local function burstHit(m, d, x)
+    local p0 = V3(x.p[1], x.p[2], x.p[3])
+    local dv = V3(x.d[1], x.d[2], x.d[3]).Unit
+    local yaw = x.ty or 0
+    line(p0 - dv * 9, p0, RGB(255, 120, 40), 0.16)
+    if m.r == "pen" or m.kill then
+      local core = (x.core or 0) * W.M
+      if core > 0 then line(p0, p0 + dv * core, RGB(255, 150, 50), 0.2) end
+      for i, rv in ipairs(W.cone(dv, x.half or 18, x.n or 0, x.seed)) do
+        local len = (1.4 + (i % 4) * 0.35) * W.M
+        local hits = W.trace(d, yaw, p0 + dv * 0.1, rv, len, true)
+        local l2 = hits[1] and math.max(0.3, hits[1].t + 0.4) or len
+        line(p0, p0 + rv * l2, RGB(255, 226, 90), 0.06)
+      end
+    end
+    box(V3(0.5, 0.5, 0.5), CF(p0), RGB(255, 240, 200), 0, Enum.Material.Neon)
+    local st = states(entModel(m.id), d)
+    for it, P in pairs(xrParts) do
+      local sv = st[it] or 2
+      local col
+      if P.kind == "crew" then col = (sv == 0) and DEAD or ((sv == 1) and HURT or OK)
+      else col = (sv == 0) and DEAD or ((sv == 1) and HURT or RGB(120, 150, 170)) end
+      for _, q in ipairs(P.ps or { { p = P.p } }) do q.p.Color = col end
+    end
+    xrBurst.n += 1
+    xrBurst.t = os.clock()
+    xrUntil = math.max(xrUntil, os.clock() + 2.5)
+    xSlow.Visible = false
+    xInfo.Text, xInfo.Visible = T("wt.xrBurst", xrBurst.n), true
+  end
   local function showXray(m)
     local d = VD.get and VD.get(m.veh) or VD[m.veh]
     local x = m.xr
     if not d or not x then return end
+    if x.sub == "ac" and xrBurst and xrBurst.id == m.id and xr.Visible and os.clock() - xrBurst.t < 1.5 then
+      burstHit(m, d, x)
+      return
+    end
     world:ClearAllChildren()
+    table.clear(xrParts)
     xa = nil
     vp.BackgroundColor3 = VP_BG
     if xStroke then xStroke.Color = XR_LINE end
@@ -915,7 +955,7 @@ function WtHud.init(G)
     local hitK = {}
     for _, p in ipairs(m.parts or {}) do hitK[p.k] = true end
     local sub = (not x.jet) and KS[x.sub or ""] and x.sub or nil   -- 动能弹 / 穿甲爆破 / 杀爆 / 碎甲：各自的慢放（xkBuild）
-    local anim = (x.jet or sub) and (m.r == "pen" or m.kill) and true or false   -- 打穿了才放慢放动画
+    local anim = (x.jet or sub) and (m.r == "pen" or m.kill) and x.sub ~= "ac" and true or false   -- 打穿了才放慢放动画（机枪 / 机炮的小弹不放：连发时同一个角度往里叠）
     local hitP = {}   -- 动画里打到的乘员 / 模块：先画成没事的样子，射流 / 破片到了才变色
     for _, it in ipairs(lay.list) do
       local s = st[it] or 2
@@ -955,6 +995,7 @@ function WtHud.init(G)
           sm.Parent = p
         end
       end
+      xrParts[it] = { p = p, ps = ps, kind = it.kind }
       if anim and hitK[it.k] then
         table.insert(hitP, { p = p, ps = ps, it = it, col = col, tr = tr, size = p.Size })
         local c0, t0 = (it.kind == "crew") and OK or RGB(120, 150, 170), (it.kind == "crew") and 0.1 or 0.55
@@ -995,6 +1036,9 @@ function WtHud.init(G)
     xTitle.Text = T("wt.xrTitle", nm, m.dist or 0)
     xr.Visible = true
     xrUntil = os.clock() + (anim and (m.kill and 7 or 6.2) or (m.kill and 5.5 or 4.5))
+    xrBurst = (x.sub == "ac") and { id = m.id, t = os.clock(), n = 1 } or nil   -- 机枪 / 机炮：接下来 1.5 秒内的同一辆往里叠
+    xrHold = x.sub == "ac"
+    if xrHold then xrSpin = 0 end
     if xa then G.try_(xa.step, 0, 0) end   -- 先摆好第一帧（不然头一帧是没藏好的件）
     local _ = base
   end
@@ -1093,7 +1137,9 @@ function WtHud.init(G)
     local fix = em:GetAttribute("WtFix")
     local anyBad = false
     for _, s in pairs(worst) do if s < 2 then anyBad = true end end
-    if fire then panelTip.Text, panelTip.TextColor3 = T("wt.tipFire"), ((t * 3) % 1 < 0.6) and DEAD or HURT
+    local afLeft = em:GetAttribute("WtAFLeft")   -- 弹药架起火：几秒内不灭就殉爆（服务器 Wt.lua，用户 11-28「弹药架起火如果不及时灭火修要爆炸」）
+    if fire and type(afLeft) == "number" then panelTip.Text, panelTip.TextColor3 = T("wt.tipAmmoFire", afLeft), ((t * 5) % 1 < 0.6) and DEAD or Color3.new(1, 1, 1)
+    elseif fire then panelTip.Text, panelTip.TextColor3 = T("wt.tipFire"), ((t * 3) % 1 < 0.6) and DEAD or HURT
     elseif fix then panelTip.Text, panelTip.TextColor3 = T("wt.tipFixing", math.floor(fix * 100)), HURT
     elseif anyBad then panelTip.Text, panelTip.TextColor3 = T("wt.tipFix"), Color3.new(1, 1, 1)
     else panelTip.Text = "" end
@@ -1238,7 +1284,7 @@ function WtHud.init(G)
       elseif xa then
         G.try_(xa.step or xaStep, t - xa.t0, dt)
       else
-        xrSpin += dt * math.rad(16)
+        if not xrHold then xrSpin += dt * math.rad(16) end   -- 连发叠画时镜头停住（同一个角度）
         local d = CFrame.Angles(0, xrSpin, 0) * xrDir
         local eye = xrC + d * xrDist + V3(0, xrDist * 0.35, 0)
         vcam.CFrame = CFrame.lookAt(eye, xrC)
