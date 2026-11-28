@@ -3,7 +3,7 @@
 --     （Thr、Gear、Pit、Rol、Yaw、Bay、BayS、Rpm、Ty、Gp……）摆；自己开的用本地的；被击毁的往下掉、冒火冒黑烟，落地炸一下
 --   驾驶（服务器推来的 S.veh.air）：位置在本地算，每秒 15 次报给服务器（Air.lua 查速度、查撞地）
 --     固定翼（用户 11-21：改成 WASD 控制方向、不要准心控制；飞机太灵活）：键盘就是驾驶杆——S 拉杆抬头、W 推杆低头、A / D 滚转、
---       Q / E 方向舵（杆量 0.3 秒推满、松开回中），Shift / Ctrl 油门（推满再推进加力，↑ / ↓ 同样）；松杆 1 g，小坡度自己慢慢摆平；
+--       Q / E 方向舵（杆量按住 0.3～0.4 秒推满、点一下只有一点、松开回中），Shift / Ctrl 油门（推满再推进加力，↑ / ↓ 同样）；松杆 1 g，小坡度自己慢慢摆平；
 --       镜头钉在机身后上方顺着机头看，机头前方的全息标记一直在屏幕正中（航炮就打那里）；按住 Alt 鼠标自由看；
 --       滚转、俯仰角速度和最大过载收到真飞机的五六七成（AGIL）。无人机（平板上飞）照旧鼠标给方向、W / S 油门；
 --       开着光电吊舱、飞出作战区自动掉头时也是按给的方向自动飞（教官）；
@@ -1556,17 +1556,22 @@ function Fly.init(G)
     local rollIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
     local yawIn, pitchIn = 0, 0   -- 无人机：键盘不管俯仰、方向舵（鼠标给方向）；手机上摇杆当驾驶杆
     if kb then
-      -- 键盘当驾驶杆（用户 11-26 晚「飞机驾驶感觉过于灵敏」；原来 0.12 秒推满杆）：按住是往满杆指数地推（时间常数 0.28 秒：点一下只有三成杆、
-      --   按住半秒八成、一秒才满），松开 0.05 秒回中、反着按先回中再推——小修正点一下就够，猛拉要按住；杆量再过飞控的非线性（小杆量更细）
-      local function ramp(cur, want)
+      -- 键盘当驾驶杆（用户 11-26 晚「飞机驾驶感觉过于灵敏」；原来 0.12 秒推满杆）。11-28 用户「有时候不该灵敏的时候过于灵敏 该灵敏的时候又有点迟钝」：
+      --   原来按住是往满杆指数地推（时间常数 0.28 秒）——点一下（0.08 秒）就有两成五的杆，小修正偏大；按住一秒才满，猛拉又慢。
+      --   现在杆量按「按住了多久」走二次曲线：杆 = (t / T)²——点一下 0.08 秒只有 5%（小修正细），按住 0.2 秒三成、0.3 秒七成多、T 秒满杆（猛拉跟手）；
+      --   松开 0.05 秒回中；反着按先回中再从零起；没回完中又按同一边，从现在的杆量接着走（按回去的时间算）。T：俯仰 0.35 秒、滚转 0.3 秒、方向舵 0.4 秒；
+      --   杆量再过飞控（FlightModel：电传按过载 / 滚转角速度要，高速不会一把拉爆；机械操纵按动压排传动比）
+      local function ramp(cur, want, T)
         if want ~= 0 and (cur == 0 or (cur > 0) == (want > 0)) then
-          return cur + (want - cur) * (1 - math.exp(-dt / 0.28))
+          local t = T * math.sqrt(math.min(1, math.abs(cur))) + dt
+          local k = math.min(1, (t / T) * (t / T))
+          return (want > 0) and k or -k
         end
         return approach(cur, want, dt / 0.05)
       end
-      st.kP = ramp(st.kP or 0, (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0))
-      st.kR = ramp(st.kR or 0, rollIn)
-      st.kY = ramp(st.kY or 0, altRd and 0 or ((key(Enum.KeyCode.E) and 1 or 0) - (key(Enum.KeyCode.Q) and 1 or 0)))   -- Alt+Q 是雷达量程、Alt+E 雷达模式
+      st.kP = ramp(st.kP or 0, (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0), 0.35)
+      st.kR = ramp(st.kR or 0, rollIn, 0.3)
+      st.kY = ramp(st.kY or 0, altRd and 0 or ((key(Enum.KeyCode.E) and 1 or 0) - (key(Enum.KeyCode.Q) and 1 or 0)), 0.4)   -- Alt+Q 是雷达量程、Alt+E 雷达模式
       pitchIn, rollIn, yawIn = st.kP, st.kR, st.kY
     end
     if G.mobile and controls then   -- 手机：摇杆直接当驾驶杆（往前推是低头）
