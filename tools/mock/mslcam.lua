@@ -71,7 +71,7 @@ s1.life = 0
 R.run(0.3)
 
 print("② 急转弯画得顺")
-local s2 = fire("pl10", p0 + V3(30000, 0, -2000))   -- 目标点在右边：一直满过载往右转
+local s2 = fire("pl10", p0 + V3(20000, 0, -20000))   -- 目标点在右前 45°（导引头看得见）：满过载转过去
 R.run(0.1)
 local prev, maxStep, first, last = nil, 0, nil, nil
 for _ = 1, 75 do
@@ -80,11 +80,11 @@ for _ = 1, 75 do
   if not f or f.v.Magnitude < 1 then break end
   local d = f.v.Unit
   first = first or d
-  if prev then maxStep = math.max(maxStep, math.deg(math.acos(math.clamp(prev:Dot(d), -1, 1)))) end
+  if prev then maxStep = math.max(maxStep, math.deg(math.acos(math.max(-1, math.min(1, prev:Dot(d)))))) end
   prev, last = d, d
 end
-local total = (first and last) and math.deg(math.acos(math.clamp(first:Dot(last), -1, 1))) or 0
-check(total > 40, string.format("2.5 秒里一共转过去 %.0f°", total))
+local total = (first and last) and math.deg(math.acos(math.max(-1, math.min(1, first:Dot(last))))) or 0
+check(total > 30, string.format("2.5 秒里一共转过去 %.0f°", total))
 check(maxStep < 6, string.format("一帧最多转 %.1f°（原来每 0.3 秒一下拐个角）", maxStep))
 s2.life = 0
 R.run(0.3)

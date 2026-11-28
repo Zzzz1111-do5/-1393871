@@ -237,10 +237,11 @@ function MslCam.init(G)
       local cam = workspace.CurrentCamera
       if not cam then return end
       local dir = follow.dir
-      local want = follow.last - dir * 26 + Vector3.new(0, 7, 0)
-      follow.sm = follow.sm and follow.sm:Lerp(want, math.min(1, dt * 10)) or want
+      -- 镜头相对弹的位置平滑（原来按世界坐标插值：弹一秒飞两千多格，镜头拖在后面一两百格，看着像没跟上）
+      local wantOff = -dir * 26 + Vector3.new(0, 7, 0)
+      follow.off = follow.off and follow.off:Lerp(wantOff, math.min(1, dt * 10)) or wantOff
       cam.CameraType = Enum.CameraType.Scriptable
-      cam.CFrame = CFrame.lookAt(follow.sm, follow.last + dir * 30)
+      cam.CFrame = CFrame.lookAt(follow.last + follow.off, follow.last + dir * 30)
       cam.FieldOfView = 62
     end)
   end)
