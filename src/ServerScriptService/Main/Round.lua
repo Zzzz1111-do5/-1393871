@@ -828,6 +828,12 @@ function Round.init(G)
       G.pushAll()
       return
     end
+    -- 图已经定了、点的是另一张（用户 11-28 晚「然后目前没法切地图」：原来这一票什么也不做）：换过去——有自己地点的传送、
+    --   没有的开个新服务器传过去，Studio 里提示重新开始（Places.lua G.switchMap）
+    if G.mapId and id ~= G.mapId and G.switchMap then
+      G.switchMap(P, id)
+      return
+    end
     -- 这个服务器在打 PvE 关卡（Pve.lua）：只有自己一个人 → 退出关卡、改打对战重新开一局；有别人在打 → 加入他们
     if G.pve and G.mapId then
       if G.pveRealN and G.pveRealN() <= 1 and G.pveExit then
@@ -1381,6 +1387,7 @@ function Round.init(G)
     --   客户端机库（TechUI.lua）就是选车页：主按钮「出击」、多一个「退出战斗」、先选中匹配时点的那一辆（pickPref）
     local inMatch = G.inMatch(P) and not P.testDeploy
     C.pick = (inMatch and not P.vehicle) or nil
+    C.inMatch = inMatch or nil   -- 这一局算他的（准备阶段坐在车里等开战：客户端 G.wtHold 锁住开车、起飞，WtBattle 正中倒计时）
     C.pickPref = C.pick and P.pickPref or nil
     C.myVote = (not G.mapId and G.mapVotes and G.mapVotes[P.pl]) or nil   -- 自己投的哪张（选地图界面高亮）
     C.rAtk, C.rDef = teamCount("atk", true), teamCount("def", true)   -- 选阵营界面：两边各有几个真人、能不能进

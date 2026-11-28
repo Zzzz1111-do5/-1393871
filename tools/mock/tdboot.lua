@@ -3,12 +3,13 @@
 --   主界面点试驾一直「训练场还在准备」。现在训练场开服就建（init.server.lua），试驾的人直接生在训练场（Round.lua deploy 的 P.testSpawnCF），
 --   不看战场的出生点、不看开没开局：
 --   ① 进服、谁也不投票、停在主界面，隔一秒点一次试驾：战场的图还没定就坐进了试驾的车，车在训练场那一块
---   ② 投票倒计时到了、按默认那张开图、战场建完：试驾的车还在（不被开局清掉），没有报错
+--   ② 点「开战」（没选过图：用户 11-28 晚起不再进来二十秒就替人定图）→ 按默认那张开图、战场建完：试驾的车还在（不被开局清掉），没有报错
 local T = dofile(MOCK_DIR .. "/common.lua")
 pcall(function() io.stdout:setvbuf("line") end)
 local R = T.R
 local check = T.check
 T.mapName = "-"   -- 不定图：走投票
+T.mapIds = "city,snow"   -- 两张都能选（11-28 晚起钢城收起来、只剩雪山时开服直接建）
 T.wtMode = true
 T.matchMode = true
 local G = T.boot()
@@ -42,8 +43,12 @@ check(okAt ~= nil and G.mapId == nil, "那时战场的图还没定（不用等�
 local e = P.vehicle
 local p = e and e.root and e.root.Position
 check(p ~= nil and Zones.of(p.X, p.Z) == "range", "车在训练场那一块")
-print("② 投票到点开图、战场建完")
-T.runUntil(function() return G.mapId ~= nil end, 120, 0.25)
+print("② 点开战（没选过图）→ 按默认那张开图、战场建完")
+R.run(5)
+check(G.mapId == nil, "没人选图、没人点开战：图一直不定（" .. tostring(G.mapId) .. "）")
+T.act("matchJoin", key)
+T.runUntil(function() return G.mapId ~= nil end, 30, 0.25)
+check(G.mapId == (G.Config.MapDefault or "city"), "点开战按默认那张开（" .. tostring(G.mapId) .. "）")
 T.runUntil(function() return G.worldReady end, 900)
 T.runUntil(function() return G.round and G.round.phase ~= "boot" end, 60)
 R.run(3)

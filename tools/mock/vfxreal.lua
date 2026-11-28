@@ -656,8 +656,9 @@ for _, far in ipairs({ 5000, 7000 }) do
   local f0, b0 = Mf and Mf.fire.Rate or -1, Mf and blackOf(Mf) or -1
   R.run((WD.CAROUSEL[VEH] and WD.cookSecs(ef.id) or 0) + 1.5)
   local f1, b1 = Mf and Mf.fire.Rate or -1, Mf and blackOf(Mf) or -1
-  check(Mf and vf.cookT and not vf.cookJets and f0 > 0 and b0 > 0 and f1 > 0 and b1 > 0,
-    string.format("离镜头 %d 格的转盘车殉爆：先烧那几秒火 %.0f / 黑烟 %.0f，炸开以后火 %.0f / 黑烟 %.0f（都有）", far, f0, b0, f1, b1))
+  -- 11-28 晚起殉爆不再先烧（用户「坦克被穿透关键部位要直接爆」）：远处的殉爆残骸一样马上烧起来
+  check(Mf and not vf.cookJets and f0 > 0 and b0 > 0 and f1 > 0 and b1 > 0,
+    string.format("离镜头 %d 格的坦克殉爆：炸开马上火 %.0f / 黑烟 %.0f，过一会儿火 %.0f / 黑烟 %.0f（都有）", far, f0, b0, f1, b1))
 end
 cam.CFrame = R.CFrame.lookAt(gpos(cx, cz) + V3(40, 25, 40), gpos(cx, cz))
 

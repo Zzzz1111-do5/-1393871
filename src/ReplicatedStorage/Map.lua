@@ -574,8 +574,23 @@ Map.id = "island"
 -- 用户 11-24：「沙漠风暴删掉」「全部默认沙海地图吧，登岛那个也删了」——只剩沙海；11-26：「改地图……这个图不适合对抗」「做一个两边带机场的城市地图吧」——
 --   换成「钢城」（MapCity）：开服直接建（只有一张就不用投票），沙海留着（extra：Studio、测试台给 Workspace 设 MapName = "sands" 还能开）
 -- 用户 11-26 晚：「我要求你做一个雪山地图 一定要做到极高质量」——加「雪山」（MapSnow），两张一起投票
-Map.ids = { "city", "snow" }
-Map.extra = { "sands" }
+-- 用户 11-28 晚：「然后城市地图暂时先不弄 先不显示这张图」——钢城先收起来（选地图、机库「这一局」里都没有），只剩雪山（只有一张：开服直接建，不投票）；
+--   钢城、沙海留在 extra（Studio、测试台给 Workspace 设 MapName = "city" 还能开）。Workspace 的属性 MapIds（「city,snow」）能换这一列（测试、Studio 里看）
+Map.ids = { "snow" }
+Map.extra = { "sands", "city" }
+do
+  local ok, o = pcall(function() return workspace:GetAttribute("MapIds") end)
+  if ok and type(o) == "string" and o ~= "" then
+    local ids = {}
+    for id in string.gmatch(o, "[^,%s]+") do table.insert(ids, id) end
+    if #ids > 0 then
+      Map.ids = ids
+      local extra = {}
+      for _, id in ipairs({ "city", "snow", "sands" }) do if not table.find(ids, id) then table.insert(extra, id) end end
+      Map.extra = extra
+    end
+  end
+end
 -- 选地图界面（MapPick.lua）用的：尺寸（公里）、模式
 Map.info = {
   city = { km = 6.2, mode = "assault", sea = false },    -- 「钢城」（MapCity）：两边基地带跑道，中间一座城，据点 A～E

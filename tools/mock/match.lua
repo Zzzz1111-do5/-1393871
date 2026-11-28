@@ -52,10 +52,8 @@ T.act("matchJoin", key)
 R.run(0.5)
 T.runUntil(function() return G.round.phase ~= "queue" end, 12)
 check(G.round.phase == "prep", "到点：开准备阶段（" .. tostring(G.round.phase) .. "）")
--- 用户 11-26「匹配完之后 两边再开始在局内有一个界面选择载具」：先不坐进车，机库变成局内选车页（同一套外观，主按钮「出击」）
-R.run(1)
-check(P.vehicle == nil, "匹配到了：先不自动坐进车")
-check(P.match == G.round.n, "记成这一局的人")
+-- 用户 11-28 晚「点加入战斗就进入地图里面等着吧 等倒计时结束就开战」（同战雷）：匹配到了直接坐进点的那一辆、出现在自己基地，
+--   准备阶段开不了、打不了，屏幕正中倒计时（原来先出局内选车页、再点「出击」——那一页现在是车没了以后才出来，见 ⑤）
 local C = T.C
 local function goLabel()
   local b = T.findNamed("HangarGo")
@@ -66,63 +64,37 @@ local function goLabel()
 end
 local function spawnGo() return T.findNamed("SpawnGo") end
 local function spawnOn() return C.wtSpawnOn and C.wtSpawnOn() == true end
-T.runUntil(function() return spawnOn() end, 5)
-check(spawnOn() and not C.hangarGui.Visible, "局内选车：战雷的出击页（机库不出来）")
-check(spawnGo() and spawnGo().Text:find("加入战斗！", 1, true) == 1, "主按钮是「加入战斗！（重生次数）」（" .. tostring(spawnGo() and spawnGo().Text) .. "）")
-check(T.findNamed("SpawnLeave") ~= nil, "底下有「退出战斗」")
-check(T.findNamed("Spawn_" .. key) ~= nil, "顶上阵容卡里有匹配时点的那一辆（Spawn_" .. tostring(key) .. "）")
-local holder = C.wtSpawnGui and C.wtSpawnGui:FindFirstChild("Holder", true)
-check(holder ~= nil and #holder:GetChildren() > 0, "右边是大地图（小地图那张挂过来了）")
-check(C.S.pickPref == key, "服务器记着匹配时点的那一辆（pickPref）")
--- 用户 11-26「不要写先出击地面车 你直接禁止选飞机就行」：还没出过地面车，阵容里的飞机 / 直升机整张卡禁选、不写字
-local TTm = R.require(R.services.ReplicatedStorage:FindFirstChild("TechTree"))
-local airKey = nil
-for _, k in ipairs(G.treeLineup(P)) do
-  local it = TTm.byKey[k]
-  if it and (it.branch == "air" or it.branch == "heli") then airKey = k break end
-end
-check(#T.texts("先出地面车") == 0, "卡上不再写「先出地面车」")
-if airKey then
-  local ac = T.findNamed("Spawn_" .. airKey)
-  check(ac ~= nil and ac:GetAttribute("Locked") == true, "飞机卡禁选（" .. tostring(airKey) .. "）")
-  T.press(ac)
-  R.run(0.3)
-  local go0 = nil
-  for _, d in ipairs(spawnGo():GetDescendants()) do if d.Name == "GoSub" then go0 = d.Text end end
-  check(go0 and go0:find(TTm.byKey[key] and TTm.byKey[key].name or "", 1, true) ~= nil, "点了飞机卡也不选它：主按钮还是那辆地面车（" .. tostring(go0) .. "）")
-end
--- 局内选车页没有「试驾」（同战雷的出击页；试驾审查 4：飞机卡禁选，原来右边「试驾」还在、点了开的是选中的坦克）
-check(T.findNamed("HangarTest") == nil, "局内选车：没有「试驾」")
--- 服务器也不让局内试驾（Tech.lua testDrive 按 Round.lua G.inMatch 拦；后续审查 6：原来只藏了按钮，客户端直接发 testDrive 照样能半路去训练场）——
---   不回任何提示：回「训练场还在准备」「几秒后出击」的是被别的条件拦下的，不算
-T.runUntil(function() return G.rangeReady == true end, 30, 1 / 10)
-local nTest = #R.sent
-T.act("testDrive", key)
-R.run(2)
-local why = nil
-for i = nTest + 1, #R.sent do
-  local s = R.sent[i]
-  if s.name == "Msg" and type(s.args[2]) == "string" and s.args[2]:find("^tree%.") then why = s.args[2] end
-end
-check(G.inMatch ~= nil and G.inMatch(P) and not P.alive and not P.inTest and P.vehicle == nil and why == nil,
-  "局内选车：客户端直接发 testDrive，服务器也不让试驾（还在选车页；回的提示 " .. tostring(why) .. "）")
-check(not T.findNamed("MapVote") or not T.findNamed("MapVote").Active or #T.texts("▼") == 0, "局内不能选地图（没有 ▼）")
--- shot=<目录>：拍一张局内选车（tools/mock/hud_render.py 画成图）
-local shotDir = TEST_ARGS and TEST_ARGS:match("shot=(%S+)")
-if shotDir then
-  local dump = dofile(MOCK_DIR .. "/uidump.lua")
-  dump(T, me, shotDir .. "/pick.json", true)
-end
-T.press(spawnGo())
 T.runUntil(function() return P.vehicle ~= nil end, 10)
-check(P.vehicle ~= nil and P.vehicle.treeKey == key, "点「加入战斗！」：坐进选中的那一辆（" .. tostring(P.vehicle and P.vehicle.treeKey) .. "）")
-R.run(0.6)
-check(not C.hangarGui.Visible and not spawnOn(), "坐进车：出击页收起")
+check(P.vehicle ~= nil and P.vehicle.treeKey == key, "匹配到了：直接坐进点的那一辆（" .. tostring(P.vehicle and P.vehicle.treeKey) .. "）")
+check(P.match == G.round.n, "记成这一局的人")
+R.run(1)
+check(not C.hangarGui.Visible and not spawnOn(), "坐在车里：机库、出击页都收起")
+check(C.S.inMatch == true and C.wtHold ~= nil and C.wtHold(), "准备阶段：锁住（这一局算自己的、坐在车里）")
+local cdBox = T.findNamed("PrepCountdown")
+check(cdBox ~= nil and cdBox.Visible, "屏幕正中倒计时")
+check(#T.texts("战斗将在") > 0, "写着「战斗将在 N 秒后开始」")
+local mvP = P.vehicle
+local p0 = mvP.root.Position
+T.key(R.Enum.KeyCode.W, true)
+R.run(2)
+T.key(R.Enum.KeyCode.W, false)
+R.run(0.3)
+check((mvP.root.Position - p0).Magnitude < 1, string.format("准备阶段按 W 开不动（挪了 %.1f 格）", (mvP.root.Position - p0).Magnitude))
 local br = G.treeRoundBr()
 check(math.abs(br - myBr) < 0.01, string.format("本局战斗等级 = 我阵容里最高的 %.1f（%.1f）", myBr, br))
 
-print("③ 开打：电脑车补满")
+print("③ 开打：放开、电脑车补满")
 T.runUntil(function() return G.round.phase == "battle" end, 60, 1 / 10)
+R.run(0.5)
+check(not C.wtHold() and not T.findNamed("PrepCountdown").Visible, "开战：放开、倒计时收起")
+do
+  local mv0 = P.vehicle
+  local q0 = mv0 and mv0.root.Position
+  T.key(R.Enum.KeyCode.W, true)
+  R.run(2)
+  T.key(R.Enum.KeyCode.W, false)
+  check(mv0 and (mv0.root.Position - q0).Magnitude > 3, string.format("开战以后按 W 开得动（挪了 %.1f 格）", mv0 and (mv0.root.Position - q0).Magnitude or -1))
+end
 T.runUntil(function()
   local n = { atk = 0, def = 0 }
   for _, e in ipairs(G.aiVehicles) do if e.alive then n[e.team] = n[e.team] + 1 end end
@@ -189,6 +161,22 @@ local spTxt = nil
 for _, d in ipairs(card and card:GetDescendants() or {}) do if d.Name == "Sp" then spTxt = d.Text end end
 check(spTxt ~= nil and spTxt ~= "", "那一辆卡上写着这一局的账（" .. tostring(spTxt) .. "）")
 check(T.findNamed("HangarTest") == nil, "回到局内选车页：还是没有「试驾」")
+check(spawnGo() and spawnGo().Text:find("加入战斗！", 1, true) == 1, "主按钮是「加入战斗！（重生次数）」（" .. tostring(spawnGo() and spawnGo().Text) .. "）")
+check(T.findNamed("SpawnLeave") ~= nil, "底下有「退出战斗」")
+local holder = C.wtSpawnGui and C.wtSpawnGui:FindFirstChild("Holder", true)
+check(holder ~= nil and #holder:GetChildren() > 0, "右边是大地图（小地图那张挂过来了）")
+-- 服务器也不让局内试驾（Tech.lua testDrive 按 Round.lua G.inMatch 拦）：不回任何提示
+T.runUntil(function() return G.rangeReady == true end, 30, 1 / 10)
+local nTest = #R.sent
+T.act("testDrive", key)
+R.run(2)
+local why = nil
+for i = nTest + 1, #R.sent do
+  local s2 = R.sent[i]
+  if s2.name == "Msg" and type(s2.args[2]) == "string" and s2.args[2]:find("^tree%.") then why = s2.args[2] end
+end
+check(G.inMatch ~= nil and G.inMatch(P) and not P.alive and not P.inTest and P.vehicle == nil and why == nil,
+  "局内选车：客户端直接发 testDrive，服务器也不让试驾（还在选车页；回的提示 " .. tostring(why) .. "）")
 T.press(T.findNamed("SpawnLeave"))
 R.run(0.8)
 check(P.match == nil, "点「退出战斗」：这一局不打了")

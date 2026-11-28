@@ -615,7 +615,7 @@ function TechUI.init(G)
       -- 用户 11-26「点开战先匹配」：匹配中点一下排上（带着选中的这一辆）、再点取消；已经打起来了就直接加入（WtMatch.lua）
       bb.MouseButton1Click:Connect(function()
         local S = G.S or {}
-        if S.phase == "queue" then
+        if S.phase == "queue" or S.phase == "boot" then   -- boot：图还没定 / 还在建——点了先排上（服务器按选的图开，WtMatch.lua）
           if S.queued then act("matchCancel") elseif H.goKey then act("matchJoin", H.goKey) end
         elseif H.goKey then
           act("deployVeh", H.goKey)
@@ -659,7 +659,7 @@ function TechUI.init(G)
         local Map = G.Map
         local ids = (Map and Map.ids) or { "sands" }
         local S = G.S or {}
-        local cur = S.map or (Map and Map.id)
+        local cur = S.map or S.myVote   -- 高亮：本局那张；还没定就是自己投的那张
         for i, id in ipairs(ids) do
           local b = Instance.new("TextButton")
           b.Name = "Map_" .. id
@@ -672,7 +672,18 @@ function TechUI.init(G)
           TH.corner(b)
           local nmT = (G.T and G.T("map." .. id .. ".name")) or id
           if nmT == "map." .. id .. ".name" then nmT = id end
-          local t = text(b, nmT .. ((id == cur) and L("  ·  本局", "  ·  current") or ""), UDim2.new(1, -16, 1, 0), UDim2.new(0, 10, 0, 0), TH.S.body, TH.C.TEXT)
+          -- 图还没定：投票（写票数，自己投的那张标「已投」）；定了：现在这张「本局」，别的「换到这张」（服务器 Places.lua G.switchMap：
+          --   有自己地点的传送、没有的开个新服务器传过去，Studio 里提示重新开始）
+          local tag
+          if not S.map then
+            local nv = (S.vote and S.vote.n and S.vote.n[id]) or 0
+            tag = ((S.myVote == id) and L("  ·  已投", "  ·  voted") or "") .. ((nv > 0) and ("  ·  " .. nv .. L(" 票", " votes")) or "")
+          elseif id == S.map then
+            tag = L("  ·  本局", "  ·  current")
+          else
+            tag = L("  ·  换到这张", "  ·  switch here")
+          end
+          local t = text(b, nmT .. tag, UDim2.new(1, -16, 1, 0), UDim2.new(0, 10, 0, 0), TH.S.body, TH.C.TEXT)
           t.ZIndex = 32
           b.MouseButton1Click:Connect(function()
             act("pickMap", id)
@@ -921,9 +932,10 @@ function TechUI.init(G)
   local function refreshMode()
     -- 11-25「把那个选择真实度的图改成选地图吧」：顶上这一局那块写地图（点了投下一局的图）；模式照旧按服务器的（默认历史）
     local S = G.S or {}
-    local mid = (S.map or (G.Map and G.Map.id)) or "sands"
+    local mid = S.map or S.myVote or (G.Map and G.Map.id) or "city"
     local mname = (G.T and G.T("map." .. mid .. ".name")) or mid
     if mname == ("map." .. mid .. ".name") then mname = mid end
+    if not S.map then mname = S.myVote and (mname .. L("（已投）", " (voted)")) or L("选地图", "Pick a map") end   -- 图还没定：等人选（11-28 晚）
     local cur = "rb"
     local inMatch = S.pick == true   -- 局内：只写这一局打的是什么图，不能点开选图（没有 ▼）
     H.mapT.Text = L("陆战 · ", "Ground · ") .. mname .. "  ·  " .. (MODE_NAME[cur] or MODE_NAME.rb) .. (inMatch and "" or "  ▼")
@@ -1538,7 +1550,15 @@ function TechUI.init(G)
       if S then
         local fmt = function(s) s = math.max(0, math.floor(s or 0)) return string.format("%d:%02d", s // 60, s % 60) end
         local Q = S.queue
-        if S.phase == "queue" then   -- 匹配中（用户 11-26）：还剩几秒、排了几个人（人不够补人机）
+        if S.phase == "boot" then   -- 图还没定（等人选，11-28 晚起不再替人定）/ 定了还在建
+          if not S.map then
+            local V = S.vote
+            local vl = (V and V.left) and (L("  ·  投票还剩 ", "  ·  vote ends in ") .. fmt(V.left)) or ""
+            H.phaseT.Text = (S.myVote and L("已投这张，", "Voted. ") or L("点上面选地图，", "Pick a map above, ")) .. L("点「开战」开打", "then TO BATTLE") .. vl
+          else
+            H.phaseT.Text = L("地图生成中 ", "Building map ") .. tostring(math.floor((S.progress or 0) * 100)) .. "%" .. (S.queued and L("  ·  好了自动匹配", "  ·  then matchmaking") or "")
+          end
+        elseif S.phase == "queue" then   -- 匹配中（用户 11-26）：还剩几秒、排了几个人（人不够补人机）
           H.phaseT.Text = ((Q and Q.left) and (L("匹配中 ", "Matchmaking ") .. fmt(Q.left) .. "  ·  " .. tostring(Q.n or 0) .. " / " .. tostring(Q.need or 16) .. L(" 人", ""))
             or L("点「开战」开始匹配", "Press TO BATTLE to queue")) .. (H.brStr and ("  ·  " .. H.brStr) or "")
         else
@@ -1553,9 +1573,13 @@ function TechUI.init(G)
           refreshHangar()
         end
         -- 主按钮：匹配中是「开战」（排着的时候「取消匹配」+ 倒计时），打起来以后「加入战斗」
-        if S.phase == "queue" then
+        if S.phase == "queue" or S.phase == "boot" then
           H.goT.Text = S.queued and L("取消匹配", "CANCEL") or L("开战", "TO BATTLE")
-          if S.queued then
+          if S.queued and S.phase == "boot" then
+            H.goSub.Text = L("地图生成中 ", "Building map ") .. tostring(math.floor((S.progress or 0) * 100)) .. "%"
+            H.goSub.TextColor3 = RGB(60, 42, 14)
+            if H.goBtn then H.goBtn.BackgroundTransparency = 0 end
+          elseif S.queued then
             H.goSub.Text = L("匹配中 ", "Matching ") .. fmt((Q and Q.left) or 0) .. L("  ·  人不够补人机", "  ·  bots fill in")
             H.goSub.TextColor3 = RGB(60, 42, 14)
             if H.goBtn then H.goBtn.BackgroundTransparency = 0 end

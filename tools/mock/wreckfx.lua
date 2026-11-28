@@ -80,6 +80,37 @@ else
   R.run(0.6)
 end
 check(st and st.big == big0 + 1, "殉爆：大火球（" .. tostring(st and st.big) .. "）")
+-- 用户 11-28 晚「坦克被穿透关键部位要直接爆 炮塔炮管子都要崩飞」：打中就炸（不再先烧），炮塔顶飞、炮管从炮塔上断开单独甩出去——哪种坦克都是
+local function viewOfE(ent)
+  for em2, vv in pairs(C.views or {}) do if em2 == ent.model then return vv end end
+end
+local function tossCheck(ent, name)
+  local vv = viewOfE(ent)
+  check(vv and vv.toss ~= nil and vv.gtoss ~= nil, name .. "：炮塔、炮管都飞起来了（" .. tostring(vv and vv.toss ~= nil) .. " / " .. tostring(vv and vv.gtoss ~= nil) .. "）")
+  if vv and vv.toss and vv.gtoss then
+    local gap = (vv.gtoss.cf.Position - vv.toss.cf.Position).Magnitude
+    local h0 = vv.hullF and vv.hullF.Position.Y or 0
+    check(gap > 4, string.format("%s：炮管跟炮塔分开飞（隔 %.1f 格）", name, gap))
+    local peak = math.max(vv.gtoss.cf.Position.Y, vv.toss.cf.Position.Y) - h0
+    check(peak > 2, string.format("%s：飞起来了（高出车体 %.1f 格）", name, peak))
+  end
+end
+tossCheck(e, VEH)
+do   -- 弹在炮塔尾舱 / 车体里的西方坦克（原来殉爆炮塔不飞）
+  local VEH2 = "de_leo2a6"
+  local def2 = VD.get(VEH2)
+  if def2 and def2.turret then
+    local x2, z2 = spot(110)
+    local e2 = G.newVehicle("atk", VEH2, G.vehBaseAt(def2, x2, z2, V3(0, 0, -1)))
+    R.run(1.5)
+    killAs(e2, "ammo")
+    R.run(0.25)
+    tossCheck(e2, VEH2)
+    R.run(4)
+    local vv = viewOfE(e2)
+    check(vv and vv.gtoss and vv.gtoss.rest, VEH2 .. "：炮管落地躺平（" .. tostring(vv and vv.gtoss and vv.gtoss.rest) .. "）")
+  end
+end
 local nc = chunks()
 check(nc >= 6, "钢板碎块飞出去了（" .. nc .. " 块真零件）")
 local list = C.wreckChunkList()

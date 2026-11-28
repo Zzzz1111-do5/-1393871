@@ -153,16 +153,12 @@ function Wt.init(G)
     e.wtWhy = why
     e.model:SetAttribute("WtWhy", why)   -- 客户端 View：殉爆才掀炮塔
     local base = baseOf(e)
-    if why == "ammo" then   -- 殉爆：一大团火（客户端 View / WreckFx 画残骸，这里多一声大的）
+    if why == "ammo" then   -- 殉爆：一大团火（客户端 View / WreckFx 画残骸、掀炮塔、炮管崩飞，这里多一声大的）
+      -- 用户 11-28 晚「坦克被穿透关键部位要直接爆 炮塔炮管子都要崩飞」：打中就炸（原来转盘车先烧两三秒再炸——11-26「要先着火再飞」那一版；
+      --   弹药架起火没灭的那条路照旧是先烧 8 秒再炸），哪种坦克都掀炮塔、炮管单独崩飞（View.lua）
       local tp = e.def.turret and e.def.turret.pivot or V(0, e.def.hullH or 4, 0)
       local at = (base * CF(tp)).Position
-      if W.CAROUSEL[e.def.id] and e.def.turret then   -- 弹在车体底下的：先烧几秒再炸、炮塔飞起来（客户端按 WtCook 同步）
-        local cook = W.cookSecs(e.id)
-        e.model:SetAttribute("WtCook", cook)
-        task.delay(cook, function() G.fx({ k = "boom", p = at, s = 4.6, c = "wreck" }) end)
-      else
-        G.fx({ k = "boom", p = at, s = 4.2, c = "wreck" })
-      end
+      G.fx({ k = "boom", p = at, s = 4.6, c = "wreck" })
     end
     e.wtLastDriver = e.driver   -- 车毁了以后车里的人就下车了：击杀信息、「你被击毁」那一发的 X 光要发给他们
     e.wtLastPass = e.pass and table.clone(e.pass) or nil
@@ -298,7 +294,10 @@ function Wt.init(G)
         local rl, rf = nil, nil
         if G.wtRackLeft then rl, rf = G.wtRackLeft(e, c.it.k) end   -- ④ 这一块弹架（待发 / 车体）现在有几发：空了打中也不炸
         if rl then frac = (rl <= 0) and 0 or math.clamp(rl / rf, 0.15, 1) end
-        if math.random() < k * frac then flags.ammo, flags.ammoK = true, c.it.k
+        -- 用户 11-28 晚「坦克被穿透关键部位要直接爆」：弹芯 / 射流直接钻进弹架（k ≥ 0.7 的那一下）——架上有弹就一定殉爆，不看少带弹
+        --   （原来按 0.7 × 带的弹多少：少带弹的车弹芯穿过弹架也常常只是起火）；破片、爆炸照旧按机会，没炸就起火（倒计时殉爆）
+        if k >= 0.7 * fx.amk - 1e-6 and frac > 0 then flags.ammo, flags.ammoK = true, c.it.k
+        elseif math.random() < k * frac then flags.ammo, flags.ammoK = true, c.it.k
         elseif frac > 0 and math.random() < k * frac * 0.9 then flags.ammoFire = flags.ammoFire or c.it.k end   -- 没炸：发射药烧起来（弹药架起火，11-26）
       end
       if (c.it.k == "engine" and math.random() < 0.28 * (k / 0.5) * fk) or ((c.it.k == "fuelL" or c.it.k == "fuelR") and math.random() < 0.4 * (k / 0.5) * fk) then
@@ -333,7 +332,7 @@ function Wt.init(G)
         if h then
           local c = S.byK[h.it.k]
           hurt(e, c, ((h.it.kind == "crew") and CREW_DMG.spall or MOD_DMG.spall) * fx.sd, out, src)
-          hitAmmo(c, 0.22)
+          hitAmmo(c, 0.4)   -- 破片打进弹架：11-28 晚 0.22 → 0.4（「打穿关键部位要直接爆」）
           if hits[2] and math.random() < 0.35 then   -- 有的破片穿过第一个还能伤后面一个
             local c2 = S.byK[hits[2].it.k]
             hurt(e, c2, ((hits[2].it.kind == "crew") and CREW_DMG.spall or MOD_DMG.spall) * 0.5 * fx.sd, out, src)

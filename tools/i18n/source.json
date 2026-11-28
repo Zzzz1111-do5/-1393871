@@ -2191,6 +2191,41 @@
 "en": "This map has its own server — you'll be teleported"
 },
 {
+"key": "wtm.prepTitle",
+"zh": "准备阶段 · 原地待命",
+"en": "PREPARATION · HOLD POSITION"
+},
+{
+"key": "wtm.prepIn",
+"zh": "战斗将在 {1} 秒后开始",
+"en": "BATTLE STARTS IN {1}"
+},
+{
+"key": "map.switch",
+"zh": "换到这张",
+"en": "SWITCH"
+},
+{
+"key": "map.switchNew",
+"zh": "换到「{1}」：开一个新服务器传过去……",
+"en": "Switching to {1}: moving you to a new server…"
+},
+{
+"key": "map.switchStudio",
+"zh": "Studio 里一个服务器只建一张图：停止后重新开始，进机库先在「这一局」那块选「{1}」",
+"en": "In Studio a server builds only one map: stop, press Play again and pick {1} in the hangar's match box first"
+},
+{
+"key": "map.switchFail",
+"zh": "开新服务器没成功，留在这一局",
+"en": "Couldn't open a new server — staying here"
+},
+{
+"key": "map.buildThenMatch",
+"zh": "按「{1}」开图，建好自动开始匹配",
+"en": "Building {1} — matchmaking starts when it's ready"
+},
+{
 "key": "ammo.w.mg",
 "zh": "机枪",
 "en": "MG"
@@ -13283,6 +13318,34 @@
 ]
 },
 {
+"zh": "  ·  换到这张",
+"en": "  ·  switch here",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/TechUI.lua"
+]
+},
+{
+"zh": "  ·  好了自动匹配",
+"en": "  ·  then matchmaking",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/TechUI.lua"
+]
+},
+{
+"zh": "  ·  投票还剩 ",
+"en": "  ·  vote ends in ",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/TechUI.lua"
+]
+},
+{
+"zh": "  ·  已投",
+"en": "  ·  voted",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/TechUI.lua"
+]
+},
+{
 "zh": " 级车（",
 "en": " (",
 "files": [
@@ -13340,6 +13403,13 @@
 ]
 },
 {
+"zh": "（已投）",
+"en": " (voted)",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/TechUI.lua"
+]
+},
+{
 "zh": " 经验",
 "en": " XP",
 "files": [
@@ -13391,6 +13461,13 @@
 {
 "zh": " 吨·米²（滚 / 俯 / 偏）",
 "en": " t·m² (roll/pitch/yaw)",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/TechUI.lua"
+]
+},
+{
+"zh": " 票",
+"en": " votes",
 "files": [
 "StarterPlayer/StarterPlayerScripts/Client/TechUI.lua"
 ]
@@ -13629,6 +13706,13 @@
 {
 "zh": "右下投票选这一局的地图（准备阶段按票数定）。换系：点左上的国旗打开科技树，在科技树里点国旗。「观战」看队友。",
 "en": "Bottom right: vote for the next map (decided by votes during preparation). To switch nation, click the flag at the top left to open the tech tree and pick a flag there. SPECTATE watches teammates.",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/TechUI.lua"
+]
+},
+{
+"zh": "地图生成中 ",
+"en": "Building map ",
 "files": [
 "StarterPlayer/StarterPlayerScripts/Client/TechUI.lua"
 ]
@@ -14092,6 +14176,20 @@
 ]
 },
 {
+"zh": "选地图",
+"en": "Pick a map",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/TechUI.lua"
+]
+},
+{
+"zh": "点上面选地图，",
+"en": "Pick a map above, ",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/TechUI.lua"
+]
+},
+{
 "zh": "底下点一张卡片选中，再点右下的「战斗」：直接坐在车里 / 飞机里出现在自己基地；车没了回到这里。",
 "en": "Pick a slot, then press TO BATTLE: you spawn inside it at your base. Lose it and you come back here.",
 "files": [
@@ -14395,6 +14493,13 @@
 ]
 },
 {
+"zh": "已投这张，",
+"en": "Voted. ",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/TechUI.lua"
+]
+},
+{
 "zh": "武器",
 "en": "Weapons",
 "files": [
@@ -14467,6 +14572,13 @@
 {
 "zh": "暂用模型",
 "en": "stand-in",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/TechUI.lua"
+]
+},
+{
+"zh": "点「开战」开打",
+"en": "then TO BATTLE",
 "files": [
 "StarterPlayer/StarterPlayerScripts/Client/TechUI.lua"
 ]
@@ -15149,6 +15261,13 @@
 "Test range server · Snow Peaks",
 "Go to",
 "This map has its own server — you'll be teleported",
+"PREPARATION · HOLD POSITION",
+"BATTLE STARTS IN {1}",
+"SWITCH",
+"Switching to {1}: moving you to a new server…",
+"In Studio a server builds only one map: stop, press Play again and pick {1} in the hangar's match box first",
+"Couldn't open a new server — staying here",
+"Building {1} — matchmaking starts when it's ready",
 "MG",
 "AC",
 "SAM",
@@ -16936,6 +17055,10 @@
 "  ·  Stats",
 "  ·  bots fill in",
 "  ·  current",
+"  ·  switch here",
+"  ·  then matchmaking",
+"  ·  vote ends in ",
+"  ·  voted",
 " (done: ",
 " (empty ",
 " (mode ×",
@@ -16943,6 +17066,7 @@
 " (relaxed)",
 " (researched ones apply when you deploy)",
 " (up to ",
+" (voted)",
 " XP",
 " kN",
 " kN (mil / AB)",
@@ -16951,6 +17075,7 @@
 " more rank ",
 " short) · Top up",
 " t·m² (roll/pitch/yaw)",
+" votes",
 " · AR ",
 " · AoA limit ",
 " · Crew",
@@ -16979,6 +17104,7 @@
 "At most two aircraft in the lineup",
 "BR ",
 "Bottom right: vote for the next map (decided by votes during preparation). To switch nation, click the flag at the top left to open the tech tree and pick a flag there. SPECTATE watches teammates.",
+"Building map ",
 "Buy (",
 "CD0 ",
 "CLmax ",
@@ -17038,6 +17164,8 @@
 "Open RESEARCH and add owned vehicles",
 "Owned",
 "Performance",
+"Pick a map",
+"Pick a map above, ",
 "Pick a slot, then press TO BATTLE: you spawn inside it at your base. Lose it and you come back here.",
 "Points ",
 "Preparing ",
@@ -17079,6 +17207,7 @@
 "Turret side",
 "Turret traverse ",
 "Used up",
+"Voted. ",
 "Weapons",
 "Wing area ",
 "XP ",
@@ -17090,6 +17219,7 @@
 "pen ",
 "points ",
 "stand-in",
+"then TO BATTLE",
 "vs HEAT",
 "vs KE",
 " · contested ",

@@ -1540,6 +1540,8 @@ function Fly.init(G)
       dn = key(Enum.KeyCode.S) or kDn or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or (touch and touch.down)
     end
     st.thr = clamp(st.thr + ((up and 1 or 0) - (dn and 1 or 0)) * 55 * dt, 0, d.ab and 130 or 100)
+    -- 准备阶段在跑道上等开战（用户 11-28 晚「点加入战斗就进入地图里面等着吧 等倒计时结束就开战」，WtBattle.lua G.wtHold）：油门推不上去、滑不起来
+    if st.ground and G.wtHold and G.wtHold() then st.thr = 0 end
     -- 超速保护（用户 11-27「j6为什么这么容易坠机」：歼-6 低空加力平飞就快到撕翼速度，带着加力一俯冲就超、机翼被撕掉）：
     --   鼠标瞄准（教官飞）时，到了极限速度九成三先把加力关掉、九成七收到慢车，降回八成八再放开——玩家自己再推油门照样能推上去（下一帧又收）
     if mAim and not st.ground and st.fmD and st.fmD.vne then

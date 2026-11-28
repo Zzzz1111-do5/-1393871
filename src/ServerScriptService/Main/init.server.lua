@@ -198,6 +198,7 @@ local function waitMap()
   local emptyWait = Config.MapWaitEmpty or (game:GetService("RunService"):IsStudio() and 3 or 30)
   local grace = (Config.MapVote and Config.MapVote.grace) or 3
   local pushAt = 0
+  local joinChecked = {}   -- 进来的人看过一遍传送数据了没有
   while not G.mapId do
     -- 投票中半秒发一次状态（票数、倒计时、在场人数：有人进来、走了也跟着变）
     if os.clock() >= pushAt and #Players:GetPlayers() > 0 and G.pushAll then
@@ -206,9 +207,18 @@ local function waitMap()
     end
     local anyone = #Players:GetPlayers() > 0
     local waited = os.clock() - t0
-    -- 有人在、却没人投（用户 11-28「主页如果我不换 snowpeak 就没法进训练场」：没投票时要等 MapWaitMax 十五分钟才按默认开图，
-    --   图没开、训练场也不建，试驾一直「训练场还在准备」）：第一个人进来就开始倒计时，到点没人投按默认那张开
-    if anyone and not voteEnds then voteEnds = os.clock() + ((Config.MapVote and Config.MapVote.idle) or 20) end
+    -- 有人在、却没人投：等他选（用户 11-28 晚「然后目前没法切地图」）——11-28 一度改成进来二十秒没人投就按默认那张开（那时训练场要等战场的图），
+    --   机库里还没去点「这一局」选图，钢城就已经建起来了，之后点哪张都换不了。现在训练场开服就建、跟这张图没关系，不再替人定：
+    --   在机库「这一局」那块点一张就是投一票；没选图就点「开战」= 投默认那张（WtMatch.lua matchJoin）；一直没人管才 MapWaitMax 后按默认开
+    -- 从别的服务器传过来、带着要打的图（「换到这张图」开的新服务器：Places.lua G.switchMap）：直接投那张，在场的人都投了 → grace 秒后开
+    for _, pl in ipairs(Players:GetPlayers()) do
+      if G.mapVotes[pl] == nil and not joinChecked[pl] then
+        joinChecked[pl] = true
+        local ok, jd = pcall(function() return pl:GetJoinData() end)
+        local td = ok and type(jd) == "table" and jd.TeleportData or nil
+        if type(td) == "table" and type(td.map) == "string" then G.voteMap(pl, td.map) end
+      end
+    end
     if voteEnds then
       -- 在场的人都投了：再等 grace 秒（还能改票）就开
       local _, voters = voteCounts()

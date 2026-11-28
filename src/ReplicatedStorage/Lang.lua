@@ -540,6 +540,15 @@ add("place.sands", "沙海", "Sea of Sand")
 add("place.here.range", "训练场服务器 · 雪山", "Test range server · Snow Peaks")
 add("map.goto", "前往", "Go to")
 add("map.gotoNote", "这张图有自己的服务器：点了传送过去", "This map has its own server — you'll be teleported")
+-- 开战倒计时（用户 11-28 晚「点加入战斗就进入地图里面等着吧 等倒计时结束就开战」：WtBattle.lua）
+add("wtm.prepTitle", "准备阶段 · 原地待命", "PREPARATION · HOLD POSITION")
+add("wtm.prepIn", "战斗将在 {1} 秒后开始", "BATTLE STARTS IN {1}")
+-- 换图（用户 11-28 晚「然后目前没法切地图」：Places.lua G.switchMap、WtMatch.lua matchJoin）
+add("map.switch", "换到这张", "SWITCH")
+add("map.switchNew", "换到「{1}」：开一个新服务器传过去……", "Switching to {1}: moving you to a new server…")
+add("map.switchStudio", "Studio 里一个服务器只建一张图：停止后重新开始，进机库先在「这一局」那块选「{1}」", "In Studio a server builds only one map: stop, press Play again and pick {1} in the hangar's match box first")
+add("map.switchFail", "开新服务器没成功，留在这一局", "Couldn't open a new server — staying here")
+add("map.buildThenMatch", "按「{1}」开图，建好自动开始匹配", "Building {1} — matchmaking starts when it's ready")
 add("ammo.w.mg", "机枪", "MG")   -- 弹药栏里别的武器那几格（WtTank）
 add("ammo.w.ac", "机炮", "AC")
 add("ammo.w.sam", "防空导弹", "SAM")

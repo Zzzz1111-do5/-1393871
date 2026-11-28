@@ -355,7 +355,13 @@ function MapPick.init(G)
       status.Text = T("place.going", T("place." .. id))
       return
     end
-    if S and S.map and S.map ~= id then id = S.map end   -- 服务器已经在打另一张：按钮是「加入那张」
+    -- 服务器已经在打另一张：点「加入 X」那张卡（就是现在这张）照旧加入；点了别的图 = 换过去（用户 11-28 晚「然后目前没法切地图」：
+    --   原来点哪张都改成加入现在那张）——服务器 Places.lua G.switchMap：有自己地点的传送、没有的开个新服务器传过去，Studio 里提示重新开始
+    if S and S.map and S.map ~= id then
+      G.R.Act:FireServer("pickMap", id)
+      status.Text = T("map.switchNew", T("map." .. id .. ".name"))
+      return
+    end
     want = id
     G.R.Act:FireServer("pickMap", id)
     if S and S.map then status.Text = T("map.loading", 0) end
@@ -492,7 +498,7 @@ function MapPick.init(G)
         K.votes.Text = T("map.votes", nv)
         K.votes.TextColor3 = (nv > 0) and acc or MUTE
       else
-        K.go.Text = other and (T("map.join") .. "  " .. T("map." .. S.map .. ".name")) or T("map.join")
+        K.go.Text = other and T("map.switch") or T("map.join")
         K.go.BackgroundColor3, K.go.TextColor3 = WHITE, RGB(10, 10, 12)
         K.votes.Visible = false
       end

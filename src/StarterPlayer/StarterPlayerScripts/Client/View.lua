@@ -528,6 +528,54 @@ function View.init(G)
     if T.fxH and T.fxH.Parent then T.fxH.CFrame = T.cf end
   end
   G.stepToss = stepToss
+  -- 炮管崩飞（用户 11-28 晚「坦克被穿透关键部位要直接爆 炮塔炮管子都要崩飞」）：殉爆那一下炮（防盾 + 炮管）从炮塔上断开，自己飞——
+  --   顺着炮口方向甩出去 10～18 格 / 秒、往上 18～30，绕横轴打着转（每秒 4～8 弧度，长杆子那样一头一头翻），落地平躺着、朝向随机；
+  --   按编号定，大家看到的一样。炮塔照 startToss 往上顶，两样一前一后分开落地
+  local function startGunToss(v)
+    local gF = v.gF
+    if not gF or v.gtoss then return end
+    local seed = tonumber(v.id) or 0
+    if seed == 0 then for c in tostring(v.id):gmatch(".") do seed += string.byte(c) end end
+    local rng = Random.new(seed * 104729 + 33)
+    local fwd = gF.LookVector
+    local flat = V(fwd.X, 0, fwd.Z)
+    flat = (flat.Magnitude > 0.05) and flat.Unit or V(0, 0, -1)
+    local side = V(-flat.Z, 0, flat.X) * ((rng:NextNumber() - 0.5) * 6)
+    local vel = flat * (10 + rng:NextNumber() * 8) + side + V(0, 18 + rng:NextNumber() * 12, 0)
+    if v.toss then vel += V(v.toss.vel.X, 0, v.toss.vel.Z) * 0.5 end
+    local axis = V(-flat.Z, 0, flat.X)   -- 横轴（跟炮管垂直）：炮口往下一头一头翻
+    v.gtoss = {
+      cf = gF, vel = vel,
+      w = axis * (((rng:NextNumber() < 0.5) and 1 or -1) * (4 + rng:NextNumber() * 4)) + V(0, (rng:NextNumber() - 0.5) * 2, 0),
+      bounce = 0, rest = false,
+      restYaw = rng:NextNumber() * 2 * math.pi,
+    }
+    G.gunTossCount = (G.gunTossCount or 0) + 1   -- 测试用
+  end
+  local function stepGunToss(v, dt)
+    local T = v.gtoss
+    if not T or T.rest then return end
+    dt = math.min(dt, 1 / 20)
+    T.vel += V(0, -TOSS_G, 0) * dt
+    local p = T.cf.Position + T.vel * dt
+    local wm = T.w.Magnitude
+    local rot = (wm > 1e-4) and CFrame.fromAxisAngle(T.w.Unit, wm * dt) or CFrame.new()
+    local gy = math.max(Map.height(p.X, p.Z), -0.5)
+    if p.Y < gy + 0.35 and T.vel.Y < 0 then   -- 砸到地上：弹一下、再一下就躺平
+      p = V(p.X, gy + 0.35, p.Z)
+      T.bounce += 1
+      landFx(p)
+      if T.bounce >= 2 or math.abs(T.vel.Y) < 10 then
+        T.rest = true
+        -- 躺平：炮管水平、朝向随机（防盾那头稍微翘一点）
+        T.cf = CFrame.new(p) * CFrame.Angles(0, T.restYaw, 0) * CFrame.Angles(math.rad(4), 0, 0)
+        return
+      end
+      T.vel = V(T.vel.X * 0.5, -T.vel.Y * 0.3, T.vel.Z * 0.5)
+      T.w = T.w * 0.45
+    end
+    T.cf = CFrame.new(p) * rot * (T.cf - T.cf.Position)
+  end
   -- 残骸烧的三段（用户 11-28「然后有浓烈的烟雾我持续冒」，见 stepVeh 里那段）：车身火、黑烟每秒几颗；超过 WRECK_THICK 处的烟柱细一档
   --   11-28 晚（用户「现在感觉有点卡」）：浓烟柱是一颗颗几十格大的半透明烟团，几处叠在一起每个像素要画几十层——同时冒浓烟的从 10 处减到 6 处
   --   （机器跟不上、自动画质降下来时 3 处），每秒的颗数、细一档的烟都少一点；烟团的大小 WreckFx heavyBurn 也收了一成多
@@ -738,6 +786,10 @@ function View.init(G)
       tF = v.toss.cf
     end
     local gF = tF * CF(M.gpiv or d.gun.pivot) * CFrame.Angles(math.rad(v.gp), 0, 0) * CF(0, 0, v.recoil)
+    if v.gtoss then   -- 炮管崩飞了：自己飞（startGunToss）
+      stepGunToss(v, dt)
+      gF = v.gtoss.cf
+    end
     local rF = M.rpiv and (tF * CF(M.rpiv) * CFrame.Angles(0, -math.rad(v.my or 0), 0)) or nil
     local rgF = (rF and M.rgpiv) and (rF * CF(M.rgpiv) * CFrame.Angles(math.rad(v.mp or 0), 0, 0)) or nil
     v.hullF, v.tF, v.gF, v.rF, v.rgF = hullF, tF, gF, rF, rgF
@@ -776,7 +828,7 @@ function View.init(G)
       end
       v.plowA = cur
     end
-    local still = not plowMoving and not v.hasRadar and not (v.toss and not v.toss.rest) and v.recoil <= 0 and math.abs(v.speed) < 0.01
+    local still = not plowMoving and not v.hasRadar and not (v.toss and not v.toss.rest) and not (v.gtoss and not v.gtoss.rest) and v.recoil <= 0 and math.abs(v.speed) < 0.01
       and math.abs(v.steer - (v.putSteer or 1e9)) < 1e-4
       and sameCF(hullF, v.putH) and sameCF(tF, v.putT) and sameCF(gF, v.putG) and sameCF(rF, v.putR) and sameCF(rgF, v.putRG)
     if still then
@@ -949,18 +1001,24 @@ function View.init(G)
         -- 战雷式伤害（服务器 Wt.lua）：只有弹放在车体底下（转盘式自动装弹机，WtDamage.CAROUSEL）的车殉爆才掀炮塔——
         --   用户 11-26「要先着火再飞」：先烧 WtCook 秒（舱口喷火、火星噼啪、黑烟往上冒），烧完一下炸开、炮塔飞起来；
         --   乘员打光、烧毁、弹在尾舱的车炮塔留着
+        --   用户 11-28 晚「坦克被穿透关键部位要直接爆 炮塔炮管子都要崩飞」：哪种坦克殉爆（WtWhy == "ammo"）都是打中就炸——炮塔顶上天、
+        --   炮管从炮塔上断开单独甩出去（原来只有转盘车掀炮塔、还要先烧两三秒；炮跟着炮塔一起飞）；服务器还在写 WtCook（老服务器）的照旧先烧
         if whyW ~= nil then
-          if whyW == "ammo" and WD.CAROUSEL[d.id] then
-            local cook = em:GetAttribute("WtCook") or WD.cookSecs(v.id)
+          local cook = (whyW == "ammo") and (em:GetAttribute("WtCook") or 0) or 0
+          if whyW == "ammo" and cook > 0 then
             v.cookT = os.clock() + cook
             if G.wreckCook then G.try_(G.wreckCook, v, base0, cook) end
             task.delay(cook, function()
               if v.toss or not (v.M and v.M.model and v.M.model.Parent) then return end
               startToss(v)
+              startGunToss(v)
               if G.wreckFx then G.try_(G.wreckFx, v, "ammo", base0) end
             end)
+          elseif whyW == "ammo" then
+            startToss(v)
+            startGunToss(v)
           end
-        elseif d.cat == "tank" or Random.new(seed * 31 + 7):NextNumber() < 0.4 then startToss(v) end
+        elseif d.cat == "tank" or Random.new(seed * 31 + 7):NextNumber() < 0.4 then startToss(v) startGunToss(v) end
       end
       if G.wreckPrepBurn then G.try_(G.wreckPrepBurn, M) end   -- 火推亮、黑烟换深灰的贴图、近处那根小一号的黑烟（WreckFx.lua）
       -- 先烧再炸的（转盘车）：wreckCook 真接手了（v.cookJets）才由它定烧的那几秒（火 14、烟 6），炸开以后 heavyBurn 接着。

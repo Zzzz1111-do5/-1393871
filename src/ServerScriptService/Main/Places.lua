@@ -153,6 +153,47 @@ function Places.init(G)
     end)
     return true
   end
+  -- 换到另一张图（用户 11-28 晚「然后目前没法切地图」）：一个服务器开服只建一张图、建好以后换不了——
+  --   这张图有自己的地点：传送过去（上面 G.teleport）；没有：开一个这个地点的新服务器（预留服务器），带着要打的图传过去，
+  --   那边进来就按这张开（init.server.lua waitMap 读传送数据里的 map）；同一张图十分钟内都传进同一个新服务器（一起点的人到一处）。
+  --   Studio 里不能传送：告诉他停止后重新开始、进机库先在「这一局」那里选图
+  local reserved = {}   -- [图] = { code, t }
+  function G.switchMap(P, id)
+    if not P or not P.pl or type(id) ~= "string" then return false end
+    if G.placeFor(id) then return G.teleport(P, id, { map = id }) end
+    if not table.find(Map.ids or {}, id) then return false end   -- 收起来的图（钢城 11-28 晚先不显示）不换
+    if (studio and not G.placeLive) or G.placeTpOff then
+      G.msg(P.pl, "info", "map.switchStudio", { k = "map." .. id .. ".name" })
+      return false
+    end
+    if going[P.pl] then return false end
+    going[P.pl] = { role = id, data = { map = id }, t = os.clock() }
+    G.msg(P.pl, "info", "map.switchNew", { k = "map." .. id .. ".name" })
+    task.spawn(function()
+      if G.saveNow then pcall(G.saveNow, P) end
+      local r = reserved[id]
+      if not r or os.clock() - r.t > 600 then
+        local ok, code = pcall(function() return TS:ReserveServer(game.PlaceId) end)
+        if ok and type(code) == "string" then r = { code = code, t = os.clock() } reserved[id] = r else r = nil end
+      end
+      local ok, err = false, "预留服务器没开成"
+      if r then
+        ok, err = pcall(function()
+          local opt = Instance.new("TeleportOptions")
+          opt.ReservedServerAccessCode = r.code
+          opt:SetTeleportData({ from = G.placeRole, fromId = game.PlaceId, map = id })
+          TS:TeleportAsync(game.PlaceId, { P.pl }, opt)
+        end)
+      end
+      if not ok then
+        going[P.pl] = nil
+        reserved[id] = nil
+        warn("[地点] " .. P.pl.Name .. " 换图到「" .. id .. "」没成功：" .. tostring(err))
+        G.msg(P.pl, "bad", "map.switchFail")
+      end
+    end)
+    return true
+  end
   pcall(function()
     TS.TeleportInitFailed:Connect(function(pl, result, msg)
       local g = going[pl]

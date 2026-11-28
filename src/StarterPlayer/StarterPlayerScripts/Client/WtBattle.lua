@@ -429,6 +429,41 @@ function WtBattle.init(G)
   end)
   G.wtFeedRows = function() return feedList end   -- 测试用
 
+  ---------------------------------------------------------------- 开战倒计时（用户 11-28 晚「点加入战斗就进入地图里面等着吧 等倒计时结束就开战」，同战雷）
+  --   匹配到了直接坐进机库里选的那一辆、出现在自己基地（服务器 WtMatch.lua matchFound）；准备阶段车开不了、跑道上的飞机推不上油门
+  --   （G.wtHold：Drive.lua、Fly.lua 看它），炮打不了（服务器 Armor.lua / Air.lua 只在开战以后开火）；屏幕正中大字倒计时，最后三秒变色
+  local cdBox = frame(gui, UD2(0, 520, 0, 86), UD2(0.5, 0, 0.26, 0), INK, 1, V2(0.5, 0.5))
+  cdBox.Name = "PrepCountdown"
+  cdBox.Visible = false
+  local cdTitle = label(cdBox, "", UD2(1, 0, 0, 22), UD2(0.5, 0, 0, 0), 18, MUTE, MED, V2(0.5, 0), Enum.TextXAlignment.Center)
+  local cdNum = label(cdBox, "", UD2(1, 0, 0, 56), UD2(0.5, 0, 0, 24), 52, WHITE, BLACK, V2(0.5, 0), Enum.TextXAlignment.Center)
+  cdNum.TextStrokeTransparency, cdTitle.TextStrokeTransparency = 0.55, 0.7
+  local function myTest()
+    local st = G.drive or G.myVeh
+    return st and st.em and st.em:GetAttribute("TestDrive") == true
+  end
+  -- 这一刻要不要锁住：准备阶段、这一局算自己的（S.inMatch）、坐在车里 / 飞机里、不是试驾
+  function G.wtHold()
+    local S = G.S
+    if not S or S.phase ~= "prep" or not S.inMatch then return false end
+    if not (G.drive or G.myVeh) or myTest() then return false end
+    return true
+  end
+  local cdLast = nil
+  local function stepCountdown(S)
+    local on = S ~= nil and S.phase == "prep" and S.inMatch == true and (G.drive ~= nil or G.myVeh ~= nil) and not myTest()
+      and not ((G.menuShown and G.menuShown()) or (G.boardShown and G.boardShown()))
+    cdBox.Visible = on
+    if not on then cdLast = nil return end
+    local n = math.max(0, math.ceil(S.left or 0))
+    if n ~= cdLast then
+      cdLast = n
+      cdTitle.Text = T("wtm.prepTitle")
+      cdNum.Text = T("wtm.prepIn", n)
+      cdNum.TextColor3 = (n <= 3) and GOLD or WHITE
+    end
+  end
+
   ---------------------------------------------------------------- 每帧
   local chipTxt, chipY, chipW = nil, nil, nil
   G.frameConn("WtBattle", function()
@@ -440,6 +475,7 @@ function WtBattle.init(G)
     local S = G.S
     local w = S and S.wt
     if S then G.try_(stepResults, S) G.try_(stepStrip, S) end
+    G.try_(stepCountdown, S)
     -- 阵亡镜头里（DeathFx：跟着残骸、看凶手）整屏只留那一行字（用户 11-27「雷达什么图全部消失」）
     local covered = (G.menuShown and G.menuShown()) or (G.boardShown and G.boardShown()) or G.factionOpen or (G.deathFxOn and G.deathFxOn())
     local driving = G.drive ~= nil or G.myVeh ~= nil

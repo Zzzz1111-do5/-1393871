@@ -1146,6 +1146,7 @@ function Drive.init(G)
       if G.touchDrive.str ~= 0 then str = G.touchDrive.str end
     end
     if G.interiorEngineOff then thr = 0 end   -- 驾驶员显示器上按了熄火（Interior.lua）：再按起动才走得了
+    if G.wtHold and G.wtHold() then thr, str = 0, 0 end   -- 准备阶段在出发点等开战（用户 11-28 晚，WtBattle.lua 倒计时）：开不了
     -- 没有炮塔的车（SU-100 这类，VehDefs turret.arc）：自己不打方向、瞄的地方在炮的射界外面——车体自己转过去对准（同战雷歼击车），
     --   超出 6° 以上满舵；按住 A / D 照常自己转
     if str == 0 and st.arcPull and st.arcPull ~= 0 and d.turret and (d.turret.arc or st.travDead) then
