@@ -1559,8 +1559,9 @@ function Fly.init(G)
       -- 键盘当驾驶杆（用户 11-26 晚「飞机驾驶感觉过于灵敏」；原来 0.12 秒推满杆）。11-28 用户「有时候不该灵敏的时候过于灵敏 该灵敏的时候又有点迟钝」：
       --   原来按住是往满杆指数地推（时间常数 0.28 秒，按住一秒才满），再过飞控的前置滤波、低速时跟得慢的增益——量出来 F-16 在 450 公里 / 时
       --   按住 S 半秒才 1.8 g、按住 D 半秒才 56°/s（tools/mock/kbfeel.lua）。现在按住匀速推杆、T 秒满杆（俯仰、滚转 0.25 秒，方向舵 0.3 秒）——
-      --   点一下（0.08 秒）三成杆、过了飞控的非线性只剩一成多（小修正照样细）；松开 0.05 秒回中、反着按先回中再推；
-      --   飞控那边低速的跟随也加快了（FlightModel：前置滤波、动态逆的增益），各个速度的手感差不多
+      --   点一下（0.08 秒）三成杆；松开 0.05 秒回中、反着按先回中再推。杆量进飞控不再过给摇杆的那道三次方（inp.lin：两道叠起来按住头 0.2 秒
+      --   几乎没反应、之后猛冲上去），飞控那边：拉杆按这个速度拉得出来的过载分、迎角往要的地方靠时按平尾转得过来的时间刹住、平尾副翼转得快一倍
+      --   （FlightModel；量的见 tools/test/kbfeel.luau：F-16 在 450 公里 / 时点 S 0.3 秒，机头原来自己翻上去 45°，现在 11°）
       local function ramp(cur, want, T)
         if want ~= 0 and (cur == 0 or (cur > 0) == (want > 0)) then
           return approach(cur, want, dt / T)
@@ -1918,6 +1919,7 @@ function Fly.init(G)
       local inp = { thr = apc and math.max(st.thr, 92) or st.thr, gear = st.gear, flap = st.flapK or 0, brake = (not G.mobile and key(Enum.KeyCode.B)) or false }
       if stickMode then
         inp.mode, inp.sx, inp.sy, inp.sz = "stick", rollIn, -pitchIn, yawIn   -- W 推杆（低头）、S 拉杆
+        inp.lin = kb and not G.mobile   -- 键盘：杆量是按住多久匀速推出来的，飞控不再过给摇杆的那道三次方（FlightModel inp.lin）
         inp.level = rollIn == 0
         inp.levelHard = landAid ~= nil and rollIn == 0   -- 贴着跑道 / 甲板：机翼自动摆平
         inp.ovr = st.ovr and not landAid   -- T 解除迎角限制（过失速机动）；进近着陆时照常限制

@@ -33,7 +33,7 @@ FM.ROLL_BRAKE = ROLL_BRAKE
 -- 转弯机动性（用户 11-28「我指的机动性 是我飞行转向的机动性 稍微高一点」；战雷的飞机也比真机灵一点）：
 --   整条升力曲线 × lift（失速迎角不变：同一个迎角升力多一成）、诱导阻力 × ind——升力限制的那一段（拐角速度以下）瞬时转弯率、
 --   推力限制的持续盘旋率各高约一成；过载限制、极速、零升阻力不变。FM.get 建表时乘（F-14 收后掠那一套 FM.sweep 里也乘）
-local AGILE = { lift = 1.1, ind = 0.83 }
+local AGILE = { lift = 1.1, ind = 0.83, servo = 2 }
 FM.AGILE = AGILE
 
 local function clamp(v, a, b) if v < a then return a elseif v > b then return b end return v end
@@ -288,7 +288,10 @@ function FM.finish(D)
   D.aLr = D.aL and D.aL * RAD or nil
   D.pmaxr = D.pmax * RAD
   D.der, D.dar, D.drr = D.de * RAD, D.da * RAD, D.dr * RAD
-  D.rder, D.rdar, D.rdrr = D.rde * RAD, D.rda * RAD, D.rdr * RAD
+  -- 平尾、副翼的舵偏速率 × AGILE.servo（11-28 用户「有时候不该灵敏的时候过于灵敏 该灵敏的时候又有点迟钝」）：按真机的 40～120°/s，
+  --   键盘一松手平尾、副翼要转零点几秒才转到另一头去刹——松手后滚转多滚、机头接着往上抬（F-16 700 公里 / 时满速滚转松手多滚 46°）。
+  --   战雷的舵面也比真机快；方向舵不变
+  D.rder, D.rdar, D.rdrr = D.rde * RAD * AGILE.servo, D.rda * RAD * AGILE.servo, D.rdr * RAD
   D.Cma = -D.CLa * D.sm
   -- 升力曲线：线性段到 a1，之后二次曲线圆滑到失速迎角处的最大升力（斜率连续）
   local aLin = D.CLm / D.CLa
@@ -524,6 +527,10 @@ end
 -- 杆的非线性：小杆量细、推满才是全量（键盘、手机摇杆都过一遍）
 local function shape(s) return 0.45 * s + 0.55 * s * s * s end
 FM.shape = shape
+-- 键盘（inp.lin）：杆量是「按住了多久」推出来的（Fly.lua 匀速推杆），本身就是渐进的，不再过上面这道给摇杆、鼠标的三次方——
+--   用户 11-28「有时候不该灵敏的时候过于灵敏 该灵敏的时候又有点迟钝」：两道叠起来，按住头 0.2 秒杆量只有一成多（几乎没反应），
+--   0.2 秒以后一下子冲上去（量的：F-16 在 700 公里 / 时按住 S，0.2 秒 1.2 g、0.5 秒 5.2 g）
+local function linear(s) return s end
 
 ---------------------------------------------------------------- 一步
 
@@ -617,6 +624,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
   local kInd = 1 - 0.45 * ge * ge
 
   ---------------------------------------------------------------- 飞控：三个舵面（和推力矢量喷口）要的偏度
+  local shp = inp.lin and linear or shape
   local mode = inp.mode or "stick"
   local fcs = D.fcs
   local cmdLaw = mode == "cmd" or fcs ~= "mech"
@@ -644,11 +652,26 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     if mode == "cmd" then
       nc = inp.n or n0
     else
-      local s = shape(clamp(inp.sy or 0, -1, 1))
-      nc = (s >= 0) and lerp(n0, nzP, s) or lerp(n0, nzN, -s)
+      local s = shp(clamp(inp.sy or 0, -1, 1))
+      -- 拉杆的量按「这个速度拉得出来的过载」分（11-28 用户「有时候不该灵敏的时候过于灵敏 该灵敏的时候又有点迟钝」）：原来满杆 = 过载上限，
+      --   F-16 在 450 公里 / 时只拉得出四点几 g，杆到四成就已经顶到迎角限制——键盘点 S 0.3 秒，飞控照着限制猛拉，松手以后机头还自己往上翻四十几度。
+      --   现在满杆 = 迎角限制那儿的过载（快了照样封顶在过载上限）：哪个速度都是按住越久拉得越多；增稳的杆拉到底照旧能硬拉过最大升力
+      local aT = (fcs == "fbw") and (D.aLr or D.aSr * 0.92) or D.aSr * 0.97
+      local nAv = (CLof(D, aT, fl) * liftK) * qS / (m * G0)
+      local top = clamp(nAv, math.min(n0 + 0.5, nzP), nzP)
+      if fcs ~= "fbw" then top = lerp(top, nzP, smooth(0.9, 1, s)) end
+      nc = (s >= 0) and lerp(n0, top, s) or lerp(n0, nzN, -s)
     end
     nc = clamp(nc, nzN, nzP)
-    F.nf = F.nf + (nc - F.nf) * (1 - exp(-h / D.tn))
+    -- 前置滤波：拉杆按型号的时间常数起来；松杆（往配平收、反打）快三倍，同滚转（原来松杆照样慢慢收，过载半秒多才卸掉）；
+    --   键盘（inp.lin）再快一倍：杆量本来就是按住多久匀速推出来的（Fly.lua），不用再滤一遍
+    local tne = D.tn
+    if mode ~= "cmd" then
+      local dn, en = nc - n0, F.nf - n0
+      if abs(dn) < abs(en) or dn * en < 0 then tne = D.tn * 0.35 end
+      if inp.lin then tne = tne * 0.5 end
+    end
+    F.nf = F.nf + (nc - F.nf) * (1 - exp(-h / tne))
     -- 迎角上限：电传按限制器；增稳的杆拉到最大升力系数为止（米格-29 的限制器能硬拉过去）；教官飞的不进失速
     local aMaxC
     if fcs == "fbw" or mode == "cmd" then aMaxC = D.aLr or D.aSr * 0.92
@@ -671,7 +694,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     --   松杆：飞控把迎角拉回到配平（在限制以内），不会一直挂在大迎角上；能拉多快看真的力矩（平尾在分离气流里没劲，推力矢量顶上）
     local ovr = inp.ovr and mode == "stick"
     if ovr then
-      local s = shape(clamp(inp.sy or 0, -1, 1))
+      local s = shp(clamp(inp.sy or 0, -1, 1))
       local qmx = tvc and 1.6 or 1.0
       if abs(s) > 0.05 then
         qc = s * qmx
@@ -679,14 +702,26 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
         qc = clamp(-2 * (al - ac), -qmx, qmx)
       end
     end
-    -- 迎角限制的预见（电传、教官）：迎角变化率 = 俯仰角速度 − 航迹转动角速度。离限制还剩 dA，按平尾推满（加推力矢量）能打出的低头角加速度，
-    --   只许以「刹得住」的速度往限制靠；太慢了托不住（航迹往下掉）时机头跟着航迹往下压——原来低速满杆照样一头冲过限制（歼-11 拉到 38°）
-    if (fcs == "fbw" or mode == "cmd") and not ovr then
-      local Mdn = abs(Me) * D.der * 0.8 + Tl * sin(tvP) - qSc * (D.Cm0 + D.Cma * sin(al))
-      local qdd = math.max(Mdn / Iyy, 0.05)
+    -- 刹得住（电传、增稳、教官）：迎角变化率 = 俯仰角速度 − 航迹转动角速度。离要的迎角（电传、教官再加上迎角限制）还剩 dA，
+    --   按平尾打满（加推力矢量）能打出的角加速度、平尾从现在的位置转到另一头要的时间（舵偏速率有限，先得转过来才刹得住），
+    --   只许以「刹得住」的速度往那儿靠：拉杆往上、松杆 / 推杆往下都管；太慢了托不住（航迹往下掉）时机头跟着航迹往下压。
+    --   原来只管迎角限制、不算平尾转过来的时间：F-16 在 450 公里 / 时点 S 0.3 秒，迎角冲到 38°（限制 25°），松手后机头还翻了四十几度；
+    --   700 公里 / 时点 0.3 秒冲到 9.8 g（kbdiag 量的）。更早：低速满杆一头冲过限制（歼-11 拉到 38°）
+    if not ovr then
       local gd = G0 / Vn * ((CLof(D, al, fl) * liftK) * qS / (m * G0) - uY)   -- 航迹现在往上转多快（负的：托不住，往下掉）
-      local qcap = gd + sqrt(2 * qdd * math.max(aMaxC - al, 0) * 0.6)
+      local Mdn = abs(Me) * D.der * 0.8 + Tl * sin(tvP) - qSc * (D.Cm0 + D.Cma * sin(al))
+      local qddD = math.max(Mdn / Iyy, 0.05)
+      local tRD = math.max(0, D.der * 0.8 - F.de) / D.rder   -- 平尾转到低头打满要多久
+      local top = (fcs == "fbw" or mode == "cmd") and math.min(ac, aMaxC) or ac
+      local mD = math.max(top - al, 0)
+      local qcap = gd + qddD * (-tRD + sqrt(tRD * tRD + 2 * mD / qddD))   -- 先按这个角速度转 tRD 秒、再刹到零，正好停在 top
       if qc > qcap then qc = math.max(qcap, -1.5) end
+      local Mup = abs(Me) * D.der + Tl * sin(tvP) + qSc * (D.Cm0 + D.Cma * sin(al))
+      local qddU = math.max(Mup / Iyy, 0.05)
+      local tRU = math.max(0, F.de + D.der) / D.rder
+      local mU = math.max(al - ac, 0)
+      local qflo = gd - qddU * (-tRU + sqrt(tRU * tRU + 2 * mU / qddU))
+      if qc < qflo then qc = math.min(qflo, 1.5) end
     end
     local kq = lerp(5.2, 7, qk) * bw
     local Mreq = Iyy * kq * (qc - q) - (Izz - Ixx) * p * r
@@ -705,7 +740,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     if mode == "cmd" then
       pc = inp.p or 0
     else
-      local s = shape(clamp(inp.sx or 0, -1, 1))
+      local s = shp(clamp(inp.sx or 0, -1, 1))
       -- 飞控按动压、迎角排滚转角速度上限：快到最大允许速度时收三成多（结构载荷），大迎角时收（防惯性耦合）
       local qv = 0.5 * 1.225 * D.vne * D.vne
       local sched = (1 - 0.45 * smooth(0.55 * qv, 1.1 * qv, qb)) * (1 - 0.6 * smooth(0.5 * D.aSr, D.aSr, aa))
@@ -715,6 +750,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     end
     -- 前置滤波：压杆按型号的时间常数起来；松杆（往零收、反打）快三倍——滚得起来要时间，停住要干脆（用户 11-25「松手一两帧就收住」）
     local tpe = (abs(pc) < abs(F.pf) or pc * F.pf < 0) and D.tp * 0.35 or D.tp
+    if inp.lin then tpe = tpe * 0.5 end   -- 键盘：杆量本来就是匀速推的，前置滤波减半（同俯仰）
     F.pf = F.pf + (pc - F.pf) * (1 - exp(-h / tpe))
     local kp = lerp(10, 13, qk) * bw
     local Lreq = Ixx * kp * (F.pf - p) - (Iyy - Izz) * q * r
@@ -734,7 +770,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     if mode == "cmd" then
       rc = G0 / Vn * sph * cth + 3 * be + (inp.r or 0)
     else
-      local ped = shape(clamp(inp.sz or 0, -1, 1))
+      local ped = shp(clamp(inp.sz or 0, -1, 1))
       if ovr and tvY > 0 then
         rc = G0 / Vn * sph * cth + ped * 0.9 + 3 * be * (1 - abs(ped))
       else
@@ -764,7 +800,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     end
     local trimT = deFor(uY)
     F.trim = F.trim and (F.trim + (trimT - F.trim) * (1 - exp(-h / 1.2))) or trimT
-    local s = shape(clamp(inp.sy or 0, -1, 1))
+    local s = shp(clamp(inp.sy or 0, -1, 1))
     local tgt = (s >= 0) and lerp(F.trim, deFor(nzP * 1.05), s) or lerp(F.trim, deFor(nzN), -s)
     -- 俯仰阻尼器（洗出滤波：只挡变化，不改稳态）
     F.qf = (F.qf or q) + (q - (F.qf or q)) * (1 - exp(-h / 1.0))
@@ -772,10 +808,10 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     -- 副翼：满杆的稳态滚转角速度不超过 pmax；高速时铰链力矩大、舵偏不满（老飞机高速副翼发硬）
     local pPerDa = (D.Clda / math.max(abs(Clp), 0.05)) * (2 * Vn / D.b)
     local daFull = math.min(D.dar * clamp(sqrt(30000 / math.max(qb, 1)), 0.35, 1), D.pmaxr / math.max(pPerDa, 1e-3))
-    local sx = shape(clamp(inp.sx or 0, -1, 1))
+    local sx = shp(clamp(inp.sx or 0, -1, 1))
     if abs(sx) < 0.01 and inp.levelHard then sx = clamp(-phi * 2.5, -0.7, 0.7) end
     da_c = sx * daFull
-    dr_c = -shape(clamp(inp.sz or 0, -1, 1)) * D.drr * clamp(sqrt(20000 / math.max(qb, 1)), 0.3, 1) + D.Kr * r
+    dr_c = -shp(clamp(inp.sz or 0, -1, 1)) * D.drr * clamp(sqrt(20000 / math.max(qb, 1)), 0.3, 1) + D.Kr * r
   end
   -- 舵机：限偏度、限速率（平尾往下打的范围小一点）
   F.de = moveTo(F.de, clamp(de_c, -D.der, D.der * 0.8), D.rder * h)
