@@ -541,22 +541,24 @@ local PRESET = {
   nuke = { "核打击", "Nuclear strike" }, phoenix = { "六枚不死鸟", "Six Phoenix" },
 }
 for k, v in pairs(PRESET) do add("preset." .. k, v[1], v[2]) end
+-- 武器型号一律写英文字母缩写（用户 11-27「武器型号用英文字母缩写吧」，同战雷中文版：AIM-9L、R-27ER1、ZB-500）：
+--   中英两边都写型号本身；说明（射程、导引方式）在挂载卡上另写
 local AW = {
-  gsh30 = { "30 毫米航炮", "30 mm cannon" }, m61 = { "20 毫米航炮", "20 mm cannon" }, gsh23 = { "23 毫米双管航炮", "23 mm twin cannon" }, nr30 = { "30 毫米航炮 ×3", "30 mm cannon ×3" }, gau22 = { "25 毫米航炮", "25 mm cannon" }, gau8 = { "GAU-8 30 毫米机炮", "GAU-8 30 mm" },
-  m230 = { "30 毫米链式炮", "30 mm chain gun" }, m134 = { "舱门机枪", "Door gun" },
-  a42 = { "2A42 30 毫米炮", "2A42 30 mm cannon" }, yakb = { "YakB 12.7 毫米机枪", "YakB 12.7 mm gun" }, m197 = { "M197 20 毫米炮", "M197 20 mm cannon" },
-  ataka = { "攻击（9M120）", "Ataka (9M120)" }, shturm = { "突击（9M114）", "Shturm (9M114)" }, vikhr = { "旋风（9K121）", "Vikhr (9K121)" },
-  hot3 = { "HOT 3", "HOT 3" }, tow = { "陶式", "TOW" }, s8 = { "S-8 火箭", "S-8 rockets" }, igla = { "针-V", "Igla-V" }, type91 = { "91 式防空导弹", "Type 91 SAM" },
+  gsh30 = { "GSh-30-1", "GSh-30-1" }, m61 = { "M61A1", "M61A1" }, gsh23 = { "23-3", "23-3" }, nr30 = { "NR-30 ×3", "NR-30 ×3" }, gau22 = { "GAU-22/A", "GAU-22/A" }, gau8 = { "GAU-8/A", "GAU-8/A" },
+  m230 = { "M230", "M230" }, m134 = { "M134", "M134" },
+  a42 = { "2A42", "2A42" }, yakb = { "YakB-12.7", "YakB-12.7" }, m197 = { "M197", "M197" },
+  ataka = { "9M120", "9M120" }, shturm = { "9M114", "9M114" }, vikhr = { "9K121", "9K121" },
+  hot3 = { "HOT 3", "HOT 3" }, tow = { "BGM-71", "BGM-71" }, s8 = { "S-8", "S-8" }, igla = { "9K38", "9K38" }, type91 = { "Type 91", "Type 91" },
   r73 = { "R-73", "R-73" }, r74 = { "R-74M2", "R-74M2" }, r27r = { "R-27R", "R-27R" }, k77m = { "K-77M", "K-77M" },
-  r27er = { "R-27ER", "R-27ER" }, r77 = { "R-77-1", "R-77-1" }, r60 = { "R-60M", "R-60M" }, kh29 = { "Kh-29L 激光制导导弹", "Kh-29L" }, gsh302 = { "30 毫米双管航炮", "30 mm twin cannon" },
-  pl2 = { "霹雳-2", "PL-2" }, pl10 = { "霹雳-10", "PL-10" }, pl15 = { "霹雳-15", "PL-15" }, aim9x = { "AIM-9X", "AIM-9X" }, aim120 = { "AIM-120", "AIM-120" }, aim54 = { "AIM-54 不死鸟", "AIM-54 Phoenix" },
-  ty90 = { "天燕-90", "TY-90" }, aim92 = { "毒刺（机载）", "Stinger (air)" }, akd10 = { "AKD-10", "AKD-10" }, agm114 = { "地狱火", "Hellfire" },
-  kd88 = { "KD-88", "KD-88" }, agm65 = { "小牛", "Maverick" }, ls6 = { "雷石-6", "LS-6" }, gbu12 = { "GBU-12", "GBU-12" }, gbu31 = { "GBU-31", "GBU-31" },
-  mk82 = { "Mk 82 炸弹", "Mk 82 bomb" }, b250 = { "250 公斤炸弹", "250 kg bomb" }, hydra = { "九头蛇火箭", "Hydra rockets" }, fl90 = { "90 毫米火箭", "90 mm rockets" },
-  pl12 = { "霹雳-12", "PL-12" }, yj91 = { "鹰击-91 反辐射导弹", "YJ-91 anti-radiation missile" }, yj83k = { "鹰击-83K 反舰导弹", "YJ-83K anti-ship missile" }, agm88 = { "AGM-88 哈姆", "AGM-88 HARM" },
-  gbu32 = { "GBU-32 联合直接攻击弹药（450 公斤）", "1,000 lb GBU-32 JDAM" }, gbu38 = { "GBU-38 联合直接攻击弹药（230 公斤）", "500 lb GBU-38 JDAM" },
-  gbu39 = { "GBU-39 小直径炸弹", "GBU-39 Small Diameter Bomb" }, lt2 = { "雷霆-2 激光制导炸弹", "LT-2 laser-guided bomb" },
-  hn1 = { "惊雷-1 核导弹", "HN-1 nuke" },
+  r27er = { "R-27ER", "R-27ER" }, r77 = { "R-77-1", "R-77-1" }, r60 = { "R-60M", "R-60M" }, kh29 = { "Kh-29L", "Kh-29L" }, gsh302 = { "GSh-30-2", "GSh-30-2" },
+  pl2 = { "PL-2", "PL-2" }, pl10 = { "PL-10", "PL-10" }, pl15 = { "PL-15", "PL-15" }, aim9x = { "AIM-9X", "AIM-9X" }, aim120 = { "AIM-120", "AIM-120" }, aim54 = { "AIM-54", "AIM-54" },
+  ty90 = { "TY-90", "TY-90" }, aim92 = { "AIM-92", "AIM-92" }, akd10 = { "AKD-10", "AKD-10" }, agm114 = { "AGM-114", "AGM-114" },
+  kd88 = { "KD-88", "KD-88" }, agm65 = { "AGM-65", "AGM-65" }, ls6 = { "LS-6", "LS-6" }, gbu12 = { "GBU-12", "GBU-12" }, gbu31 = { "GBU-31", "GBU-31" },
+  mk82 = { "Mk 82", "Mk 82" }, b250 = { "250-2", "250-2" }, hydra = { "Hydra 70", "Hydra 70" }, fl90 = { "FFAR-90", "FFAR-90" },
+  pl12 = { "PL-12", "PL-12" }, yj91 = { "YJ-91", "YJ-91" }, yj83k = { "YJ-83K", "YJ-83K" }, agm88 = { "AGM-88", "AGM-88" },
+  gbu32 = { "GBU-32", "GBU-32" }, gbu38 = { "GBU-38", "GBU-38" },
+  gbu39 = { "GBU-39", "GBU-39" }, lt2 = { "LT-2", "LT-2" },
+  hn1 = { "HN-1", "HN-1" },
 }
 for k, v in pairs(AW) do add("aw." .. k, v[1], v[2]) end
 -- 高超音速战术核导弹（Nuke.lua / 客户端 Nuke.lua）
@@ -1941,19 +1943,19 @@ for k, v in pairs({ aam = { "空空", "AAM" }, agm = { "空地", "AGM" }, bomb =
 for k, v in pairs({ ir = { "红外", "IR" }, radar = { "雷达", "Radar" }, laser = { "激光", "Laser" }, gps = { "卫星", "GPS" }, tv = { "电视", "TV" },
   arm = { "被动雷达", "Passive radar" }, cmd = { "指令", "Command" }, none = { "无制导", "Unguided" }, gun = { "—", "—" } }) do add("gds." .. k, v[1], v[2]) end
 -- 武器的短名（整备的卡片、3D 标签上；全名是 aw.*）
-for k, v in pairs({ gsh30 = { "GSh-30-1", "GSh-30-1" }, m61 = { "M61A2", "M61A2" }, gau22 = { "GAU-22/A", "GAU-22/A" }, gsh23 = { "23-3 型", "Type 23-3" },
-  gsh302 = { "GSh-30-2", "GSh-30-2" }, nr30 = { "30-1 型", "Type 30-1" }, gau8 = { "GAU-8/A", "GAU-8/A" }, m230 = { "M230", "M230" }, m134 = { "M134", "M134" },
-  pl2 = { "霹雳-2", "PL-2" }, pl10 = { "霹雳-10", "PL-10" }, pl15 = { "霹雳-15", "PL-15" }, pl12 = { "霹雳-12", "PL-12" }, aim9x = { "AIM-9X", "AIM-9X" },
-  aim120 = { "AIM-120", "AIM-120" }, ty90 = { "天燕-90", "TY-90" }, aim92 = { "毒刺", "Stinger" }, aim54 = { "AIM-54", "AIM-54" }, r73 = { "R-73", "R-73" },
+for k, v in pairs({ gsh30 = { "GSh-30-1", "GSh-30-1" }, m61 = { "M61A1", "M61A1" }, gau22 = { "GAU-22/A", "GAU-22/A" }, gsh23 = { "23-3", "23-3" },
+  gsh302 = { "GSh-30-2", "GSh-30-2" }, nr30 = { "NR-30", "NR-30" }, gau8 = { "GAU-8/A", "GAU-8/A" }, m230 = { "M230", "M230" }, m134 = { "M134", "M134" },
+  pl2 = { "PL-2", "PL-2" }, pl10 = { "PL-10", "PL-10" }, pl15 = { "PL-15", "PL-15" }, pl12 = { "PL-12", "PL-12" }, aim9x = { "AIM-9X", "AIM-9X" },
+  aim120 = { "AIM-120", "AIM-120" }, ty90 = { "TY-90", "TY-90" }, aim92 = { "AIM-92", "AIM-92" }, aim54 = { "AIM-54", "AIM-54" }, r73 = { "R-73", "R-73" },
   r74 = { "R-74M2", "R-74M2" }, r27r = { "R-27R", "R-27R" }, k77m = { "K-77M", "K-77M" }, r27er = { "R-27ER", "R-27ER" }, r77 = { "R-77-1", "R-77-1" },
-  r60 = { "R-60M", "R-60M" }, kh29 = { "Kh-29L", "Kh-29L" }, akd10 = { "AKD-10", "AKD-10" }, agm114 = { "地狱火", "Hellfire" }, kd88 = { "KD-88", "KD-88" },
-  agm65 = { "小牛", "Maverick" }, hn1 = { "惊雷-1", "HN-1" }, ls6 = { "雷石-6", "LS-6" }, gbu12 = { "GBU-12", "GBU-12" }, gbu31 = { "GBU-31", "GBU-31" },
-  gbu32 = { "GBU-32", "GBU-32" }, gbu38 = { "GBU-38", "GBU-38" }, gbu39 = { "GBU-39", "GBU-39" }, lt2 = { "雷霆-2", "LT-2" }, mk82 = { "Mk 82", "Mk 82" },
-  b250 = { "250 公斤", "250 kg" }, hydra = { "九头蛇", "Hydra 70" }, fl90 = { "90 毫米", "90 mm" }, s8 = { "S-8", "S-8" }, yj91 = { "鹰击-91", "YJ-91" },
-  yj83k = { "鹰击-83K", "YJ-83K" }, agm88 = { "AGM-88", "AGM-88" }, tk800 = { "800 升", "800 L tank" }, tk370 = { "370 加仑", "370 gal tank" },
+  r60 = { "R-60M", "R-60M" }, kh29 = { "Kh-29L", "Kh-29L" }, akd10 = { "AKD-10", "AKD-10" }, agm114 = { "AGM-114", "AGM-114" }, kd88 = { "KD-88", "KD-88" },
+  agm65 = { "AGM-65", "AGM-65" }, hn1 = { "HN-1", "HN-1" }, ls6 = { "LS-6", "LS-6" }, gbu12 = { "GBU-12", "GBU-12" }, gbu31 = { "GBU-31", "GBU-31" },
+  gbu32 = { "GBU-32", "GBU-32" }, gbu38 = { "GBU-38", "GBU-38" }, gbu39 = { "GBU-39", "GBU-39" }, lt2 = { "LT-2", "LT-2" }, mk82 = { "Mk 82", "Mk 82" },
+  b250 = { "250-2", "250-2" }, hydra = { "Hydra 70", "Hydra 70" }, fl90 = { "FFAR-90", "FFAR-90" }, s8 = { "S-8", "S-8" }, yj91 = { "YJ-91", "YJ-91" },
+  yj83k = { "YJ-83K", "YJ-83K" }, agm88 = { "AGM-88", "AGM-88" }, tk800 = { "800 升", "800 L tank" }, tk370 = { "370 加仑", "370 gal tank" },
   tkh = { "外挂油箱", "Aux tank" }, tk230 = { "230 加仑", "230 gal tank" }, a42 = { "2A42", "2A42" }, yakb = { "YakB-12.7", "YakB-12.7" }, m197 = { "M197", "M197" },
-  ataka = { "攻击", "Ataka" }, shturm = { "突击", "Shturm" }, vikhr = { "旋风", "Vikhr" }, hot3 = { "HOT 3", "HOT 3" }, tow = { "陶式", "TOW" },
-  igla = { "针-V", "Igla-V" }, type91 = { "91 式", "Type 91" } }) do add("aws." .. k, v[1], v[2]) end
+  ataka = { "9M120", "9M120" }, shturm = { "9M114", "9M114" }, vikhr = { "9K121", "9K121" }, hot3 = { "HOT 3", "HOT 3" }, tow = { "BGM-71", "BGM-71" },
+  igla = { "9K38", "9K38" }, type91 = { "Type 91", "Type 91" } }) do add("aws." .. k, v[1], v[2]) end
 
 -- 科技树每一辆的名字（TechTree.lua）：tree.<键>——名牌、击毁提示、驾驶界面写科技树里的名字（借来的型号也写自己的名字）
 do
