@@ -2003,6 +2003,8 @@ function TechUI.init(G)
           add(L("持续转弯 ", "Sustained turn ") .. string.format("%.1f°/s", c.str * dg) .. (c.strV and string.format(" @ %d km/h", math.floor(c.strV * 3.6 + 0.5)) or "")
             .. L(" · 瞬时转弯 ", " · instant. ") .. string.format("%.1f°/s", c.itr * dg), DIM, 12)
         end
+        -- 雷达（Radars.lua，按科技树的版本取：F-16A 是 APG-66、苏-30SM 是 N011M；没有的写「没有对空雷达」）
+        for _, r in ipairs(AD.Radars and AD.Radars.card(AD.radarOf(a.id, it.key), G.T, not zh) or {}) do add(r[1], r[2] and WHITE or DIM, r[2] and 15 or 12) end
         -- 当前挂载（整备里存的那套，没存过是第一套预设）：武器、内油；外挂重量、阻力增量用飞行物理同一套算（FlightModel.loadout）
         local cl, cpk, cf = airLoad(it)
         local pName = cpk and T2("preset." .. cpk) or nil

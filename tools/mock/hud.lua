@@ -211,6 +211,12 @@ if js and foe then
   -- 雷达屏是扫描的（E 11-24 战雷式雷达屏）：波束扫过目标才截获，最多一个扫描周期；等的时候敌机一直摆在正前方
   T.runUntil(function()
     foe.root.CFrame = js.cf * CF(60, 20, -700)
+    if not js.lock and w and w.seeker == "radar" and C.radarHas and C.radarHas(js, foe.model) then   -- 雷达弹照战雷手动锁（11-27）：屏上有了它，R 选中、Alt+F 锁定
+      T.tap(Enum.KeyCode.R)
+      T.key(Enum.KeyCode.LeftAlt, true)
+      T.tap(Enum.KeyCode.F)
+      T.key(Enum.KeyCode.LeftAlt, false)
+    end
     return js.lock ~= nil
   end, 4)
   check(js.lock ~= nil and w and w.kind == "aam", "锁着前方的 A-10（" .. tostring(js.wl[js.wi]) .. "）")
