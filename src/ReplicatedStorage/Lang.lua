@@ -633,10 +633,10 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住右键（或 C）拖动自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门 · 滚轮 油门（地上收到底按住倒退）· B 减速板 · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 / 炸弹（雷达弹要雷达锁住，对方侧着飞会丢锁） · 1-6 选弹 · R 换目标 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
-  "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold RMB (or C) and drag to look around · M keyboard flight · Shift/Ctrl/mouse wheel throttle (hold Ctrl at idle on the ground to back up) · B airbrake · LMB gun (fires along the nose; the small circle ahead of enemy planes is the lead) · F missile / bomb (radar missiles need a radar lock; beaming breaks it) · 1-6 select · R next target · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
-add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 滚轮 油门 · B 减速板 · 按住右键拖动自由看（看的方向不跟着飞机转，松开回到身后） · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
-  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · hold RMB and drag to look around (view stays put while the plane maneuvers) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
+add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住右键（或 C）拖动自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门 · 滚轮 油门（地上收到底按住倒退）· B 减速板 · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 / 炸弹（雷达弹：R 选雷达屏上的目标、Alt+F 锁定，对方侧着飞会丢锁） · 1-6 选弹 · R 换目标 · Alt+R 雷达开关 · Alt+Q 雷达量程 · Alt+E 雷达模式（RWS / TWS / ACM）· Alt+Z 扫描方式 · Alt+方向键 / Alt+滚轮 挪雷达天线 · Alt+C 天线回中 · Alt+T 选雷达目标 · Alt+F 雷达锁定 / 解锁 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
+  "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold RMB (or C) and drag to look around · M keyboard flight · Shift/Ctrl/mouse wheel throttle (hold Ctrl at idle on the ground to back up) · B airbrake · LMB gun (fires along the nose; the small circle ahead of enemy planes is the lead) · F missile / bomb (radar missiles: R picks a target on the radar screen, Alt+F locks it; beaming breaks the lock) · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · Alt+arrows / Alt+wheel aim the radar antenna · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 滚轮 油门 · B 减速板 · 按住右键拖动自由看（看的方向不跟着飞机转，松开回到身后） · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 · 1-6 选弹 · R 换目标 · Alt+R 雷达开关 · Alt+Q 雷达量程 · Alt+E 雷达模式（RWS / TWS / ACM）· Alt+Z 扫描方式 · Alt+方向键 / Alt+滚轮 挪雷达天线 · Alt+C 天线回中 · Alt+T 选雷达目标 · Alt+F 雷达锁定 / 解锁 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
+  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · hold RMB and drag to look around (view stays put while the plane maneuvers) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · Alt+arrows / Alt+wheel aim the radar antenna · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
 add("air.helpHeli", "鼠标准心 决定机头朝向：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· E 升 / Q 降 · A/D 侧飞 · W/S 也能前推后拉 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
   "Aim decides where the nose points: aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · E up / Q down · A/D sidestep · W/S also push / pull the cyclic · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
@@ -1804,6 +1804,52 @@ add("wt.radarOn", "雷达开", "RADAR ON")
 add("wt.radarRange", "雷达量程 {1} km", "Radar range {1} km")
 add("wt.mslAct", "导弹导引头已开机", "Missile seeker active")
 add("wt.dlLost", "数据链中断", "Datalink lost")
+-- 机载雷达（Radar.lua / Fly.lua，用户 11-27「飞机雷达按型号照战雷做、能用键控制雷达方向」）：照战雷手动锁——R / Alt+T 选目标、Alt+F 锁定；模式字样用真机缩写（中英一样）
+add("rd.keys", "Alt + R 开关 · Q 量程 · E 模式 · Z 扫描", "Alt + R on/off · Q range · E mode · Z scan")   -- 屏下两行（各 316 像素宽）
+add("rd.keys2", "Alt + T 选目标 · F 锁定 · 方向键 / 滚轮 天线 · C 回中", "Alt + T target · F lock · arrows/wheel aim · C center")
+add("rd.scanT", "扫描 ±{1}° · {2} 行（一帧 {3} 秒）", "Scan ±{1}° · {2} bar (frame {3} s)")
+add("rd.modeT", "{1}：{2}", "{1}: {2}")
+add("rd.m.rws", "搜索（边搜索边测距）", "range-while-search")
+add("rd.m.tws", "边扫描边跟踪（对指定航迹打主动雷达弹不用锁定）", "track-while-scan (fire Fox-3 at the selected track without a lock)")
+add("rd.m.acm", "近战（近处第一个扫到的自动锁定）", "air combat (auto-locks the first close contact)")
+add("rd.center", "雷达天线回中", "Radar antenna centered")
+add("rd.alt", "上 {1} / 下 {2} km", "hi {1} / lo {2} km")   -- 扫描区在光标距离（量程一半）上盖住的海拔
+add("rd.noTgt", "雷达屏上没有目标", "No radar contacts")
+add("rd.isOff", "雷达关着（Alt+R 打开）", "Radar is off (Alt+R)")
+add("rd.cantSee", "雷达看不见这个目标", "The radar can't see that target")
+add("rd.lockFar", "太远，锁不上（{1} km 以内）", "Too far to lock (within {1} km)")
+add("rd.lockOff", "目标偏离机头太多，转过去再锁", "Target too far off the nose — turn toward it")
+add("rd.unlock", "解除雷达锁定", "Radar lock released")
+add("rd.arr.mech", "机械扫描", "mechanically scanned")
+add("rd.arr.pesa", "无源相控阵", "passive phased array (PESA)")
+add("rd.arr.aesa", "有源相控阵", "active phased array (AESA)")
+add("rd.kind.pd", "脉冲多普勒", "pulse-Doppler")
+add("rd.kind.pulse", "脉冲", "pulse")
+add("rd.kind.pdp", "脉冲多普勒 + 脉冲", "pulse-Doppler + pulse")
+add("rd.acm.hud", "平显视场", "HUD field")
+add("rd.acm.vert", "竖扫", "vertical scan")
+add("rd.acm.vertLo", "低竖扫", "low vertical scan")
+add("rd.acm.bore", "瞄准线", "boresight")
+add("rd.acm.slew", "可挪扫描", "slewable scan")
+add("rd.acm.hmd", "头盔瞄准", "helmet sight")
+add("rd.acm.pal", "自动截获", "auto acquisition")
+-- 资料卡（TechUI）的「雷达」一节（Radars.card）
+add("tech.radar", "雷达", "Radar")
+add("tech.radar.none", "没有对空雷达", "No air-to-air radar")
+add("tech.radar.type", "{1} · {2}", "{1} · {2}")
+add("tech.radar.det", "发现距离 {1} km（真机，对战斗机迎头）· 游戏里搜索 {2} / 锁定 {3} km", "Detection {1} km (real, fighter head-on) · in game: search {2} / lock {3} km")
+add("tech.radar.est", "（估）", " (est.)")
+add("tech.radar.fov", "方位 ±{1}° · 俯仰 +{2}° / −{3}°", "Azimuth ±{1}° · elevation +{2}° / −{3}°")
+add("tech.radar.bars", "±{1}°×{2} 行", "±{1}° × {2} bar")
+add("tech.radar.far", "（量程 ×{1}）", " (range ×{1})")
+add("tech.radar.scan", "扫描 {1}（{2}°/秒，默认一帧 {3} 秒）", "Scans {1} ({2}°/s, default frame {3} s)")
+add("tech.radar.tws", "边扫边跟 {1} 批 · 同时攻击 {2} 个", "Track-while-scan {1} targets · engage {2}")
+add("tech.radar.stt", "只能单目标跟踪（没有边扫边跟）", "Single-target track only (no TWS)")
+add("tech.radar.iff", "带敌我识别（IFF）：友机在雷达屏上标出来、不能锁", "IFF: friendlies are marked on the scope and can't be locked")
+add("tech.radar.noIff", "没有敌我识别：友机和敌机在屏上一个样", "No IFF: friendlies look the same as enemies")
+add("tech.rcs", "RCS（迎头、干净构型）约 {1} m² · 被雷达发现的距离约为三代机的 {2}%", "RCS (frontal, clean) ~{1} m² · detected at ~{2}% of a 4th-gen fighter's range")
+add("rd.iffFriend", "敌我识别：友机，不能锁", "IFF: friendly, can't lock")
+add("tech.radar.acm", "近战模式：{1}", "ACM modes: {1}")
 
 -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」「各维度还原一致」）：科技树原来写 base（模型、性能都借）的地面车
 --   各有了自己的型号（VehDefs 的 variant，模型借同族的）——型号名、炮名（科技树里的名字 tree.<键> 照旧自动生成）

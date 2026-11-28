@@ -82,6 +82,18 @@ if kind == "jet" or kind == "heli" then
     R.run(0.3)
   end
   local w = st2 and AD.W[st2.wl[st2.wi]]
+  if st2 and fe and fe.root and w and w.seeker == "radar" and not st2.lock and C.radarHas then   -- 雷达弹照战雷手动锁（11-27）：屏上有了它，R 选中、Alt+F 锁定
+    T.runUntil(function()
+      fe.root.CFrame = st2.cf * CF(70, 25, -700)
+      if C.radarHas(st2, fe.model) then
+        T.tap(Enum.KeyCode.R)
+        T.key(Enum.KeyCode.LeftAlt, true)
+        T.tap(Enum.KeyCode.F)
+        T.key(Enum.KeyCode.LeftAlt, false)
+      end
+      return st2.lock ~= nil
+    end, 3)
+  end
   check(st2 ~= nil and st2.lock ~= nil, "锁着前方的敌机：" .. tostring(st2 and st2.lock and st2.lock.em and st2.lock.em:GetAttribute("Model")))
   local function where(tag)
     if not (st2 and st2.lock) then return end

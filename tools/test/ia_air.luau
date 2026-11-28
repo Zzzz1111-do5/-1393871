@@ -228,6 +228,15 @@ teleport(atk, CF.lookAt(from, tp), 320, false)
 st.wi = 0
 for i, wid in ipairs(st.wl) do if wid == "pl15" then st.wi = i end end
 check(st.wi > 0, "选中霹雳-15（武器 " .. st.wi .. " / " .. #st.wl .. "）")
+if CA.flyRadarLock then   -- 雷达弹照战雷手动锁（11-27；游戏文件里是老脚本时照旧自动锁）：等雷达屏上有它，R 选中、Alt+F 锁定
+	H.runUntil(function() return CA.radarHas(st, eD.model) end, 3)
+	H.key(atk, Enum.KeyCode.R, true)
+	H.key(atk, Enum.KeyCode.R, false)
+	H.key(atk, Enum.KeyCode.LeftAlt, true)
+	H.key(atk, Enum.KeyCode.F, true)
+	H.key(atk, Enum.KeyCode.F, false)
+	H.key(atk, Enum.KeyCode.LeftAlt, false)
+end
 H.run(2.8)
 check(st.lock ~= nil and st.lock.id == eD.id, "锁定了 F-22：" .. tostring(st.lock and st.lock.id))
 check(st.lockT >= 2, string.format("锁定时间够了（%.1f 秒）", st.lockT))

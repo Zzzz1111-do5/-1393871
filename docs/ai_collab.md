@@ -26,6 +26,44 @@
 
 ## 正在做
 
+- F（11-27，用户的待办「飞机雷达按型号照战雷做、能用键控制雷达方向」：本地分支 radar-1 做了调研方案的第 1～3 步、radar-2 做了第 4～5 步；没 push）——**雷达的规矩（别互相覆盖）**：
+  · **ReplicatedStorage/Radars.lua 是唯一的雷达数据源**（27 部真机雷达：型号、脉冲 / 脉冲多普勒、机械扫描 / 无源 / 有源相控阵、发现距离（游戏量程 = 3220·√真实公里）、
+    锁定距离、万向架 ±az / +elU / −elD、扫描方式和速度（机械约 60°/秒、相控阵快）、边扫边跟批数、近战模式、置零门限、告警器代号；拿不准的标「估」、est = true）。
+    **按科技树版本取**：`AirDefs.radarOf(型号, TreeKey)`（F-16A 是 APG-66、苏-30SM 是 N011M、F-15E 是 APG-70……）；d.radar 只是型号的默认那部。
+    **不退回 like**（苏-27 借苏-35S 的模型，雷达照旧是 N001）。以后加有雷达的飞机：RD.OF 加一行；借型号的科技树版本雷达不一样的：RD.VAR 加一行
+    （给借型号的版本建了自己的 AirDefs 型号以后，RD.OF 补上、RD.VAR 删掉）。客户端开飞时取到 `st.rd`（Fly.lua，同 FM.get），Radar.lua、告警器（WtFlight）、
+    资料卡（TechUI 的「雷达」一节：Radars.card）都按它；AirDefs 的 RADAR 表和 ×2.5 删了。常数也在这里：RD.BAR 一行 3.5°、RD.BEAM 波束半宽 2°、
+    RD.ACQ 近战自动截获 13850 格、RD.MEM 记忆外推 2 秒、RD.SLEW 挪天线的速度；RD.modes / scanOk / acmGeo / fade / frame。
+  · **锁定照战雷改手动（用户定的）**：雷达弹不再自动锁——雷达屏上的目标 R / Alt+T 选中（st.rdSel，屏上「|—|」），**Alt+F 锁定**进单目标跟踪、
+    再按解锁（战雷的默认键：Alt+R 开关、Alt+T 选目标、Alt+F 锁定）；锁着时 R / Alt+T 换成屏上的下一个；丢了锁不自己再锁。红外弹、空地弹、炸弹照旧自动挑。
+    手机还没有锁定键：R 选中就锁（第 7 步换成点亮点选 + 按钮锁）。**别再加回「选了雷达弹就自动锁」**；测试里要锁雷达弹的照 tools/mock/radar.lua ② 按键。
+  · **雷达的单目标跟踪（STT）是 `st.rdLock`，归 Radar.lua 管、跟所选武器脱钩**（radar-2）：选什么弹都能 Alt+F 锁；Fly.lua 的 `st.lock` 是弹的锁——
+    雷达弹锁 st.rdLock 那架（或者 TWS 里指定的航迹：`st.lock.tws = true`，不用 STT）、红外弹的导引头先咬 st.rdLock 那架（`st.lock.slaved`）、机炮提前量先算它（gunStick 的 best.radar）。
+    STT 看不见了先**记忆外推 2 秒**（屏上 STT MEM，弹的锁还在但进度不涨、不能发射），还没找回来 Radar.lua 丢锁、提示置零 / 丢失，回到原来的扫描
+    （原来 Fly.lua 里「看不见超过 1 秒丢锁」那段删了）。**lockOn 现在由 Radar.lua 报**：STT 跟踪着半秒一次（full = 锁了 1 秒以上）；TWS 指定的航迹每扫到一次报一次，
+    带 `tws = 一帧几秒`——服务器（Air.lua lockOn(e, tid, full, tws)）记 e.radarTws、数据链多等这么久（arhStep 1.3 + radarTws）、**不发 rwrLock**；
+    对 TWS 航迹打主动雷达弹发射时不发 rwr，导引头开机（shotAct 那一刻）才发给目标（s.rwrLate）。换模式、关雷达断开 STT。
+  · **扫描**（radar-2，用户定的：扫描速度按真机）：各型自己的扫描方式（rd.scans：半宽 × 行数，Alt+Z 换），波束按 rd.rate 一行一行扫（APG-68 ±60°×2 一帧 4 秒），
+    **地平稳定**（方位按航向的水平投影、俯仰按地平线），**波束扫过才算发现**（离这一行半行 + 0.5° 以内、波束半宽 2°），再过 sees()（只看万向架、量程、置零、
+    脉冲多普勒下视 ×ldK、脉冲雷达贴地的地杂波）；扫描中心 Alt+←→ / Alt+↑↓ / Alt+滚轮挪、Alt+C 或双击雷达屏回中。模式 Alt+E：RWS → TWS（rd.tws > 0）→ ACM（近战子模式
+    Alt+Z 换；13850 格内第一个扫到的自动 STT）→ RWS。屏上的字是真机缩写（RWS / TWS / STT / STT MEM / ACM VS…，中英一样）、扫描区「±60° · 2 行」。
+    G.radarState()（模式、扫描区、波束、一帧几秒）给第 6 步同步服务器、第 8 步座舱雷达页用；G.radarAcmZone() 给 WtFlight 在平显上画近战扫描区（WtAcmZone）。
+    **别在别处另算一套扫描**；测试里等雷达发现目标要按一帧的时间 runUntil（机械扫描 4～8 秒），别写死 R.run(2.5)。
+  · **按住 Alt 的这些键只给雷达**（有雷达的固定翼；Fly.lua 的 RADAR_ALT：R T F Q E Z C 和四个方向键，Alt+滚轮交给 G.radarWheel）：
+    原来 Alt+T 同时切迎角限制、Alt+R 同时换目标、按住 Alt+Q 打左舵、Alt+↑↓ / Alt+滚轮 动油门。W / S / A / D 不拦（座舱里按住 Alt 转头时还得能拉杆），
+    直升机（没有 st.rd）按住 Alt 照旧自由看。**开飞机时别再给这几个键加别的 Alt 组合**。
+  · 名字：空中雷达的接触是 `G.airRadarContacts()`、ScreenGui 叫 **AirRadar**；`G.radarContacts()` 是 Hud.lua 小地图那份（原来被 Radar.lua 覆盖，
+    Coach.lua 的队友标记一直拿不到数据，现在有了）、UI.lua 的小地图框叫 Radar（ia_ui_layout.luau 只认界面元素）。雷达状态每架次重置（G.radarReset：开着、量程最大、RWS、天线回中）。
+  · 告警器（WtFlight）还按对方默认扫描方式的方位宽度（Radars.half）算「扫没扫到我」：对方的雷达开关 / 扫描中心还没同步（第 6 步）。
+  · **新模块 Radars.lua 必须进地点**：发包前 `lune run tools/build.luau` 重新生成游戏文件（这两个分支都没重出 rbxlx，免得跟别的分支在 26 MB 的文件上冲突）；
+    少了它 AirDefs 输出一行警告、所有飞机都没雷达。ia_*.luau 是读游戏文件跑的：ia_air.luau 改成新脚本按 R / Alt+F 锁、老游戏文件照旧自动锁。
+  · 还没做（方案 scope/radar.json 第 6～8 步）：服务器同步雷达状态、校验 lockOn、半主动弹要照射、告警器按对方真实扫描区；手机雷达按钮、拖屏；座舱雷达页用同一份数据。
+  · 测试：tools/test/radar.luau（纯数据：版本对雷达、字段、资料卡、Lang、④ 模式 / 扫描）、tools/mock/radar.lua（① 不自动锁；② 手动锁、STT 记忆外推 2 秒再丢；
+    ③ 远的那枚 9500 格；⑤ Alt 不串键；⑥ 换架次重置 + 各版本的雷达；⑦ APG-68 一帧 4 秒、波束扫过才出亮点、Alt 键挪天线、扫描区外锁不上；
+    ⑧ TWS 两批航迹、对指定航迹打弹不报锁定、数据链等一帧、导引头开机才报导弹；⑨ ACM 竖扫自动锁、红外弹跟着雷达指）、
+    wtflight.lua（② RWS / 扫描区字样、Alt+E 到 TWS / ACM、平显上的近战扫描区；④ 告警器按版本；⑤ 手动锁）；
+    hud.lua ⑤、hudshot.lua 改成手动锁（没跑；雷达按真机速度扫，等的时间可能要放长）。radar.lua ④「开了导引头的被箔条骗走了」11-24 起就不过（见「B 看 A」），没动。
+
 - F（11-27，特效、光影照战雷——合到本地分支 vfxlight-final：wip/vfxlight 的 a3a3ea7 特效 + 4c70454 光影、两边审查后的修 fix-vfx / fix-light、
   复核后的修；没 push）。用户要的：像战雷（Eagle's Shadow 那一版）、写实、在 M3 的 Mac 上非常丝滑。**特效的规矩（别互相覆盖）**：
   · **Client/VfxLib.lua 是特效共用的底子**（Fx.lua 建它放在 G.vfx，WreckFx、View 都用它）：粒子发射器池——每一「层」用 VL.def(名字, 配置函数, 不分档) 登记，
@@ -533,9 +571,10 @@
     襟翼加升力、高速舵变沉（qHi）、失速掉翼（st.stallK / dropDir）、AGIL 滚转 0.75 / 过载 0.85、滚轮油门；**WT_GUNS**：固定机炮顺着机头打（gunStick(true)
     只给敌机算提前量 → st.lead，AirHud 的 LeadMark 画），MWT 黏住那套留着没删（WT_GUNS = false 就回去）。测试 tools/mock/wtfeel.lua；air.lua ⑤½ 改测提前量圈
   - **已做**：机载雷达（用户 11-24 夜「雷达扫描图……为雷达锁定式导弹提供引导……39 机动」）——AirDefs 每型的 radar（pd / pulse、range / lock / az / el / notch），
-    主动雷达弹 act / notch；客户端 Radar.lua（B 显雷达屏、G.radarSees：范围 / 视场 / 置零 / 地杂波），Fly.lua 雷达弹只锁看得见的、看不见超过 1 秒丢锁、
+    主动雷达弹 act / notch；客户端 Radar.lua（B 显雷达屏、G.radarSees：范围 / 视场 / 置零 / 地杂波），Fly.lua 雷达弹只锁看得见的、看不见超过 1 秒丢锁（11-27 radar-2 起：STT 归 Radar.lua，记忆外推 2 秒再丢，见「正在做」F 雷达那条）、
     雷达真跟踪着才报 lockOn；服务器 Air.lua 的 arhStep（数据链 → 惯导 → 开导引头、置零半秒丢）、flare 里箔条只骗开了导引头的雷达弹；Fx 画箔条云。
-    测试 tools/mock/radar.lua。**C 的 WtAir / 锁定框（AirHud LockMark）没动**；以后谁加有雷达的飞机，记得在 AirDefs 的 RADAR 表里给它配雷达
+    测试 tools/mock/radar.lua。**C 的 WtAir / 锁定框（AirHud LockMark）没动**；以后谁加有雷达的飞机，记得在 Radars.lua 的 RD.OF（型号）/
+    RD.VAR（借型号的科技树版本）里给它配雷达（11-27 起；原来的 AirDefs RADAR 表删了）
 - A（11-24）：俄系装备找模型（Sketchfab 上 CC-BY / CC0、不是游戏里扒的），按 blveh.py 转；PvE 关卡加多、做真。
   - 已做：T-90M（t90m，mansoorsajidp 带车内的那个；Ballistics 加了俄制 125 弹 gun125r：3BM60 / 3BK31 / 3OF26，弹种加了类别 cls，面板键按这门炮挑同一类——B 改面板时注意 `BAL.panelAmmo`）；BMP-3（bmp3，lampilamp；新武器 gun100：2A70 100 毫米低膛压炮）
   - 铠甲-S1（pantsir，SanderWolf_ 的原模型）：车辆新武器种类 **sam**（地面车的地空导弹）——客户端 Drive.lua 要 AaFcs 的 Q 锁定（lockId）才发、消息带 tgt；
@@ -668,9 +707,9 @@
      对开飞机的人收起来，乘客照旧）：左上参数表（节流阀 / 表速 / 速度 / 马赫数 / 海拔高 / 雷达高、每种弹一行、热焰弹、干扰箔、机炮、燃油量、每台发动机油温 /
      引擎温度）、机头 ⊕、导弹大圈（导引头离轴角 w.cone，按镜头视场真实投影，不再至少八成屏高）小圈（锁定前白、锁上红）、锁定框（距离、接近速度、
      高度差、目标飞向）、顶上航向罗盘、左边雷达告警圆盘（敌机雷达扫到你标型号、锁着你虚线、导弹打来 MSL 实线红闪；Fly.lua 收到 rwr / rwrLock 转给
-     `G.wtRwrEvent`）、底下「已选武器 / 导引头」。**A 注意：Radar.lua 的雷达屏改成了战雷式**（挪到右侧，SRC / TRK / TRK MEM + PD，方位 × 俯仰、
+     `G.wtRwrEvent`）、底下「已选武器 / 导引头」。**A 注意：Radar.lua 的雷达屏改成了战雷式**（挪到右侧，SRC / TRK / TRK MEM + PD——11-27 radar-2 换成真机缩写 RWS / TWS / STT / STT MEM / ACM…，方位 × 俯仰、
      量程、俯仰刻度、天线俯仰标记，搜索目标一短横 / 选中「|—|」/ 跟踪方框 + 速度线；Alt+R 开关雷达（关着 `G.radarSees` 返回 false, "off"）、Alt+Q 量程、
-     Alt+T 换目标；`G.radarContacts()` 给航向罗盘）；数据链：自己打出去的主动雷达弹在屏上一个点、到目标一条线（开机前虚线 + 预计命中点小圈，
+     Alt+T 换目标；`G.radarContacts()` 给航向罗盘——11-27 起改名 `G.airRadarContacts()`、ScreenGui 改名 AirRadar，锁定改成 R / Alt+T 选、Alt+F 锁，见「正在做」F 雷达那条）；数据链：自己打出去的主动雷达弹在屏上一个点、到目标一条线（开机前虚线 + 预计命中点小圈，
      开机后实线，断了只剩小圈）——服务器 Air.lua arhStep 第一次开导引头时发 fx `shotAct`，客户端 Fx.lua 记 `fs.act`；shotFix 带 lost 时记 `fs.lost`。
      **C 注意**：AirHud 里 C 的绿方框锁定（LockMark）在战雷式开着时收起来了（WtFlight 有自己的锁定框）；Fly.lua 那个绿大圈（HudRing）也收了。
      TankHud 的飞机模式：圆形小地图挪到右上、「被发现!」挪到左边雷达告警圆盘右边；SquadHud 的小队名单开飞机时收起来（左上是参数表）。
@@ -724,6 +763,8 @@
 - **加 / 改 alias 要改两处**：源头（blveh.py 管的模型改 tools/models/blveh.json 那一项的 alias 数组，网页版 / Sketchfab 的改 tools/models/mdl2glb.py 的 ALIAS）
   + 生成好的 src/ReplicatedStorage/ImportedMeta.lua 的 alias / old 两行（照 mdl2glb 的 lua() 写法：键排序、`old` 跟 blveh.json 的 old）。
   另外按型号查的：Lang veh.* / vw.*、VehPics（vehicons.mjs 的 GLB 加一行，`vehpics.py <空目录> --merge`）、WtOptics.VEH_NV、WtDamage.PROF / CAROUSEL；科技树改 veh + model。
+- **飞机按科技树键覆写的表有两张**：飞行物理 FlightModel.VAR、雷达 Radars.VAR（F-16A、F-2A、F-15A / E、F-15J（M）、歼-10A、歼-11、苏-27SM、苏-30SM）；
+  借型号的飞机拆成自己的型号时两张都要改（雷达照 Radars.lua 文件头）。
 - 老型号被科技树换掉的（科技树 M1A1 11-27 起开 m1a1base，老的 m1a1 留给老模式、老 AI 名单）：TechTree 末尾把 TT.byVeh 指回原来那一项，沙盒的观瞄、火控不变。
 - 炮的弹种表照全工程的顺序：{ 原厂穿甲, 破甲 / 多用途, 榴弹 / MPAT / 霰弹, 旧穿甲…, 射流 }——WtMods 只研究得到第二、第三种（第四、五种研究不到，老问题）。
   **射流弹研究不研究得到，看这门炮有几种弹**：三种弹的炮（M60 / M60A1 / M60A1 RISE / M60A3、豹 1、豹 2、74 式、10 式）第三种就是射流，研究满拿得到；
