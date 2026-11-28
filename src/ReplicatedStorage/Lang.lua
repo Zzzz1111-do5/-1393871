@@ -637,8 +637,8 @@ add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己�
   "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold RMB (or C) and drag to look around · M keyboard flight · Shift/Ctrl/mouse wheel throttle (hold Ctrl at idle on the ground to back up) · B airbrake · LMB gun (fires along the nose; the small circle ahead of enemy planes is the lead) · F missile / bomb (radar missiles: R picks a target on the radar screen, Alt+F locks it; beaming breaks the lock) · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · Alt+arrows / Alt+wheel aim the radar antenna · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
 add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 滚轮 油门 · B 减速板 · 按住右键拖动自由看（看的方向不跟着飞机转，松开回到身后） · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 · 1-6 选弹 · R 换目标 · Alt+R 雷达开关 · Alt+Q 雷达量程 · Alt+E 雷达模式（RWS / TWS / ACM）· Alt+Z 扫描方式 · Alt+方向键 / Alt+滚轮 挪雷达天线 · Alt+C 天线回中 · Alt+T 选雷达目标 · Alt+F 雷达锁定 / 解锁 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
   "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · hold RMB and drag to look around (view stays put while the plane maneuvers) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · Alt+arrows / Alt+wheel aim the radar antenna · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
-add("air.helpHeli", "鼠标准心 决定机头朝向：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· E 升 / Q 降 · A/D 侧飞 · W/S 也能前推后拉 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
-  "Aim decides where the nose points: aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · E up / Q down · A/D sidestep · W/S also push / pull the cyclic · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
+add("air.helpHeli", "鼠标准心 定方向（同战雷）：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· W 升 / S 降（松开自动定高）· A/D 侧飞 · Q/E 转机头 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
+  "Aim sets the direction (like War Thunder): aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · W up / S down (holds altitude when released) · A/D sidestep · Q/E turn the nose · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
 add("hud.spd", "速度 km/h", "SPD km/h")
 add("hud.alt", "高度 m", "ALT m")
@@ -740,6 +740,7 @@ add("juice.streak", "连续击杀 {1}", "{1} kill streak")
 
 add("coach.cyclic", "前倾 / 刹车", "Tilt fwd / brake")
 add("coach.strafe", "侧飞", "Sidestep")
+add("coach.yawNose", "转机头", "Turn nose")
 add("coach.rockets", "火箭 / 导弹", "Rockets / missiles")
 add("coach.stowPad", "收起平板", "Close tablet")
 add("coach.telegraph", "车钟（一档一档加减速）", "Engine order")
@@ -780,8 +781,8 @@ add("coach.card.jet.1", "Shift 推油门（推满进加力），A / D 在跑道�
 add("coach.card.jet.2", "速度到 {1} km/h 按住 S 抬头离地，起落架会自动收起；W 低头、S 抬头、A / D 滚转，压坡度再拉 S 就转弯", "At {1} km/h hold S to lift off — the gear retracts by itself. W nose down, S nose up, A / D roll; bank and pull S to turn")
 add("coach.card.jet.3", "左键机炮（打机头标记那里），F 导弹（1–6 换挂载，先锁定），X 热诱弹；回去降落：G 放起落架、Ctrl 收油门、机头对着跑道，停稳就补弹修理", "LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them), F missile (1–6 stores, lock first), X flares. To land: G gear down, Ctrl throttle down, point the nose at the runway, stop to rearm and repair")
 add("coach.card.heli.1", "先等旋翼转起来（平显上的转速到 100%）", "Wait for the rotor to spin up (RPM 100% on the HUD)")
-add("coach.card.heli.2", "按住 E 升、Q 降；准心往下机头前倾往前飞，准心往上往后仰减速；A / D 侧飞", "Hold E to climb, Q to descend; aim lower to dip the nose and fly ahead, aim higher to pitch back and slow; A / D sidestep")
-add("coach.card.heli.3", "速度有惯性：松杆不会马上停，按 S 往后带杆刹车。左键机炮，F 火箭 / 导弹，空格下飞机", "It keeps its momentum: hold S to flare and brake. LMB gun, F rockets / missiles, Space to get out")
+add("coach.card.heli.2", "按住 W 升、S 降（同战雷）；准心往下机头前倾往前飞，准心往上往后仰减速；A / D 侧飞、Q / E 转机头", "Hold W to climb, S to descend (like War Thunder); aim lower to dip the nose and fly ahead, aim higher to pitch back and slow; A / D sidestep, Q / E turn")
+add("coach.card.heli.3", "速度有惯性：不会马上停，准心往上一抬机头后仰刹车。左键机炮，F 火箭 / 导弹，空格下飞机", "It keeps its momentum: aim higher to flare and brake. LMB gun, F rockets / missiles, Space to get out")
 add("coach.card.uav.1", "你端着平板遥控无人机，人还站在原地——当心被打", "You fly the drone from a tablet while standing where you are — stay covered")
 add("coach.card.uav.2", "鼠标管方向，W / S 加速减速，A / D 滚转", "The mouse steers, W / S speed, A / D roll")
 add("coach.card.uav.3", "右键 / V 切镜头、Z 变焦，F 发导弹，空格收起平板", "RMB / V camera, Z zoom, F missile, Space to put the tablet away")

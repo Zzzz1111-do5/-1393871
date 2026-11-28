@@ -97,7 +97,7 @@ function Coach.init(G)
     jet = { { "W/S", "coach.pitch" }, { "A/D", "coach.roll" }, { "Shift/Ctrl", "coach.throttle" }, { "LMB", "coach.gun" }, { "F", "coach.missile" } },
     jetLand = { { "G", "coach.gearDown" }, { "Ctrl", "coach.throttleDown" } },
     heliSpool = { { nil, "coach.spool" } },
-    heli = { { "Mouse", "coach.nose" }, { "E/Q", "coach.updown" }, { "W/S", "coach.cyclic" }, { "A/D", "coach.strafe" }, { "LMB", "coach.gun" } },
+    heli = { { "Mouse", "coach.nose" }, { "W/S", "coach.updown" }, { "A/D", "coach.strafe" }, { "Q/E", "coach.yawNose" }, { "LMB", "coach.gun" } },   -- 同战雷（11-28）
     uav = { { "Mouse", "coach.aimSteer" }, { "W/S", "coach.speed" }, { "A/D", "coach.roll" }, { "LMB", "coach.gun" }, { "F", "coach.missile" }, { "Space", "coach.stowPad" } },
     ship = { { "W/S", "coach.telegraph" }, { "A/D", "coach.rudder" }, { "LMB", "coach.fire" }, { "2", "coach.asm" }, { "Space", "coach.leaveShip" } },
     fort = { { "Mouse", "coach.aim" }, { "LMB", "coach.fire" }, { "RMB", "coach.sight" }, { "Space", "coach.leave" } },
