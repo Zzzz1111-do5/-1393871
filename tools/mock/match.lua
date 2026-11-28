@@ -83,6 +83,22 @@ R.run(2)
 T.key(R.Enum.KeyCode.W, false)
 R.run(0.3)
 check((mvP.root.Position - p0).Magnitude < 1, string.format("准备阶段按 W 开不动（挪了 %.1f 格）", (mvP.root.Position - p0).Magnitude))
+-- 电脑车也在准备阶段出现在各自基地、原地等开战（原来开战那一刻才冒出来）
+T.runUntil(function()
+  local n = 0
+  for _, e in ipairs(G.aiVehicles) do if e.alive then n = n + 1 end end
+  return n >= 2
+end, 12, 0.25)
+do
+  local nAi, movingAi = 0, 0
+  for _, e in ipairs(G.aiVehicles) do
+    if e.alive then
+      nAi = nAi + 1
+      if math.abs((e.ai and e.ai.v) or 0) > 0.5 then movingAi = movingAi + 1 end
+    end
+  end
+  check(G.round.phase == "prep" and nAi >= 2 and movingAi == 0, string.format("准备阶段电脑车也出来了（%d 辆）、原地待命（在开的 %d 辆）", nAi, movingAi))
+end
 local br = G.treeRoundBr()
 check(math.abs(br - myBr) < 0.01, string.format("本局战斗等级 = 我阵容里最高的 %.1f（%.1f）", myBr, br))
 
