@@ -17,7 +17,7 @@ Config.Map = "city"
 Config.MapDefault = "city"
 -- 选地图投票（用户 11-23：「三张地图改成投票制，进去投票选地图」）：进服在选地图界面投票（能改票）——第一票投出后 time 秒按票数最多的开（平票随机挑），
 --   在场的人都投了就再等 grace 秒（还能改）提前开；没人投：空服几秒、有人不投 MapWaitMax 秒后按 MapDefault 开
-Config.MapVote = { time = 25, grace = 3 }
+Config.MapVote = { time = 25, grace = 3, idle = 20 }   -- idle：有人在却没人投，进来就倒计时这么多秒，到点按 MapDefault 开（11-28：原来要等 MapWaitMax）
 -- 匹配（用户 11-26：「点开战先匹配，匹配一分钟后人不够就补人机，两边的人机的车辆要符合我匹配时带的最高权重的载具，跟战雷一样」，WtMatch.lua）：
 --   战雷式对局每一局先是「匹配中」（Round.lua 的 queue 阶段）——有人点「开战」起算 wait 秒，到点或者真人凑满两队（2 × Wt.teamSize）就开打；
 --   人不够一队 Wt.teamSize 的电脑开车补满（AIVeh.lua），电脑的车按匹配进来的人阵容里最高的战斗等级挑（Tech.lua treePickAi）；已经在打的一局点开战直接加入

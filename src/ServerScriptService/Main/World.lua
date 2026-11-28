@@ -347,11 +347,23 @@ World.terrainCal = function() return CAL end
 -- 雪山（MapSnow）：谷边山体模型脚下的体素只写一层壳（Map.shellCol 说这一列是壳）——几百上千格高的山整列填实心要几十亿个体素；
 --   壳从这一列和四邻里最低的那个往下 SHELL 格写到地面（陡坡上相邻两列的壳上下搭得上，侧面不漏缝），下面是空的（模型盖着，进不去）
 local SHELL = 16
+-- 训练场那一块（Zones.RANGE）的地形按训练场自己的图写（11-28：原来体素高度、壳、缓存、材质这几样问的是当前战场那张——
+--   雪山的 voxelHeight 在十万格外给的是海底，训练场的挡弹墙、丘陵在雪山图上写成了塌坑）
+local RANGE_P = nil
+local function chunkProfile(x0, z0)
+  local R = Map.Range
+  if R and Map.zoneOf and Map.zoneOf(x0 + 1, z0 + 1) == "range" then
+    RANGE_P = RANGE_P or { RES = 4, SEA_DEPTH = 30, height = R.height, material = R.material, underMat = R.underMat, GRASS = false }
+    return RANGE_P
+  end
+  return Map
+end
 local function writeChunk(T, x0, z0, n, yFloor, baseY)
-  local RES, N, D = Map.RES, n or 64, Map.SEA_DEPTH
-  local hfun = Map.voxelHeight or Map.height   -- 雪山：体素比山体模型表面低 4 格（藏在模型下面）
-  local shellCol = Map.shellCol
-  if shellCol and N > 16 and Map.hollowAt and Map.hollowAt(x0, z0) then
+  local MP = chunkProfile(x0, z0)
+  local RES, N, D = MP.RES or 4, n or 64, MP.SEA_DEPTH or 30
+  local hfun = MP.voxelHeight or MP.height   -- 雪山：体素比山体模型表面低 4 格（藏在模型下面）
+  local shellCol = MP.shellCol
+  if shellCol and N > 16 and MP.hollowAt and MP.hollowAt(x0, z0) then
     -- 大块里有壳：拆成 16 × 16 列一份写（一份上下跨度小，空气体素少）
     local v = 0
     for q = 0, (N // 16) * (N // 16) - 1 do
@@ -359,7 +371,7 @@ local function writeChunk(T, x0, z0, n, yFloor, baseY)
     end
     return v
   end
-  if Map.colCache then Map.colCache(true) end   -- 沙漠图：先算的高度顺手记下地貌，定材质时不用再算一遍
+  if MP.colCache then MP.colCache(true) end   -- 沙漠图：先算的高度顺手记下地貌，定材质时不用再算一遍
   local hs = table.create(N * N)
   local ymin, ymax = 1e9, -1e9
   for i = 0, N - 1 do
@@ -402,7 +414,7 @@ local function writeChunk(T, x0, z0, n, yFloor, baseY)
   -- 海底只写上面 30 格（大陆坡再往下是开头铺好的海水和远海海底：深水里看不见，写全了近岸的块要多两三倍体素）
   local DW = math.min(D, 30)
   if ymax <= -DW + 0.5 then   -- 整块都比 30 格深（海水、海底已经铺了）
-    if Map.colCache then Map.colCache(false) end
+    if MP.colCache then MP.colCache(false) end
     return 0
   end
   local yb0 = math.floor((math.max(ymin, -DW) - RES) / RES)
@@ -429,13 +441,13 @@ local function writeChunk(T, x0, z0, n, yFloor, baseY)
       if h > 0.3 then
         local hx1 = hs[math.min(N - 1, i + 1) * N + k + 1] - hs[math.max(0, i - 1) * N + k + 1]
         local hz1 = hs[i * N + math.min(N - 1, k + 1) + 1] - hs[i * N + math.max(0, k - 1) + 1]
-        top = Map.material(x, z, h, math.sqrt(hx1 * hx1 + hz1 * hz1) / (2 * RES))
+        top = MP.material(x, z, h, math.sqrt(hx1 * hx1 + hz1 * hz1) / (2 * RES))
         -- 草地：图上开了 Map.GRASS（海岛，用户 11-24 发截图「这种草给海岛地图加上」）照写 Grass，长 Roblox 会动的草叶——
         --   开关（Terrain.Decoration）和草长（GrassLength）脚本改不了，地点文件里的 Terrain 写好了（tools/build.luau）；
         --   别的图写成 LeafyGrass（不长草叶；用户 11-21 嫌草叶盖住履带、车轮、小人的腿，看着像半截身子在地里）
-        if top == Grass and not Map.GRASS then top = Leafy end
+        if top == Grass and not MP.GRASS then top = Leafy end
       end
-      local under = Map.underMat and Map.underMat(top) or ((h > 20) and Rock or (h > 0.3 and Ground or Sand))
+      local under = MP.underMat and MP.underMat(top) or ((h > 20) and Rock or (h > 0.3 and Ground or Sand))
       -- 最上面那层：序号 jT、占有率 oT（按开服量的网格器对照表，地面画出来正好在 h；没量出来同原来的写法）
       local jT, oT = surfAt(h, calFor(top))
       local sl = lo and lo[i * N + k + 1]   -- 壳的下沿（雪山山脚）：再往下是空的
@@ -459,7 +471,7 @@ local function writeChunk(T, x0, z0, n, yFloor, baseY)
       end
     end
   end
-  if Map.colCache then Map.colCache(false) end
+  if MP.colCache then MP.colCache(false) end
   local region = Region3.new(V(x0, yb0 * RES, z0), V(x0 + N * RES, yb1 * RES, z0 + N * RES))
   T:WriteVoxels(region, RES, M, O)
   return N * N * NY
@@ -972,6 +984,15 @@ pcall(function()
     for k, v in pairs(sm) do if BM[k] == nil then BM[k] = v end end
   end
 end)
+-- 雪山的车辆残骸（WreckMeta，models/bld/wrecks.glb；用户 11-28「废弃的各种车等等让这个地图丰富起来」）：轿车、卡车、客车、拖拉机、
+--   铁路车皮、机车、飞机残骸 wk_*，同上并进来（MapSnow 的 Map.CIV 照它摆，SnowBuild.lua 盖）
+pcall(function()
+  local wm = RS:FindFirstChild("WreckMeta") and require(RS.WreckMeta)
+  if type(wm) == "table" then
+    BM = BM or {}
+    for k, v in pairs(wm) do if BM[k] == nil then BM[k] = v end end
+  end
+end)
 -- 雪山中间的合掌村（VillageMeta，models/bld/village.glb；用户 11-27：村子照白川乡合掌村复刻）：合掌造 gs_*、神社鸟居灯笼钟楼 jp_*，同上并进来
 pcall(function()
   local vm = RS:FindFirstChild("VillageMeta") and require(RS.VillageMeta)
@@ -1301,7 +1322,7 @@ local function building(f, key, x, z, rot, opt)
   end
   if n == 0 then spec.fb(m, base, w, h, d, spec) end
   -- 夜里：正门边一盏暖黄的壁灯（机库、塔台不要：机库有停机坪的探照灯，塔台顶上有红灯）
-  if key ~= "hangar" and key ~= "atc" then
+  if key ~= "hangar" and key ~= "atc" and not opt.noLight then   -- noLight：车辆残骸（雪山 Map.CIV）不要壁灯
     light(m, (base * CF(math.min(4.2, w * 0.18), math.min(8.6, h * 0.45), -d / 2 - 0.7)).Position, RGB(255, 196, 132), 0.5, 16, 0.9, nil, 2)
   end
   m:SetAttribute("Imported", n > 0)
@@ -2902,6 +2923,22 @@ function World.details(f)
 end
 
 -- 开服时建整张地图；地形分块写（要好几秒），写完才让人出生
+-- 小零件不投影子（用户 11-28「现在感觉有点卡」）：雪山一张图三万多块零件、一万六千块投影子——阴影图每帧要把它们再画一遍；
+--   一两格大的木桩、铁丝网、沙袋、栏杆、碎块投下的影子几乎看不出来。最长边不到 3 格、或者体积不到 6 立方格的不投影子（房子、墙、车壳照旧投）
+function World.trimShadows(root)
+  local n = 0
+  for _, d in ipairs(root:GetDescendants()) do
+    if d:IsA("BasePart") and d.CastShadow then
+      local s = d.Size
+      if math.max(s.X, s.Y, s.Z) < 3 or s.X * s.Y * s.Z < 6 then
+        d.CastShadow = false
+        n += 1
+      end
+    end
+  end
+  return n
+end
+
 function World.build(G)
   World.lighting()
   local root = folder("Map")
@@ -2946,6 +2983,7 @@ function World.build(G)
   end
   G.pointModels = World.points(folder("Points", root))
   G.decks = World.fleet(folder("Fleet", root))
+  G.shadowTrim = World.trimShadows(root)
   G.worldReady = true
 end
 

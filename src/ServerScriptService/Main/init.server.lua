@@ -200,6 +200,9 @@ local function waitMap()
     end
     local anyone = #Players:GetPlayers() > 0
     local waited = os.clock() - t0
+    -- 有人在、却没人投（用户 11-28「主页如果我不换 snowpeak 就没法进训练场」：没投票时要等 MapWaitMax 十五分钟才按默认开图，
+    --   图没开、训练场也不建，试驾一直「训练场还在准备」）：第一个人进来就开始倒计时，到点没人投按默认那张开
+    if anyone and not voteEnds then voteEnds = os.clock() + ((Config.MapVote and Config.MapVote.idle) or 20) end
     if voteEnds then
       -- 在场的人都投了：再等 grace 秒（还能改票）就开
       local _, voters = voteCounts()
@@ -231,15 +234,16 @@ task.spawn(function()
   waitMap()
   local ok, err = xpcall(function() G.World.build(G) end, tb)
   if not ok then bootError("生成地图", err) G.worldReady = true end
+  -- 训练场（用户 11-26 晚「把训练场单独做一张地图吧」）：自己一块区块（Zones.RANGE），战场建完马上在后台建（Range.lua；
+  --   11-28 原来等远景替身、生成点、寻路、开局都做完才开始，又晚几十秒）；建好以前试驾先等等
+  task.spawn(function()
+    G.try("训练场", function() require(script:WaitForChild("Range")).build(G.World, G, workspace:FindFirstChild("Map")) end)
+  end)
   if G.farLodPublish then G.try("远景替身", G.farLodPublish) end   -- 流式加载时远处的楼画替身（FarLod.lua）
   if G.depotsBuild then G.try("生成点", G.depotsBuild) end   -- 载具生成点（要等舰队甲板建好）
   if G.navBuild then G.try("寻路", G.navBuild) end   -- 后台算机器人走路的流场
   if G.roundStart then G.try("开局", G.roundStart) end
   print("[全面大战场] " .. Config.Version .. " 地图好了：" .. tostring(G.terrainChunks) .. " 块地形、" .. tostring(G.terrainVoxels) .. " 个体素")
-  -- 训练场（用户 11-26 晚「把训练场单独做一张地图吧」）：自己一块区块（Zones.RANGE），战场开局以后在后台建（Range.lua）；建好以前试驾先等等
-  task.spawn(function()
-    G.try("训练场", function() require(script:WaitForChild("Range")).build(G.World, G, workspace:FindFirstChild("Map")) end)
-  end)
 end)
 
 ---------------------------------------------------------------- 特效：枪声只发给附近的人

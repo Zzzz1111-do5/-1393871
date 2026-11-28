@@ -1,7 +1,7 @@
 # Sketchfab 上下的楼房（glb）→ Roblox Studio「导入 3D」用的一个 GLB（models/bld/city.glb）+ 元数据（JSON，tools/models/sfbld_meta.py 写成 CityMeta.lua）
 #   用户 11-26：「地图建模要精细 3a」——钢城的楼换成 Sketchfab 上 CC-BY 的写实楼房（带贴图），没导入时游戏里照旧用零件拼的（CityBuild.lua）
 #   blender -b --python tools/models/sfbld.py -- <配置 json> <下载目录> <输出 glb> <输出元数据 json>
-#   配置 tools/models/sfbld.json：[{ key, file, h 真高（米，没有就按原尺寸）, rot 绕竖轴转几度（长边转到东西向以后再补的）, tris 最多几个三角形, name, author, url, uid }]
+#   配置 tools/models/sfbld.json：[{ key, file, h 真高（米，没有就按原尺寸；车辆残骸给 len 真车全长）, rot 绕竖轴转几度（长边转到东西向以后再补的）, tris 最多几个三角形, name, author, url, uid }]
 #     雪山的房子（tools/models/sfbld_snow.json → models/bld/snow.glb）多几项：drop 节点名里含这些字的去掉、plate 去掉自带的地台、
 #     part 一块最多几个三角形（默认 19000：一种材质超过的按空间对半切开，不用为了凑 Roblox 一个网格两万面的上限去减面）
 #     合掌村（tools/models/sfbld_vil.json → models/bld/village.glb）：mod 署名里的改动说明（drop 去掉的不是地台时照实写，比如「只取三座里的一座」），没有就照旧写「去掉自带的地台」
@@ -149,10 +149,27 @@ for c in CFG:
     lo = mathutils.Vector((min(v.x for v in vs), min(v.y for v in vs), min(v.z for v in vs)))
     hi = mathutils.Vector((max(v.x for v in vs), max(v.y for v in vs), max(v.z for v in vs)))
     k = (c["h"] / (hi.z - lo.z)) if c.get("h") else 1.0
+    if c.get("len"):   # 车辆残骸（tools/models/sfbld_wrecks.json）：按真车全长（米）缩放——长边缩到 len（车高各家模型篷布、货箱不一样，按长更准）
+        k = c["len"] / max(hi.x - lo.x, hi.y - lo.y)
     k *= S
     cx, cy = (lo.x + hi.x) / 2, (lo.y + hi.y) / 2
     me.transform(mathutils.Matrix.Translation((-cx, -cy, -lo.z)))
     me.transform(mathutils.Matrix.Scale(k, 4))
+    if c.get("clipBelow"):   # 实景扫描连着的一块地皮（飞机残骸）：整个面都在最低点往上 clipBelow 米以内的删掉，再把剩下的贴回地面、占地重新居中
+        bm = bmesh.new()
+        bm.from_mesh(me)
+        lim = c["clipBelow"] * S
+        dead = [f for f in bm.faces if max(v.co.z for v in f.verts) < lim]
+        bmesh.ops.delete(bm, geom=dead, context='FACES')
+        loose = [v for v in bm.verts if not v.link_faces]
+        bmesh.ops.delete(bm, geom=loose, context='VERTS')
+        bm.to_mesh(me)
+        bm.free()
+        vs = [v.co for v in me.vertices]
+        lo2 = mathutils.Vector((min(v.x for v in vs), min(v.y for v in vs), min(v.z for v in vs)))
+        hi2 = mathutils.Vector((max(v.x for v in vs), max(v.y for v in vs), max(v.z for v in vs)))
+        me.transform(mathutils.Matrix.Translation((-(lo2.x + hi2.x) / 2, -(lo2.y + hi2.y) / 2, -lo2.z)))
+        print("  删掉地皮 %d 个面" % len(dead))
     # 减面
     me.calc_loop_triangles()
     tris = len(me.loop_triangles)
@@ -202,8 +219,9 @@ for c in CFG:
     hi = mathutils.Vector((max(v.x for v in allv), max(v.y for v in allv), max(v.z for v in allv)))
     W, D, H = hi.x - lo.x, hi.y - lo.y, hi.z - lo.z
     meta[key] = {"name": c.get("name", key), "w": round(W, 3), "h": round(H, 3), "d": round(D, 3), "o": [round(xoff, 3), 0, 0], "parts": pm,
-                 "credit": "%s：%s，作者 %s（%s），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、%s按材质切块、贴图缩到 1024" % (
-                     c.get("name", key), c["title"], c["author"], c["url"], (("减面到 %d 个三角形、" % cap) if tris > cap else "") + ((c["mod"] + "、") if c.get("mod") else ("去掉自带的地台、" if (c.get("plate") or c.get("drop")) else ""))),
+                 "credit": "%s：%s，作者 %s（%s），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：%s、换成 Roblox 的格、%s按材质切块、贴图缩到 1024" % (
+                     c.get("name", key), c["title"], c["author"], c["url"], "按真车全长缩放" if c.get("len") else "按真高缩放",
+                     (("减面到 %d 个三角形、" % cap) if tris > cap else "") + ((c["mod"] + "、") if c.get("mod") else ("去掉自带的地台、" if (c.get("plate") or c.get("drop")) else ""))),
                  "tris": min(tris, cap)}
     xoff += W + 60
     print("BLD %s %.0f x %.0f x %.0f 格  %d 块  %d 三角形" % (key, W, D, H, len(pm), min(tris, cap)))

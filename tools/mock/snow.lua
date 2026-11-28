@@ -312,6 +312,103 @@ for _, t in ipairs(Map.TREES) do
 end
 check(#Map.TREES > 8000 and inValley > 1500 and shrubs > 1000, string.format("树 %d 棵（谷里 %d，灌木 %d）", #Map.TREES, inValley, shrubs))
 check(C.snowWrecks and C.snowWrecks() > 30, "车辆残骸摆出来了（" .. tostring(C.snowWrecks and C.snowWrecks()) .. " 个零件）")
+print("⑥ 11-28 丰富起来（用户「多搞一些房子 废弃的各种车……对抗的时候地形不能是平的要多有不大不小的崎岖……参考战雷地图冰风谷」）")
+-- 交战区的崎岖：谷底随机找点（不在路、河、湖、基地、房子边上），看 40 格见方里的高低差（原来噪声只有几格的缓坡，坦克视角一片平）
+do
+  local seed = 1
+  local function rr() seed = (seed * 48271) % 2147483647 return seed / 2147483647 end
+  local rel, roughs = {}, {}
+  local tries = 0
+  while #rel < 300 and tries < 6000 do
+    tries = tries + 1
+    local x, z = -2700 + rr() * 5400, -5200 + rr() * 10400
+    if Map.valleyD(x, z) < 0.88 and not Map.inBase(x, z, 400) and Map.roadDist(x, z) > 120 and Map.riverDist(x, z) > 260
+      and Map.lakeD(x, z) > 1.9 and not Map.bldAt(x, z, 60) then
+      local lo, hi = 1e9, -1e9
+      for i = -2, 2 do
+        for k = -2, 2 do
+          local h = Map.height(x + i * 10, z + k * 10)
+          if h < lo then lo = h end
+          if h > hi then hi = h end
+        end
+      end
+      table.insert(rel, hi - lo)
+      table.insert(roughs, math.abs(Map.roughH(x, z)))
+    end
+  end
+  table.sort(rel)
+  local med = rel[math.floor(#rel / 2) + 1] or 0
+  local big = 0
+  for _, v in ipairs(rel) do if v > 5.6 then big = big + 1 end end   -- 两米以上的起伏
+  check(#rel >= 200 and med >= 4.5 and big / #rel > 0.3, string.format("交战区崎岖：40 格见方里高低差中位数 %.1f 格（%.1f 米），三成以上的地方超过两米（%.0f%%，取了 %d 处）",
+    med, med / 2.8, big / math.max(1, #rel) * 100, #rel))
+  local onRoadRough = 0
+  for _, s2 in ipairs(Map.SEGS) do
+    local x, z = (s2[1] + s2[3]) / 2, (s2[2] + s2[4]) / 2
+    if math.abs(Map.roughH(x, z)) > 0.01 then onRoadRough = onRoadRough + 1 end
+  end
+  check(onRoadRough == 0, "路、铁路路面上不加起伏（" .. onRoadRough .. " 段的中点有起伏）")
+end
+-- 铁路（照冰封山口：一条穿山的铁路）：南北一条单线 + 站场，防雪棚两三座，过河一座铁路桥，和路平交
+do
+  local nRail, nYard = 0, 0
+  for _, P in ipairs(Map.POLYS) do
+    if P.k == "rail" then nRail = nRail + 1 elseif P.k == "yard" then nYard = nYard + 1 end
+  end
+  local railBridge = 0
+  for _, B in ipairs(Map.BRIDGES) do if B.k == "rail" or B.k == "yard" then railBridge = railBridge + 1 end end
+  check(nRail == 2 and nYard == 1, "铁路两段 + 站场（" .. nRail .. " / " .. nYard .. "）")
+  check(#Map.GALLERIES >= 2, "挖得深的地方盖了防雪棚 " .. #Map.GALLERIES .. " 座")
+  check(railBridge >= 1, "铁路过河有桥（" .. railBridge .. " 座）")
+  local rf = sf and sf:FindFirstChild("Railway")
+  local nParts = 0
+  if rf then for _, d in ipairs(rf:GetDescendants()) do if d:IsA("BasePart") then nParts = nParts + 1 end end end
+  check(nParts > 600, "钢轨、枕木、道口、防雪棚、车站都建了（" .. nParts .. " 个零件）")
+  local gal = rf and rf:FindFirstChild("Gallery_1")
+  check(gal ~= nil and #gal:GetChildren() > 20, "防雪棚 1：棚顶、靠山的墙、外侧的柱子")
+  -- 轨面坡度不超过 3.5%（每 16 格一点）
+  local worst = 0
+  for _, P in ipairs(Map.POLYS) do
+    if P.k == "rail" and P.h then
+      for q = 2, #P.h - 1 do worst = math.max(worst, math.abs(P.h[q] - P.h[q - 1]) / 16) end
+    end
+  end
+  check(worst <= 0.0351, string.format("轨面最陡 %.1f%%（不超过 3.5%%）", worst * 100))
+  check(Map.STATION ~= nil, "车站的站房盖了")
+  -- 铁路路基的材质是碎石（Slate）
+  local P1 = nil
+  for _, P in ipairs(Map.POLYS) do if P.k == "rail" then P1 = P break end end
+  local px, pz = Map.polyPoint(P1, P1.L * 0.3)
+  check(Map.material(px, pz, Map.height(px, pz), 0) == T.Enum.Material.Slate, "路基是碎石道砟（Slate）")
+end
+-- 废弃的车：民用车、卡车、客车、拖拉机、铁路车皮、机车、飞机残骸
+do
+  local by = {}
+  for _, c in ipairs(Map.CIV) do by[c.k] = (by[c.k] or 0) + 1 end
+  local cars = (by.wk_bmw or 0) + (by.wk_fiat or 0) + (by.wk_hatch or 0) + (by.wk_suv or 0) + (by.wk_uaz or 0)
+  local trucks = (by.wk_ural or 0) + (by.wk_kamaz or 0) + (by.wk_gaz66 or 0)
+  local rail = (by.wk_boxcar or 0) + (by.wk_hopper or 0) + (by.wk_loco or 0)
+  check(#Map.CIV >= 80, "废弃的车 " .. #Map.CIV .. " 辆")
+  check(cars >= 25 and trucks >= 12 and (by.wk_bus or 0) >= 2 and (by.wk_tractor or 0) >= 6, string.format("小车 %d、卡车 %d、客车 %d、拖拉机 %d",
+    cars, trucks, by.wk_bus or 0, by.wk_tractor or 0))
+  check(rail >= 10 and (by.wk_loco or 0) == 1, string.format("铁路车皮 %d（机车 %d）", rail, by.wk_loco or 0))
+  check((by.wk_plane or 0) == 1, "坠毁的飞机 1 架")
+  local st = G.snowCiv and G.snowCiv()
+  local wf = sf and sf:FindFirstChild("Wrecks")
+  check(st ~= nil and st.n == #Map.CIV and wf ~= nil and #wf:GetChildren() == #Map.CIV, "服务器都摆了（" .. tostring(st and st.n) .. " 辆，没导入的用零件拼）")
+  -- 车不压房子、不压路面
+  local bad = 0
+  for _, c in ipairs(Map.CIV) do
+    if Map.bldAt(c.x, c.z, 0) then bad = bad + 1 end
+    local d, _, w, k = Map.roadNear(c.x, c.z)
+    if d and d < w * 0.5 and k ~= "rail" and k ~= "yard" then bad = bad + 1 end
+  end
+  check(bad == 0, "车不压房子、不停在路中间（" .. bad .. " 处）")
+  check(Map.navBlocked(Map.CIV[1].x, Map.CIV[1].z), "寻路绕开废弃的车")
+  check(#Map.PROPS.wreck >= 45, "军车残骸 " .. #Map.PROPS.wreck .. " 辆（一簇簇：坦克坟场、车队、防空阵地）")
+end
+check(#Map.BLD >= 200, "房子 " .. #Map.BLD .. " 座（山村更密、多七个小村落、主路边的人家、多八处农庄）")
+
 print("⑤ 没有报错")
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "))
 T.summary()
