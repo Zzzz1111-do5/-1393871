@@ -380,11 +380,12 @@ check(Lz.m == Lf.m and Lz.dCD0 == Lf.dCD0, "不传 AirDefs：FlightModel 自己�
 print("⑦ 整备的挂载页：挂点卡（对称 / 不对称）、选项 = 可挂的 + 不挂、一对一起换、性能数 = 飞行物理、外挂越多极速越低、悬停预览、我的方案、Esc 还原、截图")
 T.remoteAs(me, "Drive", { op = "exit", hangar = true })
 T.runUntil(function() return not P.alive end, 15)
--- 11-28 起局里回去是战雷式出击页（WtSpawn），整备在局外的机库里开：先退出这一局
-if C.S and C.S.pick then
-  T.runUntil(function() return C.wtSpawnOn and C.wtSpawnOn() end, 10)
+-- 11-28 起局里回去是战雷式出击页（WtSpawn），整备在局外的机库里开：在局里就先退出这一局
+--   （看服务器的 P.match：刚回去那一下客户端的 S.pick 还没推过来）
+if P.match ~= nil then
+  T.runUntil(function() return P.vehicle == nil end, 5)
   T.act("matchLeave")
-  T.runUntil(function() return not (C.S and C.S.pick) end, 10)
+  T.runUntil(function() return P.match == nil and not (C.S and C.S.pick) end, 10)
 end
 T.runUntil(function() return T.findNamed("Line_" .. KEY) ~= nil end, 15)
 R.run(1)
