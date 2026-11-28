@@ -71,6 +71,8 @@ local LIST = {
       -- 11-28 同上：1950～1955 年从苏联买的 T-34-85（抗美援朝、建军初期的主力；Sketchfab 真模型 blveh.json t3485）。一级、第一列打头
       --   （排在列表最后：59 式那一列的前置不变）；nostart：比 59 式老，可起步车照旧是 59 式
       { "cn_t3485", "T-34-85（引进）", "T-34-85 (imported)", 1950, 1, 1, 5.7, veh = "t3485", nostart = true },
+      -- 11-28 同上：五十年代初从苏联买的 SU-100 歼击车（Sketchfab 真模型 blveh.json su100；没有炮塔，炮左右各 8°）——「轻型 / 歼击车」一列原来空着
+      { "cn_su100", "SU-100（引进）", "SU-100 (imported)", 1951, 1, 3, 6.0, veh = "su100", nostart = true },
     },
     [A] = {
       { "cn_j6", "歼-6", "J-6", 1962, 1, 1, 8.0, veh = "j6" },
@@ -104,6 +106,8 @@ local LIST = {
       { "de_leo2a5", "豹2A5", "Leopard 2A5", 1995, 5, 2, 10.7, veh = "leo2a5", model = "leo2a6" },
       { "de_leo2a6", "豹2A6", "Leopard 2A6", 2001, 5, 2, 11.3, veh = "leo2a6" },
       { "de_leo2a7v", "豹2A7V", "Leopard 2A7V", 2020, 7, 2, 12.0, veh = "leo2a7v" },
+      -- 11-28 用户「你把德国的各种载具全部补齐」：黄鼠狼 1A3 步兵战车（Sketchfab 真模型 blveh.json marder）——「步兵战车」一列原来空着
+      { "de_marder1a3", "黄鼠狼 1A3", "Marder 1A3", 1988, 4, 4, 7.7, veh = "marder1a3" },
       { "de_gepard", "猎豹1A1", "Gepard 1A1", 1976, 3, 5, 8.3, veh = "gepard1a1" },
       { "de_gepard1a2", "猎豹1A2", "Gepard 1A2", 1998, 5, 5, 9.3, veh = "gepard1a2" },
     },

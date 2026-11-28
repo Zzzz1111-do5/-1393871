@@ -1991,7 +1991,9 @@ function TechUI.init(G)
       add(L("公路极速 ", "Top speed ") .. math.floor((d.speed or 0) / 2.8 * 3.6 + 0.5) .. " km/h")
       if d.turret then
         local el = d.turret.elev
-        add(L("炮塔转速 ", "Turret traverse ") .. (d.turret.trav or 0) .. " °/s   ·   " .. L("俯仰 ", "Elevation ") .. (el and (el[1] .. "° / +" .. el[2] .. "°") or "—"))
+        local arc = d.turret.arc   -- 没有炮塔的车（SU-100 这类）：写炮的方向射界
+        add((arc and (L("方向射界 ", "Traverse ") .. "−" .. -arc[1] .. "° / +" .. arc[2] .. "°") or (L("炮塔转速 ", "Turret traverse ") .. (d.turret.trav or 0) .. " °/s"))
+          .. "   ·   " .. L("俯仰 ", "Elevation ") .. (el and (el[1] .. "° / +" .. el[2] .. "°") or "—"))
       end
       local prof = WD.prof(d)
       add(L("装甲（毫米：对动能弹 / 对破甲弹）", "Armor (mm: vs KE / vs HEAT)"), WHITE, 15)

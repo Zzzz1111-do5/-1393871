@@ -76,6 +76,9 @@ VehDefs.W = {
   --   初速：BR-365 穿甲弹 792 米 / 秒、BR-365P 次口径 1050、O-365K 榴弹 793（Ballistics.GUN gun85 各自的弹）
   gun85 = { kind = "shell", dmg = 330, speed = 2218, drop = 0.19, splash = 5, rate = 8.0, mag = 1, reload = 0, reserve = 55, range = 2000,
     vs = { inf = 0.8, light = 1.3, armor = 0.85, air = 0.8, ship = 0.6, fort = 1.0 }, fx = "tank", cal = 0.3 },
+  -- SU-100（引进）的 100 毫米 D-10S（11-28）：同 59 式的 D-10T 一族，手动装填（分装式，比 59 式慢一点）、33 发
+  gun100s = { kind = "shell", dmg = 400, speed = 2506, drop = 0.18, splash = 6, rate = 8.2, mag = 1, reload = 0, reserve = 33, range = 2200,
+    vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.34 },
   gun100d = { kind = "shell", dmg = 400, speed = 2484, drop = 0.18, splash = 6, rate = 7.5, mag = 1, reload = 0, reserve = 34, range = 2200,
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.34 },
   gun100d69 = { kind = "shell", dmg = 430, speed = 3962, drop = 0.16, splash = 6, rate = 7.0, mag = 1, reload = 0, reserve = 44, range = 2400,
@@ -92,6 +95,10 @@ VehDefs.W = {
     vs = { inf = 1, light = 1, armor = 0.22, air = 1.4, ship = 0.35, fort = 0.6 }, fx = "ac", cal = 0.2 },
   ac35 = { kind = "shell", dmg = 46, speed = 1300, drop = 0.15, splash = 5, rate = 0.07, mag = 120, reload = 5, reserve = 600, range = 2400,
     vs = { inf = 0.8, light = 0.8, armor = 0.1, air = 2.4, ship = 0.25, fort = 0.35 }, fx = "ac", cal = 0.2 },
+  -- 黄鼠狼 1A3 的莱茵金属 Rh 202 20 毫米机关炮（11-28）：双路供弹，每分钟 800～1000 发；DM63 脱壳穿甲弹初速约 1100 米 / 秒
+  --   （1 公里约 40 毫米）；炮塔里 1250 发（成弹链，一条 100 发）
+  rh202 = { kind = "shell", dmg = 42, speed = 3080, drop = 0.15, splash = 3, rate = 0.07, mag = 100, reload = 5, reserve = 1150, range = 2000,
+    vs = { inf = 1, light = 1, armor = 0.18, air = 1.5, ship = 0.3, fort = 0.5 }, fx = "ac", cal = 0.16 },
   -- 87 式侦察警戒车的厄利空 KBA 25 毫米机关炮（日本制钢所特许生产；用户 11-27「很多缺的载具全部做一下」：日本「轻型」一列）：
   --   双路供弹，最高射速约 600 发 / 分；脱壳穿甲曳光弹初速 1335 米 / 秒（1 公里约 50 毫米）——速度按真弹换算成格（ac30 还是旧的游戏值）
   ac25 = { kind = "shell", dmg = 52, speed = 3738, drop = 0.15, splash = 3.5, rate = 0.1, mag = 100, reload = 6, reserve = 300, range = 2400,
@@ -140,6 +147,7 @@ VehDefs.W = {
   -- 11-27 拆开重叠的版本：M2（1981）的 BGM-71C 改进型陶式（单装药、不串联，约 600 毫米；278 米 / 秒、3750 米；发射箱两枚 + 车里五枚）、
   --   86 式的红箭-73（仿 9M14「婴儿」：约 425 毫米、120 米 / 秒、3 公里，炮上导轨一枚 + 车里四枚）
   tow1 = { kind = "atgm", dmg = 750, speed = 778, splash = 4, rate = 2.5, mag = 2, reload = 14, reserve = 5, range = 10500, fx = "msl", turn = 2.4 },
+  milan = { kind = "atgm", dmg = 700, speed = 560, splash = 3, rate = 1, mag = 1, reload = 18, reserve = 4, range = 5600, fx = "msl", turn = 1.7 },   -- 「米兰 2」：200 米 / 秒、2 公里、线导，破甲约 530 毫米（黄鼠狼 1A3 炮塔右边的发射架，车里 4 发）
   hj73 = { kind = "atgm", dmg = 620, speed = 336, splash = 3, rate = 1, mag = 1, reload = 25, reserve = 4, range = 8400, fx = "msl", turn = 1.3 },
   -- snd：声音类别（客户端 Fx.lua G.gunSnd，用户 11-28「机枪机炮的音效不太好听」）——mg762 并列机枪：真录音连发循环 + 松开的收尾；
   --   mg127 / mg145 大口径机枪：.50 真录音单发一发一发按射速放（14.5 慢一成、更低沉）
@@ -246,6 +254,19 @@ D.t3485 = tracked({ cat = "tank", L = 17.1, W = 8.2, H = 7.4, hullH = 4.8, clear
   sight = V(-0.8, 1.5, -2.8), cupola = V(-1.0, 2.0, 0.6),
   sightZoom = { day = { 4 } },   -- TSh-16 定倍 4 倍，没有夜视
   weapons = { "gun85", "coax" } })
+-- SU-100（用户 11-28「中国当年买过的坦克你也找模型」：五十年代初从苏联买的歼击车，同 T-34-85 一起装备装甲兵；
+--   原模型 XxRxX，tools/models/blveh.json su100）：T-34-85 的底盘、31.6 吨、V-2-34 500 马力（15.8 马力 / 吨）、公路 48 公里 / 时；
+--   没有炮塔——100 毫米 D-10S 装在车体正面的球形炮盾里：左右各 8°（turret.arc，瞄出射界车体自己转过去，Drive.lua / AIVeh.lua）、
+--   俯仰 −3°～+20°；手摇方向机（trav 每秒 8°）；没有稳定器、没有夜视，TSh-19 4 倍瞄准镜；四人车组（驾驶员、车长、炮长、装填手），
+--   弹在战斗室两侧、后壁（lay spg：没有炮塔尾舱）；没有并列机枪（只有车组的冲锋枪）。
+--   尺寸、负重轮（五对克里斯蒂大轮）、炮盾球心照模型量的（ImportedMeta su100）
+D.su100 = tracked({ cat = "tank", L = 16.4, W = 8.7, H = 6.3, hullH = 4.2, clear = 1.1, speed = 37.3, accel = 3.5, rev = 4.7, turn = 30, noStab = true,
+  rw = { n = 5, r = 1.16, x = 3.11, z0 = -5.05, z1 = 4.74 }, skirt = false,
+  turret = { pivot = V(0.42, 4.34, -5.92), size = V(7.2, 2.0, 6.8), style = "wedge", trav = 8, arc = { -8, 8 }, elev = { -3, 20 }, bustle = 0 },
+  gun = { pivot = V(0, 0, 0), len = 10.5, cal = 0.36, fume = false },
+  sight = V(-1.0, 0.6, -0.4), cupola = V(1.6, 2.2, 1.6),
+  sightZoom = { day = { 4 } },   -- TSh-19 定倍 4 倍
+  weapons = { "gun100s" } })
 -- 69-II 式（1982 出口型）：同一个车体、580 马力，炮控稳定器、激光测距、尾翼稳定脱壳穿甲弹；同一个模型（ImportedMeta 的 alias）
 --   11-27：like = 59 式（HudIcons 只拍了 59 式：驾驶界面的剪影退到它）；有稳定器（noStab = false：59 式那一型是 true，深拷会拷过来）
 D.type69 = variant(D.type59, { like = "type59", noStab = false, accel = 3.5, speed = 38.9, weapons = { "gun100d69", "coax" }, sightZoom = { day = { 3.5, 7 }, th = { 4 } } })
@@ -517,6 +538,20 @@ D.m2a3 = tracked({ cat = "apc", L = 19, W = 9.4, H = 8.4, hullH = 5.6, clear = 1
   smoke = { banks = { { at = V(2.4, 1.0, -2.2), yaw = 30 }, { at = V(-2.4, 1.0, -2.2), yaw = -30 } }, n = 4 },
   -- 11-27：炮照真车换成 M242 25 毫米 + M919 贫铀尾翼稳定脱壳穿甲弹（原来是 30 毫米 ac30——游戏里的旧值，布雷德利从没装过 30 毫米炮）
   weapons = { "m242m919", "tow2", "coax" }, seats = 6 })
+-- 黄鼠狼 1A3 步兵战车（用户 11-28「你把德国的各种载具全部补齐」：德系「步兵战车」一列原来空着；原模型 Scout，tools/models/blveh.json marder——
+--   原模型没有贴图，北约三色迷彩是转换时生成的）：1988 年的升级型，35 吨、MTU MB 833 600 马力（17 马力 / 吨）、公路 65 公里 / 时；
+--   双人炮塔：外置的 20 毫米 Rh 202（俯仰 −17°～+65°）+ 并列 MG3、炮塔边上的「米兰」反坦克导弹；附加装甲（正面挡得住 30 毫米脱壳穿甲弹）；
+--   三人车组 + 六名步兵（后面的跳板放下来下车）；炮长昼光 2 / 6 倍、热像 6 倍（WBG-X）；炮塔前面左右各三具烟幕弹。
+--   尺寸、负重轮（六对 + 托带轮、前面的主动轮）、炮塔座圈、炮耳轴照模型量的（ImportedMeta marder）
+D.marder1a3 = tracked({ cat = "apc", L = 19.0, W = 9.3, H = 8.3, hullH = 5.5, clear = 1.2, speed = 50.6, accel = 3.8, rev = 15.0, turn = 40,
+  rw = { n = 6, r = 0.96, x = 3.7, z0 = -5.65, z1 = 5.06 }, skirt = true,
+  turret = { pivot = V(0.18, 5.55, 0.26), size = V(4.8, 2.4, 5.1), style = "ifv", trav = 60, elev = { -17, 65 } },
+  gun = { pivot = V(0.01, 1.63, -0.41), len = 4.1, cal = 0.16 }, coax = V(-2.38, 1.47, -0.74),
+  sight = V(1.5, 2.3, -0.6), cupola = V(-1.0, 2.6, 0.6),
+  atgmAt = V(2.05, 2.41, -2.2),   -- 「米兰」发射筒的口（炮塔右边，照模型量的）
+  smoke = { banks = { { at = V(2.1, 1.2, -1.6), yaw = 30 }, { at = V(-2.1, 1.2, -1.6), yaw = -30 } }, n = 3 },
+  sightZoom = { day = { 2, 6 }, th = { 6 } },
+  weapons = { "rh202", "milan", "coax" }, seats = 6 })
 -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开」「各维度还原一致」）：科技树 M2、M2A2 原来写 base（借 M2A3：30 毫米炮、IBAS 二代热像、激光测距）
 -- M2（1981；型号叫 m2a0，免得和 ImportedMeta 里表示 M2 机枪的 mg = "m2" 搞混）：22.6 吨、Cummins VTA-903T 500 马力、66 公里 / 时；
 --   M242 25 毫米（M791）+ BGM-71C 改进型陶式 + 并列机枪；铝合金车体；ISU 综合瞄准具 4 / 12 倍（第一代热像，没有激光测距）
@@ -743,6 +778,24 @@ function VehDefs.turretCF(d, base, yaw)
 end
 function VehDefs.gunCF(d, base, yaw, pitch)
   return VehDefs.turretCF(d, base, yaw) * CFrame.new(d.gun.pivot) * CFrame.Angles(math.rad(pitch or 0), 0, 0)
+end
+-- 没有炮塔的车（自行火炮、歼击车：SU-100、ISU-152……炮装在车体正面的炮盾里）：turret.arc = { 左, 右 }（度，往右为正）是炮的方向射界——
+--   用户 11-28「中国当年买过的坦克你也找模型」：SU-100 左右各 8°。yaw 按炮塔的存法（0～360，0 = 正前，往右为正）进出；
+--   没写 arc 的车（转得了一圈的炮塔）原样返回
+function VehDefs.arcYaw(d, yaw)
+  local arc = d and d.turret and d.turret.arc
+  if not arc then return yaw end
+  local a = ((yaw or 0) + 180) % 360 - 180
+  return math.clamp(a, arc[1], arc[2]) % 360
+end
+-- 想转到 want（度，同上）超出射界多少：超在右边为正、左边为负，没超 / 没有射界为 0（开车的人不打方向时车体自己转过去对准：同战雷的歼击车）
+function VehDefs.arcOver(d, want)
+  local arc = d and d.turret and d.turret.arc
+  if not arc then return 0 end
+  local a = ((want or 0) + 180) % 360 - 180
+  if a > arc[2] then return a - arc[2] end
+  if a < arc[1] then return a - arc[1] end
+  return 0
 end
 -- 遥控武器站：底座跟炮塔转（yaw）再自己转（my，度，往右为正，同炮塔），M2 俯仰（mp，度，抬头为正）
 function VehDefs.rwsCF(d, base, yaw, my, mp)

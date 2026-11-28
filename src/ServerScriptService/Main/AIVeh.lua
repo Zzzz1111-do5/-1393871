@@ -358,6 +358,20 @@ function AIVeh.init(G)
     return step
   end
 
+  -- 没有炮塔的车（VehDefs turret.arc：SU-100 这类）：目标在炮的射界外面——停下来原地转车头（over 度，往右为正），转到射界里再打
+  local function pivot(e, over, dt)
+    local d = e.def
+    if e.wt and e.wt.mob == false then return end
+    local base = G.vehBaseOf(e)
+    local look = flat(base.LookVector)
+    look = (look.Magnitude > 0.01) and look.Unit or V(0, 0, -1)
+    local maxT = math.rad(d.turn or 30) * dt
+    local nl = CFrame.Angles(0, -math.clamp(math.rad(over), -maxT, maxT), 0) * look   -- 同 drive：绕 Y 转负角是往右
+    local p = base.Position
+    G.moveEnt(e, G.vehBaseAt(d, p.X, p.Z, nl) * CF(0, d.H / 2, 0))
+    e.model:SetAttribute("Sp", 0)
+  end
+
   -- 朝 key（据点）的下一个路点：流场（Nav）有就跟着走，没有（不在一块陆地上、还没算好）直接朝目标
   local function waypoint(e, dest)
     local p = e.root.CFrame.Position
@@ -505,7 +519,8 @@ function AIVeh.init(G)
     end
     local el = d.turret.elev or { -6, 18 }
     local wantPitch = math.clamp(math.deg(math.atan2(l.Y + drop, math.max(horiz, 1)) + se), el[1], el[2])
-    e.ty = (approach(0, angDiff(wantYaw, e.ty), (d.turret.trav or 40) * dt) + e.ty) % 360
+    e.ty = VD.arcYaw(d, (approach(0, angDiff(wantYaw, e.ty), (d.turret.trav or 40) * dt) + e.ty) % 360)
+    e.ai.arcOver = d.turret.arc and VD.arcOver(d, wantYaw) or nil   -- 没有炮塔的车：目标在射界外面，think 里先原地转车头（pivot）
     e.gp = approach(e.gp, wantPitch, 22 * dt)
     e.model:SetAttribute("Ty", math.floor(e.ty * 2 + 0.5) / 2)
     e.model:SetAttribute("Gp", math.floor(e.gp * 2 + 0.5) / 2)
@@ -539,7 +554,10 @@ function AIVeh.init(G)
     -- 开
     local moved = 0
     local slow = A0.tgt and 0.45 or 0.85
-    if A0.state == "boat" then
+    if A0.tgt and A0.arcOver and A0.arcOver ~= 0 and A0.state ~= "boat" and A0.state ~= "retreat" then
+      pivot(e, A0.arcOver, dt)   -- 没有炮塔的车：先把车头转向目标
+      A0.stuckAt = t
+    elseif A0.state == "boat" then
       moved = drive(e, A0.beach, dt, 1)
       if not e.lcac then   -- 上岸了：撤的时候撤回这里（登陆平台在海上，车开不回去）
         A0.state, A0.home = "go", e.root.CFrame.Position
@@ -587,6 +605,8 @@ function AIVeh.init(G)
     end
     local _ = moved
   end
+
+  G.aiVehThink = think   -- 测试用（tools/mock/newveh2.lua：没有炮塔的车，目标在射界外面原地转车头）
 
   ---------------------------------------------------------------- 每帧（10 次 / 秒）
 

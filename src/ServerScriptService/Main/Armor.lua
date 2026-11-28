@@ -500,7 +500,7 @@ function Armor.init(G)
       if h > 0.8 then dropOff(e) end
     end
     local d0 = e.def
-    if type(d.ty) == "number" and d.ty == d.ty then e.ty = d.ty % 360 end
+    if type(d.ty) == "number" and d.ty == d.ty then e.ty = VD.arcYaw(d0, d.ty % 360) end   -- 没有炮塔的车：炮夹在射界里（VehDefs turret.arc）
     if type(d.gp) == "number" and d.gp == d.gp then e.gp = math.clamp(d.gp, d0.turret.elev[1], d0.turret.elev[2]) end
     e.model:SetAttribute("Ty", math.floor(e.ty * 2 + 0.5) / 2)
     e.model:SetAttribute("Gp", math.floor(e.gp * 2 + 0.5) / 2)
@@ -521,7 +521,7 @@ function Armor.init(G)
     if type(m) ~= "table" then return end
     local d0 = e.def
     local function num(x) return type(x) == "number" and x == x end
-    if num(m.ty) and math.abs(angDiff(m.ty, e.ty)) < 25 then e.ty = m.ty % 360 end
+    if num(m.ty) and math.abs(angDiff(m.ty, e.ty)) < 25 then e.ty = VD.arcYaw(d0, m.ty % 360) end
     if num(m.gp) and math.abs(m.gp - e.gp) < 15 then e.gp = math.clamp(m.gp, d0.turret.elev[1], d0.turret.elev[2]) end
     if d0.rws then
       if num(m.my) and math.abs(angDiff(m.my, e.my or 0)) < 40 then e.my = (m.my + 180) % 360 - 180 end
@@ -642,6 +642,8 @@ function Armor.init(G)
       --   炮长的十字线一直压着目标，导弹自己往瞄准线上靠（G.atgmStep）；速度、射程照真弹（VehDefs.W.tow2 / malyutka）
       e.atgmSide = -(e.atgmSide or 1)
       local lp = (mz * CF(e.atgmSide * 1.2, 0.6, 1.0)).Position
+      -- 只有一具发射架、不在炮旁边的（黄鼠狼 1A3 炮塔右边的「米兰」）：VehDefs atgmAt（炮塔系）就是发射口
+      if d.atgmAt then lp = (VD.turretCF(d, base, e.ty) * CF(d.atgmAt)).Position end
       G.launch({ kind = "missile", pos = lp, vel = gdir * w.speed * 0.5, w = w, src = S, ignore = { e.model, P.char }, life = w.range / w.speed + 3,
         step = G.atgmStep, byEnt = e.id, vmax = w.speed, turn = w.turn or 2.4, age = 0 })
       G.fx({ k = "vfire", p = lp, d = gdir, f = "msl", id = e.id })

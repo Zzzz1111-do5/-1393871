@@ -38,6 +38,11 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWBP]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日起 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～八包、E 第一～七包，新的在上面）
+  11-28 清早这一包（新车：中系 SU-100 歼击车（引进，没有炮塔：炮左右各 8°，瞄出去车体自己转过去）、德系黄鼠狼 1A3 步兵战车）：
+    换游戏文件，另外新导入两个文件——
+    · veh/su100.glb：SU-100（XxRxX 的 CC-BY 模型，1.9 MB）；veh/marder.glb：黄鼠狼 1A3（Scout 的 CC-BY 模型，6.9 MB；原模型没有贴图，
+      北约三色迷彩是转换时生成的，贴图在文件里）。「导入 3D」导进 Workspace，块叫 V_<键>__<组>_<号>，开服自动收好；
+      没导入的话用零件拼的车壳代替。署名：models/veh/credits.txt
   11-28 凌晨这一包（新车：中系 T-34-85（引进）、德系 KPz 70；借现成模型的中系 T-80U（引进）、德系米格-29G）：换游戏文件，另外新导入两个文件——
     · veh/t3485.glb：T-34-85（julianrijken 的 CC-BY 模型，3.7 MB）；veh/mbt70.glb：KPz 70 / MBT-70（_Muzaev 的 CC-BY 模型，9 MB）。
       「导入 3D」导进 Workspace，块叫 V_<键>__<组>_<号>，开服自动收好；没导入的话用零件拼的车壳代替。署名：models/veh/credits.txt

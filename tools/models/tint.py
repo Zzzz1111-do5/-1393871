@@ -3,8 +3,8 @@
 #   每个带网格的节点（导入后 MeshPart 就叫这个名字）按三角形面积在底色贴图上取样（三角形重心 + 三个顶点，按 UV 重复平铺），
 #   乘材质底色，算成 sRGB 0–255，写进 src/ReplicatedStorage/ImportedTint.lua。
 #   客户端（Tint.lua）在贴图没加载出来时（导入时上传失败、还在审核、被拒）用它给零件上色——不然整块是白的。
-#   用法：python3 -I tools/models/tint.py（在仓库根目录跑）
-import glob, json, os, struct, sys, io
+#   用法：python3 -I tools/models/tint.py（在仓库根目录跑；表里原有、这次没读到模型的条目留着，加 --fresh 从头生成）
+import glob, json, os, re, struct, sys, io
 import numpy as np
 from PIL import Image
 
@@ -125,7 +125,14 @@ def main():
     files += sorted(glob.glob(os.path.join(ROOT, 'models', d, '*.glb')))
   if os.path.exists(os.path.join(ROOT, 'models', 'fps_m4.glb')):
     files.append(os.path.join(ROOT, 'models', 'fps_m4.glb'))
+  # 表里原有的条目先留着：有些老模型（导入过、后来不在 models/ 里了）的零件色只在表里有，整表重写会把它们丢掉；
+  #   这次读到的模型照样覆盖成新算的颜色。要从头生成（丢掉没模型的老条目）加 --fresh
   out = {}
+  kept = 0
+  if '--fresh' not in sys.argv[1:] and os.path.exists(OUT):
+    for m in re.finditer(r'^  \["(.+?)"\] = \{ (\d+), (\d+), (\d+) \},$', open(OUT, encoding='utf-8').read(), re.M):
+      out[m.group(1)] = [int(m.group(2)), int(m.group(3)), int(m.group(4))]
+    kept = len(out)
   for fn in files:
     js, binc = load(fn)
     cache = {}
@@ -148,7 +155,7 @@ def main():
     lines.append('  ["%s"] = { %d, %d, %d },' % (k, r, g, b))
   lines.append('}')
   open(OUT, 'w', encoding='utf-8').write('\n'.join(lines) + '\n')
-  print('写好了 %s：%d 块' % (os.path.relpath(OUT, ROOT), len(out)))
+  print('写好了 %s：%d 块（原表 %d 块）' % (os.path.relpath(OUT, ROOT), len(out), kept))
 
 
 if __name__ == '__main__':

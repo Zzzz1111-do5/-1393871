@@ -1146,6 +1146,12 @@ function Drive.init(G)
       if G.touchDrive.str ~= 0 then str = G.touchDrive.str end
     end
     if G.interiorEngineOff then thr = 0 end   -- 驾驶员显示器上按了熄火（Interior.lua）：再按起动才走得了
+    -- 没有炮塔的车（SU-100 这类，VehDefs turret.arc）：自己不打方向、瞄的地方在炮的射界外面——车体自己转过去对准（同战雷歼击车），
+    --   超出 6° 以上满舵；按住 A / D 照常自己转
+    if str == 0 and st.arcPull and st.arcPull ~= 0 and d.turret and d.turret.arc then
+      str = math.clamp(st.arcPull / 6, -1, 1)
+      st.arcSteerT = os.clock()   -- 这一下车体是自己转的：没有稳定器时瞄准线也不跟着车体转（下面镜头那里），不然越转瞄得越偏、转个不停
+    end
     if st.em and st.em:GetAttribute("WtMob") == false then thr, str = 0, 0 end   -- 战雷式伤害（服务器 Wt.lua）：驾驶员没了、发动机 / 传动 / 履带坏了
     local inWater = Map.height(st.pos.X, st.pos.Z) < -1.5
     local carried = st.em ~= nil and st.em:GetAttribute("Lcac") == true   -- 站在气垫艇上（登陆平台出发、不会游的车）：开的是艇
@@ -1652,6 +1658,14 @@ function Drive.init(G)
     local trav = d.turret.trav * (manual and 0.22 or 1) * ((st.em and st.em:GetAttribute("WtTrav")) or 1)   -- 炮塔驱动坏了 / 炮长没了：转得慢（Wt.lua）
       * ((st.em and st.em:GetAttribute("ModTrav")) or 1)   -- 研究了改装「炮塔驱动」：转得快（WtMods）
     st.ty = (st.ty + math.clamp(angDiff(st.ty, wantYaw), -trav * dt, trav * dt)) % 360
+    -- 没有炮塔的车（SU-100 这类）：炮只在射界里转（VD.arcYaw）；瞄的地方在射界外面，记下超出多少（physics 里车体自己转过去）。
+    --   正后方附近（超出 150° 以上）左右来回跳的时候保持原来那边，不然车体左右抽
+    if d.turret.arc then
+      st.ty = VD.arcYaw(d, st.ty)
+      local over = VD.arcOver(d, wantYaw)
+      if st.arcPull and math.abs(over) > 150 and math.sign(over) ~= math.sign(st.arcPull) and st.arcPull ~= 0 then over = -over end
+      st.arcPull = over
+    end
     st.gp = approach(st.gp, math.clamp(wantPitch, d.turret.elev[1], d.turret.elev[2]), (manual and 6 or 35) * dt)
     -- 遥控武器站（M1A2 的 CROWS）：自己转向准心、M2 自己俯仰（用户：机枪也要能转动），比炮塔快
     --   车长单独操纵它的时候（车里看 CROWS 屏：Interior.lua 给 st.rwsPt）朝车长瞄的那一点，炮塔还归炮长的准星
@@ -2298,7 +2312,9 @@ function Drive.init(G)
     do
       local lv = st.root.LookVector
       local hy, hp = math.atan2(-lv.X, -lv.Z), math.asin(math.clamp(lv.Y, -1, 1))
-      if st.lastHy and (st.stab == false or st.fcs.mode == 3) then
+      -- 没有炮塔的车瞄出射界、车体自己转过去对准的那一阵（再加 0.6 秒收住的惯性）：瞄准线留在瞄的地方（同战雷歼击车）
+      local autoTurn = st.arcSteerT and os.clock() - st.arcSteerT < 0.6
+      if st.lastHy and (st.stab == false or st.fcs.mode == 3) and not autoTurn then
         local dy = (hy - st.lastHy + math.pi) % (2 * math.pi) - math.pi
         local dp = hp - st.lastHp
         st.camYaw += dy

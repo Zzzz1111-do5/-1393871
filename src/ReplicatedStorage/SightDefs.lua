@@ -43,7 +43,7 @@ S.FAMILY = {
 --   松树-U（T-72B3、T-80BVM、T-90M）；1PN22（BMP-1、86 式）、BPK（BMP-2）；M105D（M60、M60A1）、TZF（豹 1）；GPS（M1 / IPM1 / M1A1）、
 --   EMES-15（豹 2A0～A4）；74 式有红宝石激光测距 + 模拟计算机（激光一代）；87 式侦察警戒车没有激光（VehDefs NO_LRF）
 S.TREE = {
-  cn_59 = "tsh", cn_t3485 = "tsh", cn_86 = "tsh", ru_bmp1 = "tsh", ru_bmp2 = "tsh", ru_brdm2 = "tsh", ru_strela1 = "tsh",
+  cn_59 = "tsh", cn_t3485 = "tsh", cn_su100 = "tsh", cn_86 = "tsh", ru_bmp1 = "tsh", ru_bmp2 = "tsh", ru_brdm2 = "tsh", ru_strela1 = "tsh",
   cn_69 = "tpd", ru_t64a = "tpd", ru_t72 = "tpd", ru_t72a = "tpd", ru_t72b = "tpd",
   ru_t64b = "sovmod", ru_t80b = "sovmod", ru_t80u = "sovmod", ru_t90a = "sovmod", ru_t72b3 = "sovmod", ru_t80bvm = "sovmod", ru_t90m = "sovmod",
   ru_bmp2m = "sovmod", ru_pantsir = "sovmod",
@@ -51,17 +51,17 @@ S.TREE = {
   us_m60 = "nato1", us_m60a1 = "nato1", us_m60a1rise = "nato1", us_m551 = "nato1", us_m2 = "nato1", us_m2a2 = "nato1",
   us_m60a3 = "natolrf", us_m1 = "natolrf", us_m1ip = "natolrf", us_m1a1 = "natolrf", us_m1a1hc = "natolrf",
   us_m1a2 = "natodig", us_m1a2sep = "natodig", us_m1a2sep2 = "natodig", us_m1a2sep3 = "natodig", us_m2a3 = "natodig",
-  de_leo1 = "nato1", de_kpz70 = "nato1", de_leo1a1a1 = "nato1", de_leo1a5 = "natolrf", de_leo2a0 = "natolrf", de_leo2a4 = "natolrf",
+  de_leo1 = "nato1", de_kpz70 = "nato1", de_marder1a3 = "nato1", de_leo1a1a1 = "nato1", de_leo1a5 = "natolrf", de_leo2a0 = "natolrf", de_leo2a4 = "natolrf",
   de_leo2a5 = "natodig", de_leo2a6 = "natodig", de_leo2a7v = "natodig",
   jp_type74 = "natolrf", jp_type74g = "natolrf", jp_type10 = "natodig", jp_type87rcv = "nato1",
 }
 S.VEH = {
-  type59 = "tsh", t3485 = "tsh", bmp1 = "tsh", bmp2 = "tsh", brdm2 = "tsh", strela1 = "tsh",
+  type59 = "tsh", t3485 = "tsh", su100 = "tsh", bmp1 = "tsh", bmp2 = "tsh", brdm2 = "tsh", strela1 = "tsh",
   type69 = "tpd", t64a = "tpd", t72ural = "tpd", t72a = "tpd", t72b = "tpd",
   t64b = "sovmod", t80b = "sovmod", t80u = "sovmod", t80bvm = "sovmod", t90m = "sovmod", t72b3 = "sovmod", ztz96 = "sovmod", ztz99a = "sovmod", bmp2m = "sovmod", pantsir = "sovmod",
   m60a1 = "nato1", m551 = "nato1", leo1 = "nato1", kpz70 = "nato1", type87rcv = "nato1",
   m60a3 = "natolrf", m1a1 = "natolrf", leo1a5 = "natolrf", leo2a4 = "natolrf", type74 = "natolrf", type74g = "natolrf",
-  m1a2 = "natodig", leo2a6 = "natodig", leo2a7v = "natodig", leclerc = "natodig", type10 = "natodig", m2a3 = "natodig",
+  marder1a3 = "nato1", m1a2 = "natodig", leo2a6 = "natodig", leo2a7v = "natodig", leclerc = "natodig", type10 = "natodig", m2a3 = "natodig",
 }
 
 -- 这辆车用哪一家分划：kit = WtOptics.kit(...)（{ ret, east, gen … }），vid 型号，treeKey 科技树的键（可空）

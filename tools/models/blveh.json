@@ -7179,5 +7179,531 @@
    178,
    150
   ]
+ },
+ "su100": {
+  "_说明": "SU-100 歼击车（XxRxX，Sketchfab 29fd624d0cfe42779dc4a0a5880ea905「SU-100」，CC-BY-4.0）；用户 11-28「中国当年买过的坦克你也找模型」——1950 年代从苏联买的 SU-100（同 T-34-85 一起装备装甲兵），中系「轻型 / 歼击车」一列。原模型按米、车头朝 −X（炮管伸到 x −2.54），转 −90°；尺寸跟真车差不多（车体长 5.84、宽 3.10、高 2.25 米，真车 6.10 / 3.00 / 2.245），不缩放；五块网格按材质合并：上车体连战斗室（Object_2）、下车体和履带（Object_3）、炮连球形炮盾（Object_4，整块进 Gun：炮在炮盾里左右各 8°、俯仰都跟着转）、负重轮（Object_5）、车长指挥塔（Object_6）。没有炮塔：不拆 Turret，转轴、炮耳轴都给在炮盾球心（tur / gun）；负重轮（每个两半）、诱导轮、主动轮按框从 Object_5 拆，左右各七个",
+  "uid": "29fd624d0cfe42779dc4a0a5880ea905",
+  "title": "SU-100 歼击车",
+  "rotZ": -90,
+  "scale": 1.0,
+  "texMax": 1024,
+  "split": [
+   {
+    "from": [
+     "Object_4"
+    ],
+    "to": "Gun",
+    "box": [
+     -3.0,
+     2.0,
+     1.0,
+     2.0,
+     -0.7,
+     0.4
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W01",
+    "box": [
+     0.5,
+     1.05,
+     0.0,
+     1.0,
+     -1.5,
+     -0.6
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W02",
+    "box": [
+     1.11,
+     1.91,
+     0.0,
+     1.0,
+     -1.5,
+     -0.6
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W03",
+    "box": [
+     1.98,
+     2.78,
+     0.0,
+     1.0,
+     -1.5,
+     -0.6
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W04",
+    "box": [
+     2.85,
+     3.66,
+     0.0,
+     1.0,
+     -1.5,
+     -0.6
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W05",
+    "box": [
+     3.74,
+     4.55,
+     0.0,
+     1.0,
+     -1.5,
+     -0.6
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W06",
+    "box": [
+     4.6,
+     5.41,
+     0.0,
+     1.0,
+     -1.5,
+     -0.6
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W07",
+    "box": [
+     5.45,
+     6.15,
+     0.0,
+     1.0,
+     -1.5,
+     -0.6
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W08",
+    "box": [
+     0.5,
+     1.05,
+     0.0,
+     1.0,
+     0.6,
+     1.5
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W09",
+    "box": [
+     1.11,
+     1.91,
+     0.0,
+     1.0,
+     0.6,
+     1.5
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W10",
+    "box": [
+     1.98,
+     2.78,
+     0.0,
+     1.0,
+     0.6,
+     1.5
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W11",
+    "box": [
+     2.85,
+     3.66,
+     0.0,
+     1.0,
+     0.6,
+     1.5
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W12",
+    "box": [
+     3.74,
+     4.55,
+     0.0,
+     1.0,
+     0.6,
+     1.5
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W13",
+    "box": [
+     4.6,
+     5.41,
+     0.0,
+     1.0,
+     0.6,
+     1.5
+    ],
+    "center": true
+   },
+   {
+    "from": [
+     "Object_5"
+    ],
+    "to": "W14",
+    "box": [
+     5.45,
+     6.15,
+     0.0,
+     1.0,
+     0.6,
+     1.5
+    ],
+    "center": true
+   }
+  ],
+  "wheels": [
+   "@W01",
+   "@W02",
+   "@W03",
+   "@W04",
+   "@W05",
+   "@W06",
+   "@W07",
+   "@W08",
+   "@W09",
+   "@W10",
+   "@W11",
+   "@W12",
+   "@W13",
+   "@W14"
+  ],
+  "tur": [
+   1.2,
+   1.49,
+   -0.15
+  ],
+  "gun": [
+   1.2,
+   1.49,
+   -0.15
+  ],
+  "credit": "SU-100 歼击车：SU-100，作者 XxRxX（https://sketchfab.com/3d-models/su-100-29fd624d0cfe42779dc4a0a5880ea905），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "alias": [
+   "su100"
+  ]
+ },
+ "marder": {
+  "_说明": "黄鼠狼 1A3 步兵战车（Scout，Sketchfab 0897f55d01a24fca9577d3d8a8579aac「Marder 1A3 | High-Quality model」，CC-BY-4.0；同一个作者的猎豹已经在用）；用户 11-28「你把德国的各种载具全部补齐……包括坦克」——德系「步兵战车」一列原来空着。原模型单位约 2.45 厘米（全长 277 → 真车 6.79 米）、车头朝 +Z（主动轮在前、后面是放步兵的跳板），转半圈；节点分好了：炮塔（bone_turret 几块、附加装甲、舱盖、右边的「米兰」发射架和导弹）、外置的 20 毫米 Rh 202 炮连炮罩和并列 MG3（gun_*、mg：一起俯仰）、每个负重轮 / 主动轮 / 诱导轮 / 托带轮单独一块（左右各十一个）；炮塔座圈中心、炮耳轴手给（tur / gun）；负重轮、炮管、车体大块、车灯减面（20 万 → 约 12 万三角形）。原模型没有贴图（GLB、源文件都只有几何，材质是 Sketchfab 随手的粉彩色）：车体、炮塔、附加装甲、炮、「米兰」贴一张自己生成的北约三色迷彩（camo：铜绿 / 皮革棕 / 焦油黑，1980 年代中期以后联邦国防军的涂装；四方连续、按世界坐标盒式投影），履带、机枪、玻璃给纯色（matColor）",
+  "uid": "0897f55d01a24fca9577d3d8a8579aac",
+  "title": "黄鼠狼 1A3 步兵战车",
+  "alias": [
+   "marder1a3"
+  ],
+  "rotZ": 180,
+  "scale": 0.0245,
+  "texMax": 1024,
+  "dedupe": true,
+  "groups": {
+   "Turret": [
+    "bone_turret_optic_glass_c_0",
+    "bone_turret.001_marder_1a3_turret_c_0",
+    "bone_turret.002_net_i_c_0",
+    "bone_turret.003_marder_1a3_turret_c_0",
+    "bone_turret.004_marder_1a3_turret_c_0",
+    "bone_turret.005_marder_1a3_turret_c_0",
+    "ex_armor_turret_01_marder_1a3_turret_c_0",
+    "ex_armor_turret_02_marder_1a3_turret_c_0",
+    "ex_armor_turret_03_marder_1a3_turret_c_0",
+    "ex_armor_turret_04_marder_1a3_turret_c_0",
+    "ex_armor_turret_05_marder_1a3_turret_c_0",
+    "ex_armor_turret_06_marder_1a3_turret_c_0",
+    "ex_armor_turret_07_marder_1a3_turret_c_0",
+    "ex_armor_turret_08_marder_1a3_turret_c_0",
+    "ex_armor_turret_09_marder_1a3_turret_c_0",
+    "ex_armor_turret_10_marder_1a3_turret_c_0",
+    "ex_armor_turret_11_marder_1a3_turret_c_0",
+    "ex_armor_turret_12_marder_1a3_turret_c_0",
+    "hatch_04_marder_1a3_body_c_0",
+    "gun_barrel_01_milan_rocket_mount_c_0",
+    "gun_barrel_01.001_milan_rocket_mount_c_0",
+    "bone_rocket_01_milan_rocket_mount_c_0",
+    "rocket_atgm_milan_rocket_c_0"
+   ],
+   "Gun": [
+    "gun_barrel_marder_1a3_gun_c_0",
+    "gun_mask_marder_1a3_turret_c_0",
+    "gun_mask.002_marder_1a3_turret_c_0",
+    "gun_mask.001_marder_1a3_turret_c_0",
+    "mg_mg_mg_42_c_0"
+   ]
+  },
+  "wheels": [
+   [
+    "wheel_l_drive_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_l_01_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_l_02_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_l_03_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_l_04_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_l_05_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_l_06_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_l_back_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_l_top_01_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_l_top_02_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_l_top_03_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_r_drive_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_r_01_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_r_02_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_r_03_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_r_04_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_r_05_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_r_06_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_r_back_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_r_top_01_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_r_top_02_marder_1a3_body_c_0"
+   ],
+   [
+    "wheel_r_top_03_marder_1a3_body_c_0"
+   ]
+  ],
+  "decimate": {
+   "wheel_l_drive_marder_1a3_body_c_0": 0.45,
+   "wheel_l_01_marder_1a3_body_c_0": 0.45,
+   "wheel_l_02_marder_1a3_body_c_0": 0.45,
+   "wheel_l_03_marder_1a3_body_c_0": 0.45,
+   "wheel_l_04_marder_1a3_body_c_0": 0.45,
+   "wheel_l_05_marder_1a3_body_c_0": 0.45,
+   "wheel_l_06_marder_1a3_body_c_0": 0.45,
+   "wheel_l_back_marder_1a3_body_c_0": 0.45,
+   "wheel_l_top_01_marder_1a3_body_c_0": 0.7,
+   "wheel_l_top_02_marder_1a3_body_c_0": 0.7,
+   "wheel_l_top_03_marder_1a3_body_c_0": 0.7,
+   "wheel_r_drive_marder_1a3_body_c_0": 0.45,
+   "wheel_r_01_marder_1a3_body_c_0": 0.45,
+   "wheel_r_02_marder_1a3_body_c_0": 0.45,
+   "wheel_r_03_marder_1a3_body_c_0": 0.45,
+   "wheel_r_04_marder_1a3_body_c_0": 0.45,
+   "wheel_r_05_marder_1a3_body_c_0": 0.45,
+   "wheel_r_06_marder_1a3_body_c_0": 0.45,
+   "wheel_r_back_marder_1a3_body_c_0": 0.45,
+   "wheel_r_top_01_marder_1a3_body_c_0": 0.7,
+   "wheel_r_top_02_marder_1a3_body_c_0": 0.7,
+   "wheel_r_top_03_marder_1a3_body_c_0": 0.7,
+   "gun_barrel_marder_1a3_gun_c_0": 0.5,
+   "gun_barrel_01_milan_rocket_mount_c_0": 0.45,
+   "gun_barrel_01.001_milan_rocket_mount_c_0": 0.5,
+   "gun_mask.001_marder_1a3_turret_c_0": 0.45,
+   "gun_mask.002_marder_1a3_turret_c_0": 0.55,
+   "gun_mask_marder_1a3_turret_c_0": 0.55,
+   "mg_mg_mg_42_c_0": 0.5,
+   "bone_turret.004_marder_1a3_turret_c_0": 0.6,
+   "bone_turret.005_marder_1a3_turret_c_0": 0.65,
+   "bone_turret.001_marder_1a3_turret_c_0": 0.65,
+   "hatch_09_marder_1a3_body_c_0": 0.5,
+   "hatch_01_marder_1a3_body_c_0": 0.6,
+   "ex_armor_l_04_marder_1a3_body_c_0": 0.6,
+   "ex_armor_l_04_marder_1a3_body_add_c_0": 0.6,
+   "ex_armor_r_04_marder_1a3_body_c_0": 0.6,
+   "ex_armor_r_04_marder_1a3_body_add_c_0": 0.6,
+   "ex_armor_l_02_marder_1a3_body_add_c_0": 0.6,
+   "ex_armor_l_06_marder_1a3_body_c_0": 0.6,
+   "ex_armor_r_06_marder_1a3_body_c_0": 0.6,
+   "ex_lantern_l_01_marder_1a3_body_c_0": 0.4,
+   "ex_lantern_l_01_headlight_glass_c_0": 0.4,
+   "ex_lantern_r_01_marder_1a3_body_c_0": 0.4,
+   "ex_lantern_r_01_headlight_glass_c_0": 0.4,
+   "ex_lantern_l_02_marder_1a3_body_c_0": 0.4,
+   "ex_lantern_r_02_marder_1a3_body_c_0": 0.4,
+   "ex_lantern_b_01_marder_1a3_body_c_0": 0.4,
+   "ex_lantern_b_02_marder_1a3_body_c_0": 0.4,
+   "track_l_ger_marder_1a3_track_c_left_0": 0.65,
+   "track_r_ger_marder_1a3_track_c_right_0": 0.65,
+   "rocket_atgm_milan_rocket_c_0": 0.5,
+   "bone_rocket_01_milan_rocket_mount_c_0": 0.6,
+   "ex_decor_l_02_marder_1a3_body_c_0": 0.5,
+   "ex_decor_r_02_marder_1a3_body_c_0": 0.5,
+   "ex_decor_01_marder_1a3_body_c_0": 0.6,
+   "root.001_marder_1a3_body_c_0": 0.65,
+   "root.002_marder_1a3_body_c_0": 0.65,
+   "root.003_marder_1a3_body_c_0": 0.65,
+   "root.004_marder_1a3_body_c_0": 0.65,
+   "root.005_marder_1a3_body_c_0": 0.65,
+   "root.006_marder_1a3_body_c_0": 0.65,
+   "root.006_net_f_c_0": 0.65,
+   "root.007_marder_1a3_body_c_0": 0.65,
+   "root.007_net_f_c_0": 0.65,
+   "root.008_marder_1a3_body_c_0": 0.65,
+   "root.008_net_f_c_0": 0.65,
+   "root.009_marder_1a3_body_c_0": 0.65,
+   "root.009_net_f_c_0": 0.65,
+   "root_marder_1a3_body_c_0": 0.65
+  },
+  "tur": [
+   -2.5,
+   80.0,
+   -4.0
+  ],
+  "gun": [
+   -2.6,
+   103.7,
+   2.0
+  ],
+  "credit": "黄鼠狼 1A3 步兵战车：Marder 1A3 | High-Quality model，作者 Scout（https://sketchfab.com/3d-models/marder-1a3-high-quality-model-0897f55d01a24fca9577d3d8a8579aac），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "camo": {
+   "mats": [
+    "marder_1a3_body_c",
+    "marder_1a3_turret_c",
+    "marder_1a3_body_add_c",
+    "marder_1a3_gun_c",
+    "milan_rocket_mount_c",
+    "milan_rocket_c",
+    "net_f_c",
+    "net_i_c"
+   ],
+   "cols": [
+    [
+     72,
+     86,
+     60
+    ],
+    [
+     86,
+     72,
+     58
+    ],
+    [
+     40,
+     40,
+     38
+    ]
+   ],
+   "share": [
+    0.45,
+    0.35,
+    0.2
+   ],
+   "tile": 5.0,
+   "size": 1024,
+   "seed": 7
+  },
+  "matColor": {
+   "ger_marder_1a3_track_c_left": [
+    52,
+    50,
+    47
+   ],
+   "ger_marder_1a3_track_c_right": [
+    52,
+    50,
+    47
+   ],
+   "mg_mg_42_c": [
+    44,
+    45,
+    46
+   ],
+   "optic_glass_c": [
+    30,
+    38,
+    46
+   ],
+   "headlight_glass_c": [
+    176,
+    182,
+    186
+   ]
+  }
  }
 }
