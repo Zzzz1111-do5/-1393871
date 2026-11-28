@@ -38,6 +38,11 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWBP]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日起 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～八包、E 第一～七包，新的在上面）
+  11-28 深夜这一包（雪山丰富起来：铁路、废弃的车、房子翻倍、交战区崎岖；挂载界面重做；吊舱照战雷；飞机镜头不被拽回机头；卡顿；没投票也能进训练场）：
+    换游戏文件，另外新导入一个文件——
+    · bld/wrecks.glb：雪山上废弃的车 14 种（轿车、两厢车、越野车、UAZ 吉普、乌拉尔 / 卡玛斯 / 嘎斯-66 卡车、客车、拖拉机、棚车、煤斗车、
+      M62 内燃机车、坠毁的飞机……，Sketchfab 上 CC-BY 的，带贴图，23 MB）。「导入 3D」导进 Workspace，块叫 B_<键>__Body_<号>，
+      开服收进 ReplicatedStorage.Imported.Bld；没导入的话照同样的大小用零件拼（位置一样）。署名：models/bld/wrecks_credits.txt
   11-28 晚这一包（直升机照战雷的鼠标瞄准：W 升 S 降、鼠标定方向、A/D 侧飞、Q/E 转机头；飞机滚转收得住、转弯机动性高一点；
     机枪、机关炮的声音换成真录音的连发 / 单发）：只换游戏文件（或者「三、只换脚本」），不用导模型。
     声音用的是创作者商店里 ProSoundEffects 的公开音频（任何游戏都能直接用），不用上传；载不下来的话照旧是原来的声音
