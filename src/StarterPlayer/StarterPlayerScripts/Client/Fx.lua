@@ -2314,6 +2314,20 @@ function Fx.init(G)
       elseif k == "shotIgn" then   -- 抛射的弹点火了：喷火、拖烟，发动机的时间从这里算
         local s = flying[e.id]
         if s then ejIgnite(s) end
+      elseif k == "dazzle" then   -- 光电对抗干扰了来袭的弹（服务器 Kit.lua）：「窗帘-1」的干扰灯闪一下更亮（光晕放大、往前的光加强，0.8 秒回去）
+        local v = G.viewById and G.viewById(e.id)
+        local mdl = v and v.model
+        if mdl then
+          for _, x in ipairs(mdl:GetDescendants()) do
+            if x.Name == "ShtoraHalo" and x.Enabled then
+              x.Size = NumberSequence.new(3.4)
+              task.delay(0.8, function() if x.Parent then x.Size = NumberSequence.new(1.9) end end)
+            elseif x.Name == "ShtoraLight" and x.Enabled then
+              x.Brightness, x.Range = 4, 30
+              task.delay(0.8, function() if x.Parent then x.Brightness, x.Range = 1.6, 18 end end)
+            end
+          end
+        end
       elseif k == "shotAct" then   -- 主动雷达弹导引头开机（服务器 Air.lua arhStep）：雷达屏上数据链虚线变实线
         local fs = flying[e.id]
         if fs then fs.act, fs.lost = true, false end

@@ -986,6 +986,18 @@ function View.init(G)
       end
       for _, pe in ipairs(M.dust) do pe.Enabled = false end
       for _, pe in ipairs(M.exhaust or {}) do pe.Enabled = false end
+      -- 「窗帘-1」的红外干扰灯（T-90A，VehModels）：车没了，灯灭——灯罩剩一块暗红的玻璃
+      if M.model then
+        for _, x in ipairs(M.model:GetDescendants()) do
+          local nm = x.Name
+          if nm == "ShtoraLens" or nm == "ShtoraMid" or nm == "ShtoraCore" then
+            x.Material = Enum.Material.Glass
+            x.Color = Color3.fromRGB(60, 16, 12)
+          elseif nm == "ShtoraHalo" or nm == "ShtoraLight" then
+            x.Enabled = false
+          end
+        end
+      end
     end
     -- 烧痕（⑨）：着火（服务器属性 WtF）超过 5 秒，车身熏黑一层（只改没贴图的零件；一辆车最多熏两次）
     if em:GetAttribute("WtF") == true and not v.wrecked then

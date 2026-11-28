@@ -67,9 +67,13 @@ TM.APS = {
 -- 激光告警：激光制导的导弹 / 炸弹（AirDefs 的 guide = "laser"：AKD-10、AGM-114、GBU-12、雷石……）冲着这辆车来时报警、报方向，
 --   auto 自动打一组烟幕弹（烟幕挡住激光照射，导弹丢了目标）；dazzle 激光压制：照射源被干扰的概率（JD-3，公开资料很少，估）
 --   kg 估
+-- shtora「窗帘-1」（T-90 / T-90A，用户 11-28「t90我记得有一对红色的车灯 这个一定要还原的跟原车一样」）：
+--   炮两边各一个 OTShU-1-7 红外干扰灯（红色的大圆灯）+ 激光告警（照上了自动打烟）；irJam 红外干扰灯骗掉指令制导反坦克弹
+--   （陶式、HOT、攻击……发射架上的测角仪跟着弹尾的红外灯修正：干扰灯一晃就偏）的概率，估；kg 估
 TM.EW = {
   lws = { kg = 60, auto = true, dazzle = 0 },
   jd3 = { kg = 120, auto = true, dazzle = 0.45 },
+  shtora = { kg = 350, auto = true, dazzle = 0, irJam = 0.5 },
 }
 
 ---------------------------------------------------------------- 其它加装件
@@ -94,7 +98,7 @@ TM.OPT = {
   none = { slot = "*" },
   fy2 = { slot = "era" }, fy4 = { slot = "era" }, arat = { slot = "era" }, arat2 = { slot = "era" },
   gl5 = { slot = "aps" }, trophy = { slot = "aps" },
-  lws = { slot = "ew" }, jd3 = { slot = "ew" },
+  lws = { slot = "ew" }, jd3 = { slot = "ew" }, shtora = { slot = "ew" },
   slat = { slot = "slat" }, belly = { slot = "belly" }, plow = { slot = "eng" }, mcs = { slot = "cam" },
   -- 以前的（车顶武器：坦克不带机枪以后这一位去掉了；hk 旧的硬杀伤 = 这型车的那一套）
   stock = { slot = "roof" },
@@ -129,6 +133,9 @@ TM.FOR = {
   ztz96 = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
   t90m = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
+    eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
+  -- T-90A 出厂带「窗帘-1」（炮两边两个红外干扰灯，红色的大圆灯——T-90M 换了新炮塔、没有了）
+  t90a = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "shtora", "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
   -- 11-27 拆开重叠的版本：96A 出厂就是箭形 FY-4（模型是 96B 的，上面的块按 FY-4 算）；别的照 96B（96B 也改成出厂 FY-4 以后，两套一样）
   ztz96a = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
