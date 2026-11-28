@@ -141,7 +141,7 @@ R.as("client", function()
 end)
 R.run(1)
 print("⑤ 雪地（11-28 晚用户「炮弹和炸弹炸到地面没有战雷那种效果 包括机枪打到地面也没有」：雪山图上原来全是白的，白雪地上看不出来）")
--- 每一层的头一个颜色：深（亮度 < 0.45：翻出来的冻土、黑烟）几层、白（> 0.8：雪）几层
+-- 每一层的头一个颜色：深（亮度 < 0.45：翻出来的冻土、黑烟）几层、白（> 0.8：雪）几层。打在镜头前几十格（远了只画一颗尘、不画土块）
 local function darkWhite(list)
   local nd, nw = 0, 0
   for _, x in ipairs(list) do
@@ -153,11 +153,11 @@ local function darkWhite(list)
   end
   return nd, nw
 end
-local kd, kw = darkWhite(fresh(function() R.as("client", function() C.kineticHit(ground(0, -400), V3(0, 1, 0), V3(0, -0.3, -1).Unit, "i", 2.1) end) end))
+local kd, kw = darkWhite(fresh(function() R.as("client", function() C.kineticHit(ground(0, 30), V3(0, 1, 0), V3(0, -0.3, -1).Unit, "i", 2.1) end) end))
 check(kd >= 2 and kw >= 1, string.format("穿甲弹打雪地：白雪 %d 层 + 深色冻土 %d 层", kw, kd))
-local bd, bw = darkWhite(fresh(function() R.as("client", function() C.boom(ground(0, -430), 0.5, "shell", "i", V3(0, -0.3, -1), "he") end) end))
+local bd, bw = darkWhite(fresh(function() R.as("client", function() C.boom(ground(0, 55), 0.5, "shell", "i", V3(0, -0.3, -1), "he") end) end))
 check(bd >= 3 and bw >= 1, string.format("榴弹打雪地：白雪 %d 层 + 深色冻土、黑烟 %d 层", bw, bd))
-local id, iw = darkWhite(fresh(function() R.as("client", function() C.impact(ground(0, -460), V3(0, -0.4, -1).Unit, "i", 1.7, V3(0, 1, 0)) end) end))
+local id, iw = darkWhite(fresh(function() R.as("client", function() C.impact(ground(0, 80), V3(0, -0.4, -1).Unit, "i", 1.7, V3(0, 1, 0)) end) end))
 check(id >= 1 and iw >= 1, string.format("机枪打雪地：白粉雪 %d 层 + 深色冻土屑 %d 层", iw, id))
 R.run(1)
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "))
