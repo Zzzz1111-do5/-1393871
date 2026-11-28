@@ -227,25 +227,31 @@ local LIST = {
 --   直升机树、固定翼哪一列都行（11-26 纯运输直升机删了：起步的是最老、级别最低的那架——米-8MT、UH-1N、AH-1S、直-8、虎式）
 --   11-28 用户「送就只送1级载具 飞机要拿金币买」：只有地面树的起步车白送（还得是一级），飞机、直升机树的不送了
 local STARTER_COLS = { ground = { [1] = true, [2] = true, [3] = true } }
+--   11-28「送就只送1级载具」：先找一级的坦克；没有一级坦克就找一级的步战车、防空车（俄系：T-72 乌拉尔是二级，白送一级的 BMP-1）；
+--   整棵树连一辆一级车都没有（日系：最老的是二级的 74 式）才照旧送最老的那辆坦克——不然这个系一辆车都开不了
 local function pickStarter(list, br)
   local pref = STARTER_COLS[br]
-  for pass = 1, 2 do
-    local best, bi
+  local function best(ok)
+    local b, bi
     for i, it in ipairs(list) do
-      if it.prev == nil and (pass == 2 or not pref or (pref[it.col] and not it.scout)) then
-        local better = not best
-        if best then
-          if it.rank ~= best.rank then better = it.rank < best.rank
-          elseif (it.year or 0) ~= (best.year or 0) then better = (it.year or 0) < (best.year or 0)
-          elseif it.br ~= best.br then better = it.br < best.br
+      if it.prev == nil and ok(it) then
+        local better = not b
+        if b then
+          if it.rank ~= b.rank then better = it.rank < b.rank
+          elseif (it.year or 0) ~= (b.year or 0) then better = (it.year or 0) < (b.year or 0)
+          elseif it.br ~= b.br then better = it.br < b.br
           else better = i < bi end
         end
-        if better then best, bi = it, i end
+        if better then b, bi = it, i end
       end
     end
-    if best or not pref then return best end
+    return b
   end
-  return nil
+  if not pref then return best(function() return true end) end
+  return best(function(it) return it.rank == 1 and pref[it.col] and not it.scout end)
+    or best(function(it) return it.rank == 1 and not it.scout end)
+    or best(function(it) return pref[it.col] and not it.scout end)
+    or best(function() return true end)
 end
 TT.pickStarter = pickStarter   -- 测试用：拿一份假的车单验证规则
 TT.START = {}   -- [系][树] = 起步车的 key（这棵树空着就没有）
@@ -277,7 +283,7 @@ for _, nat in ipairs(TT.NATIONS) do
     end
     -- 只白送地面树的一级车（用户 11-28「送就只送1级载具 飞机要拿金币买」）：飞机、直升机树没有起步车，要拿金币买
     local st = (br == "ground") and pickStarter(out, br) or nil
-    if st and st.rank == 1 then
+    if st then
       st.free = true
       TT.START[nat][br] = st.key
     end

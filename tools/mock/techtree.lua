@@ -35,6 +35,13 @@ for _, nat in ipairs(TT.NATIONS) do
       if (br ~= "ground") ~= (ad ~= nil) or (ad and (ad.kind == "heli") ~= (br == "heli")) then table.insert(bad, it.key .. " 树和型号对不上") end
       if it.free then free = free + 1 end
     end
+    -- 白送的是一级车；整棵树没有一级车（日系）才送最老的那辆
+    local has1, freeIt = false, nil
+    for _, it in ipairs(list) do
+      if it.rank == 1 then has1 = true end
+      if it.free then freeIt = it end
+    end
+    if freeIt and has1 and freeIt.rank ~= 1 then table.insert(noFree, nat .. ":" .. br .. "（送了 " .. freeIt.rank .. " 级）") end
     -- 11-28 用户「送就只送1级载具 飞机要拿金币买」：只有地面树白送一辆一级车；飞机、直升机树不送
     if br == "ground" and free == 0 and #list > 0 then table.insert(noFree, nat .. ":" .. br) end
     if br ~= "ground" and free > 0 then table.insert(noFree, nat .. ":" .. br .. "（不该送）") end
@@ -181,8 +188,9 @@ check(e ~= nil and not e.alive, "车没了")
 T.runUntil(function() return not P.alive end, 10)
 check(not P.alive, "人回机库")
 check(not fxOn, "回机库不放阵亡效果")
-T.runUntil(function() return hg and hg.Visible end, 15)
-check(hg and hg.Visible, "机库又出来了")
+-- 11-28 起局里回去（S.pick）是战雷式出击页（WtSpawn），不是 3D 机库；不在局里才是机库
+T.runUntil(function() return (hg and hg.Visible) or (C.wtSpawnOn and C.wtSpawnOn()) end, 15)
+check((hg and hg.Visible) or (C.wtSpawnOn and C.wtSpawnOn()), "回去了：局里是出击页、局外是机库（" .. ((C.wtSpawnOn and C.wtSpawnOn()) and "出击页" or "机库") .. "）")
 
 print("⑤ 研究、购买、放进阵容")
 local t = G.treeOf(P)

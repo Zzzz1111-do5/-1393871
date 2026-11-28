@@ -2454,6 +2454,9 @@ function TechUI.init(G)
   local panelPos = panel.Position
   panelHome = panelPos
   openTree = function()
+    -- 用户 11-26「那个局内选车的界面别弄科技树了」：局内选车（S.pick）不开——11-28 起局内选车是战雷式出击页（WtSpawn），
+    --   机库那段按阶段刷新的不跑了，原来在那里「见到 S.pick 就关上」管不到，这里直接不开
+    if G.S and G.S.pick then return end
     view.nat = tree.nat
     local back = closing   -- 正在往下滑着关：从现在的位置滑回去
     if closing then
