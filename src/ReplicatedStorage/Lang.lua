@@ -314,6 +314,7 @@ local VEH = {
   t72ural = { "T-72 乌拉尔 主战坦克", "T-72 Ural MBT" }, t72a = { "T-72A 主战坦克", "T-72A MBT" }, t72b = { "T-72B 主战坦克", "T-72B MBT" },
   t80u = { "T-80U 主战坦克", "T-80U MBT" }, t80b = { "T-80B 主战坦克", "T-80B MBT" }, t80bvm = { "T-80BVM 主战坦克", "T-80BVM MBT" },
   type59 = { "59 式中型坦克", "Type 59 Medium Tank" }, type69 = { "69-II 式中型坦克", "Type 69-II Medium Tank" },
+  t3485 = { "T-34-85 中型坦克", "T-34-85 Medium Tank" }, kpz70 = { "KPz 70 主战坦克", "KPz 70 Main Battle Tank" },
   type87rcv = { "87 式侦察警戒车", "Type 87 RCV" }, brdm2 = { "BRDM-2 装甲侦察车", "BRDM-2 Scout Car" }, strela1 = { "9K31「箭-1」防空车", "9K31 Strela-1 SAM" },
   t64a = { "T-64A 主战坦克", "T-64A MBT" }, t64b = { "T-64B 主战坦克", "T-64B MBT" }, type74 = { "74 式主战坦克", "Type 74 MBT" }, type74g = { "74 式改主战坦克", "Type 74 (G) MBT" },
   gepard1a1 = { "猎豹 1A1 自行高炮", "Gepard 1A1 SPAAG" }, gepard1a2 = { "猎豹 1A2 自行高炮", "Gepard 1A2 SPAAG" },
@@ -1110,6 +1111,8 @@ add("vw.gun105a5", "105 毫米炮（L7A3）", "105 mm L7A3")
 add("vw.gun105m68", "105 毫米炮（M68E1）", "105 mm M68E1")
 add("vw.gun105m60", "105 毫米炮（M68）", "105 mm M68")
 add("vw.gun73", "73 毫米炮（2A28）", "73 mm 2A28 Grom")
+add("vw.gun85", "85 毫米炮（ZiS-S-53）", "85 mm ZiS-S-53")
+add("vw.gun152k70", "152 毫米炮 / 导弹发射器（XM150）", "152 mm XM150 gun-launcher")
 add("vw.gun100d", "100 毫米炮（59 式，仿 D-10T）", "100 mm Type 59 (D-10T)")   -- 原来武器栏显示成代码名 vw.gun100d（11-26 观瞄截图里看到的）
 add("vw.gun100d69", "100 毫米炮（69 式）", "100 mm Type 69")
 add("vw.gun152", "152 毫米炮 / 导弹发射器（M81）", "152 mm M81 gun-launcher")

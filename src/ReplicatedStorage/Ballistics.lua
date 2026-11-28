@@ -81,6 +81,16 @@ B.AMMO = {
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
   m409 = { cls = "heat", name = "M409 HEAT-MP", sym = "HEAT", v0 = 683, k = 1.4e-4, bs = 700, tr = true, ce = true,   -- M551：152 毫米多用途破甲弹，初速低、弹道弯
     vs = { inf = 1.1, light = 1.3, armor = 0.9, fort = 1.4 }, splash = 1.3 },
+  -- KPz 70 的 152 毫米 XM150（11-28）：
+  xm578 = { cls = "ap", name = "XM578 APFSDS", sym = "穿甲", v0 = 1480, k = 5.0e-5, bs = 1200, tr = true,        -- 钨芯尾翼稳定脱壳穿甲弹（六十年代）
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  -- T-34-85 的 85 毫米 ZiS-S-53（11-28）：
+  br365 = { cls = "ap", name = "BR-365 APHE", sym = "穿甲", v0 = 792, k = 1.2e-4, bs = 1000, tr = true,             -- 钝头被帽穿甲弹，带一点装药
+    vs = { inf = 0.7, light = 1.1, armor = 1.0, fort = 0.9 }, splash = 0.9 },
+  br365p = { cls = "ap", name = "BR-365P APCR", sym = "次口径", v0 = 1050, k = 1.6e-4, bs = 1000, tr = true,        -- 次口径（钨芯）：近处穿得深，掉速快
+    vs = { inf = 0.5, light = 1.0, armor = 1.1, fort = 0.7 }, splash = 0.5 },
+  o365 = { cls = "he", name = "O-365K HE-FRAG", sym = "榴弹", v0 = 793, k = 1.1e-4, bs = 800, tr = false,            -- 85 毫米杀爆榴弹
+    vs = { inf = 1.3, light = 1.0, armor = 0.5, fort = 1.5 }, splash = 1.4 },
   -- 59 式 / 69-II 式的 100 毫米线膛炮（11-26）：
   br412d = { cls = "ap", name = "BR-412D APBC", sym = "穿甲", v0 = 887, k = 1.1e-4, bs = 1000, tr = true,            -- 59 式：钝头被帽穿甲弹（全口径，掉速快）
     vs = { inf = 0.6, light = 1.1, armor = 1.0, fort = 0.9 }, splash = 0.8 },
@@ -129,6 +139,8 @@ B.GUN = {
   gun105m68 = { "m833", "m456", "jet105" },           -- M60A3
   gun105m60 = { "m392", "m456", "jet105" },           -- M60A1
   gun152 = { "m409" },                                 -- M551（MGM-51 导弹游戏里没有）
+  gun152k70 = { "xm578", "m409" },                   -- KPz 70：XM578 尾翼稳定脱壳穿甲弹、M409 多用途破甲弹
+  gun85 = { "br365", "o365", "br365p" },             -- T-34-85（引进）：穿甲、榴弹，第三种次口径（研究得到）
   gun100d = { "br412d", "bk5m", "of412" },            -- 59 式
   gun100d69 = { "apfsds69", "bk5m", "of412" },        -- 69-II 式
   -- 11-27 拆开重叠的版本：M1 一族照年代。弹种顺序照全工程的约定（审查第 3 条）：{ 原厂穿甲, 破甲 / 多用途, 榴弹 / MPAT / 霰弹, 旧穿甲…, 射流 }——

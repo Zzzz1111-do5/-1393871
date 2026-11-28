@@ -47,7 +47,7 @@ TT.RANK_NEED = { 3, 3, 3, 2, 2, 2 }
 --   要么借同族、外形几乎一样的（M1 借 M1A1、苏-27 借歼-11、苏-30SM 借歼-16、F-15A / E 借 F-15C、F-2A 借 F-16）。以后找到原模型再加回来
 --   11-27（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」）：地面树写 base 的 18 项都拆成了自己的型号（veh + model：性能自己的、模型借同族的），
 --   地面树没有 base 了；飞机那几项（F-16A、苏-27SM……）还写 base，另外拆
---   德国的固定翼一架都没找到（F-4F、狂风、台风、米格-29G、F-104G 都没有能用的模型），这棵树先空着
+--   德国的固定翼一架都没找到（F-4F、狂风、台风、米格-29G、F-104G 都没有能用的模型），这棵树先空着；11-28 米格-29G 借俄系米格-29 的模型先放上
 local G, A, H = "ground", "air", "heli"
 local LIST = {
   cn = {
@@ -65,6 +65,12 @@ local LIST = {
       { "cn_99a", "99A式主战坦克", "Type 99A", 2011, 6, 2, 11.7, veh = "ztz99a" },
       { "cn_86", "86式步兵战车", "Type 86", 1986, 4, 4, 7.7, veh = "type86", model = "bmp1" },
       { "cn_pgl625", "PGL-625 弹炮结合", "PGL-625", 2019, 7, 5, 11.0, veh = "pgl625" },   -- 25 毫米六管炮 + 4 枚防空导弹
+      -- 11-28 用户「中国当年买过的坦克你也找模型」：九十年代初从俄罗斯引进评估的 T-80U（同俄系那辆：模型、性能都是它）；
+      --   放在第二条线的最后（排在 99A 后面：上一项级别比它高，不连前置，单独研究）
+      { "cn_t80u", "T-80U（引进）", "T-80U (imported)", 1993, 5, 2, 10.7, veh = "t80u", nostart = true },
+      -- 11-28 同上：1950～1955 年从苏联买的 T-34-85（抗美援朝、建军初期的主力；Sketchfab 真模型 blveh.json t3485）。一级、第一列打头
+      --   （排在列表最后：59 式那一列的前置不变）；nostart：比 59 式老，可起步车照旧是 59 式
+      { "cn_t3485", "T-34-85（引进）", "T-34-85 (imported)", 1950, 1, 1, 5.7, veh = "t3485", nostart = true },
     },
     [A] = {
       { "cn_j6", "歼-6", "J-6", 1962, 1, 1, 8.0, veh = "j6" },
@@ -90,6 +96,9 @@ local LIST = {
       -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开」「各维度还原一致」）：豹 1A1A1、豹 2A0、豹 2A5 原来写 base，现在各开各的型号、模型借同族的
       { "de_leo1a1a1", "豹1A1A1", "Leopard 1A1A1", 1975, 2, 1, 7.7, veh = "leo1a1a1", model = "leo1" },
       { "de_leo1a5", "豹1A5", "Leopard 1A5", 1987, 4, 1, 8.3, veh = "leo1a5", model = "leo1" },
+      -- 11-28 用户「你把德国的各种载具全部补齐……包括坦克」：KPz 70（美德合作的 MBT-70，Sketchfab 真模型 blveh.json mbt70）——豹 2 的前身，
+      --   排在豹 2A0 前面当它的前置（同战雷：KPz 70 → 豹 2）
+      { "de_kpz70", "KPz 70", "KPz 70", 1969, 2, 2, 8.7, veh = "kpz70" },
       { "de_leo2a0", "豹2A0", "Leopard 2A0", 1979, 3, 2, 9.0, veh = "leo2a0", model = "leo2a6" },
       { "de_leo2a4", "豹2A4", "Leopard 2A4", 1985, 4, 2, 9.7, veh = "leo2a4", model = "leo2a6" },
       { "de_leo2a5", "豹2A5", "Leopard 2A5", 1995, 5, 2, 10.7, veh = "leo2a5", model = "leo2a6" },
@@ -99,6 +108,9 @@ local LIST = {
       { "de_gepard1a2", "猎豹1A2", "Gepard 1A2", 1998, 5, 5, 9.3, veh = "gepard1a2" },
     },
     [A] = {
+      -- 11-28 用户「你把德国的各种载具全部补齐」：两德统一后联邦德国空军接收的米格-29G（原东德空军的 9.12A，换了北约的敌我识别、导航）——
+      --   模型、性能借俄系的米格-29（9.12）
+      { "de_mig29g", "米格-29G", "MiG-29G", 1990, 4, 1, 12.0, veh = "mig29" },
     },
     [H] = {   -- 德国：虎式 UHT（攻击）。NH90 TTH 是纯运输（没有武器），11-26 用户「很多运输型直升机可以去掉了 实战没有意义」删了
       { "de_tiger", "虎式 UHT", "Tiger UHT", 2005, 6, 1, 10.3, veh = "tiger" },
@@ -248,9 +260,10 @@ local function pickStarter(list, br)
     return b
   end
   if not pref then return best(function() return true end) end
-  return best(function(it) return it.rank == 1 and pref[it.col] and not it.scout end)
-    or best(function(it) return it.rank == 1 and not it.scout end)
-    or best(function(it) return pref[it.col] and not it.scout end)
+  --   11-28：引进的车（nostart：T-34-85 这类比本国起步车更老的外国车）不当起步车——不然一加进来白送的就换了，已有存档里那辆白送车没了
+  return best(function(it) return it.rank == 1 and pref[it.col] and not it.scout and not it.nostart end)
+    or best(function(it) return it.rank == 1 and not it.scout and not it.nostart end)
+    or best(function(it) return pref[it.col] and not it.scout and not it.nostart end)
     or best(function() return true end)
 end
 TT.pickStarter = pickStarter   -- 测试用：拿一份假的车单验证规则
@@ -266,7 +279,7 @@ for _, nat in ipairs(TT.NATIONS) do
     local out, lastInCol = {}, {}
     for _, row in ipairs(LIST[nat][br]) do
       local it = { key = row[1], name = row[2], en = row[3], year = row[4], rank = row[5], col = row[6], br = row[7],
-        veh = row.veh, base = row.base, model = row.model, scout = row.scout, nat = nat, branch = br }
+        veh = row.veh, base = row.base, model = row.model, scout = row.scout, nostart = row.nostart, nat = nat, branch = br }
       it.play = it.veh or it.base   -- 出车开哪一型
       it.stand = it.veh == nil      -- 暂用别的型号（模型和性能都借）
       -- model：性能是这一型自己的（VehDefs 里有它的炮、弹、装甲、机动），只是还没有它自己的模型，借同族那一型的真模型

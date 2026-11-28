@@ -38,6 +38,9 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWBP]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日起 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～八包、E 第一～七包，新的在上面）
+  11-28 凌晨这一包（新车：中系 T-34-85（引进）、德系 KPz 70；借现成模型的中系 T-80U（引进）、德系米格-29G）：换游戏文件，另外新导入两个文件——
+    · veh/t3485.glb：T-34-85（julianrijken 的 CC-BY 模型，3.7 MB）；veh/mbt70.glb：KPz 70 / MBT-70（_Muzaev 的 CC-BY 模型，9 MB）。
+      「导入 3D」导进 Workspace，块叫 V_<键>__<组>_<号>，开服自动收好；没导入的话用零件拼的车壳代替。署名：models/veh/credits.txt
   11-28 深夜这一包（雪山丰富起来：铁路、废弃的车、房子翻倍、交战区崎岖；挂载界面重做；吊舱照战雷；飞机镜头不被拽回机头；卡顿；没投票也能进训练场）：
     换游戏文件，另外新导入一个文件——
     · bld/wrecks.glb：雪山上废弃的车 14 种（轿车、两厢车、越野车、UAZ 吉普、乌拉尔 / 卡玛斯 / 嘎斯-66 卡车、客车、拖拉机、棚车、煤斗车、

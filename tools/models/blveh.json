@@ -7070,5 +7070,114 @@
    "@W03",
    "@W04"
   ]
+ },
+ "t3485": {
+  "_说明": "T-34-85 中型坦克（julianrijken，Sketchfab ca24cc254922473a91ec213aebd83292「T-34 85 Tank」，CC-BY-4.0，作者业余自己做的）；用户 11-28「中国当年买过的坦克你也找模型」——五十年代从苏联买的第一批坦克。原模型车头朝 −X（转 −90°），车体 Hull1 长 4.33 → 真车 6.10 米；炮塔连炮管在 CannonFull 下面（炮塔壳 Cannon_Body、舱盖、天线、挂的履带板），炮管 Cannon_Barrle 和防盾 Cannon_Body1 拆成 Gun；车体那一组里有几块在炮塔顶上（指挥塔舱盖、通风罩），按位置框进炮塔；五对大负重轮各自转",
+  "uid": "ca24cc254922473a91ec213aebd83292",
+  "rotZ": -90,
+  "length": 6.1,
+  "lengthRef": [
+   "Hull1_Tank_Material_0"
+  ],
+  "texMax": 1024,
+  "split": [
+   {
+    "from": [
+     "Cannon_Barrle_Tank_Material_0",
+     "Cannon_Body1_Tank_Material_0"
+    ],
+    "to": "Gun",
+    "box": [
+     -4.0,
+     -1.4,
+     1.1,
+     1.7,
+     0.7,
+     1.3
+    ]
+   },
+   {
+    "from": "*",
+    "to": "Turret",
+    "box": [
+     -1.7,
+     0.26,
+     1.13,
+     2.1,
+     0.34,
+     1.66
+    ],
+    "center": true
+   }
+  ],
+  "wheels": [
+   [
+    "pasted__pCylinder218_Tank_Material_0"
+   ],
+   [
+    "pasted__pCylinder219_Tank_Material_0"
+   ],
+   [
+    "pasted__pCylinder220_Tank_Material_0"
+   ],
+   [
+    "pasted__pCylinder221_Tank_Material_0"
+   ],
+   [
+    "pasted__pCylinder222_Tank_Material_0"
+   ],
+   [
+    "pasted__pCylinder223_Tank_Material_0"
+   ],
+   [
+    "pasted__pCylinder224_Tank_Material_0"
+   ],
+   [
+    "pasted__pCylinder225_Tank_Material_0"
+   ],
+   [
+    "pasted__pCylinder226_Tank_Material_0"
+   ],
+   [
+    "pasted__pCylinder227_Tank_Material_0"
+   ]
+  ],
+  "credit": "T-34-85 中型坦克：T-34 85 Tank，作者 julianrijken（https://sketchfab.com/3d-models/t-34-85-tank-ca24cc254922473a91ec213aebd83292），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "alias": [
+   "t3485"
+  ]
+ },
+ "mbt70": {
+  "_说明": "MBT-70 / KPz 70（_Muzaev，Sketchfab 6aebe7926d954a21b1abd0ca8fbfd5d5「MBT-70」，CC-BY-4.0，作者自己做的第二个模型）；用户 11-28「你把德国的各种载具全部补齐……包括坦克」——美德合作的六十年代主战坦克，联邦德国叫 KPz 70。原模型单位是厘米、车头朝 +Z（转半圈）；炮塔是一整块网格 R，炮管连防盾是单独的 Box025；炮塔顶上的指挥塔、舱盖、天线归炮塔；炮塔座圈中心、炮耳轴手工给（tur / gun，原模型厘米：自动算的座圈按炮塔最低那一圈，偏到前面 1 米多）",
+  "uid": "6aebe7926d954a21b1abd0ca8fbfd5d5",
+  "rotZ": 180,
+  "scale": 0.01,
+  "texMax": 1024,
+  "groups": {
+   "Turret": [
+    "R_13___Default_0",
+    "Cylinder039_13___Default_0",
+    "Cylinder042_13___Default_0",
+    "Cylinder043_13___Default_0",
+    "Object005_14___Default_0"
+   ],
+   "Gun": [
+    "Box025_13___Default_0"
+   ]
+  },
+  "credit": "MBT-70（KPz 70）：MBT-70，作者 _Muzaev（https://sketchfab.com/3d-models/mbt-70-6aebe7926d954a21b1abd0ca8fbfd5d5），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）。署名见 models/veh/credits.txt",
+  "alias": [
+   "kpz70"
+  ],
+  "tur": [
+   0,
+   139,
+   -60
+  ],
+  "gun": [
+   0,
+   178,
+   150
+  ]
  }
 }

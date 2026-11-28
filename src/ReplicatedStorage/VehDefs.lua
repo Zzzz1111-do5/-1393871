@@ -68,6 +68,14 @@ VehDefs.W = {
     vs = { inf = 0.7, light = 1.3, armor = 1, air = 0.8, ship = 0.7, fort = 1.2 }, fx = "tank", cal = 0.42 },
   -- 59 式 / 69-II 式的 100 毫米线膛炮（用户 11-26「各系各阶段缺少的载具」：中国地面树一、二级）：59 式是 D-10T 的仿制（59 式 100 毫米坦克炮），
   --   手动装填 7～8 秒一发；69-II 式换了稳定器和激光测距、有尾翼稳定脱壳穿甲弹（Ballistics.GUN 里各自的弹）
+  -- KPz 70 / MBT-70 的 152 毫米炮 / 导弹发射器 XM150（11-28）：自动装弹机 6 秒上下一发、46 发；XM578 尾翼稳定脱壳穿甲弹 1480 米 / 秒、
+  --   M409 多用途破甲弹 683（Ballistics.GUN gun152k70；「橡树棍」炮射导弹游戏里没有）
+  gun152k70 = { kind = "shell", dmg = 560, speed = 4144, drop = 0.14, splash = 7, rate = 6.0, mag = 1, reload = 0, reserve = 46, range = 3000,
+    vs = { inf = 0.9, light = 1.3, armor = 1.0, air = 0.8, ship = 0.7, fort = 1.3 }, fx = "tank", cal = 0.43 },
+  -- T-34-85 的 85 毫米 ZiS-S-53（用户 11-28「中国当年买过的坦克」：五十年代从苏联买的 T-34-85）：手动装填 8 秒上下一发、55 发；
+  --   初速：BR-365 穿甲弹 792 米 / 秒、BR-365P 次口径 1050、O-365K 榴弹 793（Ballistics.GUN gun85 各自的弹）
+  gun85 = { kind = "shell", dmg = 330, speed = 2218, drop = 0.19, splash = 5, rate = 8.0, mag = 1, reload = 0, reserve = 55, range = 2000,
+    vs = { inf = 0.8, light = 1.3, armor = 0.85, air = 0.8, ship = 0.6, fort = 1.0 }, fx = "tank", cal = 0.3 },
   gun100d = { kind = "shell", dmg = 400, speed = 2484, drop = 0.18, splash = 6, rate = 7.5, mag = 1, reload = 0, reserve = 34, range = 2200,
     vs = { inf = 0.8, light = 1.3, armor = 0.9, air = 0.8, ship = 0.6, fort = 1.1 }, fx = "tank", cal = 0.34 },
   gun100d69 = { kind = "shell", dmg = 430, speed = 3962, drop = 0.16, splash = 6, rate = 7.0, mag = 1, reload = 0, reserve = 44, range = 2400,
@@ -215,6 +223,29 @@ D.type59 = tracked({ cat = "tank", L = 17.0, W = 9.2, H = 6.9, hullH = 3.9, clea
   smoke = { banks = { { at = V(3.0, 1.3, -1.6), yaw = 40 }, { at = V(-3.0, 1.3, -1.6), yaw = -40 } }, n = 2 },   -- 真车是发动机喷烟（TDA），游戏里按两组烟幕弹算
   sightZoom = { day = { 3.5, 7 }, th = { 3.5 } },   -- TSh-2B-32 炮长瞄准镜 3.5 / 7 倍；夜里主动红外
   weapons = { "gun100d", "coax" } })
+-- KPz 70（MBT-70 的联邦德国型；用户 11-28「你把德国的各种载具全部补齐……包括坦克」：美德合作的六十年代主战坦克，豹 2 的前身；
+--   原模型 _Muzaev，tools/models/blveh.json mbt70）：50 吨、MB 873 柴油机 1500 马力（30 马力 / 吨）、公路 69 公里 / 时、倒车也快；
+--   152 毫米炮 / 导弹发射器 XM150 带自动装弹机，三人车组（驾驶员也坐在炮塔里）；液气悬挂、全稳定；夜里主动红外 / 微光。
+--   尺寸、炮塔座圈（手工标的：炮塔前伸很多）、炮耳轴照模型量的（ImportedMeta mbt70）
+D.kpz70 = tracked({ cat = "tank", L = 20.6, W = 9.8, H = 7.2, hullH = 4.7, clear = 1.3, speed = 53.7, accel = 6.4, rev = 20.0, turn = 40,
+  rw = { n = 6, r = 1.15, x = 3.95, z0 = -7.6, z1 = 7.2 }, skirt = false,
+  turret = { pivot = V(0, 3.89, -1.37), size = V(9.0, 2.6, 13.0), style = "round", trav = 40, elev = { -10, 20 }, bustle = 2.0 },
+  gun = { pivot = V(0, 1.09, -5.88), len = 8.8, cal = 0.43, fume = true }, coax = V(1.0, 0.9, -5.0),
+  sight = V(-1.6, 1.8, -3.8), cupola = V(1.8, 2.4, -1.0),
+  smoke = { banks = { { at = V(3.4, 1.6, -3.4), yaw = 40 }, { at = V(-3.4, 1.6, -3.4), yaw = -40 } }, n = 4 },
+  sightZoom = { day = { 8, 16 }, th = { 8 } },
+  weapons = { "gun152k70", "coax" } })
+-- T-34-85（用户 11-28「中国当年买过的坦克你也找模型」：1950～1955 年从苏联买了一千八百来辆，抗美援朝、建军初期的主力；
+--   原模型 julianrijken，tools/models/blveh.json t3485）：32 吨、V-2-34 柴油机 500 马力（15.6 马力 / 吨）、公路 54 公里 / 时；
+--   85 毫米 ZiS-S-53 手动装填，没有稳定器、没有夜视，TSh-16 4 倍瞄准镜；五人车组（车体机枪手），弹在车体底部和炮塔后壁。
+--   尺寸、负重轮（五对克里斯蒂大轮）、炮塔转轴、炮耳轴照模型量的（ImportedMeta t3485）
+D.t3485 = tracked({ cat = "tank", L = 17.1, W = 8.2, H = 7.4, hullH = 4.8, clear = 1.1, speed = 42.0, accel = 3.6, rev = 4.7, turn = 30, noStab = true,
+  rw = { n = 5, r = 1.05, x = 3.29, z0 = -4.6, z1 = 5.0 }, skirt = false,
+  turret = { pivot = V(0.06, 4.13, -1.07), size = V(6.4, 2.3, 7.6), style = "round", trav = 20, elev = { -5, 22 }, bustle = 0.6 },
+  gun = { pivot = V(0, 1.3, -2.93), len = 9.0, cal = 0.3, fume = false }, coax = V(0.7, 1.2, -3.3),
+  sight = V(-0.8, 1.5, -2.8), cupola = V(-1.0, 2.0, 0.6),
+  sightZoom = { day = { 4 } },   -- TSh-16 定倍 4 倍，没有夜视
+  weapons = { "gun85", "coax" } })
 -- 69-II 式（1982 出口型）：同一个车体、580 马力，炮控稳定器、激光测距、尾翼稳定脱壳穿甲弹；同一个模型（ImportedMeta 的 alias）
 --   11-27：like = 59 式（HudIcons 只拍了 59 式：驾驶界面的剪影退到它）；有稳定器（noStab = false：59 式那一型是 true，深拷会拷过来）
 D.type69 = variant(D.type59, { like = "type59", noStab = false, accel = 3.5, speed = 38.9, weapons = { "gun100d69", "coax" }, sightZoom = { day = { 3.5, 7 }, th = { 4 } } })
