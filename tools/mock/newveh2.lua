@@ -159,12 +159,17 @@ if G.aiVehThink then
   local y0 = yawOf(ae)
   ae.ai = { state = "hold", goal = nil, hold = ae.root.CFrame.Position, tgt = { pos = tgt.root.CFrame.Position, kind = "veh", ref = tgt },
     seekT = math.huge, aimT = 0, stuckT = 0, lastP = ae.root.CFrame.Position, holdT = os.clock() + 1e6, sideT = 0, crew = { name = "AI" } }
-  for _ = 1, 40 do
+  local ticks = 0
+  for i = 1, 80 do   -- 每 0.1 秒想一次（转速 30°/秒 → 一次 3°）；转到射界里就停
     G.aiVehThink(ae, 0.1)
     R.run(0.1)
+    ticks = i
+    if ae.ai.arcOver == 0 then break end
   end
   local t1 = rel(y0 - yawOf(ae))
-  check(t1 > 60, string.format("目标在右边 90°：车头往右转了 %.0f°", t1))
+  local tgtOk = ae.ai.tgt ~= nil and tgt.alive
+  check(t1 > 70, string.format("目标在右边 90°：%d 次转了 %.0f°（射界外还差 %s°、状态 %s、能动 %s、目标还在 %s）", ticks, t1,
+    tostring(ae.ai.arcOver), tostring(ae.ai.state), tostring(not (ae.wt and ae.wt.mob == false)), tostring(tgtOk)))
   check(math.abs(rel(ae.ty or 0)) <= 8.05, string.format("炮角在射界里（%.1f°）", rel(ae.ty or 0)))
 else
   check(false, "AIVeh 没给 G.aiVehThink")
