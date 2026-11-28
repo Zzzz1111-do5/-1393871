@@ -7,7 +7,7 @@
 --   ③ 炮管、炮闩跟着炮的俯仰和炮塔方位走：炮管方向 = VehDefs.gunCF（车体、炮塔转角、俯仰）；抬炮以后还对得上；炮塔转过 60° 以后炮长的头
 --      还在 WtDamage.fromTur 算的地方（炮塔系的件跟着炮塔转）
 --   ④ 真按住 X、挪鼠标（审查 11-27：原来测试手动把镜头挪到炮管侧面、直接写鼠标位置，游戏里鼠标锁在屏幕中间根本指不到——假阳性）：
---      按住 X 时鼠标放开（Default、指针画出来），挪鼠标镜头和炮塔不转；鼠标挪到发动机上：旁边写「发动机」「柴油机」；挪到炮口：「炮管」「完好」「125 毫米」；
+--      按住 X 鼠标照样锁着（11-28）；再按住 Alt 时鼠标放开（Default、指针画出来），挪鼠标镜头和炮塔不转；鼠标挪到发动机上：旁边写「发动机」「柴油机」；挪到炮口：「炮管」「完好」「125 毫米」；
 --      挪到车外：提示框收起；观瞄打坏 → 观瞄进「打坏」那一组、写「损毁」；炮长受伤；起火 → 发动机进「起火」那一组；
 --      乘员状态按座位（WtC「状态 + 座位」：车长顶上阵亡的炮长以后，炮长位是活人、车长位阵亡）
 --   ⑤ 松手全清：OwnXray、图例都没了，车身透明度还原，鼠标锁回屏幕中间；零件收进对象池——再按住一个零件都不新建；稳着按住的时候不新建、不换组；
@@ -132,7 +132,15 @@ check(info.items.engine and info.items.engine.n >= 20, "柴油机：曲轴箱、
 check(info.items.tdrive and info.items.tdrive.n >= 14, "炮塔驱动：座圈齿圈一圈 + 电机（" .. tostring(info.items.tdrive and info.items.tdrive.n) .. " 个零件）")
 check(info.items.era_hull ~= nil or info.items.era_tur ~= nil, "爆反块照模型上真的块画")
 check(legend() ~= nil, "屏幕上有图例")
-check(UIS.MouseBehavior == Enum.MouseBehavior.Default and UIS.MouseIconEnabled == true, "按住 X：鼠标放开、指针画出来（去指部件）")
+-- 用户 11-28「然后目前车上按x透视的时候鼠标会出来」：只按 X 鼠标照样锁着、不画指针；再按住 Alt 才放开（去指部件）
+check(UIS.MouseBehavior == Enum.MouseBehavior.LockCenter and UIS.MouseIconEnabled == false, "只按 X：鼠标照样锁在屏幕中间、不画指针")
+check(T.texts("Alt")[1] ~= nil, "图例下面写着「按住 Alt：用鼠标指部件看名字、状态」")
+T.key(Enum.KeyCode.LeftAlt, true)
+R.run(0.2)
+check(UIS.MouseBehavior == Enum.MouseBehavior.Default and UIS.MouseIconEnabled == true, "再按住 Alt：鼠标放开、指针画出来（去指部件）")
+T.key(Enum.KeyCode.LeftAlt, false)
+R.run(0.2)
+check(UIS.MouseBehavior == Enum.MouseBehavior.LockCenter, "松开 Alt：鼠标锁回去")
 do   -- 主循环每一步的计时（G.perfT，半秒清一次）：透视记在 steps 的「xray」下面，不再单独连 RenderStepped（「XrayOwn」）
   local sawX, sawOld = false, false
   for _ = 1, 10 do
@@ -249,11 +257,12 @@ R.run(0.2)
 st.camYaw = cy0
 R.run(3.5)
 T.key(Enum.KeyCode.X, true)
+T.key(Enum.KeyCode.LeftAlt, true)   -- 指部件要按住 Alt（11-28）
 R.run(0.4)
 
-print("④ 真按住 X、挪鼠标：指着的部件写名字、状态")
+print("④ 真按住 X、按住 Alt、挪鼠标：指着的部件写名字、状态")
 local cam = R.workspace.CurrentCamera
-check(UIS.MouseBehavior == Enum.MouseBehavior.Default, "按住 X：鼠标没锁")
+check(UIS.MouseBehavior == Enum.MouseBehavior.Default, "按住 X + Alt：鼠标没锁")
 do   -- 挪鼠标镜头、炮塔不转（鼠标归指部件）
   local yaw0, pitch0, ty0 = st.camYaw, st.camPitch, st.ty
   R.mouseDelta = R.Vector2.new(320, 140)
@@ -345,6 +354,7 @@ check(C.ownXrayInfo().items.engine.ov == nil, "灭了：发动机回到原来的
 print("⑤ 松手全清、对象池、每帧只改 CFrame；望远镜、车内视角、热成像")
 local i3 = C.ownXrayInfo()
 local made0, parts0 = i3.stats.made, i3.parts
+T.key(Enum.KeyCode.LeftAlt, false)
 T.key(Enum.KeyCode.X, false)
 R.run(0.3)
 local i4 = C.ownXrayInfo()

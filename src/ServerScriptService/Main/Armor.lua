@@ -803,13 +803,17 @@ function Armor.init(G)
   G.on("roundStart", function()
     for _, e in ipairs(wrecks) do G.removeEnt(e) end   -- 上一局留下的残骸
     table.clear(wrecks)
-    for _, e in ipairs(vehicles) do G.removeEnt(e) end
+    -- 训练场里试驾的车、靶车不动（11-28：训练场开服就建，主界面就能试驾——投票定图、开局时人还在训练场里开着车）
+    local keep = {}
+    for _, e in ipairs(vehicles) do
+      if e.alive and (e.testDrive or e.testDummy) then keep[#keep + 1] = e else G.removeEnt(e) end
+    end
     for _, b in ipairs(lcacs) do G.removeEnt(b) end
-    vehicles, lcacs = {}, {}
+    vehicles, lcacs = keep, {}
     G.vehicles = vehicles
     pending = { atk = {}, def = {} }
     table.clear(smokes)
-    for _, P in pairs(G.P) do P.vehicle = nil end
+    for _, P in pairs(G.P) do if not P.inTest then P.vehicle = nil end end
   end)
 end
 

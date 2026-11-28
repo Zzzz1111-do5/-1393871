@@ -1127,7 +1127,10 @@ function Air.init(G)
   --   开了 streaming 时客户端只收到加载中心（藏起来的人物，跟着飞机挪）四周一圈；一秒飞一两千格时前面的房子、地形细节来不及送到。
   --   给开飞机的人加一个「前方加载点」（Player:AddReplicationFocus）：每 0.25 秒挪到这架飞机按现在的速度、方向 3.5 秒后到的地方
   --   （最远 3000 格，不低于地面），服务器按它把前方那一片先送过去；慢下来（每秒 60 格以下）、下飞机、飞机没了就撤掉
-  local AHEAD_T, AHEAD_MAX, AHEAD_MIN_V = 3.5, 3000, 60
+  -- 11-28 用户「然后现在开飞机太卡了」：前方加载点让客户端一直多收一大片零件（加载半径 4096 格，前面再多一圈）——
+  --   收紧：每秒 250 格以上才挂（原来 60，慢飞的直升机、起飞滑跑也挂着）、看 2.5 秒后（最远 2000 格，原来 3.5 秒 / 3000 格）、
+  --   半秒挪一次（原来 0.25 秒）；飞到离地 1400 格（五百米）以上不挂：那么高看不清地上的细节，本来那一圈就够了
+  local AHEAD_T, AHEAD_MAX, AHEAD_MIN_V, AHEAD_DT, AHEAD_AGL = 2.5, 2000, 250, 0.5, 1400
   --   光电吊舱放大看远处（用户 11-28「吊舱ui和战雷对其 加一个LOD」）：吊舱看着的那一点（客户端每次同步发的瞄准点，开着吊舱时就是吊舱十字下面）
   --   离飞机 600 格以上也加一个加载点——几公里外的房子、车、地形细节先送过来，放大了看得见（客户端的树按放大后的距离挑版本，Scenery.lua）
   local focusF = nil
@@ -1169,12 +1172,13 @@ function Air.init(G)
   local function aheadStep(e, D, dt)
     if not G.streaming or not D or D.remote == e or not e.alive then focusAllOff(e) return end
     e.focusAcc = (e.focusAcc or 0) + dt
-    if e.focus and e.focusAcc < 0.25 then return end
+    if e.focus and e.focusAcc < AHEAD_DT then return end
     e.focusAcc = 0
     local p0 = e.root.CFrame.Position
     local v = e.vel or V()
     local spd = v.Magnitude
-    if spd >= AHEAD_MIN_V then
+    local agl = p0.Y - math.max(surface(p0.X, p0.Z), 0)
+    if spd >= AHEAD_MIN_V and agl < AHEAD_AGL then
       local p = p0 + v.Unit * math.min(spd * AHEAD_T, AHEAD_MAX)
       focusAt(e, "ahead", D.pl, V(p.X, math.max(p.Y, surface(p.X, p.Z) + 20, 0), p.Z))
     else
@@ -1190,12 +1194,96 @@ function Air.init(G)
   G.airAhead = function(e) return e and e.focus and e.focus.ahead and e.focus.ahead.part end   -- 测试用
   G.airLook = function(e) return e and e.focus and e.focus.look and e.focus.look.part end
 
+  ---------------------------------------------------------------- 空中相撞（用户 11-28「然后飞机要有物理引擎能相撞」）
+  --   天上的飞机两两查（每秒 30 次）：每架算一个球——固定翼取机身长、翼展里大的那个的三成（机身、机翼大概就在这个圈里），
+  --   直升机按旋翼半径；两架各自从上次查到这次走过的那一段按匀速算，最近的时候离多近（迎头对飞一秒合起来三四千格，
+  --   只看这一帧的位置两架一帧就穿过去了）。近到两个球半径和的一半多（0.55）以内是正面撞上：两架都毁，火球在撞的地方；
+  --   碰到球边（翼尖、旋翼擦过）：各打掉一半血，伤在撞的那一边（战雷式部件伤害：机翼、尾翼、旋翼）。
+  --   撞的是敌机：算对面的人打的（拿分、记击落，同战雷撞掉敌机）；友军、没人开的算坠毁。地上停着、滑跑的不算（并排起飞的两架挨得近）
+  local COL_K, COL_HARD = 0.3, 0.55
+  local colAcc = 0
+  G.airCollisions = 0   -- 测试用
+  local function colR(e)
+    local d = e.def
+    if d.kind == "heli" then return math.max((d.rotor and d.rotor.r or 0) * 0.92, (d.L or 40) * COL_K) end
+    return math.max(d.L or 40, d.W or 30) * COL_K
+  end
+  local function hitBy(e, other)
+    if other.team ~= e.team and other.driver and other.driver.pl then
+      return { P = other.driver, team = other.team, name = other.driver.pl.DisplayName, why = "collide" }
+    end
+    return { team = "none", name = "collide" }
+  end
+  local function collideStep()
+    local list = {}
+    for _, e in ipairs(aircraft) do
+      if e.alive and not e.onGround and e.root and e.root.Parent then
+        local p = e.root.CFrame.Position
+        list[#list + 1] = { e = e, p0 = e.colPrev or p, p1 = p, r = colR(e) }
+        e.colPrev = p
+      else
+        e.colPrev = nil
+      end
+    end
+    for i = 1, #list - 1 do
+      local A = list[i]
+      for j = i + 1, #list do
+        local B = list[j]
+        local R = A.r + B.r
+        -- 先粗筛：两段的包围盒隔得比半径和还远就不用算
+        local ax0, ax1 = math.min(A.p0.X, A.p1.X), math.max(A.p0.X, A.p1.X)
+        local bx0, bx1 = math.min(B.p0.X, B.p1.X), math.max(B.p0.X, B.p1.X)
+        if ax0 - R <= bx1 and bx0 - R <= ax1 then
+          local d0 = A.p0 - B.p0
+          local dv = (A.p1 - A.p0) - (B.p1 - B.p0)
+          local vv = dv:Dot(dv)
+          local tt = (vv > 1e-6) and math.clamp(-d0:Dot(dv) / vv, 0, 1) or 1
+          local gap = (d0 + dv * tt).Magnitude
+          if gap < R and A.e.alive and B.e.alive then
+            local pa = A.p0 + (A.p1 - A.p0) * tt
+            local pb = B.p0 + (B.p1 - B.p0) * tt
+            local mid = pa + (pb - pa) * (A.r / R)
+            G.airCollisions += 1
+            -- 先把两边是谁记下来（先毁的那架开的人马上被清下来，后面那架就记不到他头上了）
+            local hits = { { A.e, hitBy(A.e, B.e) }, { B.e, hitBy(B.e, A.e) } }
+            if gap < R * COL_HARD then   -- 正面撞上：两架都毁
+              G.fx({ k = "boom", p = mid, s = 3.2, c = "wreck" })
+              for _, q in ipairs(hits) do
+                G.wtRaw = true
+                local ok, err = pcall(G.damageEnt, q[1], 1e9, q[2])
+                G.wtRaw = nil
+                if not ok then G.reportError("空中相撞", err) end
+              end
+            else   -- 擦过：各打掉一半血，伤在撞的那一边
+              G.fx({ k = "boom", p = mid, s = 1.4, c = "wreck" })
+              for _, q in ipairs(hits) do
+                local e = q[1]
+                G.wtPos = mid
+                local ok, err = pcall(G.damageEnt, e, (e.maxHp or e.hp or 600) * 0.5, q[2])
+                G.wtPos = nil
+                if not ok then G.reportError("空中擦碰", err) end
+              end
+            end
+          end
+        end
+      end
+    end
+  end
+
+  G.airCollideStep = collideStep   -- 测试用
+  G.airColR = colR
+
   local gunAcc = 0
   G.onFrame(function(dt)
     gunAcc += dt
     if gunAcc >= 0.1 then
       stepGuns(gunAcc)
       gunAcc = 0
+    end
+    colAcc += dt
+    if colAcc >= 1 / 30 then
+      colAcc = 0
+      collideStep()
     end
     local t = now()
     for e in pairs(focusSet) do
@@ -1322,8 +1410,12 @@ function Air.init(G)
     if e and e.air then unseat(P, e, false) end
   end)
   G.on("roundStart", function()
-    for _, e in ipairs(aircraft) do G.removeEnt(e) end
+    local keep = {}   -- 训练场里试驾的飞机、靶机不动（同 Armor.lua）
+    for _, e in ipairs(aircraft) do
+      if e.alive and (e.testDrive or e.testDummy) then keep[#keep + 1] = e else G.removeEnt(e) end
+    end
     table.clear(aircraft)
+    for _, e in ipairs(keep) do table.insert(aircraft, e) end
     pending = { atk = {}, def = {} }
   end)
 end

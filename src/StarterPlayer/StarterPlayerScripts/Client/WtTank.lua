@@ -288,30 +288,35 @@ function WtTank.init(G)
   local plateC = {}   -- 名牌这一行上次写的值（put）
   local function hex(c) return string.format("%02X%02X%02X", math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5)) end
   local MUTE_HEX = hex(MUTE)
-  -- 全称、类型（名牌）和左下的短类型；没写的弹按 Ballistics 的 name
+  -- 型号（名牌）；类型（名牌「· 类型」）和每格左下的短类型按弹种（Ballistics.kindOf）、照现在的语言写（Lang 的 ammo.t / ammo.s：
+  --   用户 11-28「目前局内我分辨不出来弹种 这些还是根据语言改变吧 比如我选了中文 穿甲弹就要写上」）；下表只用第一项（型号），没写的弹按 Ballistics.desig
   local AMMO_INFO = {
     m829a3 = { "M829A3", "APFSDS-T", "APFSDS" }, m830 = { "M830", "HEAT-MP-T", "HEAT-MP" }, m830a1 = { "M830A1", "MPAT", "MPAT" },
     m1028 = { "M1028", "Canister", "CAN" }, m900 = { "M900", "APFSDS-T", "APFSDS" }, m456 = { "M456A2", "HEAT-T", "HEAT" },
     m833 = { "M833", "APFSDS-T", "APFSDS" }, m392 = { "M392A2", "APDS-T", "APDS" }, m409 = { "M409", "HEAT-MP-T", "HEAT-MP" },
     dm53 = { "DM53", "APFSDS-T", "APFSDS" }, dm33 = { "DM33", "APFSDS-T", "APFSDS" }, dm12 = { "DM12", "HEAT-MP-T", "HEAT-MP" },
     dm13 = { "DM13", "APDS-T", "APDS" }, dm33l7 = { "DM33 (105)", "APFSDS-T", "APFSDS" }, dm12h = { "DM12 (105)", "HEAT-T", "HEAT" },
-    dtc10 = { "DTC10-125", "APFSDS", "APFSDS" }, heat125 = { "125 HEAT-FS", "HEAT-FS", "HEAT-FS" }, he125 = { "125 HE-FRAG", "HE-FRAG", "HE-FRAG" },
+    dtc10 = { "DTC10-125", "APFSDS", "APFSDS" }, heat125 = { "125 mm", "HEAT-FS", "HEAT-FS" }, he125 = { "125 mm", "HE-FRAG", "HE-FRAG" },
     bm60 = { "3BM60 Svinets-2", "APFSDS", "APFSDS" }, bm42 = { "3BM42 Mango", "APFSDS", "APFSDS" }, bm22 = { "3BM22 Zakolka", "APFSDS", "APFSDS" },
     bm15 = { "3BM15", "APFSDS", "APFSDS" }, bk31 = { "3BK31", "HEAT-FS (tandem)", "HEAT-FS" }, bk18m = { "3BK18M", "HEAT-FS", "HEAT-FS" },
     of26 = { "3OF26", "HE-FRAG", "HE-FRAG" }, refleks = { "9M119M Refleks", "ATGM", "ATGM" },
     br412d = { "BR-412D", "APBC-T", "APBC" }, bk5m = { "BK-5M", "HEAT-FS", "HEAT-FS" }, of412 = { "OF-412", "HE-FRAG", "HE-FRAG" },
-    apfsds69 = { "100mm APFSDS", "APFSDS", "APFSDS" },
+    apfsds69 = { "100 mm", "APFSDS", "APFSDS" },
   }
   local function ammoInfo(k)
     local a = BAL.AMMO[k]
+    local kd = BAL.kindOf and BAL.kindOf(k)
+    local ty = kd and T("ammo.t." .. kd) or ""
+    local tag = kd and T("ammo.s." .. kd) or ((a and a.sym) or "")
     if a and a.cls == "jet" then   -- 游戏里的「金属射流弹」：按口径叫
       local cal = string.match(k, "%d+") or ""
-      return T("wtt.jet", cal), T("wtt.jetType"), T("wtt.tagJet")
+      return T("wtt.jet", cal), ty, tag
     end
     local i = AMMO_INFO[k]
-    if i then return i[1], i[2], i[3] end
-    return (a and a.name) or k, "", (a and a.sym) or ""
+    if i then return i[1], ty, tag end
+    return (BAL.desig and BAL.desig(k)) or (a and a.name) or k, ty, tag
   end
+  G.ammoInfo = ammoInfo   -- 型号、类型、短类型（测试、别的界面用）
   local slots = {}
   -- 后备图标（用不了 EditableImage 时）：单色剪影，横着放、弹头朝右，画在图片区正中 46 × 18 的一块里；b(x, y, w, h, 透明, 圆角, 转角) 以这块的中心为原点
   local function icon(box, kind)
@@ -446,7 +451,7 @@ function WtTank.init(G)
     s.nBg.ZIndex = 4
     s.n = label(s.f, "", UD2(0, 46, 0, 16), UD2(1, -6, 0, 2), SZ.body, WHITE, MONO_F, V2(1, 0), RIGHT)
     s.n.ZIndex = 5
-    s.tag = label(s.f, "", UD2(0, 60, 0, 13), UD2(0, 6, 1, -4), SZ.tiny, TH.C.TEXT, COND_F, V2(0, 1), LEFT)   -- 只在选中那格写
+    s.tag = label(s.f, "", UD2(1, -10, 0, 13), UD2(0, 6, 1, -4), SZ.tiny, TH.C.TEXT, COND_F, V2(0, 1), LEFT)   -- 弹种短名（每格都写，选中的白）
     s.tag.Name = "Tag"
     s.tag.ZIndex = 4
     s.tag.Visible = false
@@ -523,7 +528,7 @@ function WtTank.init(G)
         end
       elseif w then
         local ic = (w.kind == "gun") and "mg" or ((w.kind == "sam" or w.kind == "atgm") and "sam" or ((w.kind == "arty" or (w.dmg or 0) >= 300) and "he" or "ac"))
-        local tg = (w.kind == "atgm") and "ATGM" or ({ mg = "MG", sam = "SAM", he = "HE", ac = "AC" })[ic]
+        local tg = T((w.kind == "atgm") and "ammo.s.atgm" or ("ammo.w." .. ic))   -- 机枪 / 机炮 / 防空导弹 / 榴弹：也按语言
         table.insert(slotDef, { k = "w", wi = wi, wid = wid, icon = ic, tag = tg })
       end
     end
@@ -906,10 +911,13 @@ function WtTank.init(G)
       local ready = sel and (sd.k == "am" or sd.k == "w") and not reloading and not empty and gunOk
       put(c, "rdyV", s.rdy, "Visible", ready)
       if ready then put(c, "rdyT", s.rdy, "BackgroundTransparency", A(0)) end
-      -- 左下类型：只在选中那格写（别的格子名牌上都有）；右下：冷却秒数
-      put(c, "tagV", s.tag, "Visible", sel and (s.tag.Text ~= ""))
-      if sel then
-        put(c, "tagT", s.tag, "TextTransparency", A(0))
+      -- 左下类型：每一格都写（用户 11-28「目前局内我分辨不出来弹种」：原来只写选中那格，别的格子只有图，几种弹的图看着差不多）——
+      --   选中那格白字，别的灰字；主炮坏了跟发数一样变暗。右下：冷却秒数
+      local tagOn = s.tag.Text ~= "" and (sel or sd.k == "am" or sd.k == "w")
+      put(c, "tagV", s.tag, "Visible", tagOn)
+      if tagOn then
+        put(c, "tagC", s.tag, "TextColor3", (dmg and sd.k == "am") and FAINT or (sel and TH.C.TEXT or MUTE))
+        put(c, "tagT", s.tag, "TextTransparency", A((dmg and sd.k == "am") and 0.4 or 0))
         put(c, "tagS", s.tag, "TextStrokeTransparency", A(0.45))
       end
       put(c, "tmTx", s.tm, "Text", timeTxt)

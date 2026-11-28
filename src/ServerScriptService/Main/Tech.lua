@@ -825,14 +825,37 @@ function Tech.init(G)
   end
   -- 训练场（MapRange）：第几个在试驾的人用第几条靶道
   local RangeMap = G.Map.Range or require(RS:WaitForChild("MapRange"))
+  -- 一张图一个服务器（Places.lua，用户 11-28「训练场 还有各种地图单独做成一个服务器」「试驾你就让我在雪山地图试驾吧搞点靶车」）：
+  --   训练场服务器在雪山图上试驾（SnowRange.lua：同样这几个函数，外加按地形挑好的靶车位置），别的服务器照旧用训练场区块（MapRange）
+  local function RM() return G.testRange or RangeMap end
+  -- 两个人几乎同时点试驾（用户 11-28「如果这个游戏里有两个人同时选择开始试驾怎么办」）：靶道号原来在点的那一刻算、人生出来（零点几秒，
+  --   远处还要等流式加载几秒）以后才登记进 tests——这中间第二个人点，两个人分到同一条靶道，两辆车生在一起。现在点的那一刻先占着（reserved），
+  --   登记进 tests 就放开；没生出来（出生失败、掉线）的 30 秒后不算
+  local reserved = {}   -- [P] = { i = 靶道号, t = 什么时候占的 }
   local function testIndex(P)
     local used = {}
     for q, s in pairs(tests) do if q ~= P and s.idx then used[s.idx] = true end end
+    local t = now()
+    for q, r in pairs(reserved) do
+      if q ~= P and t - r.t < 30 and q.pl and q.pl.Parent then used[r.i] = true elseif t - r.t >= 30 or not (q.pl and q.pl.Parent) then reserved[q] = nil end
+    end
     for i = 0, 63 do if not used[i] then return i end end
     return 0
   end
+  G.testReserved = function() return reserved end   -- 测试用
+  -- 第 idx 个在试驾的人的车位：靶道够分就一人一条；比靶道还多（同一个服务器里八个以上同时开坦克试驾）的，在同一条靶道里往旁边挪开
+  --   （雪山训练场 SnowRange 有 16 条：两头基地各一排）
   local function testSpot(idx)
-    return RangeMap.lane(idx % RangeMap.LANES + 1)
+    local rm = RM()
+    local n = rm.LANES
+    local p, d = rm.lane(idx % n + 1)
+    local row = (idx // n) % 3
+    if row > 0 and rm.LANE_W then
+      local right = Vector3.new(-d.Z, 0, d.X)
+      local q = p + right * (((row == 1) and 0.3 or -0.3) * rm.LANE_W)
+      p = Vector3.new(q.X, G.Map.height(q.X, q.Z), q.Z)
+    end
+    return p, d
   end
   local function pick(list, i, get)
     for k = 0, #list - 1 do
@@ -878,9 +901,17 @@ function Tech.init(G)
   local function droneAt(s, i, c, r, h, v, heli)
     local id = pick(heli and DRONE_HELI or DRONE_JET, i, AD.get)
     if not id or not G.spawnAircraftAir then return end
+    -- 雪山上的训练场（SnowRange）：圈收进河谷里（半径最多 SKY_R 米、圈心挪到河谷中线），飞得比圈上最高的地形高——两边七八百米的雪山
+    local rm = RM()
+    if rm.SKY_R then
+      r = math.min(r, rm.SKY_R)
+      if rm.skyCenter then c = rm.skyCenter(c) end
+    end
     local R = r * M
+    local hY = h * M
+    if rm.skyAlt then hY = rm.skyAlt(c, R, hY) end
     local a = (i * 2.1) % (2 * math.pi)
-    local p = Vector3.new(c.X + math.cos(a) * R, G.Map.height(c.X, c.Z) + h * M, c.Z + math.sin(a) * R)
+    local p = Vector3.new(c.X + math.cos(a) * R, G.Map.height(c.X, c.Z) + hY, c.Z + math.sin(a) * R)
     local tang = Vector3.new(-math.sin(a), 0, math.cos(a))
     local ok, e = pcall(G.spawnAircraftAir, s.foe, id, CFrame.lookAt(p, p + tang), nil, nil, nil, v * M)
     if not ok or not e then return end
@@ -933,12 +964,28 @@ function Tech.init(G)
     local air = it.branch == "air" or it.branch == "heli"
     local heli = it.branch == "heli"
     local tl, tf = treeLoadOf(P, key)   -- 试驾也按机库里存的挂载、内油（整备；没存过是 nil：第一套预设、满内油）
+    -- 有训练场服务器（Places.lua）：传送过去试（带着这一辆，到了自动坐进去）；传不过去就在本服务器的训练场区块里试
+    if G.teleport and G.placeFor and G.placeFor("range") then
+      local function here()   -- 传送没成功：本服务器的训练场区块建好了就接着试（不用再点一次）
+        if G.ensureRange then G.ensureRange() end
+        G.placeTpOffFor = G.placeTpOffFor or {}
+        G.placeTpOffFor[P.pl] = true
+        G.msg(P.pl, "info", "place.rangeHere")
+        task.spawn(function()
+          local t0 = now()
+          while not G.rangeReady and now() - t0 < 120 do task.wait(0.5) end
+          if G.rangeReady and G.P[P.pl] == P and not P.alive then G.ACT.testDrive(P, key) end
+        end)
+      end
+      if not (G.placeTpOffFor and G.placeTpOffFor[P.pl]) and G.teleport(P, "range", { td = key }, here) then return end
+    end
     if not G.rangeReady then G.msg(P.pl, "info", "tree.rangeBusy") return end   -- 训练场还在后台建（开服头一会儿）
     local idx = testIndex(P)
+    reserved[P] = { i = idx, t = now() }   -- 先占着（见 testIndex）
     -- 出车的地方（训练场里）：车在第 idx 条靶道的射击线上、飞机在跑道东头、直升机在直升机坪
     local spawnAt, spawnDir
-    if heli then spawnAt, spawnDir = RangeMap.heliPad(idx)
-    elseif air then spawnAt, spawnDir = RangeMap.runwayStart(idx)
+    if heli then spawnAt, spawnDir = RM().heliPad(idx)
+    elseif air then spawnAt, spawnDir = RM().runwayStart(idx)
     else spawnAt, spawnDir = testSpot(idx) end
     local all = {}   -- 试驾：改装全装上（下面 applyFx）
     for _, m in ipairs(WM.list(it)) do all[m.key] = true end
@@ -950,7 +997,7 @@ function Tech.init(G)
     local sky = false
     if air and not heli then
       local okR, run, lifted = pcall(AD.takeoffRun, AD.get(it.play), { treeKey = it.key, thrK = fx.thr, h = spawnAt.Y })
-      if okR and run and (not lifted or run > RangeMap.runwayLeft(idx) * 0.95) then sky = true end
+      if okR and run and (not lifted or run > RM().runwayLeft(idx) * 0.95) then sky = true end
     end
     local function go()
       if not P.alive or not P.char then return end
@@ -960,7 +1007,7 @@ function Tech.init(G)
       local skyAt, skyV   -- 空中出生的位置、速度
       if air then
         -- 飞机、直升机：靶区在挡弹墙北面（空中靶区，MapRange.AIRTGT），朝北摆靶
-        s.base, s.dir = RangeMap.airTarget(), Vector3.new(0, 0, -1)
+        s.base, s.dir = RM().airTarget(), Vector3.new(0, 0, -1)
         -- 空中出生（上面估的跑道上滑不起来 sky、下面摆不到跑道 / 直升机坪上的兜底）：朝北、带 0.8 倍军推最大速度（客户端 Fly.lua 空中出发也按这个）；
         --   固定翼往南退到离靶区中心 RUNIN 秒航程的地方、朝北进场——原来在靶区中心正上方出来：地面靶在正前方 0～1460 格，1200 格高、
         --   600 格 / 秒平飞投炸弹要提前 5000 多格松手，一出来就已经飞过了靶子，轰炸机掉头半径又有好几公里；现在轰-6K 出来九秒多才到投弹点。
@@ -989,8 +1036,9 @@ function Tech.init(G)
         s.base, s.dir = spawnAt, spawnDir
         e = G.spawnGroundVeh(P.team, it.play, CFrame.lookAt(s.base, s.base + s.dir), false, P, nil)
       end
-      if not e then return end
+      if not e then reserved[P] = nil return end
       tests[P] = s
+      reserved[P] = nil   -- 登记进 tests 了：不用再占
       P.inTest = true
       s.veh = e
       e.testDrive, e.noScore, e.treeKey = true, true, key
@@ -1009,9 +1057,15 @@ function Tech.init(G)
           dummyAt(s, i, Vector3.new(p.X, G.Map.height(p.X, p.Z), p.Z), s.dir, nil)
         end
       else
-        for i, r in ipairs(RANGE) do
-          local p = at(r[1], r[2])
-          dummyAt(s, i, Vector3.new(p.X, G.Map.height(p.X, p.Z), p.Z), -s.dir, r[3])
+        -- 雪山训练场：按地形挑好、看得见的位置（同一条靶道挤了两个人的，往旁边挪开的那个照原来的偏移摆，不跟第一个人的靶车摆在一处）
+        local tg = RM().targets and (idx < RM().LANES) and RM().targets(idx % RM().LANES + 1, RANGE)
+        if tg then
+          for _, t in ipairs(tg) do dummyAt(s, t.k, t.pos, -s.dir, t.swing) end
+        else
+          for i, r in ipairs(RANGE) do
+            local p = at(r[1], r[2])
+            dummyAt(s, i, Vector3.new(p.X, G.Map.height(p.X, p.Z), p.Z), -s.dir, r[3])
+          end
         end
         for i, k in ipairs(SKY) do droneAt(s, i, at(k[1], k[2]), k[3], k[4], k[5], k[6]) end
       end
@@ -1021,7 +1075,7 @@ function Tech.init(G)
       --   空中出生的别留在天上（收起平板就掉下来）；在跑道上出生的也别站在起飞位上（上面 PivotTo 到了机身上：飞机滑走以后人还钉在跑道上，
       --   前面几个起飞位的飞机滑跑正好从他身上穿过去）
       if e.def and e.def.drone and P.remote == e and P.char then
-        local op = RangeMap.runwaySide(idx) + Vector3.new(0, 3, 0)
+        local op = RM().runwaySide(idx) + Vector3.new(0, 3, 0)
         P.char:PivotTo(CFrame.lookAt(op, op + Vector3.new(0, 0, -1)))
       end
       -- 提示在哪出来：空中出生分两种原因——估出来跑道上滑不起来（sky：testOnSky）、摆不到跑道 / 直升机坪上的兜底（testInAir；原来兜底也说
@@ -1033,8 +1087,10 @@ function Tech.init(G)
       G.msg(P.pl, "info", msg, it.name)
     end
     P.testDeploy = true   -- Round.lua deploy：试驾不受出生点 / 准备阶段 / 兵力限制（用户 11-26「训练场目前没发试驾飞机了」）
+    -- 人直接生在训练场出车的地方（11-28：训练场开服就建，战场的图还没定、没有出生点时主界面也能试驾；原来先生在战场的基地、再挪过来）
+    P.testSpawnCF = CFrame.new(spawnAt + Vector3.new(0, 4, 0))
     G.ACT.deploy(P, "crew", air and "baseAir" or "base", go)
-    P.testDeploy = nil
+    P.testDeploy, P.testSpawnCF = nil, nil
   end
   -- 试驾下车 / 在试驾场被打掉：回机库不算阵亡，不用等重生倒计时（战雷：试驾完马上能再试驾、能出击）——
   --   Round 在阵亡时记的 canDeployAt 晚一帧清掉（同一帧里 Round 的阵亡处理可能排在后面）

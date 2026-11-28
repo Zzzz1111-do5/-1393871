@@ -334,8 +334,27 @@ function MapPick.init(G)
     wantPve = nil
     menuSync()
   end
+  -- 一张图一个服务器（服务器 Places.lua，用户 11-28「训练场 还有各种地图单独做成一个服务器」）：这张图有自己的地点（ReplicatedStorage 的 PlaceMaps）、
+  --   或者这里是训练场服务器（PlaceRole = range）：点了就是传送过去（服务器 ACT.pickMap 传），按钮写「前往 X」
+  local RS = game:GetService("ReplicatedStorage")
+  local function placeRole() return RS:GetAttribute("PlaceRole") or "all" end
+  local function teleportTo(id)
+    local role = placeRole()
+    if role == "range" then return true end
+    if role == id then return false end
+    local pm = RS:GetAttribute("PlaceMaps")
+    return type(pm) == "string" and string.find("," .. pm .. ",", "," .. id .. ",", 1, true) ~= nil
+  end
+  G.mapPickTeleports = teleportTo   -- 测试用
+  local going = nil   -- 点了要传送过去的那张
   local function choose(id)
     local S = G.S
+    if teleportTo(id) then
+      going, want = id, nil
+      G.R.Act:FireServer("pickMap", id)
+      status.Text = T("place.going", T("place." .. id))
+      return
+    end
     if S and S.map and S.map ~= id then id = S.map end   -- 服务器已经在打另一张：按钮是「加入那张」
     want = id
     G.R.Act:FireServer("pickMap", id)
@@ -452,13 +471,20 @@ function MapPick.init(G)
       K.name.Text = T("map." .. id .. ".name")
       K.size.Text = T("map.size", string.format("%.0f", info.km or 0))
       K.desc.Text = T("map." .. id .. ".desc")
-      local cur = S.map == id
-      local other = S.map ~= nil and not cur
-      local mine = voting and want == id
+      local tele = teleportTo(id)
+      local cur = S.map == id and not tele
+      local other = S.map ~= nil and not cur and not tele
+      local mine = voting and want == id and not tele
       K.now.Text = cur and (T("map.now") .. "   ·   " .. T("map.players", n)) or (other and T("map.other", T("map." .. S.map .. ".name")) or "")
       if cur and S.pve then K.now.Text = T("pve.nowPve", S.pve, T("pve.n" .. S.pve)) .. "   ·   " .. T("map.players", n) end   -- 在打关卡：一个人点就退出关卡改打对战（Round.lua 的 ACT.pickMap）
       K.now.TextColor3 = cur and acc or MUTE
-      if voting then
+      if tele then   -- 有自己的服务器：传送过去
+        K.now.Text = T("map.gotoNote")
+        K.now.TextColor3 = MUTE
+        K.go.Text = T("map.goto") .. "  " .. T("map." .. id .. ".name")
+        K.go.BackgroundColor3, K.go.TextColor3 = (going == id) and acc or WHITE, RGB(10, 10, 12)
+        K.votes.Visible = false
+      elseif voting then
         K.go.Text = mine and T("map.voted") or T("map.vote")
         K.go.BackgroundColor3, K.go.TextColor3 = mine and acc or WHITE, RGB(10, 10, 12)
         local nv = (V and V.n and V.n[id]) or 0

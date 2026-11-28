@@ -31,10 +31,12 @@ function MslSmoke.new(G, FXF, VL)
   -- 三档（格；1 米 = 2.8 格）：w 烟带刚出来多宽、life 烟带留多久、tr0 刚出来的透明度、grow 老了胀到几倍宽；
   --   gap 每飞几格撒一团、nps 每秒最多几团、pl 烟团寿命、ps 烟团 出生 / 一会儿 / 最后 多大、ptr 烟团起始透明度（贴图本身 alpha 只到 0.33）；
   --   flame 火舌多长（× 弹径系数）
+  --   用户 11-28「然后现在开飞机太卡了」：烟团又大又活十几秒，空战里一堆导弹同时冒烟，满屏几千团半透明的大烟团（显卡一层层叠着画）——
+  --   烟团撒得稀一半多（整条烟的形状靠烟带，烟团只是外面一层毛边），同时在飘的上限 2600 → 900，远处的少撒、四千格外只剩烟带
   local CLS = {
-    low = { w = 1.8, life = 5, tr0 = 0.52, grow = 4, gap = 14, nps = 30, pl = { 3, 5 }, ps = { 2.4, 8, 16 }, ptr = 0.45, flame = 2.4 },
-    med = { w = 3.2, life = 14, tr0 = 0.16, grow = 6, gap = 9, nps = 80, pl = { 8, 12 }, ps = { 4, 15, 34 }, ptr = 0.22, flame = 3.4 },
-    heavy = { w = 4.5, life = 22, tr0 = 0.05, grow = 7, gap = 7, nps = 120, pl = { 14, 20 }, ps = { 5, 20, 46 }, ptr = 0.12, flame = 4.4 },
+    low = { w = 1.8, life = 5, tr0 = 0.52, grow = 4, gap = 40, nps = 8, pl = { 3, 5 }, ps = { 2.4, 8, 16 }, ptr = 0.45, flame = 2.4 },
+    med = { w = 3.2, life = 14, tr0 = 0.16, grow = 6, gap = 16, nps = 34, pl = { 8, 12 }, ps = { 4, 15, 34 }, ptr = 0.22, flame = 3.4 },
+    heavy = { w = 4.5, life = 22, tr0 = 0.05, grow = 7, gap = 12, nps = 48, pl = { 14, 20 }, ps = { 5, 20, 46 }, ptr = 0.12, flame = 4.4 },
   }
   M.CLS = CLS
   local WARM, FRESH, MID, OLD = RGB(255, 226, 190), RGB(244, 244, 240), RGB(228, 228, 226), RGB(196, 198, 204)   -- 老了偏灰、带一点冷色
@@ -150,7 +152,7 @@ function MslSmoke.new(G, FXF, VL)
   end
 
   -- 同时在飘的烟团（估个数：每帧按平均寿命衰减）——多了少撒
-  local live, LIVE_MAX = 0, 2600
+  local live, LIVE_MAX = 0, 900
   local cam = workspace.CurrentCamera
 
   -- s：Fx 的一枚弹（flying 项）；cf 弹的 CFrame（朝飞的方向）；back 弹尾离 cf 多远；on 发动机开着；cls 档；ph 1 一般 / "boost" / "sus"；
@@ -191,10 +193,12 @@ function MslSmoke.new(G, FXF, VL)
     end
     if S.key and S.key ~= key and S.trails[S.key] then S.retire = S.trails[S.key] end
     S.key = key
+    -- 外层那条宽的淡烟（虚边）：画质低（自动降档、设置里选低）不画——一条一两米宽、几十米长的半透明带子贴着镜头时整屏都是它
+    local halo = (G.perfK or 1) >= 0.8
     for k, t2 in pairs(S.trails) do
       local on2 = (k == key) or (t2 == S.retire)
       t2.Enabled = on2
-      if S.halos[k] then S.halos[k].Enabled = on2 end
+      if S.halos[k] then S.halos[k].Enabled = on2 and halo end
     end
     local fk = (ph == "boost") and 1.3 or ((ph == "sus") and 0.7 or 1)
     local dk = math.clamp((d or 0.8) / 0.8, 0.6, 2.2)
@@ -214,10 +218,11 @@ function MslSmoke.new(G, FXF, VL)
         end
         E.path += L
         local want = L / (c.gap / ((ph == "boost") and 1.35 or ((ph == "sus") and 0.75 or 1)))
-        local k = math.clamp(G.perfK or 1, 0.4, 1.2)
+        local pk = G.perfK or 1
+        local k = math.clamp(pk, 0.4, 1.2) * ((pk < 0.7) and 0.5 or 1)   -- 画质低（自动降档、设置里选「低」）：再少一半
         if cam then
           local dist = (cam.CFrame.Position - p).Magnitude
-          if dist > 4000 then k *= 0.35 elseif dist > 1600 then k *= 0.6 end
+          if dist > 4000 then k = 0 elseif dist > 1600 then k *= 0.4 end   -- 四千格外只剩烟带（烟团小得看不清，白画）
         end
         if live > LIVE_MAX then k *= LIVE_MAX / live end
         S.carry = (S.carry or 0) + math.min(want, c.nps * dt * 1.5 + 1) * k

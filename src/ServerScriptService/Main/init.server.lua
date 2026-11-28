@@ -89,7 +89,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Imports", "Store", "Economy", "Tech", "Gunsmith", "Passes", "Shop", "Ents", "Rewind", "Round", "Revive", "Squads", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Wt", "Kit", "Air", "WtAir", "Nuke", "Depots", "WtMatch", "FarLod", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle", "Trees", "Pve" }) do
+for _, name in ipairs({ "Places", "Imports", "Store", "Economy", "Tech", "Gunsmith", "Passes", "Shop", "Ents", "Rewind", "Round", "Revive", "Squads", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Wt", "Kit", "Air", "WtAir", "Nuke", "Depots", "WtMatch", "FarLod", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle", "Trees", "Pve" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -187,6 +187,12 @@ local function waitMap()
     pcall(function() forced = workspace:GetAttribute("MapName") end)
     if type(forced) == "string" and Map.profile(forced) then G.mapId = forced end
   end
+  -- 一张图一个服务器（Places.lua，用户 11-28）：这个地点是哪一张图的（或训练场：开雪山）就直接开那张，不投票
+  if not G.mapId and G.placesWait then
+    G.placesWait(10)
+    local pm = G.placeMap and G.placeMap()
+    if pm and Map.profile(pm) then G.mapId = pm end
+  end
   if not G.mapId and #Map.ids == 1 then G.mapId = Map.ids[1] end   -- 只剩一张（沙海）：不用投票，开服就建（进来的人点「开始游戏」时地图多半已经好了）
   -- 空服等多久就按默认开：Studio / 测试台 3 秒；线上服务器是第一个玩家要进来才开的，他还在加载（可能十几秒）——等 30 秒
   local emptyWait = Config.MapWaitEmpty or (game:GetService("RunService"):IsStudio() and 3 or 30)
@@ -230,15 +236,34 @@ local function waitMap()
   print("[全面大战场] 地图：" .. G.mapId)
 end
 
+-- 训练场（用户 11-26 晚「把训练场单独做一张地图吧」）：自己一块区块（Zones.RANGE），跟战场那张图没关系——开服马上在后台建（Range.lua）。
+--   用户 11-28「主界面不切地图就试驾不了」：原来要等投票定图（没人投要等二十秒）、战场整张建完才开始建训练场，
+--   钢城要建好一阵子，主界面点试驾一直「训练场还在准备」；现在跟投票、建战场同时走，开服几秒就能试驾
+--   一张图一个服务器（Places.lua）：训练场服务器在雪山图上试驾、不建这一块；有能传送过去的训练场地点也不建（传送没成功时 G.ensureRange 再建）
+local rangeBuilding = false
+function G.ensureRange()
+  if rangeBuilding then return end
+  rangeBuilding = true
+  task.spawn(function()
+    G.try("训练场", function() require(script:WaitForChild("Range")).build(G.World, G, nil) end)
+  end)
+end
+task.spawn(function()
+  if G.placesWait then G.placesWait(10) end
+  if not G.wantLocalRange or G.wantLocalRange() then G.ensureRange() end
+end)
+
 task.spawn(function()
   waitMap()
   local ok, err = xpcall(function() G.World.build(G) end, tb)
   if not ok then bootError("生成地图", err) G.worldReady = true end
-  -- 训练场（用户 11-26 晚「把训练场单独做一张地图吧」）：自己一块区块（Zones.RANGE），战场建完马上在后台建（Range.lua；
-  --   11-28 原来等远景替身、生成点、寻路、开局都做完才开始，又晚几十秒）；建好以前试驾先等等
-  task.spawn(function()
-    G.try("训练场", function() require(script:WaitForChild("Range")).build(G.World, G, workspace:FindFirstChild("Map")) end)
-  end)
+  -- 训练场服务器（Places.lua）：雪山图建好了，按地形算靶道（SnowRange.lua），试驾就在这张图上
+  if G.placeRole == "range" then
+    G.try("训练场（雪山）", function()
+      G.testRange = require(script:WaitForChild("SnowRange")).new(G.Map)
+      G.rangeReady = G.testRange ~= nil
+    end)
+  end
   if G.farLodPublish then G.try("远景替身", G.farLodPublish) end   -- 流式加载时远处的楼画替身（FarLod.lua）
   if G.depotsBuild then G.try("生成点", G.depotsBuild) end   -- 载具生成点（要等舰队甲板建好）
   if G.navBuild then G.try("寻路", G.navBuild) end   -- 后台算机器人走路的流场

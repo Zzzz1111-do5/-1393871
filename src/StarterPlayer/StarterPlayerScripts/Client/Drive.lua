@@ -2335,8 +2335,11 @@ function Drive.init(G)
     if om and om.Parent ~= ownBox then om.Parent = ownBox end
     st.locked = vs.locked
     -- 镜头转动（坐在车里看的时候鼠标归内饰的镜头：Interior.lua，炮塔不跟着转）
-    -- 按住 X 透视（XrayOwn.lua）：鼠标放开（指针画出来，UI.lua）去指部件看名字、状态——这段时间镜头、炮塔不跟着鼠标转，松手再锁回屏幕中间
+    -- 按住 X 透视（XrayOwn.lua）：鼠标照样锁在屏幕中间、镜头照常转（用户 11-28「然后目前车上按x透视的时候鼠标会出来」：原来一按 X 就放开鼠标、
+    --   画出指针）；再按住 Alt 才放开鼠标（指针画出来，UI.lua）去指部件看名字、状态——这段时间镜头、炮塔不跟着鼠标转，松开再锁回屏幕中间
     local xrPtr = G.ownXrayOn ~= nil and G.ownXrayOn() and UIS.MouseEnabled
+      and (UIS:IsKeyDown(Enum.KeyCode.LeftAlt) or UIS:IsKeyDown(Enum.KeyCode.RightAlt))
+    G.ownXrayPtr = xrPtr
     UIS.MouseBehavior = xrPtr and Enum.MouseBehavior.Default or Enum.MouseBehavior.LockCenter
     -- 车里的观瞄设备（车长热像仪 / 周视镜、CROWS……）开着时也算在车里：鼠标归那个设备，炮塔守着炮长原来的准星
     local inside = G.interiorOn and (G.interiorOn() or G.interiorOptic ~= nil) and not st.sight

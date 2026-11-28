@@ -1272,7 +1272,8 @@ function Fly.init(G)
   -- 11-24 夜（「我不想让准心控制飞机飞行方向」）一度默认纯键盘驾驶；11-27 用户又要「目前飞机机头朝向会影响我的准心位置 这个也改一下
   --   不要影响我的视角位置 驾驶飞机时我也要有自由准心」——纯键盘时镜头钉在机身上、准心就是机头。默认改回战雷鼠标瞄准（准星自由、镜头跟着鼠标、
   --   地平线水平），设置「固定翼操纵」里能换纯键盘（存档），飞行中按 M 也能换（一并存进设置）
-  local mouseAim = G.airMouseAim ~= false
+  -- 11-28 用户「默认飞机不要准心控制吧 就键盘控制」：默认又是纯键盘（Settings.lua 的默认值；设置还没读到时也按纯键盘）
+  local mouseAim = G.airMouseAim == true
   G.flyMouseAim = function(v, fromPrefs)
     if v ~= nil then
       mouseAim = v == true

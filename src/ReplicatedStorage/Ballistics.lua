@@ -227,6 +227,50 @@ function B.sabotOf(a)
   return nil
 end
 
+-- 弹种（界面上写的类型：Lang 的 ammo.t.<种> 全称、ammo.s.<种> 短名，按语言翻——用户 11-28「目前局内我分辨不出来弹种 这些还是根据语言改变吧
+--   比如我选了中文 穿甲弹就要写上」）：
+--   apfsds 尾翼稳定脱壳穿甲弹、apds 脱壳穿甲弹、apcr 硬芯穿甲弹、aphe 穿甲爆破弹、apbc 风帽穿甲弹、ap 穿甲弹、
+--   heatfs 尾翼稳定破甲弹、heat 破甲弹、heatmp 多用途破甲弹、mpat 多用途反坦克弹、hefrag 高爆弹、hesh 碎甲弹、can 霰弹、atgm 反坦克导弹、jet 串联破甲弹（游戏自己的金属射流弹）
+local HEAT_FS = { heat125 = true, bk31 = true, bk18m = true, bk5m = true }   -- 滑膛炮 / 尾翼稳定的破甲弹（名字里没写）
+function B.kindOf(k)
+  local a = (type(k) == "table") and k or B.AMMO[k]
+  if type(a) ~= "table" then return nil end
+  local c, n = a.cls, a.name or ""
+  if c == "jet" or c == "atgm" or c == "can" or c == "mpat" or c == "hesh" then return c end
+  if c == "he" then return "hefrag" end
+  if c == "heat" then
+    if a.sym == "MZ" or string.find(n, "HEAT-MP", 1, true) then return "heatmp" end
+    if (type(k) == "string" and HEAT_FS[k]) or string.find(n, "HEAT-FS", 1, true) or string.find(n, "HEATFS", 1, true) then return "heatfs" end
+    return "heat"
+  end
+  if c == "ap" then
+    local sb = B.sabotOf(a)
+    if sb == "fs" then return "apfsds" end
+    if sb == "ds" then return "apds" end
+    if string.find(n, "APCR", 1, true) or a.sym == "次口径" then return "apcr" end
+    if string.find(n, "APHE", 1, true) then return "aphe" end
+    if string.find(n, "APBC", 1, true) then return "apbc" end
+    return "ap"
+  end
+  return nil
+end
+-- 弹的型号去掉名字后面写的类型（「BR-365 APHE」→「BR-365」：类型另外按语言写）；只剩口径的（「125 HEAT」→「125」）补上「mm」
+local TYPE_WORDS = { "HEAT%-MP%-T", "HEAT%-MP", "HEAT%-FS", "HEAT%-T", "HE%-FRAG", "APFSDS%-T", "APFSDS", "APDS%-T", "APDS", "APCR", "APHE", "APBC%-T", "APBC",
+  "MPAT", "HEAT", "CAN" }
+function B.desig(k)
+  local a = (type(k) == "table") and k or B.AMMO[k]
+  local n = (type(a) == "table" and a.name) or (type(k) == "string" and k) or ""
+  local out = n
+  for _, w in ipairs(TYPE_WORDS) do
+    local s2 = string.gsub(out, "%s+" .. w .. "$", "")
+    if s2 ~= out then out = s2 break end
+  end
+  if string.match(out, "^%d+$") then out = out .. " mm" end
+  local mm = string.match(out, "^(%d+)mm$")
+  if mm then out = mm .. " mm" end
+  return out
+end
+
 function B.launchArgs(a)
   return a.v0 * S, a.k / S, B.G / (workspace.Gravity * 0.55)
 end

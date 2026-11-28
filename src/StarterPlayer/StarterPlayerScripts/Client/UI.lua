@@ -1335,7 +1335,7 @@ function UI.init(G)
     -- 鼠标指针：游戏里锁在屏幕中间时（第一人称、肩后瞄准、开车开飞机开船、操作工事）不画——准星是自己画的；开着菜单时画出来
     if not G.mobile then
       local menu = G.menuOpen()
-      local xr = G.ownXrayOn ~= nil and G.ownXrayOn()   -- 按住 X 透视自己的车：鼠标放开了（Drive.lua），画出指针去指部件
+      local xr = G.ownXrayOn ~= nil and G.ownXrayOn() and G.ownXrayPtr == true   -- 按住 X 透视自己的车、再按住 Alt：鼠标放开了（Drive.lua），画出指针去指部件
       local locked = not menu and not xr and (UIS.MouseBehavior == Enum.MouseBehavior.LockCenter or (G.fpActive and not drv) or drv ~= nil)
       if UIS.MouseIconEnabled == locked then UIS.MouseIconEnabled = not locked end
       if menu and UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then UIS.MouseBehavior = Enum.MouseBehavior.Default end

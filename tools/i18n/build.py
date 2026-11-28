@@ -5,6 +5,8 @@
 #     → k[键] = 译文（Lang.lua 的键）、p[英文] = 译文（代码里的 G.L 对照）；代码里已经没有的原文打出来（过期），还没翻的条数也打出来
 #   · 繁中：OpenCC s2twp（台湾用词：设置 → 設定、鼠标 → 滑鼠……）从简体转：k[键]、p[简体原文]
 #   检查：{1} {2} 这种参数、<b> 这种富文本标签要和英文一样，不一样的这一条不收（游戏里退回英文）、打出来
+#   · 按键给的译文：一行开头写「@键」（「@ammo.t.ap⟫徹甲弾⟫……」）只给这一个键（英文原文和别的键撞了也不串：
+#     「AP」「HE」别处是一个字的小牌子，弹种全称要写整个词）；按键的盖过按英文对上的
 import glob, json, os, re, sys
 
 ROOT = os.getcwd()
@@ -75,8 +77,10 @@ def write_pack(code, K, P, note):
 
 # 日韩俄德法西葡
 TR = {l: {} for l in LANGS}
+TRK = {l: {} for l in LANGS}   # 按键给的（「@键」那种行）
 bad, stale = [], []
 KNOWN = set(strings)
+KEYED = {e['key']: e for e in SRC['keyed']}
 for fn in sorted(glob.glob(os.path.join(ROOT, 'tools', 'i18n', 'tr', '*.tsv'))):
     for ln, line in enumerate(open(fn, encoding='utf-8'), 1):
         line = line.rstrip('\n')
@@ -85,6 +89,21 @@ for fn in sorted(glob.glob(os.path.join(ROOT, 'tools', 'i18n', 'tr', '*.tsv'))):
         cols = line.split('⟫')
         if len(cols) != 1 + len(LANGS):
             bad.append('%s:%d 列数 %d' % (os.path.basename(fn), ln, len(cols)))
+            continue
+        if cols[0].startswith('@'):
+            key = cols[0][1:]
+            ent = KEYED.get(key)
+            if not ent:
+                stale.append('%s:%d 键 %r' % (os.path.basename(fn), ln, key))
+                continue
+            for l, tx in zip(LANGS, cols[1:]):
+                tx = unesc(tx)
+                if not tx:
+                    continue
+                if not same_marks(ent['en'], tx):
+                    bad.append('%s:%d %s 参数 / 标签对不上：%r → %r' % (os.path.basename(fn), ln, l, key, tx[:60]))
+                    continue
+                TRK[l][key] = tx
             continue
         en = unesc(cols[0])
         if en not in KNOWN:
@@ -101,6 +120,7 @@ for fn in sorted(glob.glob(os.path.join(ROOT, 'tools', 'i18n', 'tr', '*.tsv'))):
 for l in LANGS:
     tr = TR[l]
     K = {e['key']: tr[e['en']] for e in SRC['keyed'] if e['en'] in tr}
+    K.update(TRK[l])
     P = {e['en']: tr[e['en']] for e in SRC['pairs'] if e['en'] in tr}
     write_pack(l, K, P, '%d / %d 条' % (len(tr), len(strings)))
     print('%s：%d / %d 条（键 %d、对照 %d）' % (l, len(tr), len(strings), len(K), len(P)))

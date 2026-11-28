@@ -67,7 +67,9 @@ function Store.init(G)
   local PREFS = { sens = { 0.25, 2.5 }, aim = { 0.25, 2.0 }, fov = { 60, 90 }, fovAir = { 60, 90 }, vol = { 0, 1 }, ui = { 0.85, 1.3 }, gamma = { -0.1, 0.1 },
     invY = true, shake = true, voice = true, lang = { s = { [""] = true, zh = true, en = true } },
     airAim = { s = { mouse = true, kb = true } }, camRoll = { 0, 1 }, autoGear = true,   -- 空战：操纵方式、镜头滚转、自动收起落架
-    sensAir = { 0.25, 2.5 }, sensVeh = { 0.25, 2.5 } }   -- 开飞机 / 开车的鼠标灵敏度（用户 11-28「玩家要能调灵敏度」）
+    sensAir = { 0.25, 2.5 }, sensVeh = { 0.25, 2.5 },   -- 开飞机 / 开车的鼠标灵敏度（用户 11-28「玩家要能调灵敏度」）
+    pv = { 1, 99 },   -- 设置的版本（Settings.lua：老存档的默认值换新默认时用）
+    gfx = { s = { auto = true, low = true, mid = true, high = true, ultra = true } } }   -- 画质（用户 11-28「设置里增加一个画质调整」）
   local function prefsAttr(P)
     local t = (P.data and P.data.prefs) or P.prefsEarly or {}
     local ok, js = pcall(function() return Http:JSONEncode(t) end)

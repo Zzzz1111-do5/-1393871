@@ -524,6 +524,14 @@ function WtMatch.init(G)
   G.ACT.matchJoin = function(P, key)
     local R = G.round
     if not R or type(key) ~= "string" then return end
+    -- 训练场服务器（Places.lua）不打对战：「开战」传送到想打的那张图的服务器（没选过、那张图没有自己的地点：回起始服务器），到了自动排上
+    if G.placeRole == "range" and G.teleport and G.placeFor then
+      local want = P.wantMap
+      local role = (want and G.placeFor(want)) and want or (G.placeFor(P.cameFrom or "") and P.cameFrom) or "all"
+      if G.placeFor(role) and G.teleport(P, role, { battle = key }) then return end
+      G.msg(P.pl, "bad", "place.noBattle")
+      return
+    end
     if R.phase ~= "queue" then   -- 已经在打（准备 / 战斗）：进局、出选车界面（同战雷：「加入战斗」以后在局里选车）
       if P.testDeploy then if G.ACT.deployVeh then G.ACT.deployVeh(P, key) end return end
       if G.treeCanQueue and not G.treeCanQueue(P, key) then return end

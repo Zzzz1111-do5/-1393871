@@ -15,6 +15,7 @@ function AirFx.init(G)
   local AD = require(RS:WaitForChild("AirDefs"))
   local AM = require(script.Parent:WaitForChild("AirModels"))
   G.airModels = AM   -- 测试用（尾焰的样子：AM.plumeInfo）
+  AM.lowQ = function() return (G.perfK or 1) < 0.7 end   -- 画质低：尾焰不画马赫环、喷口柔光少一半、不放热浪（AirModels.lua）
   local V = Vector3.new
   local CF = CFrame.new
   local RGB = Color3.fromRGB

@@ -771,7 +771,8 @@ function Round.init(G)
   -- 部署：装备栏（{ primary, launcher, gadget, throw }；老的兵种名也认）和出生点
   -- after：生出来以后接着做的（只有服务器自己调的时候给：科技树出击 Tech.lua 用它把人塞进车里；客户端发过来的参数里不会有函数）
   function G.ACT.deploy(P, choice, spawnId, after)
-    if R.phase ~= "battle" and R.phase ~= "prep" and not (R.phase == "queue" and P.testDeploy) then return end   -- 匹配中只能试驾（Tech.lua 置 P.testDeploy）
+    -- 匹配中只能试驾（Tech.lua 置 P.testDeploy）；试驾什么阶段都行（11-28：训练场开服就建，战场的图还没定、还没开局时主界面就能试驾）
+    if R.phase ~= "battle" and R.phase ~= "prep" and not P.testDeploy then return end
     if P.alive or now() < (P.canDeployAt or 0) then return end
     -- 战雷式（Config.Wt.noInfantry）：不能当步兵出去，只能从机库的出击阵容里挑车（Tech.lua deployVeh 自己调这里、带 after）
     if (Config.Wt or {}).noInfantry and type(after) ~= "function" and not G.allowInfantry then
@@ -784,10 +785,12 @@ function Round.init(G)
     --   原来准备阶段守方机场（af3）不在 PREP_OK 里、有的任务里机场出生点不在单子上，试驾飞机全被「出生点不可用」拦下
     local test = P.testDeploy == true
     P.testDeploy = nil
+    local testCF = test and P.testSpawnCF or nil   -- 试驾：人直接生在训练场（Tech.lua 给的位置；战场的出生点还没有也行）
+    P.testSpawnCF = nil
     local sp = nil
-    local list = spawnList(P.team, P)
+    local list = testCF and {} or spawnList(P.team, P)
     for _, s in ipairs(list) do if s.id == spawnId then sp = s end end
-    if test and not sp then sp = list[1] end
+    if test and not sp then sp = list[1] or (testCF and { id = "test", kind = "test", ok = true }) end
     if not sp or (not sp.ok and not test) then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
     -- 准备阶段：后方、自己的据点和集结点；登陆艇也能上（艇在海上等着，开战一起冲滩）；不能先跳伞
     local PREP_OK = { fleet = true, cv = true, barge = true, af2 = true, camp = true, point = true, rally = true, beach = true, redbase = true, base = true }   -- redbase：沙海的前进基地；base：沙漠风暴两边的基地
@@ -799,7 +802,7 @@ function Round.init(G)
     P.role = kit.role
     P.kit = kit
     P.spawnId = spawnId
-    P.spawnCF = spawnCF(P, sp)
+    P.spawnCF = testCF or spawnCF(P, sp)
     P.after = (type(after) == "function") and after or nil
     if sp.kind == "beach" and G.boardBoat then
       P.spawnCF, P.after = G.boardBoat(P, sp.beach)
@@ -815,6 +818,12 @@ function Round.init(G)
   function G.ACT.pickMap(P, id)
     if type(id) ~= "string" then return end
     P.wantMap = id
+    -- 一张图一个服务器（Places.lua，用户 11-28）：这张图有自己的地点就传送过去（训练场服务器里点哪张都传：这里不打对战）；
+    --   没有自己地点的图在训练场里点，传回起始服务器（那边投票）
+    if G.teleport and G.placeFor and G.placeRole ~= id then
+      if G.placeFor(id) and G.teleport(P, id, { map = id }) then return end
+      if G.placeRole == "range" and G.placeFor("all") and G.teleport(P, "all", { map = id }) then return end
+    end
     if not G.mapId and G.voteMap and G.voteMap(P.pl, id) then
       G.pushAll()
       return
@@ -1163,10 +1172,13 @@ function Round.init(G)
 
   local function clearChars()
     for _, P in pairs(G.P) do
-      if P.char and P.char.Parent then P.char:Destroy() end
-      P.char, P.alive, P.vehicle = nil, false, nil
-      P.canDeployAt = 0
-      pcall(function() P.pl.Character = nil end)   -- 测试台（Lune）不能把引用属性设成 nil
+      -- 在训练场试驾的不动（11-28：训练场开服就建，主界面就能试驾——投票定图、开局的时候人还在训练场里开着车，原来一开局就被清回机库）
+      if not P.inTest then
+        if P.char and P.char.Parent then P.char:Destroy() end
+        P.char, P.alive, P.vehicle = nil, false, nil
+        P.canDeployAt = 0
+        pcall(function() P.pl.Character = nil end)   -- 测试台（Lune）不能把引用属性设成 nil
+      end
     end
   end
 

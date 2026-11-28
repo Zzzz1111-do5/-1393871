@@ -175,9 +175,9 @@ check(nEng >= 1 and emitting("AbFlame") >= nEng and emitting("AbCore") >= nEng a
     emitting("AbFlame"), emitting("AbCore"), emitting("AbGlow"), emitting("AbDiamond")))
 check(beams("AbFill") == 0, "不再是 11-24 那版没贴图的硬边光带")
 check(shown("AbTube") == 0 and shown("MachRing") == 0, "没有 11-23 那版的蓝边管子、马赫环")
-local fillLen = 0
-for _, I in ipairs(C.airModels and C.airModels.plumeInfo(v.M) or {}) do fillLen = math.max(fillLen, I.Lv or 0) end
-check(fillLen > 12, string.format("火焰拉得长（%.0f 格，满加力约六个半喷口直径）", fillLen))
+local fillLen, fillD = 0, 1
+for _, I in ipairs(C.airModels and C.airModels.plumeInfo(v.M) or {}) do if (I.Lv or 0) > fillLen then fillLen, fillD = I.Lv, I.D end end
+check(fillLen > fillD * 3, string.format("火焰拉得出来（%.0f 格 = %.1f 个喷口直径；战雷那样满加力三四个喷口直径）", fillLen, fillLen / fillD))
 local hotOk = false
 for _, d in ipairs(v.M.model:GetDescendants()) do
   if d:IsA("BasePart") and d.Transparency < 0.3 and d.Color.R > 0.95 and d.Color.G > 0.55 and d.Color.B > 0.3 and d.Color.B < 0.8 then hotOk = true end

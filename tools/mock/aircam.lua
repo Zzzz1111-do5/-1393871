@@ -154,13 +154,17 @@ C.flyMouseAim(false)
 st, jet = board("f16", CF(0, gy + 1200, 0))
 if st then
   airborne(st, jet)
+  -- 11-28 收紧以后每秒 250 格以上才挂前方加载点：推满油门、给到 320 格 / 秒
+  st.spd, st.vel = 320, st.vdir * 320
+  st.thr, st.thrE = 100, 100
+  jet.vel = st.vel
   R.run(1.5)
   local ap = G.airAhead and G.airAhead(jet)
   check(ap ~= nil, "开起来了：有一个前方加载点")
   if ap and jet.vel and jet.vel.Magnitude > 1 then
     local rel = ap.Position - jet.root.Position
-    local want = math.min(jet.vel.Magnitude * 3.5, 3000)
-    check(math.abs(rel.Magnitude - want) < want * 0.3, string.format("在 3.5 秒后要到的地方（前面 %.0f 格，按速度该是 %.0f 格）", rel.Magnitude, want))
+    local want = math.min(jet.vel.Magnitude * 2.5, 2000)   -- 11-28「开飞机太卡了」收紧：2.5 秒、最远 2000 格
+    check(math.abs(rel.Magnitude - want) < want * 0.3, string.format("在 2.5 秒后要到的地方（前面 %.0f 格，按速度该是 %.0f 格）", rel.Magnitude, want))
     check(rel.Unit:Dot(jet.vel.Unit) > 0.9, string.format("顺着飞的方向（夹角 %.0f°）", ang(rel, jet.vel)))
   end
   local lead = C.sceneryLead and C.sceneryLead()

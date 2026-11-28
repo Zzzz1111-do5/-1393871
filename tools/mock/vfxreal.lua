@@ -732,6 +732,17 @@ local _, _, act = C.tracerPool()
 local midOk = false
 for _, r in ipairs(act) do if r.p.Position.Y > -100 and (r.p.Position - ta).Magnitude > 5 then midOk = true end end
 check(tr1 - tr0 >= 1 and tr1 - tr0 <= 10 and midOk, string.format("曳光：池里的零件（%d 根）、每帧往前挪", tr1 - tr0))
+do   -- 用户 11-28「然后目前机枪打出去的子弹是长方柱」：曳光套了球形网格（细长的椭球：截面圆、两头尖），不是方截面的长条
+  local round, n = 0, 0
+  for _, c in ipairs(FXF:GetChildren()) do
+    if c.Name == "Tracer" then
+      n = n + 1
+      local m = c:FindFirstChildOfClass("SpecialMesh")
+      if m and m.MeshType == R.Enum.MeshType.Sphere then round = round + 1 end
+    end
+  end
+  check(n > 0 and round == n, string.format("曳光是细长的椭球（球形网格 %d / %d 根），不是长方柱", round, n))
+end
 R.run(1.2)
 local parked = 0
 for _, c in ipairs(FXF:GetChildren()) do if c.Name == "Tracer" and c.Position.Y < -1000 then parked = parked + 1 end end

@@ -1246,6 +1246,11 @@ function XrayOwn.init(G)
     for _, k in ipairs({ "hurt", "broken", "kia", "fire" }) do
       if k ~= "kia" or c.cats.crew then n += 2 swatch(r2, k, n) end
     end
+    -- 用户 11-28「然后目前车上按x透视的时候鼠标会出来」：只按 X 鼠标不放出来（镜头照常转）；要用指针指部件看名字、状态，再按住 Alt（Drive.lua）
+    if UIS.MouseEnabled and not (UIS.TouchEnabled and not UIS.KeyboardEnabled) then
+      local hint = label(bar0, T("xr.altHint"), TH.F.body or TH.F.bold, TH.S.tiny or TH.S.small, TH.C.MUTE, 3)
+      hint.Name = "AltHint"
+    end
     bar0.Parent = sg
     -- 鼠标指着的部件：名字、状态、细节（弹药架几发、哪种弹……）
     local tip = Instance.new("Frame")
@@ -1573,7 +1578,7 @@ function XrayOwn.init(G)
 
   local holding = false
   local hoverT = 0
-  -- 指针在哪（视口像素）：电脑上鼠标没锁在屏幕中间的时候（按住 X 时 Drive 放开鼠标、显示指针）；手机上刚点过的那一下（4 秒内）；
+  -- 指针在哪（视口像素）：电脑上鼠标没锁在屏幕中间的时候（按住 X 再按住 Alt 时 Drive 放开鼠标、显示指针；11-28 起只按 X 不放开）；手机上刚点过的那一下（4 秒内）；
   --   都没有返回 nil：不显示提示框（原来鼠标一直锁在中间，提示框钉在屏幕中间、只指得到炮管）
   local tapAt = nil
   local function pointer()

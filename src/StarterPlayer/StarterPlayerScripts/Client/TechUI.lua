@@ -2014,7 +2014,9 @@ function TechUI.init(G)
               local p0 = pa and pa.p0 or 0
               table.insert(pens, math.floor(pa and pa.fall and math.max(p0 * 0.4, p0 - pa.fall * m / 1000) or p0))
             end
-            add("   " .. (a.name or k) .. " · " .. (a.v0 or 0) .. " m/s · " .. L("穿深 ", "pen ") .. table.concat(pens, " / ") .. " mm", DIM, 12)
+            local kd = BAL.kindOf and BAL.kindOf(k)   -- 弹种按语言写（用户 11-28）
+            local nm = ((BAL.desig and BAL.desig(k)) or a.name or k) .. (kd and (" " .. T2("ammo.t." .. kd)) or "")
+            add("   " .. nm .. " · " .. (a.v0 or 0) .. " m/s · " .. L("穿深 ", "pen ") .. table.concat(pens, " / ") .. " mm", DIM, 12)
           end
         end
       end

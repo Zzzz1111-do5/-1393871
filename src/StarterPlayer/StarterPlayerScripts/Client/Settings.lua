@@ -28,8 +28,14 @@ function Settings.init(G)
 
   ---------------------------------------------------------------- 设置项和默认值
   -- airAim 固定翼操纵（mouse 战雷鼠标瞄准 / kb 纯键盘）、camRoll 纯键盘时镜头跟着机身滚转几成（0 地平线水平）
+  --   用户 11-28「默认飞机不要准心控制吧 就键盘控制」：默认纯键盘（设置里、飞行中按 M 照样能换成鼠标瞄准）
+  -- pv 设置的版本：老存档（没有 pv）里的 airAim 是当时的默认（鼠标瞄准），读的时候不认，换成现在的默认；存一次就带上 pv
   local DEF = { sens = 1, aim = 1, invY = false, fov = 70, fovAir = 70, shake = true, vol = 1, voice = true, ui = 1, gamma = 0, lang = "",
-    airAim = "mouse", camRoll = 0, autoGear = true, sensAir = 1, sensVeh = 1 }
+    airAim = "kb", camRoll = 0, autoGear = true, sensAir = 1, sensVeh = 1, pv = 2, gfx = "auto" }
+  -- 画质（用户 11-28「设置里增加一个画质调整」）：auto 按帧率自己调（Fx.lua 的自动画质，G.perfK 0.55～1.2）；别的几档把 G.perfK 定死——
+  --   树林石头画多远（Scenery）、爆炸烟火的粒子数（VfxLib.perfK）、士兵画多远、远处景深 / 太阳光束（低于 0.7 关）、特效阴影（低于 0.8 关）、
+  --   飞机尾焰的细节（AirModels）都跟着它；「低」另外关掉整个场景的阴影（Lighting.GlobalShadows，只在本机）
+  local GFX_K = { low = 0.55, mid = 0.8, high = 1.0, ultra = 1.2 }
   local P = {}
   for k, v in pairs(DEF) do P[k] = v end
 
@@ -114,6 +120,13 @@ function Settings.init(G)
     G.airMouseAim, G.camRollK, G.autoGearOff = P.airAim ~= "kb", P.camRoll, P.autoGear == false
     G.sensAirK, G.sensVehK = P.sensAir, P.sensVeh   -- 开飞机 / 开车时再乘一档（用户 11-28「玩家要能调灵敏度」）
     if G.flyMouseAim then pcall(G.flyMouseAim, G.airMouseAim, true) end
+    -- 画质：定了档就把 G.perfK 钉在那一档（自动画质那段看 G.gfxK 就不调了）；「低」关场景阴影，别的档开回来
+    G.gfx, G.gfxK = P.gfx, GFX_K[P.gfx]
+    if G.gfxK then G.perfK = G.gfxK end
+    pcall(function()
+      local want = P.gfx ~= "low"
+      if Lighting.GlobalShadows ~= want then Lighting.GlobalShadows = want end
+    end)
     if G.uiScaleK ~= P.ui then
       G.uiScaleK = P.ui
       for _, f in ipairs(G.uiRefit) do pcall(f) end
@@ -128,19 +141,21 @@ function Settings.init(G)
     return V2(d.X * k, d.Y * k * (G.invertY and -1 or 1))
   end
 
+  local sendAt = nil   -- 设置改了：到这个时候发一次给服务器存（拖滑块时 0.4 秒没再动才发）
   local function readPrefs()
     local s = me:GetAttribute("Prefs")
     if type(s) ~= "string" then return end
     local ok, t = pcall(function() return Http:JSONDecode(s) end)
     if not ok or type(t) ~= "table" then return end
+    local old = (type(t.pv) == "number" and t.pv or 1) < DEF.pv
     for k, v in pairs(DEF) do
-      if type(t[k]) == type(v) then P[k] = t[k] end
+      if type(t[k]) == type(v) and not (old and (k == "airAim" or k == "pv")) then P[k] = t[k] end
     end
     apply()
+    if old then sendAt = os.clock() + 1 end   -- 老存档：换成新默认以后存一次（带上 pv，下次照存的读）
   end
   readPrefs()
 
-  local sendAt = nil
   local function changed()
     apply()
     sendAt = os.clock() + 0.4
@@ -296,6 +311,11 @@ function Settings.init(G)
       opts = { { 0.85, L("紧凑（85%）", "Compact (85%)") }, { 1, L("标准（100%）", "Standard (100%)") }, { 1.15, L("大（115%）", "Large (115%)") }, { 1.3, L("特大（130%）", "Extra large (130%)") } },
       note = L("机库、科技树、设置整体放大，字更清楚", "Scales the hangar, tech tree and settings") },
     { cat = "main", key = "gamma", kind = "slider", zh = "灰度校正", en = "Brightness", lo = -0.1, hi = 0.1, step = 0.01, fmt = function(v) return string.format("%+.2f", v) end },
+    { cat = "main", key = "gfx", kind = "drop", zh = "画质", en = "Graphics quality",
+      opts = { { "auto", L("自动（按帧率调）", "Auto (follows frame rate)") }, { "low", L("低", "Low") }, { "mid", L("中", "Medium") }, { "high", L("高", "High") },
+        { "ultra", L("极高", "Ultra") } },
+      note = L("低：关阴影、景深、太阳光束，烟火粒子少一半，树和石头画得近；极高：画得更远、更细",
+        "Low: no shadows, depth of field or sun rays, half the particles, shorter scenery range; Ultra: draws farther and finer") },
     { cat = "ctl", key = "sens", kind = "slider", zh = "鼠标灵敏度", en = "Mouse sensitivity", lo = 0.25, hi = 2.5, step = 0.05, fmt = mult },
     { cat = "ctl", key = "sensAir", kind = "slider", zh = "开飞机的鼠标灵敏度", en = "Aircraft mouse sensitivity", lo = 0.25, hi = 2.5, step = 0.05, fmt = mult,
       note = L("鼠标瞄准时准星走多快（再乘上面的总灵敏度）", "How fast the mouse-aim reticle moves (times the overall setting)") },

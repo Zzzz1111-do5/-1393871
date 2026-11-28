@@ -1972,13 +1972,243 @@
 },
 {
 "key": "wtt.jetType",
-"zh": "HEAT-FS (tandem)",
+"zh": "串联尾翼稳定破甲弹",
 "en": "HEAT-FS (tandem)"
 },
 {
 "key": "wtt.tagJet",
-"zh": "HEAT-FS",
+"zh": "串联破甲",
 "en": "HEAT-FS"
+},
+{
+"key": "ammo.t.apfsds",
+"zh": "尾翼稳定脱壳穿甲弹",
+"en": "APFSDS"
+},
+{
+"key": "ammo.t.apds",
+"zh": "脱壳穿甲弹",
+"en": "APDS"
+},
+{
+"key": "ammo.t.apcr",
+"zh": "硬芯穿甲弹",
+"en": "APCR"
+},
+{
+"key": "ammo.t.aphe",
+"zh": "穿甲爆破弹",
+"en": "APHE"
+},
+{
+"key": "ammo.t.apbc",
+"zh": "风帽穿甲弹",
+"en": "APBC"
+},
+{
+"key": "ammo.t.ap",
+"zh": "穿甲弹",
+"en": "AP"
+},
+{
+"key": "ammo.t.heatfs",
+"zh": "尾翼稳定破甲弹",
+"en": "HEAT-FS"
+},
+{
+"key": "ammo.t.heat",
+"zh": "破甲弹",
+"en": "HEAT"
+},
+{
+"key": "ammo.t.heatmp",
+"zh": "多用途破甲弹",
+"en": "HEAT-MP"
+},
+{
+"key": "ammo.t.mpat",
+"zh": "多用途反坦克弹",
+"en": "MPAT"
+},
+{
+"key": "ammo.t.hefrag",
+"zh": "高爆弹",
+"en": "HE-FRAG"
+},
+{
+"key": "ammo.t.hesh",
+"zh": "碎甲弹",
+"en": "HESH"
+},
+{
+"key": "ammo.t.can",
+"zh": "霰弹",
+"en": "Canister"
+},
+{
+"key": "ammo.t.atgm",
+"zh": "反坦克导弹",
+"en": "ATGM"
+},
+{
+"key": "ammo.t.jet",
+"zh": "串联尾翼稳定破甲弹",
+"en": "HEAT-FS (tandem)"
+},
+{
+"key": "ammo.s.apfsds",
+"zh": "尾翼脱壳",
+"en": "APFSDS"
+},
+{
+"key": "ammo.s.apds",
+"zh": "脱壳",
+"en": "APDS"
+},
+{
+"key": "ammo.s.apcr",
+"zh": "硬芯",
+"en": "APCR"
+},
+{
+"key": "ammo.s.aphe",
+"zh": "穿爆",
+"en": "APHE"
+},
+{
+"key": "ammo.s.apbc",
+"zh": "风帽",
+"en": "APBC"
+},
+{
+"key": "ammo.s.ap",
+"zh": "穿甲",
+"en": "AP"
+},
+{
+"key": "ammo.s.heatfs",
+"zh": "尾翼破甲",
+"en": "HEAT-FS"
+},
+{
+"key": "ammo.s.heat",
+"zh": "破甲",
+"en": "HEAT"
+},
+{
+"key": "ammo.s.heatmp",
+"zh": "多用途",
+"en": "HEAT-MP"
+},
+{
+"key": "ammo.s.mpat",
+"zh": "多用途",
+"en": "MPAT"
+},
+{
+"key": "ammo.s.hefrag",
+"zh": "高爆",
+"en": "HE-FRAG"
+},
+{
+"key": "ammo.s.hesh",
+"zh": "碎甲",
+"en": "HESH"
+},
+{
+"key": "ammo.s.can",
+"zh": "霰弹",
+"en": "Canister"
+},
+{
+"key": "ammo.s.atgm",
+"zh": "导弹",
+"en": "ATGM"
+},
+{
+"key": "ammo.s.jet",
+"zh": "串联破甲",
+"en": "HEAT-FS"
+},
+{
+"key": "place.going",
+"zh": "正在前往{1}服务器……",
+"en": "Heading to the {1} server…"
+},
+{
+"key": "place.fail",
+"zh": "传送没成功，留在这个服务器",
+"en": "Teleport failed — staying on this server"
+},
+{
+"key": "place.rangeHere",
+"zh": "在这个服务器的训练场试驾",
+"en": "Test driving on this server's range"
+},
+{
+"key": "place.noBattle",
+"zh": "训练场服务器不打对战：没有能去的对战服务器",
+"en": "No battle server to go to from the test range"
+},
+{
+"key": "place.range",
+"zh": "训练场",
+"en": "test range"
+},
+{
+"key": "place.all",
+"zh": "大厅",
+"en": "lobby"
+},
+{
+"key": "place.city",
+"zh": "钢城",
+"en": "Steel City"
+},
+{
+"key": "place.snow",
+"zh": "雪山",
+"en": "Snow Peaks"
+},
+{
+"key": "place.sands",
+"zh": "沙海",
+"en": "Sea of Sand"
+},
+{
+"key": "place.here.range",
+"zh": "训练场服务器 · 雪山",
+"en": "Test range server · Snow Peaks"
+},
+{
+"key": "map.goto",
+"zh": "前往",
+"en": "Go to"
+},
+{
+"key": "map.gotoNote",
+"zh": "这张图有自己的服务器：点了传送过去",
+"en": "This map has its own server — you'll be teleported"
+},
+{
+"key": "ammo.w.mg",
+"zh": "机枪",
+"en": "MG"
+},
+{
+"key": "ammo.w.ac",
+"zh": "机炮",
+"en": "AC"
+},
+{
+"key": "ammo.w.sam",
+"zh": "防空导弹",
+"en": "SAM"
+},
+{
+"key": "ammo.w.he",
+"zh": "榴弹",
+"en": "HE"
 },
 {
 "key": "gs.sightSet",
@@ -7276,6 +7506,11 @@
 "en": "Other"
 },
 {
+"key": "xr.altHint",
+"zh": "按住 Alt：用鼠标指部件看名字、状态",
+"en": "Hold Alt: point at parts to see names and status"
+},
+{
 "key": "xr.hurt",
 "zh": "受损",
 "en": "Damaged"
@@ -11382,6 +11617,20 @@
 ]
 },
 {
+"zh": "沙海",
+"en": "sands",
+"files": [
+"ServerScriptService/Main/Places.lua"
+]
+},
+{
+"zh": "雪山",
+"en": "snow",
+"files": [
+"ServerScriptService/Main/Places.lua"
+]
+},
+{
 "zh": "射程内敌机 %d 架 · 准星转过去",
 "en": "%d hostile aircraft in range · swing toward them",
 "files": [
@@ -12571,6 +12820,13 @@
 ]
 },
 {
+"zh": "自动（按帧率调）",
+"en": "Auto (follows frame rate)",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/Settings.lua"
+]
+},
+{
 "zh": "起飞后自动收起落架",
 "en": "Auto-retract landing gear after takeoff",
 "files": [
@@ -12698,6 +12954,13 @@
 ]
 },
 {
+"zh": "画质",
+"en": "Graphics quality",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/Settings.lua"
+]
+},
+{
 "zh": "陆战设置",
 "en": "Ground battles",
 "files": [
@@ -12707,6 +12970,13 @@
 {
 "zh": "机库",
 "en": "Hangar",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/Settings.lua"
+]
+},
+{
+"zh": "高",
+"en": "High",
 "files": [
 "StarterPlayer/StarterPlayerScripts/Client/Settings.lua"
 ]
@@ -12768,6 +13038,20 @@
 ]
 },
 {
+"zh": "低",
+"en": "Low",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/Settings.lua"
+]
+},
+{
+"zh": "低：关阴影、景深、太阳光束，烟火粒子少一半，树和石头画得近；极高：画得更远、更细",
+"en": "Low: no shadows, depth of field or sun rays, half the particles, shorter scenery range; Ultra: draws farther and finer",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/Settings.lua"
+]
+},
+{
 "zh": "主要参数",
 "en": "Main",
 "files": [
@@ -12777,6 +13061,13 @@
 {
 "zh": "总音量",
 "en": "Master volume",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/Settings.lua"
+]
+},
+{
+"zh": "中",
+"en": "Medium",
 "files": [
 "StarterPlayer/StarterPlayerScripts/Client/Settings.lua"
 ]
@@ -12917,6 +13208,13 @@
 {
 "zh": "坦克转炮塔、看四周（再乘上面的总灵敏度）",
 "en": "Turret traverse and looking around (times the overall setting)",
+"files": [
+"StarterPlayer/StarterPlayerScripts/Client/Settings.lua"
+]
+},
+{
+"zh": "极高",
+"en": "Ultra",
 "files": [
 "StarterPlayer/StarterPlayerScripts/Client/Settings.lua"
 ]
@@ -14826,6 +15124,35 @@
 "{1} metal jet",
 "HEAT-FS (tandem)",
 "HEAT-FS",
+"APFSDS",
+"APDS",
+"APCR",
+"APHE",
+"APBC",
+"AP",
+"HEAT",
+"HEAT-MP",
+"MPAT",
+"HE-FRAG",
+"HESH",
+"Canister",
+"ATGM",
+"Heading to the {1} server…",
+"Teleport failed — staying on this server",
+"Test driving on this server's range",
+"No battle server to go to from the test range",
+"test range",
+"lobby",
+"Steel City",
+"Snow Peaks",
+"Sea of Sand",
+"Test range server · Snow Peaks",
+"Go to",
+"This map has its own server — you'll be teleported",
+"MG",
+"AC",
+"SAM",
+"HE",
 "Sight {1} m",
 "Bearing {1}°",
 "R range",
@@ -15450,7 +15777,6 @@
 "NW",
 "HULL",
 "SMOKE",
-"SAM",
 "CIWS",
 "LOADED",
 "PENETRATION",
@@ -15789,6 +16115,7 @@
 "Traverse / elevation drives",
 "ERA",
 "Other",
+"Hold Alt: point at parts to see names and status",
 "Damaged",
 "Destroyed / KIA",
 "Tracks / wheels",
@@ -16399,6 +16726,8 @@
 "Urban grey",
 "Winter",
 "Woodland",
+"sands",
+"snow",
 "%d hostile aircraft in range · swing toward them",
 "AIR",
 "HELO",
@@ -16419,9 +16748,6 @@
 "Not on sale",
 "Paid with Robux. Coins arrive right after the purchase and can buy researched vehicles in the tech tree.",
 "coins",
-"AP",
-"HE",
-"HEAT",
 "MP",
 "COMMANDER",
 "COPILOT",
@@ -16547,6 +16873,7 @@
 "Air battles",
 "Aircraft controls",
 "Aircraft mouse sensitivity",
+"Auto (follows frame rate)",
 "Auto-retract landing gear after takeoff",
 "Brightness",
 "Camera roll (keyboard)",
@@ -16564,7 +16891,9 @@
 "Extra large (130%)",
 "Full",
 "Game settings",
+"Graphics quality",
 "Ground battles",
+"High",
 "How fast the mouse-aim reticle moves (times the overall setting)",
 "Interface scale",
 "Invert mouse Y",
@@ -16572,8 +16901,11 @@
 "Language",
 "Large (115%)",
 "Loaded, enemy spotted, hit…",
+"Low",
+"Low: no shadows, depth of field or sun rays, half the particles, shorter scenery range; Ultra: draws farther and finer",
 "Main",
 "Master volume",
+"Medium",
 "Most screens switch after rejoining",
 "Mouse aim",
 "Mouse aim: the plane follows the mouse, WASD overrides; M switches in flight",
@@ -16594,6 +16926,7 @@
 "System",
 "Too fast — wait two seconds",
 "Turret traverse and looking around (times the overall setting)",
+"Ultra",
 "Vehicle mouse sensitivity",
 "War Thunder leaves gear to you (G); flaps are automatic",
 "With mouse aim the horizon always stays level",

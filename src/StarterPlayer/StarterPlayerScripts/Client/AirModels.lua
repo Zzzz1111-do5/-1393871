@@ -155,7 +155,10 @@ function AM.plumeStyle(d) return AB_STYLE[d.id] or (d.stealth and "blue") or "cl
 -- 一台发动机的尾焰按档摆：P 这台的整套（P.D 喷口直径、P.style、P.layers 三层光带、P.glow 喷口柔光、P.dia 马赫环）；on 开着加力；ab 0～1；
 --   dk 0 夜里 ～ 1 白天；hk 0～1 高度；near 离镜头近
 local LAYERS = { "outer", "mid", "core" }
-local function plumePose(P, on, ab, dk, hk, near)
+-- 画质低（自动画质降档、设置里选「低」：G.perfK < 0.7，AirFx 把 AM.lowQ 接到 G 上）：不画马赫环、喷口柔光少发一半、不放热浪
+--   （用户 11-28「然后现在开飞机太卡了」：镜头就在喷口后面，几层发光的光带、柔光整屏叠着画）
+AM.lowQ = function() return false end
+local function plumePose(P, on, ab, dk, hk, near, lowQ)
   local D = P.D
   local S = PLUME_STYLE[P.style] or PLUME_STYLE.classic
   local Lv = D * (1.6 + 2.4 * ab) * (1.08 - 0.08 * dk) * S.len                     -- 外层露出来多长
@@ -188,7 +191,7 @@ local function plumePose(P, on, ab, dk, hk, near)
     Gl.Transparency = NumberSequence.new({ NK(0, t0), NK(1, t0 + (1 - t0) * 0.3) })
     Gl.Color = ColorSequence.new(Gs.col)
     Gl.Brightness = Gs.br
-    Gl.Rate = 40
+    Gl.Rate = lowQ and 18 or 40
   end
   -- 马赫环
   local s = D * (1.05 + 0.2 * ab) * (1 + 0.6 * hk)                                  -- 间距：满加力 1.25 D，高空拉长
@@ -198,7 +201,7 @@ local function plumePose(P, on, ab, dk, hk, near)
     local k = k1 - 1
     local z = D * 0.6 + s * k * (1 - 0.015 * k)
     local a = A0 * math.exp(-k / tau)
-    local show = on and near and a >= 0.05 and z <= Lv * 1.3                            -- 太淡的不画；排到焰尾再往后一点（照片上钻石比火舌长）
+    local show = on and near and not lowQ and a >= 0.05 and z <= Lv * 1.3               -- 太淡的不画；排到焰尾再往后一点（照片上钻石比火舌长）
     dm.z, dm.a, dm.on = z, a, show
     dm.bm.Enabled = show
     if show then
@@ -1821,7 +1824,7 @@ function AM.pose(M, cf, c, now, world)
         end
       elseif it.haze then   -- 喷口正中的热浪：油门过三成才有、越大越多；离镜头远了、挂载编辑器里不放
         out = cf * b0 * CF(0, 0, it.hazeD * 0.15)
-        local want = (M.near == true) and t > 30   -- 发动机打坏、没油：Fly.lua 把油门当 0
+        local want = (M.near == true) and t > 30 and not AM.lowQ()   -- 发动机打坏、没油：Fly.lua 把油门当 0；画质低不放
         if it.haze.Enabled ~= want then it.haze.Enabled = want end
         if want then
           local rate = math.floor(18 + 30 * math.clamp((t - 30) / 95, 0, 1) + 0.5)
@@ -1837,10 +1840,11 @@ function AM.pose(M, cf, c, now, world)
         local dk = dayNow()
         local hk = math.clamp((cf.Position.Y / 2.8 - 1500) / 9000, 0, 1)   -- 高度（米，1 米 2.8 格，同 Fly.lua）：1500 米往上慢慢变
         local near = M.near == true
-        local key = on and (math.floor(ab * 20 + 0.5) * 1024 + math.floor(dk * 4 + 0.5) * 128 + math.floor(hk * 4 + 0.5) * 8 + (near and 1 or 0)) or -1
+        local lowQ = AM.lowQ()
+        local key = on and (math.floor(ab * 20 + 0.5) * 1024 + math.floor(dk * 4 + 0.5) * 128 + math.floor(hk * 4 + 0.5) * 8 + (near and 1 or 0) + (lowQ and 2 or 0)) or -1
         if key ~= P.key then
           P.key = key
-          plumePose(P, on, ab, dk, hk, near)
+          plumePose(P, on, ab, dk, hk, near, lowQ)
         end
         if on and near then   -- 近处：火舌长短抖一点（只挪尾巴那头的挂点）
           local fl = 1 + 0.05 * math.sin((now or 0) * 37 + P.D) + 0.03 * math.sin((now or 0) * 61)

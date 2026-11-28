@@ -179,6 +179,7 @@ function Fx.init(G)
       acc, n = 0, 0
       G.frameRate = fps
       if G.perfFixed then return end
+      if G.gfxK then G.perfK = G.gfxK return end   -- 设置里定了画质（Settings.lua 的「画质」）：不自动调
       local k = G.perfK
       if fps < 50 then
         low += 1
@@ -816,6 +817,12 @@ function Fx.init(G)
       if not p then
         p = part(nil, size, TR_HIDE, col, Enum.Material.Neon, tr0)
         p.Name = "Tracer"
+        -- 用户 11-28「然后目前机枪打出去的子弹是长方柱」：原来就是一根方截面的霓虹长条（大机枪 0.32 × 0.32 × 30 格，外面再套一根方的光晕），
+        --   镜头近的时候看得出四条棱、两头平的。套一个球形网格（SpecialMesh Sphere：跟着零件大小拉成细长的椭球）——截面是圆的、两头收尖，
+        --   像战雷里一道发亮的曳光；光晕那根也是圆的、两头虚。网格画中画（ScopePip 克隆进视口框）照样画得出来（光带 Beam 画不出）
+        local mesh = Instance.new("SpecialMesh")
+        mesh.MeshType = Enum.MeshType.Sphere
+        mesh.Parent = p
         trN[key] += 1
       end
     end

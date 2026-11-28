@@ -31,12 +31,15 @@ local function count(cls, name)
   end
   return n
 end
+-- 镜头跟着弹（300 格后面）：11-28 起四千格外只剩烟带、不撒烟团，镜头不动的话弹飞远了就不撒了；camFix 给了就钉在那里（量远处的）
+local camFix = nil
 local function fly(s, v, secs, cls, ph, on, from)
   local p = from or V3(0, 300, 0)
   local dir = V3(1, 0.05, -0.2).Unit
   local frames, hit = 0, 0
   for _ = 1, math.floor(secs * 60 + 0.5) do
     p = p + dir * v / 60
+    if cam then cam.CFrame = camFix or CF(p - dir * 300 + V3(0, 40, 0)) end
     local e0 = M.stat.emitted
     M.step(s, R.CFrame.lookAt(p, p + dir), 2, 1 / 60, on ~= false, cls, ph, 1.0)
     frames = frames + 1
@@ -53,7 +56,7 @@ local n = M.stat.emitted - e0
 print(string.format("   撒了 %d 团（%d 帧里 %d 帧撒到）；发射器 %d 个；烟带 %d 条", n, frames, hit, M.stat.emitters - em0, count("Trail")))
 check(s.sm ~= nil and count("Trail") >= 2, "有烟带、火舌两条 Trail")
 check(hit >= frames - 2, "几乎每一帧都撒到（连着的，不再隔几十格一颗球）")
-check(n >= 250 and n <= 1300, "撒的总数有上限（" .. n .. "；烟团大、活得久，撒得比原来稀）")
+check(n >= 200 and n <= 700, "撒的总数有上限（" .. n .. "；烟团大、活得久，撒得稀：11-28「开飞机太卡了」又收了一半多）")
 check(M.stat.emitters - em0 >= 8, "飞过 500 格换一个发射器（" .. (M.stat.emitters - em0) .. " 个）")
 local E = s.sm and s.sm.E
 check(E ~= nil and math.abs(E.h.Size.Z - 28) < 1.5, string.format("发射器的小零件拉成这一帧那一段（%.1f 格）", E and E.h.Size.Z or -1))
@@ -96,6 +99,17 @@ fly(s, 1680, 0.5, "heavy", 1, false, p1)
 check(M.stat.emitted == e2, "不再撒烟团")
 check(not fl.Enabled and not tr.Enabled and not hl.Enabled, "火舌灭了、烟带（两层）不再长")
 
+print("⑥ 四千格外：只剩烟带，不撒烟团（11-28「开飞机太卡了」：远处的烟团小得看不清、白画）")
+do
+  local s6 = {}
+  camFix = CF(V3(0, 1200, 0))
+  local e6 = M.stat.emitted
+  fly(s6, 1200, 0.5, "heavy", 1, true, V3(9000, 1200, 0))
+  camFix = nil
+  local tr6 = s6.sm and s6.sm.trails["heavy_1"]
+  check(M.stat.emitted == e6 and tr6 ~= nil and tr6.Enabled, string.format("离镜头九千格的浓烟弹：烟带照画、烟团一团没撒（%d）", M.stat.emitted - e6))
+  M.stop(s6)
+end
 print("⑤ 弹没了：烟留到散完才收")
 local h = s.sm and s.sm.h
 M.stop(s)
