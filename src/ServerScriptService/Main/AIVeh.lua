@@ -593,10 +593,20 @@ function AIVeh.init(G)
   local function think(e, dt)
     local A0 = e.ai
     local t = now()
-    -- 准备阶段：在出发的地方原地待命（同真人：WtBattle 倒计时），不找目标、不开火
+    -- 准备阶段：原地待命（同真人：WtBattle 倒计时），不找目标、不开火——派在出车位上的先往前开四五十格让出车位
+    --   （真人匹配到了也是在出车位上出来：原来电脑车停在车位上，真人的车生不出来），开到了就刹停等着
     if G.round and G.round.phase == "prep" then
       A0.tgt = nil
-      drive(e, nil, dt, 0)
+      if not A0.stage then
+        local base = G.vehBaseOf(e)
+        local fwd = flat(base.LookVector)
+        fwd = (fwd.Magnitude > 0.01) and fwd.Unit or V(0, 0, -1)
+        local p = base.Position + fwd * (45 + math.random() * 15) + V(-fwd.Z, 0, fwd.X) * ((math.random() - 0.5) * 30)
+        local x, z = landSpot(p.X, p.Z, 30)
+        A0.stage = x and V(x, 0, z) or base.Position
+      end
+      local far = (flat(A0.stage - e.root.CFrame.Position)).Magnitude > 6
+      drive(e, far and A0.stage or nil, dt, 0.35)
       return
     end
     local main = weaponsOf(e.def)
@@ -727,6 +737,8 @@ function AIVeh.init(G)
       end
     end
     spawnT -= step
+    -- 准备阶段：前 4 秒先让匹配进来的真人在出车位上坐进车（WtMatch matchFound），再派电脑车
+    if R.phase == "prep" and now() - (R.t0 or 0) < 4 then spawnT = math.max(spawnT, 0.5) end
     if spawnT <= 0 then
       spawnT = (R.phase == "prep" or (R.battleAt and (now() - R.battleAt) < 40)) and 1 or 3
       for _, team in ipairs({ "atk", "def" }) do
