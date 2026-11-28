@@ -333,7 +333,8 @@ function Air.init(G)
         self.alive = false
         self.wreck = true
         self.model:SetAttribute("Wreck", true)
-        G.fx({ k = "boom", p = self.root.CFrame.Position, s = 2.6, c = "wreck" })
+        -- 天上被打下来不当场炸（用户 11-27「飞机被干掉后不要立马爆炸」，同战雷）：客户端的残骸（Fly.lua wreckStart / wreckMove）
+        --   着火冒烟往下掉、砸到地上才炸；撞地 / 出界判毁的 crash() 自己先炸过了
         G.fx({ k = "airWreck", id = self.id, p = self.root.CFrame.Position, v = self.vel or V() })
         local list = pending[self.team][self.vcat] or {}
         table.insert(list, now() + (CATS[self.vcat].cd or 75))
@@ -342,7 +343,7 @@ function Air.init(G)
           Q.vehicle = nil
           if Q.char then
             hideChar(Q.char, false)
-            G.hurtChar(Q.char, 1e5, src)
+            G.killCrew(Q.char, src)
           end
           G.msg(Q.pl, "bad", "ui.vehLost")
         end

@@ -285,7 +285,7 @@ function Armor.init(G)
           D.vehicle = nil
           if D.char then
             hideChar(D.char, false)
-            G.hurtChar(D.char, 1e5, src)
+            G.killCrew(D.char, src)
           end
           G.msg(D.pl, "bad", "ui.vehLost")
         end
@@ -293,7 +293,7 @@ function Armor.init(G)
           Q.vehicle = nil
           if Q.char then
             hideChar(Q.char, false)
-            G.hurtChar(Q.char, 1e5, src)
+            G.killCrew(Q.char, src)
           end
           G.msg(Q.pl, "bad", "ui.vehLost")
         end

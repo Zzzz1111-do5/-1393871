@@ -875,6 +875,15 @@ function Round.init(G)
     P.score += n
     P.roundXp = (P.roundXp or 0) + n
   end
+  -- 车 / 飞机被毁，里面的人跟着没了：照 hurtChar 记伤害来源（谁打的、击杀），打不死的（不在开战阶段——训练场随时能试驾；倒地）直接判死。
+  --   原来只调 hurtChar：试驾场不是开战阶段，hurtChar 一下不打，人卡在「活着、没车」——回不了机库、也试驾不了下一辆
+  --   （用户 11-27「我坠机能不能自动返回主页」；bounds.lua 量出来的）
+  function G.killCrew(char, src)
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return end
+    pcall(G.hurtChar, char, 1e5, src)
+    if hum.Parent and hum.Health > 0 then hum.Health = 0 end
+  end
   -- 打伤一个玩家的角色（武器、爆炸、机器人都走这里）：src = { P 打人的玩家 / name 名字（机器人）, team }
   function G.hurtChar(char, amt, src, part)
     local hum = char and char:FindFirstChildOfClass("Humanoid")

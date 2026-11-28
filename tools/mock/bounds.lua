@@ -72,7 +72,7 @@ local function place(ea, st, rx, rz, look)
   st.gearWant, st.gear = 0, 0
   G.moveEnt(ea, st.cf)
   ea.vel = st.vel
-  ea.syncT, ea.syncSlack = os.clock(), 160
+  ea.syncT, ea.syncSlack = R.clock(), 160
 end
 local function warnText()
   for _, x in ipairs(me.PlayerGui:GetDescendants()) do
@@ -103,13 +103,13 @@ if ea and st then
 
   print("② 读完判毁、回机库")
   place(ea, st, PLAY + 600, 0, V3(1, 0, 0))
-  local t0 = os.clock()
+  local t0 = R.clock()
   T.runUntil(function() return not ea.alive end, 14, 1 / 10)
-  local dt = os.clock() - t0
+  local dt = R.clock() - t0
   check(not ea.alive and dt > 9 and dt < 11.5, string.format("读完判毁（%.1f 秒）", dt))
-  local t1 = os.clock()
+  local t1 = R.clock()
   T.runUntil(function() return not P.alive and hangarShown() end, 10, 1 / 10)
-  check(not P.alive and hangarShown(), string.format("判毁后自动回到机库（%.1f 秒）", os.clock() - t1))
+  check(not P.alive and hangarShown(), string.format("判毁后自动回到机库（%.1f 秒）", R.clock() - t1))
   R.run(1)
 end
 
@@ -131,9 +131,9 @@ if ea and st then
   place(ea, st, 0, -3000, V3(0, 0, -1))
   R.run(0.5)
   st.crashed = true   -- 只在客户端（坠机那一包没到服务器）
-  local t0 = os.clock()
+  local t0 = R.clock()
   T.runUntil(function() return not P.alive end, 8, 1 / 10)
-  local dt = os.clock() - t0
+  local dt = R.clock() - t0
   check(not P.alive and dt >= 2.9 and dt < 5, string.format("摔了 3 秒后自己回机库（%.1f 秒）", dt))
   T.runUntil(function() return hangarShown() end, 10, 1 / 10)
   check(hangarShown(), "机库出来了")

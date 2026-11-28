@@ -479,8 +479,10 @@ function Battle.init(G)
     local ch = P.char or P.pl.Character
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
     local from = hrp and (hrp.CFrame.Position + Vector3.new(0, 1.6, 0)) or nil   -- 眼睛的高度
+    -- kid：凶手坐的那辆 / 那架（实体号）——阵亡镜头（DeathFx.lua）跟完自己的残骸转去看它；飞机被击落原来没有这个，转不过去（用户 11-27「5秒后 再自动切换到敌视角」）
+    local kid = (K and K.vehicle and K.vehicle.alive and K.vehicle.id) or (killer.bot and killer.bot.e and killer.bot.e.id) or nil
     G.msg(P.pl, "killcam", { p = pos, from = from, name = killer.name, d = from and (pos - from).Magnitude or nil,
-      uid = K and K.pl and K.pl.UserId or nil })
+      uid = K and K.pl and K.pl.UserId or nil, kid = kid })
   end
 
   G.onFrame(function(dt)

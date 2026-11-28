@@ -440,7 +440,8 @@ function WtBattle.init(G)
     local S = G.S
     local w = S and S.wt
     if S then G.try_(stepResults, S) G.try_(stepStrip, S) end
-    local covered = (G.menuShown and G.menuShown()) or (G.boardShown and G.boardShown()) or G.factionOpen
+    -- 阵亡镜头里（DeathFx：跟着残骸、看凶手）整屏只留那一行字（用户 11-27「雷达什么图全部消失」）
+    local covered = (G.menuShown and G.menuShown()) or (G.boardShown and G.boardShown()) or G.factionOpen or (G.deathFxOn and G.deathFxOn())
     local driving = G.drive ~= nil or G.myVeh ~= nil
     local show = w ~= nil and not covered and not driving and (S.phase == "battle" or S.phase == "prep") and S.picked ~= false
       and not (G.hangarGui and G.hangarGui.Visible)   -- 机库顶上自己写了 SP（TechUI.lua），这一块不再叠在 3D 车上

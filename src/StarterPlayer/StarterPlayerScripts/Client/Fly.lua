@@ -191,6 +191,16 @@ function Fly.init(G)
     end
   end)
 
+  -- 阵亡镜头跟着自己那架往下掉的残骸（DeathFx.lua，用户 11-27「飞机被干掉后不要立马爆炸 先跟随视角」）：
+  --   实体还在就是 View 里那一份，服务器收走以后在上面的 falling 里接着演
+  G.airWreckView = function(id)
+    if id == nil then return nil end
+    local v = G.viewById and G.viewById(id)
+    if v and v.def then return v end
+    for _, f in ipairs(falling) do if f.id == id then return f end end
+    return nil
+  end
+
   G.viewKind = G.viewKind or {}
   G.viewKind.air = {
     importReady = function(v) return v.M ~= nil and not v.M.imported and v.def ~= nil and AM.importedFor(v.def) ~= nil end,   -- 原模型后来才复制齐：View 重建
@@ -1225,10 +1235,18 @@ function Fly.init(G)
   --   鼠标转的是想去的方向（屏幕正中的小圈），镜头顺着它看，教官自动压坡度、拉杆把机头追过去（机头的「+」在画面里跟着走）；
   --   按着 W / S / A / D / Q / E 就是直接操纵（松开教官又追回鼠标那里）；按住 C 自由看（飞机照旧往鼠标那里飞）。
   --   M 切换：战雷鼠标瞄准 ↔ 纯键盘驾驶（用户 11-21 要的那一套：鼠标只转视角）
-  -- 默认纯键盘驾驶（用户 11-24 夜：「我不想让准心控制飞机飞行方向」——11-21 就要过「飞机改成 WASD 控制方向、不要准心控制」，
-  --   早上照战雷改的时候默认换成了鼠标瞄准，又成了准心带着飞）：鼠标只转视角；想要战雷鼠标瞄准的按 M
-  local mouseAim = false
-  G.flyMouseAim = function(v) if v ~= nil then mouseAim = v == true end return mouseAim end
+  -- 11-24 夜（「我不想让准心控制飞机飞行方向」）一度默认纯键盘驾驶；11-27 用户又要「目前飞机机头朝向会影响我的准心位置 这个也改一下
+  --   不要影响我的视角位置 驾驶飞机时我也要有自由准心」——纯键盘时镜头钉在机身上、准心就是机头。默认改回战雷鼠标瞄准（准星自由、镜头跟着鼠标、
+  --   地平线水平），设置「固定翼操纵」里能换纯键盘（存档），飞行中按 M 也能换（一并存进设置）
+  local mouseAim = G.airMouseAim ~= false
+  G.flyMouseAim = function(v, fromPrefs)
+    if v ~= nil then
+      mouseAim = v == true
+      G.airMouseAim = mouseAim
+      if not fromPrefs and G.setPref then G.setPref("airAim", mouseAim and "mouse" or "kb") end
+    end
+    return mouseAim
+  end
   -- 自由视角（用户 11-26 晚：「自由视角不要因为飞机的机动动作而影响 然后 自由视角的移动改成鼠标右键拖动」）：
   --   按住右键（战雷鼠标瞄准时 C 也行）拖动——看的是世界里的一个方向（方位、俯仰），飞机怎么滚、怎么拉都不带着它转；地平线是平的；
   --   松开 0.35 秒滑回追尾镜头。原来鼠标一动就绕着飞机转（跟着机身坐标走，飞机一滚画面也滚），2.5 秒不动才回去
@@ -1256,7 +1274,7 @@ function Fly.init(G)
   local function jetCamBasis()
     local cf = st.cf
     local fwd = cf.LookVector
-    local kw = st.camUpK or 0.7
+    local kw = st.camUpK or (1 - math.clamp(G.camRollK or 0, 0, 1))
     local upC = V(0, 1, 0) * kw + cf.UpVector * (1 - kw)
     local rt = fwd:Cross(upC)
     if rt.Magnitude < 1e-3 then rt = cf.RightVector end
@@ -2111,7 +2129,7 @@ function Fly.init(G)
     elseif k == Enum.KeyCode.T and st.d.kind == "jet" then   -- 解除 / 恢复迎角限制
       toggleOvr()
     elseif k == Enum.KeyCode.M and st.d.kind == "jet" and not st.uav and not G.mobile then   -- 战雷式鼠标瞄准 ↔ 纯键盘驾驶
-      mouseAim = not mouseAim
+      G.flyMouseAim(not mouseAim)   -- 一并存进设置（「固定翼操纵」）
       setAim((not st.ground and st.vdir) or st.cf.LookVector)   -- 从现在的航向接着飞，不猛地一转
       st.lookYaw, st.lookPitch = 0, 0
       if G.toast then G.toast(T(mouseAim and "air.mouseAimOn" or "air.mouseAimOff"), "info") end
@@ -2422,6 +2440,9 @@ function Fly.init(G)
     if not st.em.Parent then stop() return end
     local d = st.d
     st.pilot = vs.pilot == true
+    local fl = G.flyLast or {}   -- 阵亡镜头（DeathFx.lua）：刚才坐的是哪一架（死的那一刻这里可能已经 stop 了）
+    fl.id, fl.t, fl.kind, fl.test = st.id, os.clock(), d.kind, st.em:GetAttribute("TestDrive") == true
+    G.flyLast = fl
     st.stores = st.storesLocal or {}
     -- 服务器推来的弹药数（半秒一次）：比本地扣的数少才换（本地先扣过的不回弹）
     if vs.stores then
@@ -2611,7 +2632,8 @@ function Fly.init(G)
       --   鼠标推的准星圈在画面里走（原来镜头顺着鼠标瞄准方向看，标记跟着机头在画面里到处跑）；手机上一样
       local fwd0 = st.cf.LookVector
       local upY = st.cf.UpVector.Y
-      local kwT = 0.7 * clamp((0.97 - math.abs(fwd0.Y)) / 0.25, 0, 1) * clamp((upY + 0.3) / 0.6, 0, 1)
+      -- 镜头跟着机身滚转几成：设置「纯键盘时镜头跟着滚转」（默认 0：地平线水平，同战雷；用户 11-27 问「视角会跟随飞机滚筒而滚动 战雷是否是这样」）
+      local kwT = (1 - clamp(G.camRollK or 0, 0, 1)) * clamp((0.97 - math.abs(fwd0.Y)) / 0.25, 0, 1) * clamp((upY + 0.3) / 0.6, 0, 1)
       st.camUpK = (st.camUpK or kwT) + (kwT - (st.camUpK or kwT)) * math.min(1, dt * 2.5)
       local fwd, upC = jetCamBasis()
       local wtCam = mouseAim and not st.uav and not G.mobile and not st.ground

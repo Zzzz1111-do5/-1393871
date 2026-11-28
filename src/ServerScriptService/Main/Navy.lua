@@ -333,7 +333,7 @@ function Navy.init(G)
             hideChar(D.char, false)
             local hrp = D.char:FindFirstChild("HumanoidRootPart")
             if hrp then hrp.Anchored = false end
-            G.hurtChar(D.char, 1e5, src)
+            G.killCrew(D.char, src)
           end
           G.msg(D.pl, "bad", "ui.vehLost")
         end

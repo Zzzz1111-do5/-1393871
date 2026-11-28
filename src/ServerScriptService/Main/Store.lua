@@ -65,7 +65,8 @@ function Store.init(G)
   -- 设置（客户端 Settings.lua，用户 11-25「那个设置界面不好看 重做」）：灵敏度、反转 Y、视野、镜头晃动、音量、车组语音——
   --   只收认得的键、数字夹在范围里；存在 P.data.prefs，给客户端写玩家属性 Prefs（JSON）；改了 10 秒后存一次档（连着拖滑块只存一次）
   local PREFS = { sens = { 0.25, 2.5 }, aim = { 0.25, 2.0 }, fov = { 60, 90 }, fovAir = { 60, 90 }, vol = { 0, 1 }, ui = { 0.85, 1.3 }, gamma = { -0.1, 0.1 },
-    invY = true, shake = true, voice = true, lang = { s = { [""] = true, zh = true, en = true } } }
+    invY = true, shake = true, voice = true, lang = { s = { [""] = true, zh = true, en = true } },
+    airAim = { s = { mouse = true, kb = true } }, camRoll = { 0, 1 } }   -- 空战：操纵方式、镜头滚转
   local function prefsAttr(P)
     local t = (P.data and P.data.prefs) or P.prefsEarly or {}
     local ok, js = pcall(function() return Http:JSONEncode(t) end)

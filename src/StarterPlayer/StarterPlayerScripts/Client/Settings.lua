@@ -27,7 +27,9 @@ function Settings.init(G)
   end
 
   ---------------------------------------------------------------- 设置项和默认值
-  local DEF = { sens = 1, aim = 1, invY = false, fov = 70, fovAir = 70, shake = true, vol = 1, voice = true, ui = 1, gamma = 0, lang = "" }
+  -- airAim 固定翼操纵（mouse 战雷鼠标瞄准 / kb 纯键盘）、camRoll 纯键盘时镜头跟着机身滚转几成（0 地平线水平）
+  local DEF = { sens = 1, aim = 1, invY = false, fov = 70, fovAir = 70, shake = true, vol = 1, voice = true, ui = 1, gamma = 0, lang = "",
+    airAim = "mouse", camRoll = 0 }
   local P = {}
   for k, v in pairs(DEF) do P[k] = v end
 
@@ -108,6 +110,9 @@ function Settings.init(G)
     -- 灰度是 0（默认）就把这层调色关掉（11-27 M3 丝滑：亮度、对比都是 0 也开着是白画一遍全屏后期）
     if gammaCC then pcall(function() gammaCC.Brightness = P.gamma gammaCC.Contrast = math.abs(P.gamma) * 0.4 gammaCC.Enabled = math.abs(P.gamma) > 1e-3 end) end
     if P.lang == "zh" or P.lang == "en" then G.lang = P.lang end
+    -- 空战：操纵方式、镜头滚转（Fly.lua 读；飞着的时候改了马上换）
+    G.airMouseAim, G.camRollK = P.airAim ~= "kb", P.camRoll
+    if G.flyMouseAim then pcall(G.flyMouseAim, G.airMouseAim, true) end
     if G.uiScaleK ~= P.ui then
       G.uiScaleK = P.ui
       for _, f in ipairs(G.uiRefit) do pcall(f) end
@@ -137,6 +142,12 @@ function Settings.init(G)
   local function changed()
     apply()
     sendAt = os.clock() + 0.4
+  end
+  -- 别处改设置（飞行中按 M 换操纵方式）：照设置页一样存到服务器
+  function G.setPref(k, v)
+    if DEF[k] == nil or type(v) ~= type(DEF[k]) or P[k] == v then return end
+    P[k] = v
+    changed()
   end
   task.spawn(function()
     while true do
@@ -286,6 +297,12 @@ function Settings.init(G)
     { cat = "ground", key = "fov", kind = "slider", zh = "第三人称视野（载具）", en = "Chase camera FOV (vehicles)", lo = 60, hi = 90, step = 1, fmt = deg },
     { cat = "ground", key = "shake", kind = "check", zh = "镜头晃动", en = "Camera shake", note = L("爆炸、开炮、路面颠簸", "Explosions, gunfire, rough ground") },
     { cat = "air", key = "fovAir", kind = "slider", zh = "第三人称视野（飞机、直升机）", en = "Chase camera FOV (aircraft)", lo = 60, hi = 90, step = 1, fmt = deg },
+    { cat = "air", key = "airAim", kind = "drop", zh = "固定翼操纵", en = "Aircraft controls",
+      opts = { { "mouse", L("鼠标瞄准（战雷式）", "Mouse aim") }, { "kb", L("纯键盘", "Keyboard") } },
+      note = L("鼠标瞄准：准星随鼠标、飞机自己追过去，按 WASD 临时直接操纵；飞行中按 M 也能换", "Mouse aim: the plane follows the mouse, WASD overrides; M switches in flight") },
+    { cat = "air", key = "camRoll", kind = "drop", zh = "纯键盘时镜头跟着滚转", en = "Camera roll (keyboard)",
+      opts = { { 0, L("不跟（地平线水平）", "None (level horizon)") }, { 0.3, L("跟三成", "30%") }, { 1, L("完全跟着机身", "Full") } },
+      note = L("鼠标瞄准时地平线一直是平的", "With mouse aim the horizon always stays level") },
     { cat = "snd", key = "vol", kind = "slider", zh = "总音量", en = "Master volume", lo = 0, hi = 1, step = 0.05, fmt = pct },
     { cat = "snd", key = "voice", kind = "check", zh = "车组语音", en = "Crew voice", note = L("装填完毕、发现敌人、被击中……", "Loaded, enemy spotted, hit…") },
     { cat = "code", key = "code", kind = "code", zh = "兑换码", en = "Redeem code" },
