@@ -835,7 +835,14 @@ function View.init(G)
       for _, w in ipairs(W) do if math.abs(w.vy) > 0.003 then still = false break end end
     end
     v.farN = (v.farN or 0) + 1
-    if not still and (not farPut or own or v.farN % 3 == 0) then
+    -- 远处的车摆零件按「看上去多远」再分一档（用户 11-28 夜「然后卡顿问题你给他想办法解决」）：420 格外三帧一摆，1500 格外（五百多米，
+    --   没开镜看只有指甲盖大）六帧一摆；开镜放大了的照样按放大后的远近算（同上面 farPut）
+    local farEvery = 3
+    if farPut and not own then
+      local de = camD * ((viewLook and (pos - camPos):Dot(viewLook) > camD * viewCos) and viewK or 1)
+      if de > 1500 then farEvery = 6 end
+    end
+    if not still and (not farPut or own or v.farN % farEvery == 0) then
       v.putH, v.putT, v.putG, v.putR, v.putRG, v.putSteer = hullF, tF, gF, rF, rgF, v.steer
       local plist, clist = v.plist, v.clist
       -- 一个轮子（履带段）由好几块零件拼成：轮子的变换这一帧只算一次，同一个轮子的零件共用（原来每块零件各算一遍，

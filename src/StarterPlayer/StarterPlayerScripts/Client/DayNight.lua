@@ -44,8 +44,41 @@ function DayNight.init(G)
   end
 
   local dayK, clock = 0, 2.3
-  G.dayK = function() return dayK end
-  G.isNight = function() return dayK < 0.35 end
+  -- 试驾一直是白天（用户 11-28 夜「然后训练场改成持续百天吧」——持续白天）：训练场服务器上 DayClock 本身就钉在白天（rangeClock）；
+  --   别的服务器上试驾（战场这张雪山图上、老的训练场区块）这里换成同一个钟点，只换自己的画面（别人照旧是这一局的钟点）。算试驾的：
+  --   坐在试驾的车 / 飞机里（G.inTestDrive）、镜头在训练场区块里、服务器刚开始给他出试驾的车（玩家属性 TestDriveAt：人先生出来、车后到——
+  --   这一下按夜里算的话出生会自动打开夜视仪，坐进车又「天亮了：夜视仪收起」）。试驾完的那几秒（阵亡画面、收车）照旧白天，
+  --   回到机库（镜头到了大厅那块）马上换回这一局的钟点
+  local me = game:GetService("Players").LocalPlayer
+  local Zones = Map.Zones
+  local holdDay, tdT, tdV = 0, -1, false
+  local function testDay()
+    local t = os.clock()
+    if t - tdT < 0.05 then return tdV end   -- 夜视、地图上的灯、云每帧都问：一帧算一次就够
+    tdT = t
+    local cam = workspace.CurrentCamera
+    local p = cam and cam.CFrame.Position
+    local on = (G.inTestDrive and G.inTestDrive()) == true or (p ~= nil and LL.keyFor(Map, p) == "range")
+    if not on and me then
+      local at = me:GetAttribute("TestDriveAt")
+      on = type(at) == "number" and DC.serverNow() - at < 15
+    end
+    if on then holdDay = t + 4
+    elseif p and Zones and Zones.of and Zones.of(p.X, p.Z) == "lobby" then holdDay = 0 end
+    tdV = t < holdDay
+    return tdV
+  end
+  G.testDay = testDay
+  local function inLobby()
+    local cam = workspace.CurrentCamera
+    local p = cam and cam.CFrame.Position
+    return p ~= nil and Zones ~= nil and Zones.of ~= nil and Zones.of(p.X, p.Z) == "lobby"
+  end
+  G.dayK = function()
+    if testDay() then return DC.dayK(DC.RANGE_CLOCK or 11) end
+    return dayK
+  end
+  G.isNight = function() return G.dayK() < 0.35 end
   G.clockNow = function() return clock end
 
   -- 灯光属性只有真变了才写（用户 11-18：一卡一卡的——原来每 0.1 秒把钟点、大气、调色全写一遍，钟点一动太阳就动，阴影、天空跟着重算）；
@@ -151,6 +184,7 @@ function DayNight.init(G)
   ---------------------------------------------------------------- 每 0.1 秒更新一次
   local EASE = 0.8   -- 钟点跳了（每局开局拨回早上、PvE 关卡、测试拨钟）：混合权重按这个时间常数缓过去（秒）；平常钟点走得慢，只落后一点点
   local vk, vw, vt, eased = 0, 0, 0, false   -- 缓过的 dayK、黄昏权重、太阳颜色的黄昏权重
+  local wasTd = false   -- 上一次是不是按试驾的白天画的
   local cur = {}   -- 混合好的这一套（复用的表）
   local acc = 1
   local function step(dt)
@@ -158,7 +192,10 @@ function DayNight.init(G)
     if acc < 0.1 then return end   -- 一秒十次就够顺
     local h = math.min(acc, 1)
     acc = 0
-    clock = DC.clock()   -- 锁定晚上（lockNight）、PvE 钉住的钟点（DayFix）、跨局走的（DayT0）都在 DayClock 里
+    clock = DC.clock()   -- 锁定晚上（lockNight）、PvE 钉住的钟点（DayFix）、跨局走的（DayT0）、训练场服务器的白天都在 DayClock 里
+    -- 别的服务器上试驾：自己的画面换成训练场的白天（见上面 testDay；还在机库里等车出来的那一下不换，镜头跟着人到了车边才换）
+    local td = testDay() and not inLobby()
+    if td then clock = DC.RANGE_CLOCK or 11 end
     local alt = DC.sunAlt(clock)   -- 太阳高度（−1 半夜 ～ 1 正午）
     dayK = DC.dayK(clock)
     local tw, twT = LL.twW(alt), LL.twTop(alt)
@@ -167,6 +204,10 @@ function DayNight.init(G)
     if key ~= look then
       applyLook(key)
       eased = false   -- 换图、换区块是瞬移过去的：光照直接到位
+    end
+    if td ~= wasTd then   -- 试驾开始 / 回机库也是镜头瞬移过去的：光照直接到位，不在画面上慢慢亮起来
+      wasTd = td
+      eased = false
     end
     watchSun()
     if eased then

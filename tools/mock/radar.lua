@@ -10,7 +10,7 @@
 --   ⑤ Alt 组合键只给雷达：Alt+T 不切迎角限制、Alt+R 不换目标、Alt+F 不发导弹、按住 Alt+Q 不打舵、Alt+↑ / Alt+滚轮 不动油门（不按 Alt 照旧）
 --   ⑥ 每架次重置、按科技树版本取雷达：关了雷达、换了量程，下一架照旧开着、量程最大；F-16A（TreeKey us_f16a）是 APG-66、
 --      苏-30SM（歼-16 + ru_su30sm）是 N011M、不带 TreeKey 的 F-16 是 APG-68(V)5、苏-27（借苏-35S 的模型）是 N001
---   ⑦ 扫描区（F-16C 的 APG-68，机械扫描 60°/秒）：一帧的时间对得上真机（±60°×2 行 4 秒）；波束扫过才出亮点；扫描区外（机头上方 30°）扫一整帧也没有，
+--   ⑦ 扫描区（F-16C 的 APG-68，照战雷机械扫描 120°/秒）：默认 ±60°×4 行一帧 4 秒（11-28 夜「有的飞机雷达扫描区域很窄的」：原来 2 行）；波束扫过才出亮点；扫描区外（机头上方 30°）扫一整帧也没有，
 --      按住 Alt+↑ 把天线抬上去就扫到；Alt+C 回中、Alt+滚轮一格 2°、Alt+Z 换扫描方式（提示一帧几秒）；±30° 扫描按住 ←（11-28 起不用按 Alt）最多挪到 −30°、屏上两条竖线跟着；
 --      扫描区外、万向架里的新目标锁不上，已经 STT 的出了扫描区照旧跟着
 --   ⑧ 边扫边跟（TWS）：Alt+E 进 TWS，两架都成航迹（屏上两个小方块）；Alt+T 指定一条，雷达弹不用 STT 就锁上它、对方告警器不报锁定；
@@ -304,7 +304,7 @@ check(s4 and s4.rd and s4.rd.short == "APG-68(V)5", "不带 TreeKey 的 F-16：A
 local s5 = fly2("su27", nil, 320)
 check(s5 and s5.rd and s5.rd.short == "N001", "苏-27（借苏-35S 的模型）：N001（" .. tostring(s5 and s5.rd and s5.rd.short) .. "）")
 
-print("⑦ 扫描区：F-16C 的 APG-68（机械扫描 60°/秒）一帧几秒、波束扫过才出亮点、Alt 键挪天线")
+print("⑦ 扫描区：F-16C 的 APG-68（照战雷机械扫描 120°/秒、默认 4 行）一帧几秒、波束扫过才出亮点、Alt 键挪天线")
 local sF, jetF = fly2("f16", nil, 400)
 check(sF ~= nil and sF.rd ~= nil and sF.rd.key == "apg68", "坐进 F-16C：APG-68(V)5（" .. tostring(sF and sF.rd and sF.rd.short) .. "）")
 if not (sF and sF.rd and jetF) then T.summary() return end
@@ -350,9 +350,9 @@ local t1 = R.clock()
 waitFrame(6)
 local t2 = R.clock()
 check(math.abs((t2 - t1) - 4.0) < 0.1 and math.abs((RSt().frameT or 0) - 4.0) < 0.1,
-  string.format("APG-68 默认扫描（±60°×2 行、60°/秒）扫一帧 %.2f 秒（真机 4 秒；雷达记的 %.2f）", t2 - t1, RSt().frameT or -1))
+  string.format("APG-68 默认扫描（±60°×4 行、120°/秒）扫一帧 %.2f 秒（4 秒；雷达记的 %.2f）", t2 - t1, RSt().frameT or -1))
 local zoneT = gui:FindFirstChild("RadarZone", true)
-check(zoneT and zoneT.Text == "120°x7°" and mode.Text == "RWS", "雷达屏写 RWS、扫描区照战雷写宽 × 高（±60° · 2 行 × 3.5° = 120°x7°）：" .. tostring(zoneT and zoneT.Text))
+check(zoneT and zoneT.Text == "120°x14°" and mode.Text == "RWS", "雷达屏写 RWS、扫描区照战雷写宽 × 高（±60° · 4 行 × 3.5° = 120°x14°）：" .. tostring(zoneT and zoneT.Text))
 -- 波束在左边往右扫的时候把敌机摆到右前方 40°：等波束扫到 40° 那里才出亮点
 T.runUntil(function() local s = RSt() return s.bar == 1 and s.dir > 0 and s.bAz < -40 end, 8)
 placeFoe(40, 0, 6000)
@@ -362,7 +362,7 @@ check(not C.radarHas(sF, fem), string.format("刚摆到右前方 40°、波束�
 local got = T.runUntil(function() return C.radarHas(sF, fem) end, 5)
 local bAt = RSt().bAz
 check(got and math.abs(bAt - 40) <= 4.5, string.format("波束扫到那里（%.1f°）才出亮点（目标在 40°）", bAt))
--- 机头上方 30°：俯仰万向架里、扫描区外（默认 2 行只扫地平线上下三四度）
+-- 机头上方 30°：俯仰万向架里、扫描区外（默认 4 行只扫地平线上下七度）
 placeFoe(0, 30, 5000)
 R.run(5.5)
 check(not C.radarHas(sF, fem), "机头上方 30°：在扫描区外，扫一整帧多（5.5 秒）屏上也没有")
@@ -387,7 +387,7 @@ R.as("client", function() UIS.InputChanged:Fire({ UserInputType = Enum.UserInput
 T.key(Enum.KeyCode.LeftAlt, false)
 check(math.abs(RSt().ctrEl - 2) < 1e-6, string.format("Alt+滚轮一格：天线俯仰 +2°（%.1f）", RSt().ctrEl))
 altKey(Enum.KeyCode.Z)
-check(RSt().scan == 2 and #T.texts(C.T("rd.scanT", "60", "4", "8.0")) > 0, "Alt+Z 换扫描方式：±60° · 4 行，提示一帧 8.0 秒")
+check(RSt().scan == 2 and #T.texts(C.T("rd.scanT", "60", "2", "2.0")) > 0, "Alt+Z 换扫描方式：±60° · 2 行，提示一帧 2.0 秒")
 altKey(Enum.KeyCode.Z)
 -- 用户 11-28「飞机雷达偏转改成左右建控制吧」：左右偏转直接按 ← / →（不用按 Alt；↑ / ↓ 不按 Alt 还是油门）
 local thrLR = sF.thr

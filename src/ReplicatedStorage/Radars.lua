@@ -7,7 +7,7 @@
 --     跟原来 AirDefs RADAR 表 ×2.5 的比例差 5% 以内）；lock = range × lockK（单目标跟踪 STT 能锁的距离）
 --   字段：name 中文全名、en 英文全名、short 屏上写的短名（shortEn：英文界面另写）；kind pd 脉冲多普勒 / pulse 脉冲（pulse = true：另有脉冲模式，不怕置零、怕地杂波）；
 --     arr mech 机械扫描 / pesa 无源相控阵 / aesa 有源相控阵；ldK 下视时量程乘几；az 方位万向架 ±°；elU / elD 俯仰万向架（往上 / 往下）；
---     rate 扫描速度 °/s（机械扫描约 60、相控阵快）；scans 搜索方式 { 方位半宽°, 行数[, far = 量程乘几] }（第一个是默认）；
+--     rate 扫描速度 °/s（照战雷比真机快：机械扫描 110～150、无源相控阵 200、有源 260～360；真机机械扫描约 60）；scans 搜索方式 { 方位半宽°, 行数[, far = 量程乘几] }（第一个是默认）；
 --     tws 边扫边跟批数（0 = 没有）、eng 同时攻击几个、twsScans 边扫边跟只能用的扫描方式（序号）；
 --     acm 近战模式（RD.ACM 的键）、acmGeo 改写这部雷达的近战扫描区、acmTag 改写屏上的缩写；notch 置零门限（目标对地速度在视线上的分量低于它就看不见，格 / 秒）；
 --     rwr 敌方告警器上的代号；lpi 敌方告警器发现距离乘几（低截获）
@@ -41,25 +41,28 @@ local function inh(b, o)
   for k, v in pairs(o) do t[k] = v end
   return t
 end
-local S4 = { { 60, 2 }, { 60, 4 }, { 30, 4 }, { 10, 4 } }
+-- 默认搜索 4 行（用户 11-28 夜「有的飞机雷达扫描区域很窄的 你根据战雷的不同飞机雷达扫描去改动一下吧」）：原来默认 2 行，上下只扫 ±3.5°，
+--   高一点低一点的就看不见；战雷的大范围搜索多是 4 行（解包的 AWG-9 searchWide ±65° × 4 行、APG-65 1 / 2 / 4 / 6 行可选），
+--   扫描速度也比真机快（机械扫描约 120°/秒，一帧四秒上下）——下面各部雷达同样改：4 行的放第一个（默认），2 行、窄的照旧能 Alt+Z 换
+local S4 = { { 60, 4 }, { 60, 2 }, { 30, 4 }, { 10, 4 } }
 local T = {}
 
 ---------------------------------------------------------------- 中国（型号、距离多是外界说法：est）
 
 -- 歼-8II：208A 型单脉冲，约 40 km，不能下视，没有真正的超视距
 T.sl8a = { name = "SL-8A（208A 型）单脉冲", en = "SL-8A (Type 208A) monopulse", short = "SL-8A", kind = "pulse", arr = "mech", km = 40, lockK = 0.75,
-  az = 45, elU = 30, elD = 30, rate = 60, scans = { { 45, 2 }, { 20, 2 } }, tws = 0, acm = { "bore" }, notch = 0, rwr = "J8" }
+  az = 45, elU = 30, elD = 30, rate = 110, scans = { { 45, 3 }, { 45, 2 }, { 20, 2 } }, tws = 0, acm = { "bore" }, notch = 0, rwr = "J8" }
 -- 歼-10A：距离 100～150 km、批数各家说法不一（估）
 T.klj3 = { name = "KLJ-3（1473 型）脉冲多普勒", en = "KLJ-3 (Type 1473) pulse-Doppler", short = "KLJ-3", kind = "pd", arr = "mech", km = 100, ldK = 0.8,
-  az = 60, elU = 60, elD = 60, rate = 60, scans = S4, tws = 10, eng = 2, acm = { "hud", "vert", "bore" }, notch = 60, rwr = "J10", est = true }
+  az = 60, elU = 60, elD = 60, rate = 120, scans = S4, tws = 10, eng = 2, acm = { "hud", "vert", "bore" }, notch = 60, rwr = "J10", est = true }
 -- 歼-10C：也有说早期装 KLJ-7A（估）
 T.klj10 = { name = "KLJ-10A 有源相控阵（型号说法不一）", en = "KLJ-10A AESA (designation disputed)", short = "KLJ-10A", kind = "pd", arr = "aesa", km = 130, lockK = 0.85, ldK = 0.9,
-  az = 60, elU = 60, elD = 60, rate = 150, scans = S4, tws = 15, eng = 4, acm = { "hud", "vert", "bore", "hmd" }, notch = 45, rwr = "J10", est = true }
+  az = 60, elU = 60, elD = 60, rate = 260, scans = S4, tws = 15, eng = 4, acm = { "hud", "vert", "bore", "hmd" }, notch = 45, rwr = "J10", est = true }
 -- 歼-11B：约 150 km 是论坛说法，取 120（估）
 T.t1493 = { name = "1493 型脉冲多普勒（也有写 1474 型）", en = "Type 1493 pulse-Doppler (also reported as Type 1474)", short = "1493", kind = "pd", arr = "mech", km = 120, ldK = 0.8,
-  az = 60, elU = 60, elD = 55, rate = 60, scans = S4, tws = 10, eng = 4, acm = { "vert", "bore", "hmd" }, notch = 60, rwr = "J11", est = true }
+  az = 60, elU = 60, elD = 55, rate = 120, scans = S4, tws = 10, eng = 4, acm = { "vert", "bore", "hmd" }, notch = 60, rwr = "J11", est = true }
 -- 型号没公开的有源相控阵（数都是估的）
-local AESA = { short = "有源相控阵", shortEn = "AESA", kind = "pd", arr = "aesa", lockK = 0.85, ldK = 0.9, az = 60, elU = 60, elD = 60, rate = 150, scans = S4,
+local AESA = { short = "有源相控阵", shortEn = "AESA", kind = "pd", arr = "aesa", lockK = 0.85, ldK = 0.9, az = 60, elU = 60, elD = 60, rate = 260, scans = S4,
   tws = 20, eng = 6, acm = { "hud", "vert", "bore", "hmd" }, notch = 45, est = true }
 T.j16 = inh(AESA, { name = "有源相控阵（歼-16，型号未公开）", en = "AESA (J-16, designation not public)", km = 170, rwr = "J16" })
 T.j15t = inh(AESA, { name = "有源相控阵（歼-15T，型号未公开）", en = "AESA (J-15T, designation not public)", km = 160, rwr = "J15" })
@@ -72,17 +75,17 @@ T.j36 = inh(AESA, { name = "有源相控阵（歼-36，型号未公开）", en =
 
 -- F-16A：下视对战斗机约 55.6 km；近战 20°×20°、10°×40°；没有 TWS
 T.apg66 = { name = "AN/APG-66 脉冲多普勒", en = "AN/APG-66 pulse-Doppler", short = "APG-66", kind = "pd", arr = "mech", km = 60, ldK = 0.85,
-  az = 60, elU = 60, elD = 60, rate = 60, scans = { { 60, 1 }, { 60, 2 }, { 30, 4 }, { 10, 4 } }, tws = 0, acm = { "hud", "vert", "bore" },
+  az = 60, elU = 60, elD = 60, rate = 120, scans = { { 60, 4 }, { 60, 2 }, { 30, 4 }, { 10, 4 }, { 60, 1 } }, tws = 0, acm = { "hud", "vert", "bore" },
   acmGeo = { hud = { az = 10, el0 = -10, el1 = 10 }, vert = { az = 5, el0 = -10, el1 = 30 } }, notch = 65, rwr = "F16" }
 -- F-16C Block 50/52：RWS / TWS / VS / SAM / ACM / STT
 T.apg68 = { name = "AN/APG-68(V)5 脉冲多普勒", en = "AN/APG-68(V)5 pulse-Doppler", short = "APG-68(V)5", kind = "pd", arr = "mech", km = 80, ldK = 0.85,
-  az = 60, elU = 60, elD = 60, rate = 60, scans = S4, tws = 10, eng = 6, acm = { "hud", "vert", "bore", "slew" }, notch = 60, rwr = "F16" }
+  az = 60, elU = 60, elD = 60, rate = 120, scans = S4, tws = 10, eng = 6, acm = { "hud", "vert", "bore", "slew" }, notch = 60, rwr = "F16" }
 -- F-2A：对 5 m² 60 海里（110 km）
 T.japg1 = { name = "J/APG-1 有源相控阵", en = "J/APG-1 AESA", short = "J/APG-1", kind = "pd", arr = "aesa", km = 110, lockK = 0.85, ldK = 0.9,
-  az = 60, elU = 60, elD = 60, rate = 150, scans = S4, tws = 10, eng = 4, acm = { "hud", "vert", "bore" }, notch = 50, rwr = "F2" }
+  az = 60, elU = 60, elD = 60, rate = 260, scans = S4, tws = 10, eng = 4, acm = { "hud", "vert", "bore" }, notch = 50, rwr = "F2" }
 -- F-15A：RWS / VS / STT，没有 TWS
 T.apg63 = { name = "AN/APG-63 脉冲多普勒（早期）", en = "AN/APG-63 pulse-Doppler (early)", short = "APG-63", kind = "pd", arr = "mech", km = 100, ldK = 0.8,
-  az = 60, elU = 60, elD = 60, rate = 70, scans = { { 60, 2 }, { 60, 4 }, { 30, 6 }, { 10, 8 } }, tws = 0, acm = { "hud", "vert", "bore" }, notch = 60, rwr = "F15" }
+  az = 60, elU = 60, elD = 60, rate = 130, scans = { { 60, 4 }, { 60, 2 }, { 30, 6 }, { 10, 8 } }, tws = 0, acm = { "hud", "vert", "bore" }, notch = 60, rwr = "F15" }
 -- F-15C（挂 AIM-120 的年代）、F-15J（1981 年的 F-15J 严格说那时还没有 TWS 软件，先按 F-15C 给）
 T.apg63c = inh(T.apg63, { name = "AN/APG-63（可编程信号处理机）", en = "AN/APG-63 (programmable signal processor)", km = 110, tws = 10, eng = 6 })
 -- F-15E（1988；2014 年后换的 APG-82 不做）
@@ -92,13 +95,13 @@ T.apg63v1 = inh(T.apg63, { name = "AN/APG-63(V)1（三菱电机许可生产）",
 -- F-14A：RWS 对迎头战斗机约 170 km；TWS 只能用 ±40°×2 或 ±20°×4（一帧约 2 秒），跟踪 24（显示 18）、攻击 6；PLM 是 2.3° 波束，
 --   VSL 高 +15～+55°、低 −15～+25°，PAL 40° 一行；另有脉冲搜索 / 脉冲跟踪
 T.awg9 = { name = "AN/AWG-9 脉冲多普勒 / 脉冲", en = "AN/AWG-9 pulse-Doppler / pulse", short = "AWG-9", kind = "pd", pulse = true, arr = "mech", km = 170, lockK = 0.75, ldK = 0.85,
-  az = 65, elU = 60, elD = 60, rate = 80, scans = { { 40, 2 }, { 65, 2 }, { 65, 4 }, { 20, 4 }, { 10, 8 } }, twsScans = { 1, 4 }, tws = 24, eng = 6,
+  az = 65, elU = 60, elD = 60, rate = 150, scans = { { 65, 4 }, { 40, 2 }, { 65, 2 }, { 20, 4 }, { 10, 8 } }, twsScans = { 2, 4 }, tws = 24, eng = 6,
   acm = { "bore", "vert", "vertLo", "pal" },
   acmGeo = { bore = { az = 1.2, el0 = -1.2, el1 = 1.2 }, vert = { az = 2, el0 = 15, el1 = 55 }, vertLo = { az = 2, el0 = -15, el1 = 25 }, pal = { az = 20, el0 = -2, el1 = 2 } },
   acmTag = { bore = "PLM", vert = "VSL HI", vertLo = "VSL LO" }, notch = 60, rwr = "F14" }
 -- F-22A：没有头盔瞄准具
 T.apg77 = { name = "AN/APG-77 有源相控阵", en = "AN/APG-77 AESA", short = "APG-77", kind = "pd", arr = "aesa", km = 200, lockK = 0.85, ldK = 0.95,
-  az = 60, elU = 60, elD = 60, rate = 200, scans = S4, tws = 20, eng = 6, acm = { "hud", "bore" }, notch = 35, lpi = 0.5, rwr = "F22" }
+  az = 60, elU = 60, elD = 60, rate = 360, scans = S4, tws = 20, eng = 6, acm = { "hud", "bore" }, notch = 35, lpi = 0.5, rwr = "F22" }
 -- F-35A：头盔显示
 T.apg81 = inh(T.apg77, { name = "AN/APG-81 有源相控阵", en = "AN/APG-81 AESA", short = "APG-81", km = 160, acm = { "hud", "bore", "hmd" }, rwr = "F35" })
 
@@ -107,23 +110,23 @@ T.apg81 = inh(T.apg77, { name = "AN/APG-81 有源相控阵", en = "AN/APG-81 AES
 -- 米格-29（9.12）：3 m² 迎头 50～70 km、跟踪 40～60 km（目标低于 3000 米时发现 40～70 km）；方位 ±65°、俯仰 +56 / −36°（出口手册）；
 --   只能单目标跟踪 + R-27R；头盔瞄准具「窄缝」配光电
 T.n019 = { name = "N019 脉冲多普勒（RP-29）", en = "N019 pulse-Doppler (RP-29)", short = "N019", kind = "pd", arr = "mech", km = 70, lockK = 0.8, ldK = 0.75,
-  az = 65, elU = 56, elD = 36, rate = 60, scans = { { 65, 2 }, { 30, 4 }, { 20, 6 } }, tws = 0, acm = { "vert", "bore", "hmd" }, notch = 70, rwr = "29" }
+  az = 65, elU = 56, elD = 36, rate = 120, scans = { { 65, 4 }, { 65, 2 }, { 30, 4 }, { 20, 6 } }, tws = 0, acm = { "vert", "bore", "hmd" }, notch = 70, rwr = "29" }
 -- 苏-27S：3 m² 迎头 80～100 km、尾追 40 km、跟踪约 65 km；方位 ±60°、俯仰 +60 / −55°；只能单目标跟踪 + R-27R / ER
 T.n001 = { name = "N001「剑」脉冲多普勒", en = "N001 Myech pulse-Doppler", short = "N001", kind = "pd", arr = "mech", km = 90, lockK = 0.72, ldK = 0.75,
-  az = 60, elU = 60, elD = 55, rate = 60, scans = { { 60, 2 }, { 30, 4 }, { 10, 4 } }, tws = 0, acm = { "vert", "bore", "hmd" }, notch = 70, rwr = "27" }
+  az = 60, elU = 60, elD = 55, rate = 120, scans = { { 60, 4 }, { 60, 2 }, { 30, 4 }, { 10, 4 } }, tws = 0, acm = { "vert", "bore", "hmd" }, notch = 70, rwr = "27" }
 -- 歼-11（早期，苏-27SK 那一套）
 T.n001e = inh(T.n001, { name = "N001E「剑」脉冲多普勒（出口型）", en = "N001E Myech pulse-Doppler (export)", short = "N001E", rwr = "J11" })
 -- 苏-27SM
 T.n001ve = inh(T.n001, { name = "N001VE「剑」（换了新处理机，能打 R-77）", en = "N001VE Myech (new processor, R-77 capable)", short = "N001VE", km = 100, lockK = 0.75, tws = 10, eng = 2 })
 -- 苏-30SM：TWS 15 批 / 攻击 4（400 km 是对大目标的）
 T.n011m = { name = "N011M「雪豹」无源相控阵", en = "N011M Bars PESA", short = "N011M", kind = "pd", arr = "pesa", km = 140, ldK = 0.85,
-  az = 70, elU = 56, elD = 40, rate = 120, scans = { { 70, 2 }, { 60, 4 }, { 30, 4 }, { 10, 6 } }, tws = 15, eng = 4, acm = { "vert", "bore", "hmd" }, notch = 55, rwr = "30" }
+  az = 70, elU = 56, elD = 40, rate = 200, scans = { { 70, 4 }, { 70, 2 }, { 30, 4 }, { 10, 6 } }, tws = 15, eng = 4, acm = { "vert", "bore", "hmd" }, notch = 55, rwr = "30" }
 -- 苏-35S：平时约 200 km，窄扇区（约 100 平方度）350～400 km（far）；电扫 ±60° 加液压转台，扫描中心能挪到 ±60°（合计 ±120°）；跟踪 30 / 攻击 8（厂家说法）
 T.n035 = { name = "N035「雪豹-E」无源相控阵", en = "N035 Irbis-E PESA", short = "N035", kind = "pd", arr = "pesa", km = 200, ldK = 0.85,
-  az = 120, elU = 60, elD = 60, rate = 120, scans = { { 60, 2 }, { 60, 4 }, { 30, 4 }, { 5, 3, far = 1.32 } }, tws = 30, eng = 8, acm = { "vert", "bore", "hmd" }, notch = 55, rwr = "35" }
+  az = 120, elU = 60, elD = 60, rate = 200, scans = { { 60, 4 }, { 60, 2 }, { 30, 4 }, { 5, 3, far = 1.32 } }, tws = 30, eng = 8, acm = { "vert", "bore", "hmd" }, notch = 55, rwr = "35" }
 -- T-50（从 T-50-3 起装雷达）：原型机的软件、功率还没到量产型（估）
 T.n036t = { name = "N036 有源相控阵（试验型）", en = "N036 AESA (prototype)", short = "N036", kind = "pd", arr = "aesa", km = 160, lockK = 0.85, ldK = 0.9,
-  az = 75, elU = 60, elD = 60, rate = 150, scans = S4, tws = 30, eng = 8, acm = { "bore", "hmd" }, notch = 42, rwr = "57", est = true }
+  az = 75, elU = 60, elD = 60, rate = 260, scans = S4, tws = 30, eng = 8, acm = { "bore", "hmd" }, notch = 42, rwr = "57", est = true }
 -- 苏-57：Sh121 一套（机头 N036-1-01 + 两侧 N036B + 前缘 L 波段阵）；跟踪 60 / 攻击 16（厂家说法）；侧视阵的角度没公开，方位极限保留 75°（估）
 T.n036 = inh(T.n036t, { name = "N036「松鼠」有源相控阵（机头 + 两侧侧视阵）", en = "N036 Byelka AESA (nose + side arrays)", km = 190, tws = 60, eng = 16,
   acm = { "hud", "bore", "hmd" }, notch = 40, lpi = 0.7 })

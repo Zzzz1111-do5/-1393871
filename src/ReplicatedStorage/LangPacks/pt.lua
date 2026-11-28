@@ -1,4 +1,4 @@
--- 自动生成（tools/i18n/build.py），别手改：pt 的译文（2238 / 2407 条）
+-- 自动生成（tools/i18n/build.py），别手改：pt 的译文（2240 / 2409 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -44,11 +44,13 @@ return {
     ["air.k.tank"] = "TANQUE",
     ["air.locked"] = "TRAVADO",
     ["air.locking"] = "TRAVANDO {1}%",
+    ["air.madDog"] = "Disparo sem travamento: o míssil liga o próprio buscador e procura um alvo à frente",
     ["air.missile"] = "MÍSSIL",
     ["air.mouseAimOff"] = "Voo pelo teclado: W/S arfagem, A/D rolagem, Q/E leme, segure o botão direito para olhar em volta (M alterna)",
     ["air.mouseAimOn"] = "Mira pelo mouse (estilo War Thunder): o avião segue o mouse; WASD pilota diretamente, segure C para olhar em volta (M alterna)",
     ["air.mouseGun"] = "Botão esq. {1} ×{2}",
     ["air.needLock"] = "Sem travamento",
+    ["air.needRadar"] = "É preciso travar com o radar (mísseis de guiamento semiativo precisam do seu radar no alvo)",
     ["air.noWeapon"] = "Desarmado",
     ["air.notYet"] = "Armas travadas",
     ["air.oob"] = "VOLTE À ÁREA DE COMBATE",

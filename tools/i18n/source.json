@@ -2756,6 +2756,16 @@
 "en": "No lock"
 },
 {
+"key": "air.needRadar",
+"zh": "需要雷达锁定（半主动雷达弹要自己的雷达一直照着目标）",
+"en": "Radar lock required (semi-active radar missiles need your radar on the target)"
+},
+{
+"key": "air.madDog",
+"zh": "未锁定发射：导弹飞出去自己开导引头找前方的目标",
+"en": "Fired without lock: the missile turns on its own seeker and searches ahead"
+},
+{
 "key": "air.helpJet",
 "zh": "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住右键（或 C）拖动自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门 · 滚轮 油门（地上收到底按住倒退）· B 减速板 · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 / 炸弹（雷达弹：R 选雷达屏上的目标、Alt+F 锁定，对方侧着飞会丢锁） · 1-6 选弹 · R 换目标 · Alt+R 雷达开关 · Alt+Q 雷达量程 · Alt+E 雷达模式（RWS / TWS / ACM）· Alt+Z 扫描方式 · ←/→ 雷达左右偏转 · Alt+↑↓ / Alt+滚轮 雷达天线俯仰 · Alt+C 天线回中 · Alt+T 选雷达目标 · Alt+F 雷达锁定 / 解锁 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
 "en": "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold RMB (or C) and drag to look around · M keyboard flight · Shift/Ctrl/mouse wheel throttle (hold Ctrl at idle on the ground to back up) · B airbrake · LMB gun (fires along the nose; the small circle ahead of enemy planes is the lead) · F missile / bomb (radar missiles: R picks a target on the radar screen, Alt+F locks it; beaming breaks the lock) · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · ←/→ slew the radar left / right · Alt+↑↓ / Alt+wheel radar antenna elevation · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out"
@@ -15389,6 +15399,8 @@
 "LOCKING {1}%",
 "Weapons cold",
 "No lock",
+"Radar lock required (semi-active radar missiles need your radar on the target)",
+"Fired without lock: the missile turns on its own seeker and searches ahead",
 "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold RMB (or C) and drag to look around · M keyboard flight · Shift/Ctrl/mouse wheel throttle (hold Ctrl at idle on the ground to back up) · B airbrake · LMB gun (fires along the nose; the small circle ahead of enemy planes is the lead) · F missile / bomb (radar missiles: R picks a target on the radar screen, Alt+F locks it; beaming breaks the lock) · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · ←/→ slew the radar left / right · Alt+↑↓ / Alt+wheel radar antenna elevation · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out",
 "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · hold RMB and drag to look around (view stays put while the plane maneuvers) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · ←/→ slew the radar left / right · Alt+↑↓ / Alt+wheel radar antenna elevation · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out",
 "Aim sets the direction (like War Thunder): aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · W up / S down (holds altitude when released) · A/D sidestep · Q/E turn the nose · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit",

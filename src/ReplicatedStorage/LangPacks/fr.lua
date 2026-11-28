@@ -1,4 +1,4 @@
--- 自动生成（tools/i18n/build.py），别手改：fr 的译文（2235 / 2407 条）
+-- 自动生成（tools/i18n/build.py），别手改：fr 的译文（2237 / 2409 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -44,11 +44,13 @@ return {
     ["air.k.tank"] = "RÉSERVOIR",
     ["air.locked"] = "VERROUILLÉ",
     ["air.locking"] = "VERROUILLAGE {1}%",
+    ["air.madDog"] = "Tir sans verrouillage : le missile allume son propre autodirecteur et cherche une cible devant lui",
     ["air.missile"] = "MISSILE",
     ["air.mouseAimOff"] = "Pilotage au clavier : W/S tangage, A/D roulis, Q/E palonnier, maintenez le clic droit pour regarder autour (M bascule)",
     ["air.mouseAimOn"] = "Visée à la souris (style War Thunder) : l'avion suit la souris ; WASD pilote directement, maintenez C pour regarder autour (M bascule)",
     ["air.mouseGun"] = "Clic G {1} ×{2}",
     ["air.needLock"] = "Pas de verrouillage",
+    ["air.needRadar"] = "Verrouillage radar requis (les missiles à autodirecteur semi-actif ont besoin de votre radar sur la cible)",
     ["air.noWeapon"] = "Non armé",
     ["air.notYet"] = "Armes froides",
     ["air.oob"] = "RETOURNEZ DANS LA ZONE DE COMBAT",

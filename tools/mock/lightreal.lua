@@ -474,12 +474,13 @@ local acc = pe and pe.Acceleration
 local wsn = LL.WIND.snow
 check(acc and math.abs(acc.X * wsn.Z - acc.Z * wsn.X) < 1e-3 and acc.X * wsn.X > 0 and math.abs(math.sqrt(acc.X ^ 2 + acc.Z ^ 2) - 2.77) < 0.01,
   "雪顺着雪山的全局风斜着飘（" .. tostring(acc) .. "，风 " .. tostring(wsn) .. "）")
+local r0 = pe and pe.Rate or 0
 CG.perfK = 0.6
 if frames.snowlook then for _ = 1, 8 do frames.snowlook(0.1) end end
-check(pe and pe.Rate < 300 and pe.Rate >= 200, "机器跟不上（自动画质 0.6）：雪下得稀一点（" .. tostring(pe and pe.Rate) .. " 片）")
+check(pe and pe.Rate <= r0 * 0.7 and pe.Rate >= r0 * 0.5, "机器跟不上（自动画质 0.6）：雪下得稀一点（" .. tostring(r0) .. " → " .. tostring(pe and pe.Rate) .. " 片）")
 CG.perfK = 1
 if frames.snowlook then for _ = 1, 8 do frames.snowlook(0.1) end end
-check(pe and pe.Rate == 400, "画质回来：400 片")
+check(pe and pe.Rate == r0, "画质回来：" .. tostring(r0) .. " 片（" .. tostring(pe and pe.Rate) .. "）")
 
 print("⑦ 没有报错")
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "))

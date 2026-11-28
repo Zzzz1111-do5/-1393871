@@ -892,6 +892,7 @@ function Tech.init(G)
     if not s then return end
     tests[P] = nil
     P.inTest = nil
+    pcall(function() P.pl:SetAttribute("TestDriveAt", nil) end)   -- 试驾完了：客户端回到这一局的钟点（DayNight 的 testDay）
     for _, d in pairs(s.dummies) do if d.alive then pcall(G.removeEnt, d) end end
     for _, d in pairs(s.drones) do if d.alive then pcall(G.removeEnt, d) end end
     if s.veh and s.veh.alive and s.veh.driver ~= P then pcall(G.removeEnt, s.veh) end
@@ -1168,6 +1169,9 @@ function Tech.init(G)
     P.testDeploy = true   -- Round.lua deploy：试驾不受出生点 / 准备阶段 / 兵力限制（用户 11-26「训练场目前没发试驾飞机了」）
     -- 人直接生在训练场出车的地方（11-28：训练场开服就建，战场的图还没定、没有出生点时主界面也能试驾；原来先生在战场的基地、再挪过来）
     P.testSpawnCF = CFrame.new(spawnAt + Vector3.new(0, 4, 0))
+    -- 客户端 DayNight：试驾一直是白天（用户 11-28 夜「然后训练场改成持续百天吧」）——人先生出来、车后到，这一下也按白天算
+    --   （不然夜里出生自动打开夜视仪，坐进车又「天亮了」收起来）；收车时（testClean）去掉，没出成车的 15 秒后不算
+    pcall(function() P.pl:SetAttribute("TestDriveAt", workspace:GetServerTimeNow()) end)
     G.ACT.deploy(P, "crew", air and "baseAir" or "base", go)
     P.testDeploy, P.testSpawnCF = nil, nil
   end

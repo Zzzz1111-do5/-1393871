@@ -26,6 +26,15 @@ function Air.init(G)
 
   -- (x, z) 处能落地的面多高：地形、甲板
   local function surface(x, z) return AD.ground(Map, x, z) end
+  -- 判撞地用看得见的地面（用户 11-28 夜「目前飞机开一会就自动爆炸显示被ground击杀」）：雪山图的地形开服以后在后台写十几二十分钟，
+  --   没写到的起伏块真的山还没出来（World.lua 的 G.terrainSeenH：只垫了底的按垫的那层、还没铺的按海面）——原来按高度函数判，
+  --   飞进看不见的山就炸；写全了的、平地、甲板照旧
+  local function seenSurface(x, z)
+    local g = surface(x, z)
+    local sh = G.terrainSeenH and G.terrainSeenH(x, z)
+    if sh and sh < g then return sh end
+    return g
+  end
   local REST_WAIT = 3   -- 落地补给：停稳几秒地勤上来
   local SUP_T = ((Config.Wt or {}).airSupT) or 15   -- 加油、挂弹要多久（秒）
   G.airSurface = surface
@@ -501,6 +510,37 @@ function Air.init(G)
   end
   G.airArhStep = arhStep   -- 测试用
 
+  -- 不锁就打出去的导弹自己找目标（用户 11-28 夜「然后有的导弹不需要雷达锁定就能发射吧」，照战雷）：
+  --   主动雷达弹（w.act：AIM-120、R-77、霹雳-12 / 15……）——「疯狗」：先直飞，1.5 秒后开导引头，咬弹头前方 40°、开机距离 1.3 倍以内
+  --   第一个看得见的敌机（侧着飞、把它放在 3 / 9 点的置零看不见）；咬上以后跟有锁发射的一样（开了机的导引头、会被箔条骗、会丢）
+  --   红外弹——0.4 秒起盯着弹头前方 12°（旧式不能离轴的 5°）、射程以内最近的敌机
+  --   半主动雷达弹（R-27R / ER）要发射机的雷达一直照着：没锁不让打（客户端拦着）
+  local function searchFor(s)
+    local w = s.w
+    local dir = s.vel.Magnitude > 1 and s.vel.Unit or V(0, 0, -1)
+    local arh = s.search == "arh"
+    local cosA = math.cos(math.rad(arh and 40 or (w.caged and 5 or 12)))
+    local rng = arh and math.max(w.act or 2600, 1500) * 1.3 or (w.range or 1900) * 1.1
+    local best, bs = nil, math.huge
+    for _, t in ipairs(G.ents or {}) do
+      if t.alive and t.air and t.team ~= s.team and t.root and t.root.Parent then
+        local to = t.root.CFrame.Position - s.pos
+        local dist = to.Magnitude
+        if dist > 50 and dist < rng then
+          local u = to / dist
+          local c = dir:Dot(u)
+          local seen = c > cosA and not (arh and dist > 250 and math.abs(tgtVel(t):Dot(u)) < (w.notch or 50))
+          if seen then
+            local sc = (1 - c) * 6 + dist / rng
+            if sc < bs then best, bs = t, sc end
+          end
+        end
+      end
+    end
+    return best
+  end
+  G.airSearchFor = searchFor   -- 测试用
+
   local function guideMissile(s, dt)
     -- 抛射（用户 11-25「部分直升机我记得发射导弹是抛射」「或许不止直升机」）：弹舱、机身半埋挂点的中距弹被弹射器推出去，
     --   直升机的筒射防空弹（毒刺、天燕-90、针-V、西北风）先被抛射药推出发射筒——往下掉 ejT 秒、离开飞机，发动机才点火、开始制导
@@ -559,6 +599,23 @@ function Air.init(G)
       end
     end
     spd = math.max(spd, 1)
+    if s.search and not s.tgt and not s.ref and not s.deadT then   -- 不锁就打出去的：到时候开导引头找（见上面 searchFor）
+      if s.age > ((s.search == "arh") and 1.5 or 0.4) then
+        s.searchT = (s.searchT or 0) - dt
+        if s.searchT <= 0 then
+          s.searchT = 0.2
+          local found = searchFor(s)
+          if found then
+            if s.search == "arh" then
+              s.ref, s.active = found, true
+              G.fx({ k = "shotAct", id = s.id })
+            end
+            s.tgt, s.tgId, s.search = found, found.id, nil
+            if found.driver and found.driver.pl then G.R.Drive:FireClient(found.driver.pl, { op = "rwr", id = s.id, w = s.wid }) end
+          end
+        end
+      end
+    end
     local t = s.tgt
     if t and t.decoy then t.pos += t.vel * dt t.vel += V(0, -GRAV * 0.4, 0) * dt end
     local tp = tgtPos(t)
@@ -775,7 +832,10 @@ function Air.init(G)
       local sh = G.launch({ kind = "missile", pos = launch, vel = E and (base + fwd * E.f - scf.UpVector * E.d) or (base + fwd * 60 - scf.UpVector * 6),
         w = w, src = S, ignore = ignoreOf(e), life = (w.life or 8) + (E and E.t or 0),
         step = guideMissile, age = 0, ejT = E and E.t or nil, tgt = tgt, tgId = tgt and tgt.id or nil, aimPt = (not tgt and w.kind == "agm") and aimPt or nil, byEnt = e.id,
-        ref = (w.seeker == "radar" and w.act) and tgt or nil })   -- 主动雷达弹：记住真正的目标（数据链 / 开导引头按它）
+        ref = (w.seeker == "radar" and w.act) and tgt or nil,   -- 主动雷达弹：记住真正的目标（数据链 / 开导引头按它）
+        -- 没锁就打的空空弹：主动雷达弹「疯狗」、红外弹，飞出去自己找（searchFor）；半主动的没有雷达照着就是直飞
+        search = (not tgt and w.kind == "aam") and ((w.seeker == "radar" and w.act and "arh") or (w.seeker ~= "radar" and "ir") or nil) or nil,
+        team = e.team, wid = wid })
       e.nextStore = t + 0.35
       if quiet then
         sh.rwrLate = wid
@@ -1008,8 +1068,8 @@ function Air.init(G)
       G.R.Drive:FireClient(P.pl, { op = "fix", cf = e.root.CFrame, v = e.vel })
       return
     end
-    local g = surface(p1.X, p1.Z)
-    if p1.Y < math.max(g, -2) + def.gearH * 0.25 - 2 then   -- 机身插进地里 / 海里
+    local g = seenSurface(p1.X, p1.Z)
+    if p1.Y < math.max(g, -2) + def.gearH * 0.25 - 2 then   -- 机身插进地里 / 海里（地形还没写到的地方按看得见的那层）
       G.moveEnt(e, cf)
       crash(e, "ground")
       return
@@ -1092,7 +1152,7 @@ function Air.init(G)
     elseif d.op == "jettison" then dropTanks(e, false)
     elseif d.op == "crash" then
       local p = e.root.CFrame.Position
-      if p.Y - math.max(surface(p.X, p.Z), 0) < e.def.H + 40 or d.hit then crash(e, "ground") end   -- 客户端说撞了：离地面 / 障碍物不远才认
+      if p.Y - math.max(seenSurface(p.X, p.Z), 0) < e.def.H + 40 or d.hit then crash(e, "ground") end   -- 客户端说撞了：离地面 / 障碍物不远才认
     elseif d.op == "exit" then
       unseat(P, e, true)
     end
@@ -1315,7 +1375,7 @@ function Air.init(G)
       end
       if e.alive and not D then
         local p = e.root.CFrame.Position
-        local g = surface(p.X, p.Z)
+        local g = seenSurface(p.X, p.Z)
         local agl = p.Y - math.max(g, 0) - e.def.gearH
         if e.loit and (t >= e.loit.T or (e.fuel or 1) <= 0) then   -- 盘旋到时候了、或者油烧干了：掉下来
           e.loit = nil
@@ -1334,7 +1394,7 @@ function Air.init(G)
             look = (look + h.Unit * 0.3).Unit
           end
           G.moveEnt(e, CFrame.lookAt(np, np + look) * CFrame.Angles(0, 0, math.sin(t * 1.3) * 0.4))
-          if np.Y < math.max(surface(np.X, np.Z), -1) + 2 then crash(e, "ground") end
+          if np.Y < math.max(seenSurface(np.X, np.Z), -1) + 2 then crash(e, "ground") end
         elseif not e.onGround then   -- 掉到地面 / 海面上：海里、或者还很快，就是摔了（原来停在离地 3 格的地方漂着不炸）；慢慢落在陆地 / 甲板上才算停住
           if (g <= 0.5 and not AD.onDeck(Map, p.X, p.Z)) or (e.vel and e.vel.Magnitude > 25) then
             crash(e, "ground")

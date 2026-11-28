@@ -42,6 +42,22 @@ function Fly.init(G)
   local function angDiff(a, b) return (b - a + math.pi) % (2 * math.pi) - math.pi end
   local function smooth(a, b, v) local t = clamp((v - a) / (b - a), 0, 1) return t * t * (3 - 2 * t) end
   local function ground(x, z) return AD.ground(Map, x, z) end
+  -- 看得见的地面（用户 11-28 夜「目前飞机开一会就自动爆炸显示被ground击杀」）：雪山图的地形开服以后在后台写十几二十分钟（服务器在
+  --   workspace 上挂着 TerrainBusy），没写到的地方真的山还没出来——只有垫底的一层雪、或者什么都没有；原来按地图的高度函数判撞地，
+  --   一头撞进看不见的山。地形还在写时：高度函数说碰到地了，再从上往下打一条射线看那里真有没有地形 / 零件，没有就按看得见的算
+  --   （服务器 Air.lua 按 World.lua 记的写没写到判，同一个意思）；海上、甲板不用看；地形写完了（烘焙过的地点文件开服就是）照旧
+  local seenParams = RaycastParams.new()
+  seenParams.FilterType = Enum.RaycastFilterType.Include
+  local function seenGround(x, z, y, g)
+    if g <= 2 or workspace:GetAttribute("TerrainBusy") ~= true or AD.onDeck(Map, x, z) then return g end
+    local m = workspace:FindFirstChild("Map")
+    seenParams.FilterDescendantsInstances = m and { workspace.Terrain, m } or { workspace.Terrain }
+    local top, bot = math.max(g, y) + 40, y - 80
+    local res = workspace:Raycast(Vector3.new(x, top, z), Vector3.new(0, bot - top, 0), seenParams)
+    if res then return math.min(g, res.Position.Y) end
+    return math.min(g, bot)
+  end
+  G.flySeenGround = seenGround   -- 测试用
 
   local st = nil   -- 正在开 / 坐的飞机
   G.fly = nil
@@ -1187,6 +1203,34 @@ function Fly.init(G)
     if st.d.kind == "heli" and w.kind == "agm" then cone += 20 end
     return fwd:Dot(c.dir) > math.cos(rad(cone))
   end
+  -- 红外空空弹的导引头（用户 11-28 夜「然后目前飞机驾驶的导弹ui不够还原战雷 我们的锁定圈貌似比战雷小 你去对照一下以及各种音效以及锁定机制」，
+  --   对照战雷官方 wiki「Infrared Missiles in War Thunder」的说法和截图）：
+  --   · 小圈是导引头的截获圈：目标要进了这个圈导引头才看得见、才锁得上（原来大圈里哪儿都自动挑最近的）。战雷截图里小圈约占屏幕高的
+  --     8～9%（原来固定 26 像素，1080p 上只有 2.4%）：按 3.4°（默认镜头下屏幕高的 8.5%，放大镜头跟着变大）；旧式不能离轴的（w.caged）5°
+  --   · 导引头指哪：雷达锁着、在万向架里——跟着雷达指（战雷「导引头随动雷达」）；有头盔瞄准具的飞机——看哪指哪；不然就是机头正前方
+  --   · 锁上以后：能离轴的导引头自己跟着目标转，目标在大圈（万向架 w.cone）里就一直锁着；旧式的目标出了小圈就丢
+  local SEEK_R = rad(3.4)
+  local function irAam(w) return w ~= nil and w.kind == "aam" and w.seeker ~= "radar" end
+  local function seekR(w) return (w and w.seekR and rad(w.seekR)) or (w and w.caged and rad(5)) or SEEK_R end
+  local function hasHmd() return st.rd ~= nil and type(st.rd.acm) == "table" and table.find(st.rd.acm, "hmd") ~= nil end
+  local function seekAxis(w)
+    local fwd = st.cf.LookVector
+    local cosG = math.cos(rad(w.cone or 30))
+    local rdl = st.rdLock
+    if rdl and not rdl.mem and rdl.em and not w.caged then
+      local root = rdl.em:FindFirstChild("Root")
+      if root then
+        local to = root.CFrame.Position - st.cf.Position
+        if to.Magnitude > 1 and fwd:Dot(to.Unit) > cosG then return to.Unit, "radar" end
+      end
+    end
+    if not w.caged and hasHmd() then
+      local ld = st.flDir or cam.CFrame.LookVector
+      if fwd:Dot(ld) > cosG then return ld, "hmd" end
+    end
+    return fwd, "bore"
+  end
+  G.flySeekR = function(w) return seekR(w) end   -- 测试用
   -- 出了导弹的离轴角还能跟多宽（用户 11-19：脱离导弹发射角度锁定的菱形变黄——锁还留着、这时不能发射；再偏更多或者偏太久才丢）
   local function inTrack(w, c)
     local fwd = st.cf.LookVector
@@ -1362,6 +1406,20 @@ function Fly.init(G)
   local function lookDir() return st.eo and eoDir() or aimDirNow() end
   local function pickTarget(w, skip)
     local best, bs = nil, math.huge
+    if irAam(w) then   -- 红外空空弹：只截获导引头小圈里的（导引头指哪看哪；没随动雷达、没头盔的要先把机头前的小圈压到目标上）
+      local ax = seekAxis(w)
+      local cr = math.cos(seekR(w))
+      for _, c in ipairs(candidates(w)) do
+        if c.id ~= skip and inCone(w, c) then
+          local dd = ax:Dot(c.dir)
+          if dd > cr then
+            local sc = 1 - dd + c.dist / 200000
+            if sc < bs then best, bs = c, sc end
+          end
+        end
+      end
+      return best
+    end
     local want = lookDir()
     for _, c in ipairs(candidates(w)) do
       if inCone(w, c) and c.id ~= skip then
@@ -1476,7 +1534,12 @@ function Fly.init(G)
     if not weaponsHot() then G.toast(T("air.notYet"), "info") return false end
     local locked = (not aimAt) and st.lock and st.lockT >= (w.lockTime or 1)
     if locked and st.lock.out and w.kind ~= "rkt" then G.toast(T("air.outCone"), "info") return false end   -- 出了发射角度：锁着也不能打（菱形是黄的）
-    if w.kind == "aam" and not locked then G.toast(T("air.needLock"), "info") return false end
+    -- 没锁就打（用户 11-28 夜「然后有的导弹不需要雷达锁定就能发射吧」，照战雷）：主动雷达弹（w.act）「疯狗」打出去，飞一段自己开导引头找；
+    --   红外弹打出去自己盯着前方找（服务器 Air.lua searchFor）；半主动雷达弹要发射机的雷达一直照着——没有雷达锁不让打
+    if w.kind == "aam" and not locked then
+      if w.seeker == "radar" and not w.act then G.toast(T("air.needRadar"), "info") return false end
+      if w.seeker == "radar" then G.toast(T("air.madDog"), "info") end
+    end
     if st.d.sideArm and select(2, bayOf(wid)) and st.bayS < 0.75 then return false end   -- 歼-20 侧弹舱：挂架还没把弹转出舱外（选中后约一秒）
     -- 炸弹按投弹数量（Shift + B）：单投一枚、双投两枚一起、齐投这种全部一枚接一枚
     local n = 1
@@ -1776,6 +1839,22 @@ function Fly.init(G)
       yc = clamp(psi * 2.2, -rad(d.yaw) * 0.6, rad(d.yaw) * 0.6) * (1 - Map.smooth(rad(6), rad(12), off)) * bankK
       if rollIn ~= 0 then rc = rollIn * ROLL end
     end
+    -- 鼠标瞄准：方向键接管完松开以后，教官不马上全力追回准星圈（用户 11-28 夜「飞机不管转弯还有滚筒 为什么都会回正呢
+    --   我觉得这回正可以有但是目前回正太明显了」）：原来一松键教官就按满滚转角速度、满过载拽回去（压着坡度松手马上整架滚回来）；
+    --   现在松开以后 1.5 秒里教官的滚转、过载从两成慢慢放到满——照样回到准星圈那里（战雷的教官也回去），只是不猛
+    if mAim and kb then
+      if stickHeld then st.ovrOn = true
+      elseif st.ovrOn then
+        st.ovrOn = false
+        st.ovrEnd = os.clock()
+      end
+      local ek = (st.ovrEnd and not stickHeld) and clamp((os.clock() - st.ovrEnd) / 1.5, 0, 1) or 1
+      if ek < 1 then
+        local k = 0.2 + 0.8 * ek * ek
+        rc = rc * k
+        nCmd = 1 + (nCmd - 1) * k
+      end
+    end
     -- 教官给的过载、滚转角速度、偏航（飞行员昏迷、断翼、平尾没了这些交给 FlightModel 按受伤算）
     st.nCmd = clamp(nCmd, -2, GMAX)
     st.yawCmd = yc
@@ -2008,6 +2087,7 @@ function Fly.init(G)
       st.sink = 0
       -- 撞地 / 落地
       local g = ground(pos.X, pos.Z)
+      if pos.Y - d.gearH <= g + 0.3 then g = seenGround(pos.X, pos.Z, pos.Y, g) end   -- 地形还没写到的山：按看得见的算
       if pos.Y - d.gearH <= g + 0.3 then
         local fw = cf.LookVector
         local bank = math.abs(deg(math.asin(clamp(cf.RightVector.Y, -1, 1))))
@@ -2229,6 +2309,7 @@ function Fly.init(G)
     end
     local pos = st.cf.Position + (st.hv + V(0, st.vy, 0)) * dt
     local g = ground(pos.X, pos.Z)
+    if pos.Y - d.gearH <= g then g = seenGround(pos.X, pos.Z, pos.Y, g) end   -- 地形还没写到的山：按看得见的算
     if pos.Y - d.gearH <= g then
       local overSea = g <= 0.4 and not AD.onDeck(Map, pos.X, pos.Z)
       if (st.vy < -30 or overSea) and not st.ground and not st.crashed then crash() end
@@ -2821,7 +2902,12 @@ function Fly.init(G)
       local fwd0 = st.cf.LookVector
       local upY = st.cf.UpVector.Y
       -- 镜头跟着机身滚转几成：设置「纯键盘时镜头跟着滚转」（默认 0：地平线水平，同战雷；用户 11-27 问「视角会跟随飞机滚筒而滚动 战雷是否是这样」）
-      local kwT = (1 - clamp(G.camRollK or 0, 0, 1)) * clamp((0.97 - math.abs(fwd0.Y)) / 0.25, 0, 1) * clamp((upY + 0.3) / 0.6, 0, 1)
+      --   用户 11-28 夜「飞机不管转弯还有滚筒 为什么都会回正呢 我觉得这回正可以有但是目前回正太明显了」：原来坡度过了七十来度、倒飞时
+      --   镜头就跟着机身滚（画面里的飞机看着「回正」了），转完、滚完又滚回地平线——大坡度转弯、横滚一圈都看得见镜头来回转。
+      --   现在只有翻筋斗（机头竖过 58°、从上面翻过去）时才跟着机身转，回到正飞再慢慢回地平线；平着横滚、大坡度转弯地平线一直是平的，
+      --   飞机在画面里照实滚（战雷的第三人称）
+      if math.abs(fwd0.Y) > 0.85 then st.camLoop = true elseif upY > 0.5 then st.camLoop = false end
+      local kwT = (1 - clamp(G.camRollK or 0, 0, 1)) * clamp((0.97 - math.abs(fwd0.Y)) / 0.25, 0, 1) * (st.camLoop and clamp((upY + 0.3) / 0.6, 0, 1) or 1)
       st.camUpK = (st.camUpK or kwT) + (kwT - (st.camUpK or kwT)) * math.min(1, dt * 2.5)
       local fwd, upC = jetCamBasis()
       local wtCam = mouseAim and not st.uav and not G.mobile and not st.ground
@@ -3060,7 +3146,7 @@ function Fly.init(G)
             st.lock, st.lockT = c, 0
           end
         end
-      elseif rdl and not rdl.mem and w.kind == "aam" and w.seeker == "ir" and not (st.lock and st.lock.em == rdl.em) then
+      elseif rdl and not rdl.mem and w.kind == "aam" and w.seeker == "ir" and not w.caged and not (st.lock and st.lock.em == rdl.em) then
         -- 红外弹的导引头跟着雷达指：雷达锁着的在导引头视场里就先咬它（不按离机头最近的挑）
         local c = candOf(w, rdl.em)
         if c and inCone(w, c) then
@@ -3094,7 +3180,21 @@ function Fly.init(G)
           st.lock.radarWhy = (not rOk) and rWhy or nil
           -- 在离轴角里：锁定进度往上走；出了离轴角、还在跟踪范围里：锁留着（菱形变黄、不能发射，进度不涨），偏出去 4 秒才丢
           local inside = inCone(w, st.lock) and rOk
-          if st.lock.dist < (w.range or 3200) * 1.1 and (inside or inTrack(w, st.lock)) then
+          local irDrop = false
+          if irAam(w) then
+            local lockedNow = st.lockT >= (w.lockTime or 1)
+            if w.caged then   -- 旧式：导引头不离轴，目标一直得在机头前的小圈里
+              inside = st.cf.LookVector:Dot(st.lock.dir) > math.cos(seekR(w))
+              irDrop = not inside and lockedNow
+            elseif not lockedNow then   -- 还没锁上：目标得在导引头的小圈里（导引头还没跟着它转）
+              local ax = seekAxis(w)
+              inside = inside and ax:Dot(st.lock.dir) > math.cos(seekR(w))
+            end
+            if not inside and not lockedNow then irDrop = true end   -- 截获的时候出了小圈：重新找（下面 pickTarget）
+          end
+          if irDrop then
+            st.lock, st.lockT = nil, 0
+          elseif st.lock.dist < (w.range or 3200) * 1.1 and (inside or inTrack(w, st.lock)) then
             st.lock.out = not inside
             if inside then
               st.lockT += dt
@@ -3315,6 +3415,23 @@ function Fly.init(G)
         if not st.uav then lockBox.Visible, lockText.Visible = false, false end   -- MWT 式界面：AirHud 画菱形和四个直角
       else
         lockBox.Visible, lockText.Visible = false, false
+      end
+      -- 空空弹的导引头圈（WtFlight 画，用户 11-28 夜「锁定圈貌似比战雷小」）：小圈画在导引头指着的地方、大小是截获圈；
+      --   红外弹锁上以后（能离轴的）跟着目标转；雷达弹雷达锁着谁小圈就在谁身上（导弹还没锁上是白的，锁上了两个圈一起变红）
+      --   state：search 搜索（嗡嗡低）/ acq 截获中（目标在小圈里，嗡嗡变响变尖）/ lock 锁上（尖的长音，红）
+      if w and w.kind == "aam" and (w.cone or 0) > 0 and st.pilot then
+        local locked2 = st.lock ~= nil and (st.lockT or 0) >= (w.lockTime or 1)
+        local ax
+        if w.seeker == "radar" then
+          ax = st.lock and st.lock.dir or st.cf.LookVector
+        elseif locked2 and not w.caged then
+          ax = st.lock.dir
+        else
+          ax = seekAxis(w)
+        end
+        local sp, son = project(pos + ax * 400)
+        info.seek = { p = sp, on = son, r = deg(seekR(w)), caged = w.caged == true,
+          state = (locked2 and not st.lock.out) and "lock" or (st.lock and "acq" or "search") }
       end
       -- 锁定音（导引头嗡嗡、雷达弹嘀声）：B 的 AirAudio.lua（上面 G.airAudioStep），A 原来在这里那套 11-24 合并时去掉了（两套一起响）
       -- 雷达锁着敌机报服务器（lockOn：数据链、对方的告警）挪到了 Radar.lua：STT 跟踪着半秒一次、TWS 指定的航迹每次更新一次——跟选的什么弹无关

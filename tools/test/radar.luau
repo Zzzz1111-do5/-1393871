@@ -34,6 +34,7 @@ local WANT = {
 	us_f16a = "apg66", us_f16c = "apg68", us_f14a = "awg9", us_f15a = "apg63", us_f15c = "apg63c", jp_f15j = "apg63c", us_f15e = "apg70", us_f22a = "apg77",
 	us_f35a = "apg81", jp_f35a = "apg81", jp_f15jm = "apg63v1", jp_f2a = "japg1",
 	ru_mig29 = "n019", ru_su27 = "n001", ru_su27sm = "n001ve", ru_su30sm = "n011m", ru_su35s = "n035", ru_t50 = "n036t", ru_su57 = "n036",
+	de_mig29g = "n019",   -- 德系米格-29G（11-28 清早加的：东德接收的 9.12A，雷达同 N019）
 }
 local NONE = { cn_j6 = true, cn_h6k = true, us_a10a = true, us_a10c = true, us_b2 = true, us_mq9 = true, ru_su25 = true }
 local wrong, unknown, nAir = {}, {}, 0
@@ -128,9 +129,19 @@ end
 local aw = RD.T.awg9
 local t1, t2 = aw.scans[aw.twsScans[1]], aw.scans[aw.twsScans[2]]
 check(#aw.twsScans == 2 and t1[1] == 40 and t1[2] == 2 and t2[1] == 20 and t2[2] == 4, "AWG-9 的边扫边跟只能用 ±40°×2、±20°×4")
-check(math.abs(RD.frame(RD.T.apg68, 1) - 4) < 1e-9, string.format("APG-68 默认扫描（±60°×2 行、60°/秒）一帧 4 秒（%.2f）", RD.frame(RD.T.apg68, 1)))
+check(math.abs(RD.frame(RD.T.apg68, 1) - 4) < 1e-9 and RD.T.apg68.scans[1][2] == 4, string.format("APG-68 默认扫描（±60°×4 行、照战雷 120°/秒）一帧 4 秒（%.2f）", RD.frame(RD.T.apg68, 1)))
 check(RD.frame(RD.T.apg77, 1) < 1.5 and RD.frame(RD.T.n019, 1) > 4, string.format("相控阵扫得快（APG-77 一帧 %.1f 秒）、机械扫描慢（N019 %.1f 秒）", RD.frame(RD.T.apg77, 1), RD.frame(RD.T.n019, 1)))
-check(RD.half(RD.T.n035) == 60 and RD.T.n035.az == 120 and RD.half(RD.T.awg9) == 40, "默认扫描宽度：N035 ±60°（万向架 ±120°）、AWG-9 ±40°")
+check(RD.half(RD.T.n035) == 60 and RD.T.n035.az == 120 and RD.half(RD.T.awg9) == 65, "默认扫描宽度：N035 ±60°（万向架 ±120°）、AWG-9 ±65°（战雷 searchWide）")
+-- 用户 11-28 夜「有的飞机雷达扫描区域很窄的」：每部雷达默认的搜索都不窄——方位 ±45° 以上、3 行以上（上下 ±5° 以上）
+do
+	local narrow = {}
+	for k, r in pairs(RD.T) do
+		local s1 = r.scans[1]
+		if s1[1] < 45 or s1[2] < 3 then table.insert(narrow, k .. string.format("（±%d° × %d 行）", s1[1], s1[2])) end
+	end
+	table.sort(narrow)
+	check(#narrow == 0, "默认搜索都不窄（方位 ±45° 以上、3 行以上）：" .. table.concat(narrow, "、"))
+end
 check(RD.T.sl8a.kind == "pulse" and RD.T.apg66.tws == 0 and RD.T.n001.tws == 0 and RD.T.n019.tws == 0 and RD.T.apg63.tws == 0, "SL-8A 是脉冲雷达；APG-66、N001、N019、早期 APG-63 没有边扫边跟")
 check(RD.tag(RD.T.awg9, "bore") == "PLM" and RD.tag(RD.T.apg68, "bore") == "BORE" and RD.MODE_TAG.rws == "RWS", "屏上缩写：AWG-9 瞄准线写 PLM，别的写 BORE；搜索 RWS")
 
@@ -204,11 +215,12 @@ table.sort(noTws)
 check(#geoBad == 0, "模式、近战扫描区、扫描高度都说得通" .. ((#geoBad > 0) and ("：" .. table.concat(geoBad, "；")) or ""))
 check(table.concat(noTws, " ") == "apg63 apg66 n001 n001e n019 sl8a", "没有边扫边跟（Alt+E 跳过 TWS）：" .. table.concat(noTws, " "))
 check(acmAll, "每部雷达都有近战模式（Alt+E 能进 ACM）")
-check(RD.scanOk(RD.T.awg9, "tws", 1) and not RD.scanOk(RD.T.awg9, "tws", 2) and RD.scanOk(RD.T.awg9, "tws", 4) and RD.scanOk(RD.T.awg9, "rws", 2)
-	and RD.scanOk(RD.T.apg68, "tws", 3), "AWG-9 的 TWS 只能用第 1、4 种扫描（RWS 都能用）；APG-68 的 TWS 都能用")
+check(RD.scanOk(RD.T.awg9, "tws", 2) and not RD.scanOk(RD.T.awg9, "tws", 1) and RD.scanOk(RD.T.awg9, "tws", 4) and RD.scanOk(RD.T.awg9, "rws", 1)
+	and RD.scanOk(RD.T.apg68, "tws", 3), "AWG-9 的 TWS 只能用第 2、4 种扫描（±40°×2、±20°×4；默认第 1 种 ±65°×4 是 RWS 的）；APG-68 的 TWS 都能用")
 check(RD.ACQ == 13850, "近战自动截获 " .. RD.ACQ .. " 格（真机 10 海里）")
 check(RD.MEM == 2 and RD.MODE_TAG.mem == "MEM" and RD.MODE_TAG.stt == "STT", "STT 丢了先记忆外推 2 秒（屏上 STT MEM）")
-check(math.abs(RD.fade(RD.T.apg68, 2) - 8.8) < 1e-9 and math.abs(RD.fade(RD.T.klj5, 1) - 2.6) < 1e-9, string.format("亮点多久暗掉：APG-68 ±60°×4 行 %.1f 秒、KLJ-5 默认 %.1f 秒", RD.fade(RD.T.apg68, 2), RD.fade(RD.T.klj5, 1)))
+check(math.abs(RD.fade(RD.T.apg68, 1) - 4.8) < 1e-9 and math.abs(RD.fade(RD.T.klj5, 1) - (RD.frame(RD.T.klj5, 1) + 0.8)) < 1e-9 and RD.fade(RD.T.apg77, 1) >= 2.6,
+	string.format("亮点多久暗掉（一帧 + 0.8 秒，最少 2.6 秒）：APG-68 默认 ±60°×4 行 %.1f 秒、KLJ-5 默认 %.2f 秒", RD.fade(RD.T.apg68, 1), RD.fade(RD.T.klj5, 1)))
 check(RD.acmGeo(RD.T.awg9, "bore").az == 1.2 and RD.acmGeo(RD.T.apg68, "vert").el1 == 50 and RD.acmGeo(RD.T.apg66, "vert").el1 == 30, "近战扫描区：F-14 的 PLM 用自己的（±1.2°），APG-68 竖扫到 +50°、APG-66 到 +30°")
 
 print("⑤ RCS、敌我识别（用户 11-28「引入一下rcs这个概念」「iff」）")

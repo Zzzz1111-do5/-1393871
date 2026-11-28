@@ -47,8 +47,10 @@ AirDefs.W = {
   m134 ={ kind = "gun", rate = 0.025, dmg = 9, speed = 1700, range = 1100, splash = 0, cal = 0.08, door = true,          -- 舱门机枪
     vs = { inf = 1, light = 0.3, armor = 0.01, air = 0.5, ship = 0.02, fort = 0.05 } },
 
+  -- 红外弹的截获圈（小圈，Fly.lua seekR；用户 11-28 夜「战雷有的导弹锁定圈是非常大的」）：默认 3.4°（屏幕高的 8.5%）；视场宽的导引头
+  --   单独放大（seekR，半角°）：R-60 5.5°（战雷里 R-60 的圈明显大）、直升机挂的便携式防空弹 4.5°；旧式不能离轴的（caged）5°、只有这一个圈
   -- 霹雳-2（K-13 / AIM-9B 那一代）：只能从后面咬尾、导引头视场窄、过载小，发动机烧两秒多、尾烟浓；歼-6 后期型翼下挂两枚
-  pl2 = { kind = "aam", seeker = "ir", dmg = 380, splash = 11, speed = 520, range = 1100, lockTime = 1.5, cone = 20, turn = 30, burn = 2.2, life = 5, vs = VS_AAM,
+  pl2 = { kind = "aam", seeker = "ir", caged = true, dmg = 380, splash = 11, speed = 520, range = 1100, lockTime = 1.5, cone = 20, turn = 30, burn = 2.2, life = 5, vs = VS_AAM,
     shape = { L = 7.9, d = 0.36, fin = 1.0 } },
   pl10 = { kind = "aam", seeker = "ir", dmg = 520, splash = 14, speed = 640, range = 1900, lockTime = 1.0, cone = 45, turn = 75, burn = 3.5, life = 6.5, vs = VS_AAM,
     shape = { L = 8.2, d = 0.45, fin = 1.0 } },
@@ -58,9 +60,9 @@ AirDefs.W = {
     shape = { L = 8.4, d = 0.36, fin = 0.8 } },
   aim120 = { kind = "aam", seeker = "radar", dmg = 560, splash = 16, speed = 760, range = 3800, lockTime = 2.0, cone = 22, turn = 55, burn = 5, life = 8.5, vs = VS_AAM,
     shape = { L = 10.2, d = 0.5, fin = 1.0 } },
-  ty90 = { kind = "aam", eject = "tube", seeker = "ir", dmg = 340, splash = 10, speed = 480, range = 1300, lockTime = 0.9, cone = 30, turn = 60, burn = 3, life = 5.5, vs = VS_AAM,
+  ty90 = { kind = "aam", eject = "tube", seeker = "ir", seekR = 4.5, dmg = 340, splash = 10, speed = 480, range = 1300, lockTime = 0.9, cone = 30, turn = 60, burn = 3, life = 5.5, vs = VS_AAM,
     shape = { L = 5.3, d = 0.25, fin = 0.6 } },
-  aim92 = { kind = "aam", eject = "tube", seeker = "ir", dmg = 340, splash = 10, speed = 480, range = 1300, lockTime = 0.9, cone = 30, turn = 60, burn = 3, life = 5.5, vs = VS_AAM,
+  aim92 = { kind = "aam", eject = "tube", seeker = "ir", seekR = 4.5, dmg = 340, splash = 10, speed = 480, range = 1300, lockTime = 0.9, cone = 30, turn = 60, burn = 3, life = 5.5, vs = VS_AAM,
     shape = { L = 4.5, d = 0.2, fin = 0.5 } },
   -- AIM-54 不死鸟（F-14 专用，用户 11-23 加 F-14）：4 米长、454 公斤的远程雷达弹——射程最远、飞得快，但又重又笨（转得慢、导引头视场窄、锁得慢）
   aim54 = { kind = "aam", eject = { t = 0.6, f = 0, d = 18 }, seeker = "radar", dmg = 620, splash = 18, speed = 820, range = 4600, lockTime = 2.6, cone = 18, turn = 38, burn = 6, life = 10, vs = VS_AAM,
@@ -87,7 +89,7 @@ AirDefs.W = {
   r77 = { kind = "aam", seeker = "radar", dmg = 540, splash = 15, speed = 760, range = 3500, lockTime = 1.9, cone = 24, turn = 55, burn = 5, life = 9, vs = VS_AAM,
     shape = { L = 10.4, d = 0.56, fin = 1.0 } },
   --   R-60M：老式红外近距弹，2.14 米、0.12 米、44 公斤，射程约 8 公里（苏-25 最外侧挂两枚自卫）
-  r60 = { kind = "aam", seeker = "ir", dmg = 380, splash = 11, speed = 560, range = 1100, lockTime = 1.0, cone = 25, turn = 70, burn = 2.5, life = 5, vs = VS_AAM,
+  r60 = { kind = "aam", seeker = "ir", seekR = 5.5, dmg = 380, splash = 11, speed = 560, range = 1100, lockTime = 1.0, cone = 25, turn = 70, burn = 2.5, life = 5, vs = VS_AAM,
     shape = { L = 6.0, d = 0.34, fin = 0.8 } },
   --   Kh-29L：激光半主动空地导弹，3.9 米、0.38 米、657 公斤（战斗部 320 公斤），射程约 10 公里
   kh29 = { kind = "agm", dmg = 1400, splash = 26, speed = 330, range = 2200, lockTime = 1.5, cone = 20, turn = 18, burn = 6, life = 10, vs = VS_AGM,
@@ -169,9 +171,9 @@ AirDefs.W = {
   tow = { kind = "agm", eject = { t = 0.18, f = 188, d = 0 }, dmg = 800, splash = 9, speed = 290, range = 1700, lockTime = 1.3, cone = 22, turn = 30, burn = 5, life = 9, vs = VS_AGM,      -- BGM-71 陶式（AH-1S）：有线指令
     shape = { L = 3.3, d = 0.45, fin = 0.8 } },
   s8 = { kind = "rkt", dmg = 250, splash = 13, speed = 700, range = 1700, rate = 0.1, tubes = 20, vs = VS_RKT, shape = { L = 4.4, d = 1.2 } },        -- S-8 80 毫米（B-8V20 火箭巢）
-  igla = { kind = "aam", eject = "tube", seeker = "ir", dmg = 320, splash = 10, speed = 470, range = 1200, lockTime = 1.0, cone = 28, turn = 55, burn = 3, life = 5.5, vs = VS_AAM,   -- 9K38 针-V
+  igla = { kind = "aam", eject = "tube", seeker = "ir", seekR = 4.5, dmg = 320, splash = 10, speed = 470, range = 1200, lockTime = 1.0, cone = 28, turn = 55, burn = 3, life = 5.5, vs = VS_AAM,   -- 9K38 针-V
     shape = { L = 4.4, d = 0.2, fin = 0.5 } },
-  type91 = { kind = "aam", eject = "tube", seeker = "ir", dmg = 320, splash = 10, speed = 470, range = 1200, lockTime = 1.0, cone = 28, turn = 55, burn = 3, life = 5.5, vs = VS_AAM, -- 91 式便携防空导弹（OH-1）
+  type91 = { kind = "aam", eject = "tube", seeker = "ir", seekR = 4.5, dmg = 320, splash = 10, speed = 470, range = 1200, lockTime = 1.0, cone = 28, turn = 55, burn = 3, life = 5.5, vs = VS_AAM, -- 91 式便携防空导弹（OH-1）
     shape = { L = 4.0, d = 0.2, fin = 0.5 } },
 }
 -- 导引方式：ir 红外、radar 主动雷达、laser 激光、gps 卫星 / 惯性、tv 电视 / 红外成像、arm 被动雷达（反辐射）、none 无制导

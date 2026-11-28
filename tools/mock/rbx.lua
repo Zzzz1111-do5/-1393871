@@ -1138,6 +1138,12 @@ def("Terrain", "BasePart", {
   FillWedge = function(_, c, size, mat)
     if not isCF(c) or not isV3(size) or typeof(mat) ~= "EnumItem" or mat.EnumType ~= "Material" then error("FillWedge(CFrame, Vector3, Material) 参数不对", 2) end
   end,
+  -- 清空整块地形（烘焙地形前、烘的图对不上时：World.terrain）
+  Clear = function()
+    R.terrainCleared = (R.terrainCleared or 0) + 1
+    R.voxCols = nil
+    table.insert(R.terrainFills, { k = "clear", n = R.stepNo })
+  end,
 } })
 def("WedgePart", "BasePart", {})
 def("Clouds", "Instance", { Cover = { T.number, 0.5 }, Density = { T.number, 0.7 }, Color = { T.Color3, newC3(1, 1, 1) }, Enabled = { T.bool, true } })

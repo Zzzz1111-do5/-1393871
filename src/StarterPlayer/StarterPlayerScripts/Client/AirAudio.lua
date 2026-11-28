@@ -110,13 +110,18 @@ function M.init(G)
     local busy = a.rwr and 0.5 or 1   -- 导弹来袭时别的声音让一让
 
     -- ① 红外导引头：嗡嗡（方波，压掉高音、加点失真，音量一抖一抖）→ 锁上尖的长音（正弦）
+    -- 照战雷（用户 11-28 夜「以及各种音效」）：导引头开着、小圈里没目标——低低的、轻的嗡嗡（搜索）；目标进了小圈（截获中）——
+    --   一下子响起来、变尖，越接近锁上越尖；锁上——尖的长音。原来选上红外弹就一直是响的嗡嗡（有没有目标一个样）
     local growlV, lockV, gHz = 0, 0, 320
     if isIR then
       if locked then
         lockV = 0.30 * busy
+      elseif a.hasTgt then
+        growlV = 0.27 * busy
+        gHz = 380 + 300 * prog + (a.out and 120 or 0)
       else
-        growlV = 0.24 * busy
-        gHz = 290 + 360 * prog + (a.out and 140 or 0)
+        growlV = 0.09 * busy
+        gHz = 240
       end
     end
     local g = set("growl", "toneSquare", growlV, gHz + math.sin(t * 31) * 7 + math.sin(t * 13) * 5)

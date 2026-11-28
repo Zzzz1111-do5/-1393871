@@ -1,4 +1,4 @@
--- 自动生成（tools/i18n/build.py），别手改：es 的译文（2237 / 2407 条）
+-- 自动生成（tools/i18n/build.py），别手改：es 的译文（2239 / 2409 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -44,11 +44,13 @@ return {
     ["air.k.tank"] = "TANQUE",
     ["air.locked"] = "FIJADO",
     ["air.locking"] = "FIJANDO {1}%",
+    ["air.madDog"] = "Disparo sin fijación: el misil enciende su propio buscador y busca un objetivo por delante",
     ["air.missile"] = "MISIL",
     ["air.mouseAimOff"] = "Vuelo con teclado: W/S cabeceo, A/D alabeo, Q/E timón, mantén el botón derecho para mirar alrededor (M alterna)",
     ["air.mouseAimOn"] = "Apuntado con ratón (estilo War Thunder): el avión sigue al ratón; WASD lo pilota directamente, mantén C para mirar alrededor (M alterna)",
     ["air.mouseGun"] = "Clic izq. {1} ×{2}",
     ["air.needLock"] = "Sin fijación",
+    ["air.needRadar"] = "Se necesita fijación de radar (los misiles de guiado semiactivo necesitan tu radar sobre el objetivo)",
     ["air.noWeapon"] = "Desarmado",
     ["air.notYet"] = "Armas en seguro",
     ["air.oob"] = "VUELVE A LA ZONA DE COMBATE",

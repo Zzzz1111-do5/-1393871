@@ -487,7 +487,7 @@ end
 -- 地底只填到这里（原来 −40：整张图平地填 13 层体素——用户 11-24「沙海加载时间太长」；弹坑最深 5.5 格（Config.Battle.crater.maxDepth），16 格厚的地壳够了）
 local DESERT_BASE = -4
 local BG_BUDGET = 0.004   -- 开服以后后台铺地形：每帧最多花几秒（见下面 terrainDesert 的后台那段）
-local function terrainDesert(T, onProgress, G)
+local function terrainDesert(T, onProgress, G, bake)
   local SR, TILE, CH = Map.SEA_R, 2048, 256
   local NT = math.floor(2 * SR / TILE)   -- 一边几个大块
   local PH = (Map.PLAIN or 12) - 8       -- 垫底那层的顶
@@ -506,7 +506,8 @@ local function terrainDesert(T, onProgress, G)
   local bg, bgSide, since = false, 256, 0
   local function step()
     since += 1
-    if os.clock() - t0 > budget or since >= 8 then task.wait() t0 = os.clock() since = 0 end
+    -- 烘焙（Studio 编辑模式、没人在玩）：按 0.1 秒的预算让，不按份数（8 份一让的话一帧只写半块起伏地形，烘得慢一倍）
+    if os.clock() - t0 > budget or since >= (bake and 64 or 8) then task.wait() t0 = os.clock() since = 0 end
   end
   -- Roblox 论坛（2025-02，Roblox 员工）：Terrain 的 SmoothVoxelsUpgraded 是没做完的功能，开着时 FillBlock 慢几千到几万倍，要关着——读得到就查一下
   do
@@ -603,6 +604,7 @@ local function terrainDesert(T, onProgress, G)
   --   雪山图的「沙」染成了黑沙滩的深灰，没写到的一块块成了深灰的大坑，车、树、靶车悬在半空（用户 11-28 晚截图「雪山图这一块一直加载不」）。
   --   图上开了 Map.UNDERLAY_FOLLOW（雪山）：按这一块 3 × 3 个点里最低的地面往下 3 格铺、用这一块中间的地面材质（雪），
   --   后台写全之前看着是一块略低一点的雪地，写的时候整块盖掉
+  local underTop = {}   -- [ckey] = 垫底那层的顶：这块起伏写全之前看得见的地面（G.terrainSeenH）
   local function underlay(x0, z0)
     local yTop, mat = PH, MAT.Sand
     if Map.UNDERLAY_FOLLOW then
@@ -621,6 +623,23 @@ local function terrainDesert(T, onProgress, G)
       end
     end
     T:FillBlock(CF(x0 + CH / 2, yTop - 2, z0 + CH / 2), V(CH, 4, CH), mat)
+    underTop[ckey(x0, z0)] = yTop
+  end
+  -- 看得见的地面（用户 11-28 夜「目前飞机开一会就自动爆炸显示被ground击杀」）：后台还没写全的起伏块，真的山还没出来——只垫了底的
+  --   看得见的是垫的那层顶；整个大块还没铺的什么都没有（按海面算）；写全了的、平地照 Map.height（返回 nil）。
+  --   原来飞机按地图的高度函数判撞地，飞进没写到的山里（看着是一片低低的雪地、或者什么都没有）就炸了、显示被 ground 击杀。
+  --   Air.lua 判撞地按这个（客户端 Fly.lua 地形还在写时也先打一条射线看那里真有没有地形）；烘焙过的地形开服就全了，不走这里
+  if G then
+    G.terrainSeenH = function(x, z)
+      local x0, z0 = math.floor(x / CH) * CH, math.floor(z / CH) * CH
+      local k = ckey(x0, z0)
+      if reliefDone[k] then return nil end
+      local ix, iz = tileOf(x0 + 1, z0 + 1)
+      if ix < 0 or iz < 0 or ix >= NT or iz >= NT then return nil end   -- 地形外面（远处的平地、山）：照旧
+      if not tileDone[ix * 4096 + iz] then return -2 end
+      if kindOf[k] then return nil end   -- 平地：铺大块的时候就铺好了
+      return underTop[k] or -2
+    end
   end
   local function tileFlat(ix, iz, onRelief)
     local tk = ix * 4096 + iz
@@ -657,7 +676,7 @@ local function terrainDesert(T, onProgress, G)
         elseif not e then
           local x0, z0 = tx + i * CH, tz + k * CH
           -- onRelief 返回 true：这块马上就写全，不用垫；否则先垫一层薄底——后台写到它之前这里不是个窟窿（车、人不会掉下去，天上看不到洞）
-          if not reliefDone[ckey(x0, z0)] and not (onRelief and onRelief(x0, z0)) then
+          if not reliefDone[ckey(x0, z0)] and not (onRelief and onRelief(x0, z0)) and not bake then   -- 烘焙：整张图一口气写全，不用垫
             underlay(x0, z0)
             diag.fills += 1
             if bg then step() else pace() end
@@ -731,14 +750,16 @@ local function terrainDesert(T, onProgress, G)
   end
   for _, c in ipairs(laterRelief) do queueRelief(c[1], c[2]) end
   if G then G.terrainRest, G.terrainTilesLeft = #tilesLeft + #reliefQ, #tilesLeft end
-  task.spawn(function()
+  local function bgLoop()
     local Players = game:GetService("Players")
+    -- 客户端看这个：地形还在后台写（Fly.lua 判撞地先看那里真有没有地形）；写完去掉
+    if not bake then pcall(function() workspace:SetAttribute("TerrainBusy", true) end) end
     -- 后台每帧最多 4 毫秒（B：原来 8——用户 11-25「然后现在特别卡」「坦克一直在抽搐」：开服后十几分钟一直在铺远处的平地，
     --   Studio 里点「开始」时服务器和客户端在同一台电脑上，服务器每帧花 8 毫秒铺地形，客户端跟着掉帧）；铺得慢一点，近处的照样插队先铺
     --   D：后台的平地切成 bgSide 见方一块块铺、起伏块分 16 份写（fill / reliefBg），单次调用也不会让服务器停一下
-    budget = BG_BUDGET
+    budget = bake and 0.1 or BG_BUDGET   -- 烘焙（Studio 编辑模式里一次写全）：每 0.1 秒让一帧，Studio 不会卡死
     bg = true
-    local bgT0, bgSay = os.clock(), os.clock() + 30
+    local bgT0, bgSay = os.clock(), os.clock() + (bake and 5 or 30)
     local urgentTiles, urgentRelief = {}, {}
     local seen = {}
     -- 这一点身边 ±6 个小块：还没铺的大块、还没写的起伏块排进插队。pri 0：真人（和他开的车、试驾的靶子）——先写；
@@ -755,7 +776,11 @@ local function terrainDesert(T, onProgress, G)
           local x0, z0 = (cx0 + dx) * CH, (cz0 + dz) * CH
           if math.abs(x0 + CH / 2) < SR and math.abs(z0 + CH / 2) < SR then
             local ix, iz = tileOf(x0 + 1, z0 + 1)
-            if not tileDone[ix * 4096 + iz] then urgentTiles[ix * 4096 + iz] = { ix, iz } end
+            local sc0 = dx * dx + dz * dz + pri * 1000
+            if not tileDone[ix * 4096 + iz] then
+              local ut = urgentTiles[ix * 4096 + iz]
+              if not ut then urgentTiles[ix * 4096 + iz] = { ix, iz, sc0 } elseif sc0 < ut[3] then ut[3] = sc0 end
+            end
             local k = ckey(x0, z0)
             if kindOf[k] == nil then step() end   -- 这块的地貌还没算过（要打 81 个点）：算之前看一眼预算，扫描不再一口气算几千个点
             if not reliefDone[k] and kindAt(x0, z0) == false then
@@ -770,6 +795,7 @@ local function terrainDesert(T, onProgress, G)
     -- 每帧给后台多少：真人身边还有没写的块——8 毫秒（先把他身边写出来）；一个真人都没在场上（都在机库、主菜单）——12 毫秒（趁没人在打多写点）；
     --   别的时候照旧 4 毫秒（开打以后服务器不卡）
     local function setBudget()
+      if bake then return end
       local mine = false
       for _, c in pairs(urgentRelief) do if c[3] < 1000 then mine = true break end end
       local anyAlive = false
@@ -791,7 +817,8 @@ local function terrainDesert(T, onProgress, G)
         if e.alive and e.root and e.root.Parent then
           local p = e.root.CFrame.Position
           if not e.air or p.Y < (Map.PLAIN or 12) + 600 then
-            if (e.driver ~= nil and e.driver.pl ~= nil) or e.testDummy == true or e.testDrive == true then want(p, 0)
+            -- 试驾的靶机满天飞（用户 11-28 夜：真人飞机脚下的山一直排不上——靶机不停地把新的大块排进插队）：天上的靶子排在真人后面
+            if (e.driver ~= nil and e.driver.pl ~= nil) or e.testDrive == true or (e.testDummy == true and not e.air) then want(p, 0)
             else others[#others + 1] = p end
           end
         end
@@ -801,15 +828,37 @@ local function terrainDesert(T, onProgress, G)
       for _, p in ipairs(others) do want(p, 1, 3) end
       setBudget()
     end
+    -- 真人开的飞机正在这块里、而且比这块真的地面还低（飞进了还没写出来的山——看着是垫底的雪地，World.lua G.terrainSeenH /
+    --   Air.lua 按看得见的判、不炸）：这块先不写，等它飞走（不然山一下子长出来把飞机埋在里面，照样炸。用户 11-28 夜「飞机开一会就自动爆炸」）
+    local function airInside(x0, z0)
+      if not G then return false end
+      for _, e in ipairs(G.ents or {}) do
+        if e.air and e.alive and e.driver ~= nil and e.driver.pl ~= nil and e.root and e.root.Parent then
+          local p = e.root.CFrame.Position
+          if p.X > x0 - 96 and p.X < x0 + CH + 96 and p.Z > z0 - 96 and p.Z < z0 + CH + 96 then
+            local okH, h = pcall(Map.height, p.X, p.Z)
+            if okH and type(h) == "number" and p.Y < h + 40 then return true end
+          end
+        end
+      end
+      return false
+    end
     local function urgentStep()
+      -- 插队的大块、起伏块一起按「离真人多近」排（原来先把插队的大块一个个铺完才轮到起伏块：靶机、电脑车身边不停冒出新的大块，
+      --   真人脚下的起伏块一直排不上）
+      local tBest, tk = nil, nil
       for k, t in pairs(urgentTiles) do
-        urgentTiles[k] = nil
-        if tileFlat(t[1], t[2], queueRelief) then return true end
+        if tileDone[k] then urgentTiles[k] = nil
+        elseif not tBest or (t[3] or 0) < (tBest[3] or 0) then tBest, tk = t, k end
       end
       local best, bk = nil, nil
       for k, c in pairs(urgentRelief) do
         if reliefDone[k] then urgentRelief[k] = nil
-        elseif not best or c[3] < best[3] then best, bk = c, k end
+        elseif (not best or c[3] < best[3]) and not airInside(c[1], c[2]) then best, bk = c, k end
+      end
+      if tBest and (not best or (tBest[3] or 0) <= best[3]) then
+        urgentTiles[tk] = nil
+        if tileFlat(tBest[1], tBest[2], queueRelief) then return true end
       end
       if best then
         urgentRelief[bk] = nil
@@ -835,8 +884,14 @@ local function terrainDesert(T, onProgress, G)
           hi += 1
           local k = ckey(c[1], c[2])
           if not reliefDone[k] then
-            reliefDone[k] = true
-            reliefBg(c[1], c[2])
+            if airInside(c[1], c[2]) then
+              table.insert(hotQ, c)   -- 飞机正在这块的山里：排到后面，等它飞走
+              task.wait(0.05)   -- 一次只看一眼（直升机悬停在里面时别空转、别把队排长）
+              t0, since = os.clock(), 0
+            else
+              reliefDone[k] = true
+              reliefBg(c[1], c[2])
+            end
           end
         elseif ti <= #tilesLeft then
           -- ②③ 大块：据点一带的先（tilesLeft 按离据点的距离排好了）；据点圈里的起伏块跟着写全
@@ -866,8 +921,14 @@ local function terrainDesert(T, onProgress, G)
           ri += 1
           local k = ckey(c[1], c[2])
           if not reliefDone[k] then
-            reliefDone[k] = true
-            reliefBg(c[1], c[2])
+            if airInside(c[1], c[2]) then
+              table.insert(reliefQ, c)   -- 飞机正在这块的山里：排到最后，等它飞走
+              task.wait(0.05)   -- 一次只看一眼（直升机悬停在里面时别空转、别把队排长）
+              t0, since = os.clock(), 0
+            else
+              reliefDone[k] = true
+              reliefBg(c[1], c[2])
+            end
           end
         end
       end
@@ -875,22 +936,53 @@ local function terrainDesert(T, onProgress, G)
         G.terrainRest = math.max(0, #tilesLeft - ti + 1) + math.max(0, #reliefQ - ri + 1) + math.max(0, #hotQ - hi + 1)
         G.terrainTilesLeft = math.max(0, #tilesLeft - ti + 1)   -- 还没铺的大块（只减不增；terrainRest 里的起伏块是铺大块时才排进来的）
       end
-      if os.clock() >= bgSay then   -- 每 30 秒说一声还剩多少（卡不卡、是不是在铺地形，对照 Output 就知道）
-        bgSay = os.clock() + 30
-        print(string.format("[地形] 后台还在铺远处：剩 %d 项（已经 %.0f 秒，一共 %d 次 FillBlock）", G and G.terrainRest or -1, os.clock() - bgT0, diag.fills))
+      if os.clock() >= bgSay then   -- 每 30 秒说一声还剩多少（卡不卡、是不是在铺地形，对照 Output 就知道）；烘焙时 5 秒一次、带百分比
+        bgSay = os.clock() + (bake and 5 or 30)
+        if bake then
+          local doneN = (ti - 1) + (ri - 1) + (hi - 1)
+          local all = #tilesLeft + #reliefQ + #hotQ
+          print(string.format("[烘焙地形] %d%%（已经 %.0f 秒）", math.floor(100 * doneN / math.max(1, all)), os.clock() - bgT0))
+          if onProgress then onProgress(doneN / math.max(1, all)) end
+        else
+          print(string.format("[地形] 后台还在铺远处：剩 %d 项（已经 %.0f 秒，一共 %d 次 FillBlock）", G and G.terrainRest or -1, os.clock() - bgT0, diag.fills))
+        end
       end
     end
     if G then G.terrainRest = 0 end
+    pcall(function() workspace:SetAttribute("TerrainBusy", nil) end)
     print(string.format("[地形] 后台写完：一共 %d 次 FillBlock（%.2f 亿体素）、%d 块起伏（后台用了 %.0f 秒）；后台单次 FillBlock 最长 %.1f 毫秒，小块边长最后 %d 格",
       diag.fills, diag.vox / 1e8, diag.chunks, os.clock() - bgT0, diag.bgMax * 1000, bgSide))
-  end)
+  end
+  if bake then bgLoop() else task.spawn(bgLoop) end
   return total, #coreRelief + #reliefQ
 end
 
 -- 整个地形：海底沙、海水（分块 FillBlock），再按块写岛（每块之间让出一帧）；返回写了多少体素
-function World.terrain(onProgress, G)
+-- 烘焙好的地形（World.bake，用户 11-28 夜「然后卡顿问题你给他想办法解决」）：在 Studio 编辑模式里把整张图的地形一次写全、跟地点文件一起存下来，
+--   Terrain 的属性 Baked = 「图 | 地形版本」（Map.TERRAIN_VER，地形的算法一改就换版本号）。开服对得上：不再写地形——
+--   原来雪山图开服前只写两边基地一带，其余四千七百多块起伏地块开服以后在后台写十几二十分钟：服务器一直占着、客户端一直在重建地形网格，
+--   没写到的地方是一块块垫底的平地（截图「雪山图这一块一直加载不 这个图非常卡顿」）。对不上（烘的是别的图、旧版本）：清掉，照旧开服现写
+local function bakeKey() return tostring(Map.id) .. "|" .. tostring(Map.TERRAIN_VER) end
+function World.terrain(onProgress, G, bake)
   local T = workspace.Terrain
   local R, D = Map.R, Map.SEA_DEPTH
+  local baked = nil
+  pcall(function() baked = T:GetAttribute("Baked") end)
+  if not bake and Map.TERRAIN_VER and baked == bakeKey() then
+    print("[地形] 地点文件里已经烘焙好了这张图的地形（" .. baked .. "）：开服不再写")
+    if G then G.terrainRest, G.terrainTilesLeft, G.terrainBaked = 0, 0, true end
+    pcall(function() workspace:SetAttribute("TerrainBusy", nil) end)
+    if onProgress then onProgress(1) end
+    return 0, 0
+  end
+  if baked ~= nil or bake then
+    if baked ~= nil and not bake then
+      warn("[地形] 地点文件里烘焙的地形是「" .. tostring(baked) .. "」，跟这一局的图（" .. bakeKey() .. "）对不上：清掉，开服现写（卡十几分钟）。"
+        .. "要重新烘焙：停止游戏，在 Studio 的命令栏里跑 require(game.ServerScriptService.Main.TerrainBake)() ，跑完存档")
+    end
+    T:Clear()
+    pcall(function() T:SetAttribute("Baked", nil) end)
+  end
   pcall(function()
     T.WaterColor = Map.WATER_COLOR or RGB(30, 112, 136)   -- 雪山冰岛：北冰洋那种深灰蓝
     T.WaterTransparency = 0.5
@@ -926,7 +1018,7 @@ function World.terrain(onProgress, G)
       warn("[地形] 网格器校准没做成（" .. tostring(res) .. "）：照原来的写法")
     end
   end
-  if Map.chunkKind then return terrainDesert(T, onProgress, G) end
+  if Map.chunkKind then return terrainDesert(T, onProgress, G, bake) end
   local TILE = 2048
   for x = -R, R - TILE, TILE do
     for z = -R, R - TILE, TILE do
@@ -983,6 +1075,19 @@ function World.terrain(onProgress, G)
   end
   return total, #list
 end
+
+-- 烘焙地形（Studio 编辑模式的命令栏：require(game.ServerScriptService.Main.TerrainBake)() ，见 TerrainBake.lua）：清掉 Terrain，
+--   整张图一口气写全（同开服前 + 后台那一套，不垫底、不看人，每 0.1 秒让一帧），写完记下 Baked = 「图 | 地形版本」；存档以后开服就不再写
+function World.bake(mapId, onProgress)
+  mapId = mapId or "snow"
+  if Map.id ~= mapId and not Map.use(mapId) then error("没有这张图：" .. tostring(mapId)) end
+  if not Map.TERRAIN_VER then error("这张图（" .. tostring(mapId) .. "）没有地形版本号 Map.TERRAIN_VER：不能烘焙") end
+  local t0 = os.clock()
+  local n, chunks = World.terrain(onProgress, nil, true)
+  workspace.Terrain:SetAttribute("Baked", bakeKey())
+  return n, chunks, os.clock() - t0
+end
+World.bakeKey = bakeKey   -- 测试用
 
 World.writeChunk = function(T, x0, z0, n, yFloor)   -- 填坑（Battle.lua、Nuke.lua）：按当前地图的写法
   return writeChunk(T, x0, z0, n, yFloor)

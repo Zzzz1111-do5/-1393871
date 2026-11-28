@@ -1,4 +1,4 @@
--- 自动生成（tools/i18n/build.py），别手改：de 的译文（2220 / 2407 条）
+-- 自动生成（tools/i18n/build.py），别手改：de 的译文（2222 / 2409 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -45,11 +45,13 @@ return {
     ["air.k.tank"] = "ZUSATZTANK",
     ["air.locked"] = "AUFGESCHALTET",
     ["air.locking"] = "AUFSCHALTEN {1}%",
+    ["air.madDog"] = "Ohne Aufschaltung gestartet: Der Flugkörper schaltet seinen Suchkopf selbst ein und sucht voraus",
     ["air.missile"] = "RAKETE",
     ["air.mouseAimOff"] = "Tastatursteuerung: W/S Nicken, A/D Rollen, Q/E Seitenruder, RMT halten zum Umsehen (M schaltet um)",
     ["air.mouseAimOn"] = "Mauszielen (War-Thunder-Stil): Das Flugzeug folgt der Maus; WASD steuert direkt, C halten zum Umsehen (M schaltet um)",
     ["air.mouseGun"] = "LMT {1} ×{2}",
     ["air.needLock"] = "Keine Aufschaltung",
+    ["air.needRadar"] = "Radar-Aufschaltung nötig (halbaktive Radarflugkörper brauchen dein Radar auf dem Ziel)",
     ["air.noWeapon"] = "Unbewaffnet",
     ["air.notYet"] = "Waffen gesichert",
     ["air.oob"] = "ZURÜCK INS KAMPFGEBIET",

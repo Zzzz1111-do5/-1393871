@@ -38,6 +38,21 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWBP]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日起 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～八包、E 第一～七包，新的在上面）
+  11-28 夜里这一包（卡顿：烘焙地形；飞机不再撞看不见的山；导弹锁定照战雷；雷达默认 4 行；训练场一直白天；主页不显示 SP；
+    坦克开炮、炮弹打地面的声音和弹坑；主界面试驾在雪山图上；坦克炮一发打下直升机）：
+    换游戏文件（或者「三、只换脚本」），不用导模型。另外强烈建议烘焙一次地形（只做一次，几分钟）——
+    · 飞机开一会儿就炸、显示被 ground 击杀，也是这个原因：没烘焙时远处的山还没写出来（看不见），原来照样算撞上。
+      这一包起没写出来的山不算撞；烘焙以后整张图开服就全了，看得见的山才撞
+    · 为什么：雪山图开服前只写两边基地一带，其余的地形开服以后在后台写十几二十分钟，这期间服务器一直占着、客户端一直在重建地形，
+      没写到的地方是一块块垫底的平地（「雪山图这一块一直加载不 这个图非常卡顿」）。烘焙就是把整张地形提前写好、跟地点文件一起存下来，开服一块都不用写
+    · 做法：在 Studio 打开游戏，不要点「开始」；菜单「视图」→「命令栏」，粘贴下面这一行、回车：
+
+require(game.ServerScriptService.Main.TerrainBake)()
+
+      Output 里每 5 秒报一次进度，做完写「烘焙完了」（几分钟，这期间 Studio 会有点卡），然后按 Ctrl + S 存档（地点文件会大一些）
+    · 之后换脚本用「三、只换脚本」（ScriptsUpdate.rbxmx），烘好的地形留着；直接打开新的 RobloxTotalBattlefield.rbxlx 的话要再烘一次。
+      哪个版本改了地形的算法，开服时 Output 会提示「烘焙的地形……对不上」，照上面再烘一次（不烘也能玩，只是照旧开服现写）
+    · 多个地点（训练场、雪山……）：每个地点的文件各烘一次再发布
   11-28 清早这一包（新车：中系 SU-100 歼击车（引进，没有炮塔：炮左右各 8°，瞄出去车体自己转过去）、德系黄鼠狼 1A3 步兵战车）：
     换游戏文件，另外新导入两个文件——
     · veh/su100.glb：SU-100（XxRxX 的 CC-BY 模型，1.9 MB）；veh/marder.glb：黄鼠狼 1A3（Scout 的 CC-BY 模型，6.9 MB；原模型没有贴图，

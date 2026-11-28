@@ -1079,6 +1079,8 @@ function TechUI.init(G)
     if not d or not Config.WtCost then return nil end
     local cat = d.cat or (it.branch == "air" and "jet" or "tank")
     local S = G.S
+    -- 用户 11-28 夜「主页不要显示sp点数」：SP 只在这一局里（局内选车页、准备 / 战斗阶段）写，主页的机库卡片上不写要多少 SP、不写免费 / 备用
+    if not (S and (S.pick or S.inMatch)) then return nil end
     local w = S and S.wt
     if not w then
       local ok, c = pcall(Config.WtCost, it.play, cat, 0)
@@ -1223,6 +1225,7 @@ function TechUI.init(G)
     H.coinT.Text = (me:GetAttribute("CoinsInf") == true) and "∞" or ((type(c) == "number") and fmtNum(c) or "—")
     local w2 = G.S and G.S.wt
     H.spT.Text = "SP " .. tostring(w2 and w2.sp or 0)
+    H.spT.Visible = G.S ~= nil and (G.S.pick == true or G.S.inMatch == true)   -- 主页（不在这一局里）不显示 SP（用户 11-28 夜）
   end
 
   local function refreshHangar()

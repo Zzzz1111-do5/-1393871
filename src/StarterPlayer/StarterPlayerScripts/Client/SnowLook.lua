@@ -155,7 +155,7 @@ function SnowLook.init(G)
       emitter.LightInfluence = 1   -- 受光：夜里是月光照着的灰蓝，不自己发亮
       emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.22, 0.06), NumberSequenceKeypoint.new(1, 0.2, 0.05) })   -- 0.16～0.28 格
       emitter.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.08, 0.15), NumberSequenceKeypoint.new(0.85, 0.2), NumberSequenceKeypoint.new(1, 1) })
-      emitter.Lifetime = NumberRange.new(9, 13)
+      emitter.Lifetime = NumberRange.new(8, 11)   -- 11-28 夜（「卡顿问题你给他想办法解决」）：原来 9～13 秒、每秒 400 片，同时飘着四千多片
       -- 画质低（手机、画质档 4 以下）雪下得稀一些
       local low = G.mobile == true
       pcall(function()
@@ -163,7 +163,7 @@ function SnowLook.init(G)
         local n = tonumber(string.match(tostring(lv), "(%d+)$"))
         if n and n <= 3 then low = true end
       end)
-      rateMax = low and 150 or 400
+      rateMax = math.floor((low and 120 or 260) * math.clamp(G.gfxK or 1, 0.4, 1.2))   -- 同时飘着的两千片上下；设置里画质调低再少
       emitter.Rate = rateMax
       emitter.Speed = NumberRange.new(5, 9)
       emitter.SpreadAngle = Vector2.new(18, 18)

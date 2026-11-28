@@ -41,6 +41,9 @@ Map.RES = 4
 -- 后台还没写到的起伏块先垫的那层薄底（World.lua terrainDesert 的 underlay）：按这一块最低的地面往下 3 格、用雪铺（原来一律在平地往下 8 格铺沙——
 --   这张图的「沙」是黑沙滩的深灰，没写到的一块块成了深灰的大坑，用户 11-28 晚截图「雪山图这一块一直加载不」）
 Map.UNDERLAY_FOLLOW = true
+-- 地形版本（World.bake 烘焙地形 / World.terrain 开服对版本）：这张图的地形算法、参数（高度、材质、壳、河、路、铁路、弹坑战壕……）一改就换一个——
+--   烘焙过的地点文件开服时对不上就清掉现写，Output 里提示再烘焙一次
+Map.TERRAIN_VER = "1128a"
 Map.CEIL = 7200        -- 飞机最高飞到多高（Fly.lua、Air.lua：钢城、沙海 2600；这里角峰四千多格，上面还要留两三千格飞）
 Map.HALF = 12000
 local PLAIN = 12       -- 谷底平地（4 的倍数：FillBlock 铺出来和逐列写的一样高）

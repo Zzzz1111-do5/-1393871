@@ -369,20 +369,33 @@ function WtFlight.init(G)
     local w = info.w
     local missile = w and (w.kind == "aam" or w.kind == "agm") and (w.cone or 0) > 0
     if missile and bon and not st.eo and not st.bsight then
-      local locked = lk and lk.on and lk.locked
+      local sk = info.seek   -- 空空弹的导引头（Fly.lua，用户 11-28 夜「锁定圈貌似比战雷小」）
+      local locked = (sk and sk.state == "lock") or (not sk and lk and lk.on and lk.locked)
       local col = locked and RED or WHITE
       local r0 = px(w.cone) * 2
-      bigC.Size, bigC.Position, bigC.Visible = UDim2.fromOffset(r0, r0), bp, true
+      -- 大圈：导引头能转到的范围（万向架）；旧式不能离轴的红外弹只有一个圈（战雷的 AIM-9B 那样）
+      bigC.Size, bigC.Position, bigC.Visible = UDim2.fromOffset(r0, r0), bp, not (sk and sk.caged)
       bigS.Color = col
-      -- 小圈：导引头看着哪——没目标在大圈中心；追踪 / 锁定时滑到目标上（红外的从机头滑过去，雷达弹锁着就在目标上）
-      local sp = bp
-      if lk and lk.on and lk.p then
-        local kk = locked and 1 or clamp(lk.k or 0, 0, 1)
-        sp = bp:Lerp(lk.p, (lk.seeker == "ir") and kk or (locked and 1 or 0))
+      if sk then
+        -- 小圈：导引头的截获圈（战雷截图里约屏幕高的 8～9%：按 3.4°，放大镜头跟着变大），画在导引头指着的地方——
+        --   红外弹没锁上时在机头前（随动雷达在雷达锁着的那架上、有头盔的在看着的方向），锁上了跟着目标；雷达弹雷达锁着谁就在谁身上
+        local d0 = math.max(px(sk.r) * 2, 28)
+        smallC.Position, smallC.Visible = sk.on and sk.p or bp, true
+        smallC.Size = UDim2.fromOffset(d0, d0)
+        smallS.Color = col
+        smallS.Thickness = (sk.state == "acq") and 2.2 or 1.6   -- 截获中描粗一点（嗡嗡变响的那一下看得见）
+      else
+        -- 空地弹：小圈看着哪——没目标在大圈中心；锁着滑到目标上
+        local sp = bp
+        if lk and lk.on and lk.p then
+          local kk = locked and 1 or clamp(lk.k or 0, 0, 1)
+          sp = bp:Lerp(lk.p, (lk.seeker == "ir") and kk or (locked and 1 or 0))
+        end
+        smallC.Position, smallC.Visible = sp, true
+        smallC.Size = UDim2.fromOffset(locked and 22 or 26, locked and 22 or 26)
+        smallS.Color = col
+        smallS.Thickness = 1.6
       end
-      smallC.Position, smallC.Visible = sp, true
-      smallC.Size = UDim2.fromOffset(locked and 22 or 26, locked and 22 or 26)
-      smallS.Color = col
     else
       bigC.Visible, smallC.Visible = false, false
     end
@@ -577,9 +590,12 @@ function WtFlight.init(G)
     if w and info.wid then
       selW.Text = T("wt.selW", T("aw." .. info.wid), T("air.k." .. (w.kind or "agm")))
       if w.kind == "aam" or (w.kind == "agm" and (w.cone or 0) > 0) then
-        local stt = (lk and lk.on) and (lk.locked and "wt.seekLock" or "wt.seekTrack") or "wt.seekOn"
+        local sk = info.seek
+        local stt
+        if sk then stt = (sk.state == "lock") and "wt.seekLock" or ((sk.state == "acq") and "wt.seekTrack" or "wt.seekOn")
+        else stt = (lk and lk.on) and (lk.locked and "wt.seekLock" or "wt.seekTrack") or "wt.seekOn" end
         selS.Text = T("wt.seeker", T(stt))
-        selS.TextColor3 = (lk and lk.on and lk.locked) and RED or TXT
+        selS.TextColor3 = (stt == "wt.seekLock") and RED or TXT
       else
         selS.Text = ""
       end

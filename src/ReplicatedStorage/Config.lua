@@ -88,7 +88,9 @@ Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraC
 --   （D 11-25 同时做过一版 period 的，合并时用 B 的 DayClock；D 的 Night.lua 天黑提示开夜视、天亮收起、白天关地图上的灯照样用 G.isNight / G.dayK）
 --   用户 11-26：「所有地图开局默认白天吧，然后一天 48 分钟这样」——一圈 28 + 4 + 12 + 4 = 48 分钟（白天 10 个钟头走 28 分钟），
 --   perRound：每局开局都拨回 start 点（早上 8 点，打满 30 分钟的一局到黄昏才天黑）；PvE 关卡照旧按关卡自己的钟点（Pve.lua 在开局之后改）
-Config.DayNight = { lockNight = false, clock = 2.3, day = 28, dusk = 4, night = 12, dawn = 4, start = 8.0, perRound = true }
+--   用户 11-28 夜：「然后训练场改成持续百天吧」（持续白天）——rangeClock：训练场一直停在这个钟点（上午 11 点，太阳高、影子不长不短）：
+--   训练场服务器整个钉住（DayClock）；别的服务器上试驾（雪山图上、老训练场区块）客户端 DayNight 也换成这个钟点
+Config.DayNight = { lockNight = false, clock = 2.3, day = 28, dusk = 4, night = 12, dawn = 4, start = 8.0, perRound = true, rangeClock = 11 }
 Config.RallyBack = 200   -- 守方集结点：据点后面多远（格，150～250），守方在这里出生（用户：出生点跟着战线走）
 Config.StageOff = 260    -- 攻方攻击出发阵地：据点往攻方来的方向多远（格，200～300），第一波以后攻方在这里出生（Round.lua）
 

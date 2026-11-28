@@ -5,6 +5,7 @@
 --   · 服务器开服时按 start 点记下 workspace 属性 DayT0（这一圈从哪一刻起算）；用户 11-26「所有地图开局默认白天，一天 48 分钟」：
 --     Config.DayNight.perRound 开着时每局开局拨回 start（早上 8 点，Round.lua），一圈 48 分钟
 --   · workspace 属性 DayFix 是数：钟点钉死在那个点（PvE 夜战关卡）；没有就按 DayT0 走
+--   · 训练场服务器（ReplicatedStorage 属性 PlaceRole = range）一直是 rangeClock（白天，用户 11-28 夜）
 --   DC.clock() 现在几点（0～24）；DC.dayK(钟点) 0 夜里 ～ 1 白天；DC.phase(钟点) "dawn" / "day" / "dusk" / "night"；
 --   DC.t0For(钟点, 服务器时刻) 要让「这一刻」是这个钟点，DayT0 该写多少
 local RS = game:GetService("ReplicatedStorage")
@@ -54,7 +55,16 @@ function DC.t0For(clock, now)
   return (now or DC.serverNow()) - DC.fracOf(clock) * DC.PERIOD
 end
 
+-- 训练场一直是白天（用户 11-28 夜「然后训练场改成持续百天吧」——持续白天）：训练场服务器（Places.lua 认出 PlaceRole = range、写在 ReplicatedStorage
+--   的属性上，客户端也读得到）钟点钉在 rangeClock 不走，服务器、客户端都是；别的服务器上试驾（战场这张雪山图上、老的训练场区块）
+--   由客户端 DayNight 换成同一个钟点（G.testDay）
+DC.RANGE_CLOCK = DN.rangeClock or 11
+function DC.rangePlace()
+  return RS:GetAttribute("PlaceRole") == "range"
+end
+
 function DC.clock()
+  if DC.rangePlace() then return DC.RANGE_CLOCK end
   if DN.lockNight then return DN.clock or 2.3 end
   local fix = workspace:GetAttribute("DayFix")
   if type(fix) == "number" then return fix % 24 end
