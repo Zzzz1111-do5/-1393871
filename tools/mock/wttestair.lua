@@ -182,6 +182,23 @@ local function mobilePitch()
 end
 
 print("① 机库阵容里的飞机：选中、右边「试驾」、跑道上起飞")
+-- 11-28 起新账号只白送地面树的一级车（飞机、直升机拿金币买，TechTree.pickStarter 只给 ground）：照原来的规则把这一系的
+--   起步飞机、直升机直接写进科技树存档、放进阵容（同 wtbr.lua），再照原样测试驾
+do
+  local t = G.treeOf(P)
+  local L2 = {}
+  for _, k in ipairs(G.treeLineup(P)) do table.insert(L2, k) end
+  for _, br in ipairs({ "air", "heli" }) do
+    local it = TT.pickStarter(TT.list[t.nat][br], br)
+    if it and not t.own[it.key] then
+      t.res[it.key], t.own[it.key] = true, true
+      table.insert(L2, it.key)
+    end
+  end
+  G.ACT.treeLineup(P, t.nat, L2)
+  G.treePublish(P)
+  R.run(1)
+end
 local keys = G.treeLineup(P)
 local airKey, heliKey
 for _, k in ipairs(keys) do
@@ -239,9 +256,9 @@ if eh and eh.air and C.fly then
   check(testMsg(n0) == "tree.testOnPad", "提示：在直升机坪上拉总距起飞（" .. tostring(testMsg(n0)) .. "）")
   fixes()
   local y0 = C.fly.cf.Position.Y
-  T.key(Enum.KeyCode.E, true)
+  T.key(Enum.KeyCode.W, true)   -- 直升机 W 提总距（11-28 起同战雷；原来是 E）
   T.runUntil(function() return C.fly == nil or C.fly.cf.Position.Y > y0 + 120 end, 20)
-  T.key(Enum.KeyCode.E, false)
+  T.key(Enum.KeyCode.W, false)
   R.run(1)
   local y1 = C.fly and C.fly.cf.Position.Y or y0
   check(y1 > y0 + 100, string.format("拉总距飞起来了（高了 %.0f 格）", y1 - y0))
@@ -296,6 +313,25 @@ end
 backToHangar()
 
 print("④ 地面车试驾也一样：匹配中照样能开炮打靶车")
+-- 11-28 起俄系白送的是 BMP-1（俄系地面树没有一级坦克；它的 73 毫米炮是自动装弹机，没有待发弹架可查）：
+--   先把这一系第一辆坦克写进科技树存档、排在阵容最前面（同上面①）
+do
+  local t = G.treeOf(P)
+  local VDx = R.require(RS:FindFirstChild("VehDefs"))
+  local tank = nil
+  for _, it in ipairs(TT.list[t.nat].ground) do
+    local d = VDx.get(it.play)
+    if d and d.cat == "tank" then tank = it break end
+  end
+  if tank and not t.own[tank.key] then
+    t.res[tank.key], t.own[tank.key] = true, true
+    local L2 = { tank.key }
+    for _, k in ipairs(G.treeLineup(P)) do table.insert(L2, k) end
+    G.ACT.treeLineup(P, t.nat, L2)
+    G.treePublish(P)
+    R.run(1)
+  end
+end
 local gKey
 for _, k in ipairs(G.treeLineup(P)) do   -- ③ 在科技树里点了俄国旗：机库跟着换成俄系的阵容
   local it = TT.byKey[k]
