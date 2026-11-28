@@ -771,7 +771,8 @@ function Round.init(G)
   -- 部署：装备栏（{ primary, launcher, gadget, throw }；老的兵种名也认）和出生点
   -- after：生出来以后接着做的（只有服务器自己调的时候给：科技树出击 Tech.lua 用它把人塞进车里；客户端发过来的参数里不会有函数）
   function G.ACT.deploy(P, choice, spawnId, after)
-    if R.phase ~= "battle" and R.phase ~= "prep" and not (R.phase == "queue" and P.testDeploy) then return end   -- 匹配中只能试驾（Tech.lua 置 P.testDeploy）
+    -- 匹配中只能试驾（Tech.lua 置 P.testDeploy）；试驾什么阶段都行（11-28：训练场开服就建，战场的图还没定、还没开局时主界面就能试驾）
+    if R.phase ~= "battle" and R.phase ~= "prep" and not P.testDeploy then return end
     if P.alive or now() < (P.canDeployAt or 0) then return end
     -- 战雷式（Config.Wt.noInfantry）：不能当步兵出去，只能从机库的出击阵容里挑车（Tech.lua deployVeh 自己调这里、带 after）
     if (Config.Wt or {}).noInfantry and type(after) ~= "function" and not G.allowInfantry then
@@ -784,10 +785,12 @@ function Round.init(G)
     --   原来准备阶段守方机场（af3）不在 PREP_OK 里、有的任务里机场出生点不在单子上，试驾飞机全被「出生点不可用」拦下
     local test = P.testDeploy == true
     P.testDeploy = nil
+    local testCF = test and P.testSpawnCF or nil   -- 试驾：人直接生在训练场（Tech.lua 给的位置；战场的出生点还没有也行）
+    P.testSpawnCF = nil
     local sp = nil
-    local list = spawnList(P.team, P)
+    local list = testCF and {} or spawnList(P.team, P)
     for _, s in ipairs(list) do if s.id == spawnId then sp = s end end
-    if test and not sp then sp = list[1] end
+    if test and not sp then sp = list[1] or (testCF and { id = "test", kind = "test", ok = true }) end
     if not sp or (not sp.ok and not test) then G.msg(P.pl, "bad", "ui.spawnBlocked") return end
     -- 准备阶段：后方、自己的据点和集结点；登陆艇也能上（艇在海上等着，开战一起冲滩）；不能先跳伞
     local PREP_OK = { fleet = true, cv = true, barge = true, af2 = true, camp = true, point = true, rally = true, beach = true, redbase = true, base = true }   -- redbase：沙海的前进基地；base：沙漠风暴两边的基地
@@ -799,7 +802,7 @@ function Round.init(G)
     P.role = kit.role
     P.kit = kit
     P.spawnId = spawnId
-    P.spawnCF = spawnCF(P, sp)
+    P.spawnCF = testCF or spawnCF(P, sp)
     P.after = (type(after) == "function") and after or nil
     if sp.kind == "beach" and G.boardBoat then
       P.spawnCF, P.after = G.boardBoat(P, sp.beach)
@@ -815,8 +818,20 @@ function Round.init(G)
   function G.ACT.pickMap(P, id)
     if type(id) ~= "string" then return end
     P.wantMap = id
+    -- 一张图一个服务器（Places.lua，用户 11-28）：这张图有自己的地点就传送过去（训练场服务器里点哪张都传：这里不打对战）；
+    --   没有自己地点的图在训练场里点，传回起始服务器（那边投票）
+    if G.teleport and G.placeFor and G.placeRole ~= id then
+      if G.placeFor(id) and G.teleport(P, id, { map = id }) then return end
+      if G.placeRole == "range" and G.placeFor("all") and G.teleport(P, "all", { map = id }) then return end
+    end
     if not G.mapId and G.voteMap and G.voteMap(P.pl, id) then
       G.pushAll()
+      return
+    end
+    -- 图已经定了、点的是另一张（用户 11-28 晚「然后目前没法切地图」：原来这一票什么也不做）：换过去——有自己地点的传送、
+    --   没有的开个新服务器传过去，Studio 里提示重新开始（Places.lua G.switchMap）
+    if G.mapId and id ~= G.mapId and G.switchMap then
+      G.switchMap(P, id)
       return
     end
     -- 这个服务器在打 PvE 关卡（Pve.lua）：只有自己一个人 → 退出关卡、改打对战重新开一局；有别人在打 → 加入他们
@@ -874,6 +889,15 @@ function Round.init(G)
   function G.addScore(P, n)
     P.score += n
     P.roundXp = (P.roundXp or 0) + n
+  end
+  -- 车 / 飞机被毁，里面的人跟着没了：照 hurtChar 记伤害来源（谁打的、击杀），打不死的（不在开战阶段——训练场随时能试驾；倒地）直接判死。
+  --   原来只调 hurtChar：试驾场不是开战阶段，hurtChar 一下不打，人卡在「活着、没车」——回不了机库、也试驾不了下一辆
+  --   （用户 11-27「我坠机能不能自动返回主页」；bounds.lua 量出来的）
+  function G.killCrew(char, src)
+    local hum = char and char:FindFirstChildOfClass("Humanoid")
+    if not hum or hum.Health <= 0 then return end
+    pcall(G.hurtChar, char, 1e5, src)
+    if hum.Parent and hum.Health > 0 then hum.Health = 0 end
   end
   -- 打伤一个玩家的角色（武器、爆炸、机器人都走这里）：src = { P 打人的玩家 / name 名字（机器人）, team }
   function G.hurtChar(char, amt, src, part)
@@ -1154,10 +1178,13 @@ function Round.init(G)
 
   local function clearChars()
     for _, P in pairs(G.P) do
-      if P.char and P.char.Parent then P.char:Destroy() end
-      P.char, P.alive, P.vehicle = nil, false, nil
-      P.canDeployAt = 0
-      pcall(function() P.pl.Character = nil end)   -- 测试台（Lune）不能把引用属性设成 nil
+      -- 在训练场试驾的不动（11-28：训练场开服就建，主界面就能试驾——投票定图、开局的时候人还在训练场里开着车，原来一开局就被清回机库）
+      if not P.inTest then
+        if P.char and P.char.Parent then P.char:Destroy() end
+        P.char, P.alive, P.vehicle = nil, false, nil
+        P.canDeployAt = 0
+        pcall(function() P.pl.Character = nil end)   -- 测试台（Lune）不能把引用属性设成 nil
+      end
     end
   end
 
@@ -1266,6 +1293,26 @@ function Round.init(G)
 
   function G.roundStep(dt)
     local t = now()
+    -- 战雷式对局（匹配）：这一局的真人都走了（「退出战斗」、掉线）——电脑车自己打下去没人看，白占服务器（用户 11-28 晚「现在太卡了」），
+    --   战场那张雪山图也一直被这一局占着、主界面试驾只能退回训练场区块（「为什么训练场现在还是没有雪山地图」，Tech.lua chooseRM）：
+    --   收掉这一局（车、残骸照开局那样清掉），回到匹配中
+    if (R.phase == "prep" or R.phase == "battle") and G.matchOn and G.matchOn() and not G.pve then
+      local any = false
+      for _, Q in pairs(G.P) do
+        if Q.match == R.n and Q.pl and Q.pl.Parent then any = true break end
+      end
+      if any then
+        R.emptyT = nil
+      else
+        R.emptyT = (R.emptyT or 0) + dt
+        if R.emptyT >= 5 then
+          R.emptyT = nil
+          print("[全面大战场] 这一局的真人都走了：收掉，回到匹配中")
+          G.roundStart()
+          return
+        end
+      end
+    end
     if R.phase == "queue" then   -- 匹配中：匹配够了（WtMatch.lua 的 queueStep）开准备阶段，排着的人坐进自己点的车
       if G.queueStep and G.queueStep(t) then
         R.phase = "prep"
@@ -1345,6 +1392,11 @@ function Round.init(G)
       queue = G.queueState and G.queueState() or nil,   -- 匹配中：{ n 排了几个人, need 凑满几个, left 还剩几秒, wait }（WtMatch.lua）
     }
   end
+  -- 这一局算他的（匹配进来 / 半路加入：P.match 是这一局的局号）、在准备 / 战斗阶段：机库是局内选车页（下面 personal 的 C.pick），
+  --   局内不能试驾（Tech.lua testDrive 按这个拦；同战雷的出击页）
+  function G.inMatch(P)
+    return P.match ~= nil and P.match == R.n and (R.phase == "prep" or R.phase == "battle")
+  end
   local function personal(P, C)
     local t = now()
     C.team = P.team
@@ -1353,8 +1405,9 @@ function Round.init(G)
     C.queued = P.queued   -- 匹配中：自己排着的那一辆（科技树的键；没排是 nil）
     -- 局内选车（用户 11-26：匹配完进局，再在局内的界面选载具；车毁了回到这个界面）：这一局算他的（匹配进来 / 半路加入）、现在没车 →
     --   客户端机库（TechUI.lua）就是选车页：主按钮「出击」、多一个「退出战斗」、先选中匹配时点的那一辆（pickPref）
-    local inMatch = P.match ~= nil and P.match == R.n and (R.phase == "prep" or R.phase == "battle") and not P.testDeploy
+    local inMatch = G.inMatch(P) and not P.testDeploy
     C.pick = (inMatch and not P.vehicle) or nil
+    C.inMatch = inMatch or nil   -- 这一局算他的（准备阶段坐在车里等开战：客户端 G.wtHold 锁住开车、起飞，WtBattle 正中倒计时）
     C.pickPref = C.pick and P.pickPref or nil
     C.myVote = (not G.mapId and G.mapVotes and G.mapVotes[P.pl]) or nil   -- 自己投的哪张（选地图界面高亮）
     C.rAtk, C.rDef = teamCount("atk", true), teamCount("def", true)   -- 选阵营界面：两边各有几个真人、能不能进

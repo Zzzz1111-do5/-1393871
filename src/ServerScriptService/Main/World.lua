@@ -77,7 +77,7 @@ local function sign(p, text, height, w, h, color, maxDist)
   local t = Instance.new("TextLabel")
   t.Size = UDim2.fromScale(1, 1)
   t.BackgroundTransparency = 1
-  t.Font = Enum.Font.BuilderSansExtraBold
+  t.Font = Enum.Font.BuilderSansBold
   t.TextScaled = true
   t.TextColor3 = color or Color3.new(1, 1, 1)
   t.TextStrokeTransparency = 0.3
@@ -130,10 +130,24 @@ World.floodPole = floodPole
 
 ---------------------------------------------------------------- 光影
 
--- 夜战（用户：交战全部设成夜晚——夜晚弥补画质，做出 3A 的质感）：凌晨两点多，月亮偏西、冷蓝的月光，环境光压得很低，远处深蓝灰的雾；
---   主要的光是枪口焰、爆炸、热诱弹、航行灯、跑道灯、甲板灯、营地探照灯（Future 光照：地图文件里设好了，脚本改不了）；夜视仪在客户端 Night.lua
+-- 昼夜更替（用户 11-25「给沙漠地图做个昼夜更替」；11-26「所有地图开局默认白天」）：光照由客户端 DayNight.lua 按钟点画，
+--   这里开服时先按当前钟点设一套（数和客户端同一份：ReplicatedStorage/LightLooks.lua）——原来这里写死夜里那套，开局在白天时，
+--   服务器这一下复制到客户端，画面先闪一下夜里、过 0.1 秒 DayNight 才改回来。还建好客户端要调的几样：大气、天空、泛光、调色
+--   用户 11-27 光影照战雷（LightLooks.lua 开头写了为什么这么调）：按图设纬度（太阳低一点、影子长一点）、全局风（烟尘、草顺着一个方向飘）
+-- LightLooks 读不到（脚本没换全）时的兜底：原来写死的那套（11-25 DayNight 的白天 / 夜里、11-22「视野无限远」的大气），按开服的钟点二选一——
+--   不能落到 Roblox 的默认值（Atmosphere 默认 Density 0.395：几百格外就灰成一片；泛光、调色也是默认的）。客户端 DayNight 那时也起不来，
+--   画面就停在这一套上（钟点不走），能玩、不难看
+local FALLBACK = {
+  day = { bright = 3.3, amb = RGB(56, 58, 64), oamb = RGB(104, 108, 116), top = RGB(255, 246, 230), bot = RGB(42, 38, 32), diff = 1, spec = 1, exp = 0.05,
+    shadow = 0.12, dens = 0.07, off = 0.06, acol = RGB(196, 208, 224), adec = RGB(96, 112, 136), glare = 0.35, haze = 0.3,
+    bloomI = 0.6, bloomS = 26, bloomT = 1.3, ccB = 0.02, ccC = 0.12, ccS = 0.08, ccTint = RGB(255, 251, 244) },
+  night = { bright = 2.2, amb = RGB(14, 17, 24), oamb = RGB(38, 45, 62), top = RGB(140, 160, 210), bot = RGB(8, 10, 16), diff = 0.35, spec = 0.9, exp = 0.55,
+    shadow = 0.3, dens = 0.085, off = 0.06, acol = RGB(44, 54, 76), adec = RGB(12, 15, 24), glare = 0.15, haze = 0.5,
+    bloomI = 1.1, bloomS = 36, bloomT = 1.05, ccB = 0.02, ccC = 0.14, ccS = -0.12, ccTint = RGB(222, 232, 255) },
+}
+World.LIGHT_FALLBACK = FALLBACK   -- 测试用
 function World.lighting()
-  -- 昼夜（用户 11-25「给沙漠地图做个昼夜更替」）：开服记一次这一圈从哪一刻起算，之后跨局接着走（ReplicatedStorage/DayClock.lua；客户端 DayNight.lua 画）
+  -- 开服记一次这一圈从哪一刻起算，之后跨局接着走（ReplicatedStorage/DayClock.lua；每局开局 Round.lua 拨回早上）
   pcall(function()
     if type(workspace:GetAttribute("DayT0")) ~= "number" then
       local DC = require(RS:WaitForChild("DayClock"))
@@ -141,48 +155,68 @@ function World.lighting()
       workspace:SetAttribute("DayT0", DC.t0For(DN.start or 15.5))
     end
   end)
-  pcall(function()
-    Lighting.ClockTime = 2.3
-    Lighting.GeographicLatitude = 23
-    Lighting.Brightness = 2.2
-    Lighting.GlobalShadows = true
-    Lighting.Ambient = RGB(14, 17, 24)
-    Lighting.OutdoorAmbient = RGB(38, 45, 62)
-    Lighting.ColorShift_Top = RGB(140, 160, 210)
-    Lighting.ColorShift_Bottom = RGB(8, 10, 16)
-    Lighting.EnvironmentDiffuseScale = 0.35
-    Lighting.EnvironmentSpecularScale = 0.9
-    Lighting.ShadowSoftness = 0.3
-    Lighting.ExposureCompensation = 0.55
-    Lighting.FogColor = RGB(16, 20, 30)
-    Lighting.FogStart = 900
-    Lighting.FogEnd = 100000   -- 视野放到很远（用户 11-22：「视野给我改成无限远」；远处的看不清改成客户端的景深模糊，DayNight.lua）
+  -- 这一局的战场那套（训练场那块由客户端按镜头换）；LightLooks 没换进来（脚本没换全）就用上面的兜底那套
+  local LL, v, key, clock = nil, nil, "city", 2.3
+  local okL, errL = pcall(function()
+    local DC = require(RS:WaitForChild("DayClock"))
+    clock = DC.clock()
+    LL = require(RS:WaitForChild("LightLooks", 10))   -- 等 10 秒（项目里等模块的规矩；原来 20 秒）
+    key = LL.keyFor(Map, nil)
+    v = LL.at(key, LL.weights(clock, DC))
   end)
+  if not okL then
+    warn("[全面大战场] 光照参数（ReplicatedStorage.LightLooks）读不了，先用原来的那套：" .. tostring(errL))
+    LL = nil
+    local okD, dk = pcall(function() return require(RS:WaitForChild("DayClock", 5)).dayK(clock) end)
+    v = (okD and type(dk) == "number" and dk >= 0.5) and FALLBACK.day or FALLBACK.night
+  end
+  -- 新版光照（Technology 弃用了）：LightingStyle = Realistic（写实：硬的太阳影子、高光）、PrioritizeLightingQuality = false。
+  --   后一项官方说明：画质档往下降的时候先降什么——true 先保住近处的高级阴影、高质量着色器（视野距离先缩），false 先保住视野距离
+  --   （光照、着色先降）；满画质时两样一样。用户 11-22 要「视野无限远」、11-27 要 M3 上非常丝滑（M3 跟不上时 Roblox 自动把画质档往下调）：false。
+  --   这两项游戏脚本写不了（API 的写权限是 PluginOrOpenCloud：只有插件、命令栏、Open Cloud 能改，同 Terrain.Decoration、StreamingEnabled），
+  --   真游戏里下面两行会被 pcall 吞掉，以地点文件为准：tools/build.luau、build_rbxlx.py 写好了；已经导入过的地点要在 Studio 里改一次
+  --   （Lighting 的属性里 PrioritizeLightingQuality 取消勾选，docs/import_guide.txt「三、只换脚本」）。留着这两行：模拟器里能写，测试照这个查
+  pcall(function() Lighting.LightingStyle = Enum.LightingStyle.Realistic end)
+  pcall(function() Lighting.PrioritizeLightingQuality = false end)
+  if v then pcall(function()
+    Lighting.ClockTime = math.floor(clock / 0.02 + 0.5) * 0.02
+    Lighting.GeographicLatitude = LL and (LL.LAT[key] or LL.LAT0) or 23
+    Lighting.Brightness = v.bright
+    Lighting.GlobalShadows = true
+    Lighting.Ambient = v.amb
+    Lighting.OutdoorAmbient = v.oamb
+    Lighting.ColorShift_Top = v.top
+    Lighting.ColorShift_Bottom = v.bot
+    Lighting.EnvironmentDiffuseScale = v.diff
+    Lighting.EnvironmentSpecularScale = v.spec
+    Lighting.ShadowSoftness = v.shadow
+    Lighting.ExposureCompensation = v.exp
+    Lighting.FogColor = v.acol
+    Lighting.FogStart = 900
+    Lighting.FogEnd = 100000   -- 视野放到很远（用户 11-22：「视野给我改成无限远」；远处的层次交给大气）
+  end) end
+  -- 全局风（格/秒）：WindAffectsDrag 的烟尘、地形的草、云都顺着它；暴风雨（客户端 Warfx.lua）在这个基础上往大了插
+  if LL then pcall(function() workspace.GlobalWind = LL.WIND[key] end) end
   pcall(function()
     local atm = Lighting:FindFirstChildOfClass("Atmosphere") or Instance.new("Atmosphere")
-    atm.Density = 0.085   -- 原来 0.3、0.21（用户：视野很短；11-22 改成无限远）：客户端昼夜（DayNight.lua）按这个量级再调
-    atm.Offset = 0.06
-    atm.Color = Map.DESERT and RGB(70, 60, 54) or RGB(44, 54, 76)   -- 沙漠图：暖褐的沙尘夜空
-    atm.Decay = Map.DESERT and RGB(22, 17, 14) or RGB(12, 15, 24)
-    atm.Glare = 0.15
-    atm.Haze = 0.5
+    if v then atm.Density, atm.Offset, atm.Color, atm.Decay, atm.Glare, atm.Haze = v.dens, v.off, v.acol, v.adec, v.glare, v.haze end
     atm.Parent = Lighting
   end)
-  pcall(function()   -- 星空、大一点的月亮
+  pcall(function()   -- 星空、大一点的月亮（雪山客户端换成银河天空盒、木卫三：SnowLook.lua）
     local sky = Lighting:FindFirstChildOfClass("Sky") or Instance.new("Sky")
     sky.StarCount = 6000
     sky.MoonAngularSize = 13
     sky.CelestialBodiesShown = true
     sky.Parent = Lighting
   end)
-  pcall(function()   -- 后期：亮的东西（灯、火、曳光）泛光；整体冷一点、对比高一点
+  pcall(function()   -- 后期：亮的东西（火球、闪光、灯、曳光）泛光；调色（DayNight 跟着钟点改）
     local bloom = Lighting:FindFirstChild("NightBloom") or Instance.new("BloomEffect")
     bloom.Name = "NightBloom"
-    bloom.Intensity, bloom.Size, bloom.Threshold = 1.1, 36, 1.05
+    if v then bloom.Intensity, bloom.Size, bloom.Threshold = v.bloomI, v.bloomS, v.bloomT end
     bloom.Parent = Lighting
     local cc = Lighting:FindFirstChild("NightGrade") or Instance.new("ColorCorrectionEffect")
     cc.Name = "NightGrade"
-    cc.Brightness, cc.Contrast, cc.Saturation, cc.TintColor = 0.02, 0.14, -0.12, RGB(222, 232, 255)
+    if v then cc.Brightness, cc.Contrast, cc.Saturation, cc.TintColor = v.ccB, v.ccC, v.ccS, v.ccTint end
     cc.Parent = Lighting
   end)
 end
@@ -313,11 +347,23 @@ World.terrainCal = function() return CAL end
 -- 雪山（MapSnow）：谷边山体模型脚下的体素只写一层壳（Map.shellCol 说这一列是壳）——几百上千格高的山整列填实心要几十亿个体素；
 --   壳从这一列和四邻里最低的那个往下 SHELL 格写到地面（陡坡上相邻两列的壳上下搭得上，侧面不漏缝），下面是空的（模型盖着，进不去）
 local SHELL = 16
+-- 训练场那一块（Zones.RANGE）的地形按训练场自己的图写（11-28：原来体素高度、壳、缓存、材质这几样问的是当前战场那张——
+--   雪山的 voxelHeight 在十万格外给的是海底，训练场的挡弹墙、丘陵在雪山图上写成了塌坑）
+local RANGE_P = nil
+local function chunkProfile(x0, z0)
+  local R = Map.Range
+  if R and Map.zoneOf and Map.zoneOf(x0 + 1, z0 + 1) == "range" then
+    RANGE_P = RANGE_P or { RES = 4, SEA_DEPTH = 30, height = R.height, material = R.material, underMat = R.underMat, GRASS = false }
+    return RANGE_P
+  end
+  return Map
+end
 local function writeChunk(T, x0, z0, n, yFloor, baseY)
-  local RES, N, D = Map.RES, n or 64, Map.SEA_DEPTH
-  local hfun = Map.voxelHeight or Map.height   -- 雪山：体素比山体模型表面低 4 格（藏在模型下面）
-  local shellCol = Map.shellCol
-  if shellCol and N > 16 and Map.hollowAt and Map.hollowAt(x0, z0) then
+  local MP = chunkProfile(x0, z0)
+  local RES, N, D = MP.RES or 4, n or 64, MP.SEA_DEPTH or 30
+  local hfun = MP.voxelHeight or MP.height   -- 雪山：体素比山体模型表面低 4 格（藏在模型下面）
+  local shellCol = MP.shellCol
+  if shellCol and N > 16 and MP.hollowAt and MP.hollowAt(x0, z0) then
     -- 大块里有壳：拆成 16 × 16 列一份写（一份上下跨度小，空气体素少）
     local v = 0
     for q = 0, (N // 16) * (N // 16) - 1 do
@@ -325,7 +371,7 @@ local function writeChunk(T, x0, z0, n, yFloor, baseY)
     end
     return v
   end
-  if Map.colCache then Map.colCache(true) end   -- 沙漠图：先算的高度顺手记下地貌，定材质时不用再算一遍
+  if MP.colCache then MP.colCache(true) end   -- 沙漠图：先算的高度顺手记下地貌，定材质时不用再算一遍
   local hs = table.create(N * N)
   local ymin, ymax = 1e9, -1e9
   for i = 0, N - 1 do
@@ -368,7 +414,7 @@ local function writeChunk(T, x0, z0, n, yFloor, baseY)
   -- 海底只写上面 30 格（大陆坡再往下是开头铺好的海水和远海海底：深水里看不见，写全了近岸的块要多两三倍体素）
   local DW = math.min(D, 30)
   if ymax <= -DW + 0.5 then   -- 整块都比 30 格深（海水、海底已经铺了）
-    if Map.colCache then Map.colCache(false) end
+    if MP.colCache then MP.colCache(false) end
     return 0
   end
   local yb0 = math.floor((math.max(ymin, -DW) - RES) / RES)
@@ -395,13 +441,13 @@ local function writeChunk(T, x0, z0, n, yFloor, baseY)
       if h > 0.3 then
         local hx1 = hs[math.min(N - 1, i + 1) * N + k + 1] - hs[math.max(0, i - 1) * N + k + 1]
         local hz1 = hs[i * N + math.min(N - 1, k + 1) + 1] - hs[i * N + math.max(0, k - 1) + 1]
-        top = Map.material(x, z, h, math.sqrt(hx1 * hx1 + hz1 * hz1) / (2 * RES))
+        top = MP.material(x, z, h, math.sqrt(hx1 * hx1 + hz1 * hz1) / (2 * RES))
         -- 草地：图上开了 Map.GRASS（海岛，用户 11-24 发截图「这种草给海岛地图加上」）照写 Grass，长 Roblox 会动的草叶——
         --   开关（Terrain.Decoration）和草长（GrassLength）脚本改不了，地点文件里的 Terrain 写好了（tools/build.luau）；
         --   别的图写成 LeafyGrass（不长草叶；用户 11-21 嫌草叶盖住履带、车轮、小人的腿，看着像半截身子在地里）
-        if top == Grass and not Map.GRASS then top = Leafy end
+        if top == Grass and not MP.GRASS then top = Leafy end
       end
-      local under = Map.underMat and Map.underMat(top) or ((h > 20) and Rock or (h > 0.3 and Ground or Sand))
+      local under = MP.underMat and MP.underMat(top) or ((h > 20) and Rock or (h > 0.3 and Ground or Sand))
       -- 最上面那层：序号 jT、占有率 oT（按开服量的网格器对照表，地面画出来正好在 h；没量出来同原来的写法）
       local jT, oT = surfAt(h, calFor(top))
       local sl = lo and lo[i * N + k + 1]   -- 壳的下沿（雪山山脚）：再往下是空的
@@ -425,7 +471,7 @@ local function writeChunk(T, x0, z0, n, yFloor, baseY)
       end
     end
   end
-  if Map.colCache then Map.colCache(false) end
+  if MP.colCache then MP.colCache(false) end
   local region = Region3.new(V(x0, yb0 * RES, z0), V(x0 + N * RES, yb1 * RES, z0 + N * RES))
   T:WriteVoxels(region, RES, M, O)
   return N * N * NY
@@ -441,7 +487,7 @@ end
 -- 地底只填到这里（原来 −40：整张图平地填 13 层体素——用户 11-24「沙海加载时间太长」；弹坑最深 5.5 格（Config.Battle.crater.maxDepth），16 格厚的地壳够了）
 local DESERT_BASE = -4
 local BG_BUDGET = 0.004   -- 开服以后后台铺地形：每帧最多花几秒（见下面 terrainDesert 的后台那段）
-local function terrainDesert(T, onProgress, G)
+local function terrainDesert(T, onProgress, G, bake)
   local SR, TILE, CH = Map.SEA_R, 2048, 256
   local NT = math.floor(2 * SR / TILE)   -- 一边几个大块
   local PH = (Map.PLAIN or 12) - 8       -- 垫底那层的顶
@@ -460,7 +506,8 @@ local function terrainDesert(T, onProgress, G)
   local bg, bgSide, since = false, 256, 0
   local function step()
     since += 1
-    if os.clock() - t0 > budget or since >= 8 then task.wait() t0 = os.clock() since = 0 end
+    -- 烘焙（Studio 编辑模式、没人在玩）：按 0.1 秒的预算让，不按份数（8 份一让的话一帧只写半块起伏地形，烘得慢一倍）
+    if os.clock() - t0 > budget or since >= (bake and 64 or 8) then task.wait() t0 = os.clock() since = 0 end
   end
   -- Roblox 论坛（2025-02，Roblox 员工）：Terrain 的 SmoothVoxelsUpgraded 是没做完的功能，开着时 FillBlock 慢几千到几万倍，要关着——读得到就查一下
   do
@@ -553,6 +600,47 @@ local function terrainDesert(T, onProgress, G)
     end
     return v
   end
+  -- 起伏小块写全之前垫的那层薄底（后台写到它之前这里不是个窟窿：车、人不会掉下去，天上看不到洞）：原来一律在平地往下 8 格铺沙——
+  --   雪山图的「沙」染成了黑沙滩的深灰，没写到的一块块成了深灰的大坑，车、树、靶车悬在半空（用户 11-28 晚截图「雪山图这一块一直加载不」）。
+  --   图上开了 Map.UNDERLAY_FOLLOW（雪山）：按这一块 3 × 3 个点里最低的地面往下 3 格铺、用这一块中间的地面材质（雪），
+  --   后台写全之前看着是一块略低一点的雪地，写的时候整块盖掉
+  local underTop = {}   -- [ckey] = 垫底那层的顶：这块起伏写全之前看得见的地面（G.terrainSeenH）
+  local function underlay(x0, z0)
+    local yTop, mat = PH, MAT.Sand
+    if Map.UNDERLAY_FOLLOW then
+      local hf = Map.voxelHeight or Map.height
+      local lo = math.huge
+      for i = 0, 2 do
+        for k = 0, 2 do
+          local h = hf(x0 + 16 + i * 112, z0 + 16 + k * 112)
+          if h < lo then lo = h end
+        end
+      end
+      if lo > 2 and lo < 1e6 then
+        yTop = math.floor((lo - 3) / 4) * 4
+        mat = Map.material(x0 + CH / 2, z0 + CH / 2, lo, 0)
+        if mat == MAT.Water or mat == MAT.Air then mat = MAT.Snow end
+      end
+    end
+    T:FillBlock(CF(x0 + CH / 2, yTop - 2, z0 + CH / 2), V(CH, 4, CH), mat)
+    underTop[ckey(x0, z0)] = yTop
+  end
+  -- 看得见的地面（用户 11-28 夜「目前飞机开一会就自动爆炸显示被ground击杀」）：后台还没写全的起伏块，真的山还没出来——只垫了底的
+  --   看得见的是垫的那层顶；整个大块还没铺的什么都没有（按海面算）；写全了的、平地照 Map.height（返回 nil）。
+  --   原来飞机按地图的高度函数判撞地，飞进没写到的山里（看着是一片低低的雪地、或者什么都没有）就炸了、显示被 ground 击杀。
+  --   Air.lua 判撞地按这个（客户端 Fly.lua 地形还在写时也先打一条射线看那里真有没有地形）；烘焙过的地形开服就全了，不走这里
+  if G then
+    G.terrainSeenH = function(x, z)
+      local x0, z0 = math.floor(x / CH) * CH, math.floor(z / CH) * CH
+      local k = ckey(x0, z0)
+      if reliefDone[k] then return nil end
+      local ix, iz = tileOf(x0 + 1, z0 + 1)
+      if ix < 0 or iz < 0 or ix >= NT or iz >= NT then return nil end   -- 地形外面（远处的平地、山）：照旧
+      if not tileDone[ix * 4096 + iz] then return -2 end
+      if kindOf[k] then return nil end   -- 平地：铺大块的时候就铺好了
+      return underTop[k] or -2
+    end
+  end
   local function tileFlat(ix, iz, onRelief)
     local tk = ix * 4096 + iz
     if tileDone[tk] then return false end
@@ -562,6 +650,7 @@ local function terrainDesert(T, onProgress, G)
     for i = 0, 7 do
       for k = 0, 7 do
         K[i * 8 + k + 1] = kindAt(tx + i * CH, tz + k * CH)
+        if bg and k % 2 == 1 then step() end   -- 后台：一块要打 81 个点，64 块一口气算完要几十毫秒（服务器顿一下）
       end
     end
     local used = {}
@@ -587,8 +676,8 @@ local function terrainDesert(T, onProgress, G)
         elseif not e then
           local x0, z0 = tx + i * CH, tz + k * CH
           -- onRelief 返回 true：这块马上就写全，不用垫；否则先垫一层薄底——后台写到它之前这里不是个窟窿（车、人不会掉下去，天上看不到洞）
-          if not reliefDone[ckey(x0, z0)] and not (onRelief and onRelief(x0, z0)) then
-            T:FillBlock(CF(x0 + CH / 2, PH - 2, z0 + CH / 2), V(CH, 4, CH), MAT.Sand)
+          if not reliefDone[ckey(x0, z0)] and not (onRelief and onRelief(x0, z0)) and not bake then   -- 烘焙：整张图一口气写全，不用垫
+            underlay(x0, z0)
             diag.fills += 1
             if bg then step() else pace() end
           end
@@ -661,57 +750,115 @@ local function terrainDesert(T, onProgress, G)
   end
   for _, c in ipairs(laterRelief) do queueRelief(c[1], c[2]) end
   if G then G.terrainRest, G.terrainTilesLeft = #tilesLeft + #reliefQ, #tilesLeft end
-  task.spawn(function()
+  local function bgLoop()
     local Players = game:GetService("Players")
+    -- 客户端看这个：地形还在后台写（Fly.lua 判撞地先看那里真有没有地形）；写完去掉
+    if not bake then pcall(function() workspace:SetAttribute("TerrainBusy", true) end) end
     -- 后台每帧最多 4 毫秒（B：原来 8——用户 11-25「然后现在特别卡」「坦克一直在抽搐」：开服后十几分钟一直在铺远处的平地，
     --   Studio 里点「开始」时服务器和客户端在同一台电脑上，服务器每帧花 8 毫秒铺地形，客户端跟着掉帧）；铺得慢一点，近处的照样插队先铺
     --   D：后台的平地切成 bgSide 见方一块块铺、起伏块分 16 份写（fill / reliefBg），单次调用也不会让服务器停一下
-    budget = BG_BUDGET
+    budget = bake and 0.1 or BG_BUDGET   -- 烘焙（Studio 编辑模式里一次写全）：每 0.1 秒让一帧，Studio 不会卡死
     bg = true
-    local bgT0, bgSay = os.clock(), os.clock() + 30
+    local bgT0, bgSay = os.clock(), os.clock() + (bake and 5 or 30)
     local urgentTiles, urgentRelief = {}, {}
     local seen = {}
-    local function want(p)   -- 这一点身边 ±6 个小块：还没铺的大块、还没写的起伏块排进插队
+    -- 这一点身边 ±6 个小块：还没铺的大块、还没写的起伏块排进插队。pri 0：真人（和他开的车、试驾的靶子）——先写；
+    --   pri 1：电脑开的车、机器人（开车按 Map.height 算，不用看画面）——真人身边的都写完了再写。用户 11-28 晚截图「雪山图这一块一直加载不」：
+    --   原来真人和十几辆电脑车身边的块混在一起按离各自多远排，真人身边那几块要跟两千多块抢
+    local function want(p, pri, rad)
+      pri, rad = pri or 0, rad or 6
       local cx0, cz0 = math.floor(p.X / CH), math.floor(p.Z / CH)
-      local here = ckey(cx0, cz0)
+      local here = ckey(cx0, cz0) * 2 + pri
       if seen[here] then return end   -- 好几个人挤在同一块：看一次就够
       seen[here] = true
-      for dx = -6, 6 do
-        for dz = -6, 6 do
+      for dx = -rad, rad do
+        for dz = -rad, rad do
           local x0, z0 = (cx0 + dx) * CH, (cz0 + dz) * CH
           if math.abs(x0 + CH / 2) < SR and math.abs(z0 + CH / 2) < SR then
             local ix, iz = tileOf(x0 + 1, z0 + 1)
-            if not tileDone[ix * 4096 + iz] then urgentTiles[ix * 4096 + iz] = { ix, iz } end
+            local sc0 = dx * dx + dz * dz + pri * 1000
+            if not tileDone[ix * 4096 + iz] then
+              local ut = urgentTiles[ix * 4096 + iz]
+              if not ut then urgentTiles[ix * 4096 + iz] = { ix, iz, sc0 } elseif sc0 < ut[3] then ut[3] = sc0 end
+            end
             local k = ckey(x0, z0)
             if kindOf[k] == nil then step() end   -- 这块的地貌还没算过（要打 81 个点）：算之前看一眼预算，扫描不再一口气算几千个点
-            if not reliefDone[k] and not urgentRelief[k] and kindAt(x0, z0) == false then urgentRelief[k] = { x0, z0, (dx * dx + dz * dz) } end
+            if not reliefDone[k] and kindAt(x0, z0) == false then
+              local sc = dx * dx + dz * dz + pri * 1000
+              local u = urgentRelief[k]
+              if not u then urgentRelief[k] = { x0, z0, sc } elseif sc < u[3] then u[3] = sc end
+            end
           end
         end
       end
     end
+    -- 每帧给后台多少：真人身边还有没写的块——8 毫秒（先把他身边写出来）；一个真人都没在场上（都在机库、主菜单）——12 毫秒（趁没人在打多写点）；
+    --   别的时候照旧 4 毫秒（开打以后服务器不卡）
+    local function setBudget()
+      if bake then return end
+      local mine = false
+      for _, c in pairs(urgentRelief) do if c[3] < 1000 then mine = true break end end
+      local anyAlive = false
+      for _, Q in pairs(G and G.P or {}) do if Q.alive then anyAlive = true break end end
+      budget = (mine and 0.008) or ((not anyAlive) and 0.012) or BG_BUDGET
+      if G then G.terrainBudget, G.terrainMinePending = budget, mine end
+    end
     local function scan()
       table.clear(seen)
+      -- 真人（和他开的车、试驾的靶子）先扫、先定预算：身边 ±6 块（一千五百格）。原来十几辆电脑车也一样 ±6 块、按实体的顺序扫——
+      --   头一回扫到一块要打 81 个点定地貌，十辆车两千来块，扫完才轮到真人
       for _, pl in ipairs(Players:GetPlayers()) do
         local ch = pl.Character
         local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-        if hrp then want(hrp.CFrame.Position) end
+        if hrp then want(hrp.CFrame.Position, 0) end
       end
+      local others = {}
       for _, e in ipairs(G and G.ents or {}) do   -- 机器人、车、飞机（飞得高的不管：底下没铺好看着是远景，不会掉下去）
         if e.alive and e.root and e.root.Parent then
           local p = e.root.CFrame.Position
-          if not e.air or p.Y < (Map.PLAIN or 12) + 600 then want(p) end
+          if not e.air or p.Y < (Map.PLAIN or 12) + 600 then
+            -- 试驾的靶机满天飞（用户 11-28 夜：真人飞机脚下的山一直排不上——靶机不停地把新的大块排进插队）：天上的靶子排在真人后面
+            if (e.driver ~= nil and e.driver.pl ~= nil) or e.testDrive == true or (e.testDummy == true and not e.air) then want(p, 0)
+            else others[#others + 1] = p end
+          end
         end
       end
+      setBudget()
+      -- 电脑开的车、机器人：身边 ±3 块（开车按 Map.height 算、不用看画面；炮弹打到它们附近的地面要有地形）
+      for _, p in ipairs(others) do want(p, 1, 3) end
+      setBudget()
+    end
+    -- 真人开的飞机正在这块里、而且比这块真的地面还低（飞进了还没写出来的山——看着是垫底的雪地，World.lua G.terrainSeenH /
+    --   Air.lua 按看得见的判、不炸）：这块先不写，等它飞走（不然山一下子长出来把飞机埋在里面，照样炸。用户 11-28 夜「飞机开一会就自动爆炸」）
+    local function airInside(x0, z0)
+      if not G then return false end
+      for _, e in ipairs(G.ents or {}) do
+        if e.air and e.alive and e.driver ~= nil and e.driver.pl ~= nil and e.root and e.root.Parent then
+          local p = e.root.CFrame.Position
+          if p.X > x0 - 96 and p.X < x0 + CH + 96 and p.Z > z0 - 96 and p.Z < z0 + CH + 96 then
+            local okH, h = pcall(Map.height, p.X, p.Z)
+            if okH and type(h) == "number" and p.Y < h + 40 then return true end
+          end
+        end
+      end
+      return false
     end
     local function urgentStep()
+      -- 插队的大块、起伏块一起按「离真人多近」排（原来先把插队的大块一个个铺完才轮到起伏块：靶机、电脑车身边不停冒出新的大块，
+      --   真人脚下的起伏块一直排不上）
+      local tBest, tk = nil, nil
       for k, t in pairs(urgentTiles) do
-        urgentTiles[k] = nil
-        if tileFlat(t[1], t[2], queueRelief) then return true end
+        if tileDone[k] then urgentTiles[k] = nil
+        elseif not tBest or (t[3] or 0) < (tBest[3] or 0) then tBest, tk = t, k end
       end
       local best, bk = nil, nil
       for k, c in pairs(urgentRelief) do
         if reliefDone[k] then urgentRelief[k] = nil
-        elseif not best or c[3] < best[3] then best, bk = c, k end
+        elseif (not best or c[3] < best[3]) and not airInside(c[1], c[2]) then best, bk = c, k end
+      end
+      if tBest and (not best or (tBest[3] or 0) <= best[3]) then
+        urgentTiles[tk] = nil
+        if tileFlat(tBest[1], tBest[2], queueRelief) then return true end
       end
       if best then
         urgentRelief[bk] = nil
@@ -722,6 +869,9 @@ local function terrainDesert(T, onProgress, G)
       return false
     end
     local scanAt, ti, ri, sorted = 0, 1, 1, false
+    -- 据点一带的起伏块：铺大块时排进来、一块一块写（原来在铺大块那一下里一口气写全——一个大块里几十块、一块六十多毫秒，
+    --   按每帧 4 毫秒要十几秒，这期间不看真人在哪：用户 11-28 晚截图「雪山图这一块一直加载不」，真人身边那块一直排不上）
+    local hotQ, hi = {}, 1
     while true do
       if os.clock() >= scanAt then
         scanAt = os.clock() + 0.5
@@ -729,16 +879,29 @@ local function terrainDesert(T, onProgress, G)
         if not okS then warn("[地形] 插队扫描出错：" .. tostring(errS)) end
       end
       if not urgentStep() then
-        if ti <= #tilesLeft then
+        if hi <= #hotQ then
+          local c = hotQ[hi]
+          hi += 1
+          local k = ckey(c[1], c[2])
+          if not reliefDone[k] then
+            if airInside(c[1], c[2]) then
+              table.insert(hotQ, c)   -- 飞机正在这块的山里：排到后面，等它飞走
+              task.wait(0.05)   -- 一次只看一眼（直升机悬停在里面时别空转、别把队排长）
+              t0, since = os.clock(), 0
+            else
+              reliefDone[k] = true
+              reliefBg(c[1], c[2])
+            end
+          end
+        elseif ti <= #tilesLeft then
           -- ②③ 大块：据点一带的先（tilesLeft 按离据点的距离排好了）；据点圈里的起伏块跟着写全
           local t = tilesLeft[ti]
           ti += 1
           local hot = t[3] <= TILE
           local did = tileFlat(t[1], t[2], function(x0, z0)
             if hot and distTo(hots, x0 + CH / 2, z0 + CH / 2) <= 0 then
-              reliefDone[ckey(x0, z0)] = true
-              reliefBg(x0, z0)
-              return true
+              table.insert(hotQ, { x0, z0 })   -- 先垫底，紧接着一块一块写（上面 hotQ）
+              return false
             end
             queueRelief(x0, z0)
             return false
@@ -758,31 +921,68 @@ local function terrainDesert(T, onProgress, G)
           ri += 1
           local k = ckey(c[1], c[2])
           if not reliefDone[k] then
-            reliefDone[k] = true
-            reliefBg(c[1], c[2])
+            if airInside(c[1], c[2]) then
+              table.insert(reliefQ, c)   -- 飞机正在这块的山里：排到最后，等它飞走
+              task.wait(0.05)   -- 一次只看一眼（直升机悬停在里面时别空转、别把队排长）
+              t0, since = os.clock(), 0
+            else
+              reliefDone[k] = true
+              reliefBg(c[1], c[2])
+            end
           end
         end
       end
       if G then
-        G.terrainRest = math.max(0, #tilesLeft - ti + 1) + math.max(0, #reliefQ - ri + 1)
+        G.terrainRest = math.max(0, #tilesLeft - ti + 1) + math.max(0, #reliefQ - ri + 1) + math.max(0, #hotQ - hi + 1)
         G.terrainTilesLeft = math.max(0, #tilesLeft - ti + 1)   -- 还没铺的大块（只减不增；terrainRest 里的起伏块是铺大块时才排进来的）
       end
-      if os.clock() >= bgSay then   -- 每 30 秒说一声还剩多少（卡不卡、是不是在铺地形，对照 Output 就知道）
-        bgSay = os.clock() + 30
-        print(string.format("[地形] 后台还在铺远处：剩 %d 项（已经 %.0f 秒，一共 %d 次 FillBlock）", G and G.terrainRest or -1, os.clock() - bgT0, diag.fills))
+      if os.clock() >= bgSay then   -- 每 30 秒说一声还剩多少（卡不卡、是不是在铺地形，对照 Output 就知道）；烘焙时 5 秒一次、带百分比
+        bgSay = os.clock() + (bake and 5 or 30)
+        if bake then
+          local doneN = (ti - 1) + (ri - 1) + (hi - 1)
+          local all = #tilesLeft + #reliefQ + #hotQ
+          print(string.format("[烘焙地形] %d%%（已经 %.0f 秒）", math.floor(100 * doneN / math.max(1, all)), os.clock() - bgT0))
+          if onProgress then onProgress(doneN / math.max(1, all)) end
+        else
+          print(string.format("[地形] 后台还在铺远处：剩 %d 项（已经 %.0f 秒，一共 %d 次 FillBlock）", G and G.terrainRest or -1, os.clock() - bgT0, diag.fills))
+        end
       end
     end
     if G then G.terrainRest = 0 end
+    pcall(function() workspace:SetAttribute("TerrainBusy", nil) end)
     print(string.format("[地形] 后台写完：一共 %d 次 FillBlock（%.2f 亿体素）、%d 块起伏（后台用了 %.0f 秒）；后台单次 FillBlock 最长 %.1f 毫秒，小块边长最后 %d 格",
       diag.fills, diag.vox / 1e8, diag.chunks, os.clock() - bgT0, diag.bgMax * 1000, bgSide))
-  end)
+  end
+  if bake then bgLoop() else task.spawn(bgLoop) end
   return total, #coreRelief + #reliefQ
 end
 
 -- 整个地形：海底沙、海水（分块 FillBlock），再按块写岛（每块之间让出一帧）；返回写了多少体素
-function World.terrain(onProgress, G)
+-- 烘焙好的地形（World.bake，用户 11-28 夜「然后卡顿问题你给他想办法解决」）：在 Studio 编辑模式里把整张图的地形一次写全、跟地点文件一起存下来，
+--   Terrain 的属性 Baked = 「图 | 地形版本」（Map.TERRAIN_VER，地形的算法一改就换版本号）。开服对得上：不再写地形——
+--   原来雪山图开服前只写两边基地一带，其余四千七百多块起伏地块开服以后在后台写十几二十分钟：服务器一直占着、客户端一直在重建地形网格，
+--   没写到的地方是一块块垫底的平地（截图「雪山图这一块一直加载不 这个图非常卡顿」）。对不上（烘的是别的图、旧版本）：清掉，照旧开服现写
+local function bakeKey() return tostring(Map.id) .. "|" .. tostring(Map.TERRAIN_VER) end
+function World.terrain(onProgress, G, bake)
   local T = workspace.Terrain
   local R, D = Map.R, Map.SEA_DEPTH
+  local baked = nil
+  pcall(function() baked = T:GetAttribute("Baked") end)
+  if not bake and Map.TERRAIN_VER and baked == bakeKey() then
+    print("[地形] 地点文件里已经烘焙好了这张图的地形（" .. baked .. "）：开服不再写")
+    if G then G.terrainRest, G.terrainTilesLeft, G.terrainBaked = 0, 0, true end
+    pcall(function() workspace:SetAttribute("TerrainBusy", nil) end)
+    if onProgress then onProgress(1) end
+    return 0, 0
+  end
+  if baked ~= nil or bake then
+    if baked ~= nil and not bake then
+      warn("[地形] 地点文件里烘焙的地形是「" .. tostring(baked) .. "」，跟这一局的图（" .. bakeKey() .. "）对不上：清掉，开服现写（卡十几分钟）。"
+        .. "要重新烘焙：停止游戏，在 Studio 的命令栏里跑 require(game.ServerScriptService.Main.TerrainBake)() ，跑完存档")
+    end
+    T:Clear()
+    pcall(function() T:SetAttribute("Baked", nil) end)
+  end
   pcall(function()
     T.WaterColor = Map.WATER_COLOR or RGB(30, 112, 136)   -- 雪山冰岛：北冰洋那种深灰蓝
     T.WaterTransparency = 0.5
@@ -818,7 +1018,7 @@ function World.terrain(onProgress, G)
       warn("[地形] 网格器校准没做成（" .. tostring(res) .. "）：照原来的写法")
     end
   end
-  if Map.chunkKind then return terrainDesert(T, onProgress, G) end
+  if Map.chunkKind then return terrainDesert(T, onProgress, G, bake) end
   local TILE = 2048
   for x = -R, R - TILE, TILE do
     for z = -R, R - TILE, TILE do
@@ -875,6 +1075,19 @@ function World.terrain(onProgress, G)
   end
   return total, #list
 end
+
+-- 烘焙地形（Studio 编辑模式的命令栏：require(game.ServerScriptService.Main.TerrainBake)() ，见 TerrainBake.lua）：清掉 Terrain，
+--   整张图一口气写全（同开服前 + 后台那一套，不垫底、不看人，每 0.1 秒让一帧），写完记下 Baked = 「图 | 地形版本」；存档以后开服就不再写
+function World.bake(mapId, onProgress)
+  mapId = mapId or "snow"
+  if Map.id ~= mapId and not Map.use(mapId) then error("没有这张图：" .. tostring(mapId)) end
+  if not Map.TERRAIN_VER then error("这张图（" .. tostring(mapId) .. "）没有地形版本号 Map.TERRAIN_VER：不能烘焙") end
+  local t0 = os.clock()
+  local n, chunks = World.terrain(onProgress, nil, true)
+  workspace.Terrain:SetAttribute("Baked", bakeKey())
+  return n, chunks, os.clock() - t0
+end
+World.bakeKey = bakeKey   -- 测试用
 
 World.writeChunk = function(T, x0, z0, n, yFloor)   -- 填坑（Battle.lua、Nuke.lua）：按当前地图的写法
   return writeChunk(T, x0, z0, n, yFloor)
@@ -936,6 +1149,15 @@ pcall(function()
   if type(sm) == "table" then
     BM = BM or {}
     for k, v in pairs(sm) do if BM[k] == nil then BM[k] = v end end
+  end
+end)
+-- 雪山的车辆残骸（WreckMeta，models/bld/wrecks.glb；用户 11-28「废弃的各种车等等让这个地图丰富起来」）：轿车、卡车、客车、拖拉机、
+--   铁路车皮、机车、飞机残骸 wk_*，同上并进来（MapSnow 的 Map.CIV 照它摆，SnowBuild.lua 盖）
+pcall(function()
+  local wm = RS:FindFirstChild("WreckMeta") and require(RS.WreckMeta)
+  if type(wm) == "table" then
+    BM = BM or {}
+    for k, v in pairs(wm) do if BM[k] == nil then BM[k] = v end end
   end
 end)
 -- 雪山中间的合掌村（VillageMeta，models/bld/village.glb；用户 11-27：村子照白川乡合掌村复刻）：合掌造 gs_*、神社鸟居灯笼钟楼 jp_*，同上并进来
@@ -1267,7 +1489,7 @@ local function building(f, key, x, z, rot, opt)
   end
   if n == 0 then spec.fb(m, base, w, h, d, spec) end
   -- 夜里：正门边一盏暖黄的壁灯（机库、塔台不要：机库有停机坪的探照灯，塔台顶上有红灯）
-  if key ~= "hangar" and key ~= "atc" then
+  if key ~= "hangar" and key ~= "atc" and not opt.noLight then   -- noLight：车辆残骸（雪山 Map.CIV）不要壁灯
     light(m, (base * CF(math.min(4.2, w * 0.18), math.min(8.6, h * 0.45), -d / 2 - 0.7)).Position, RGB(255, 196, 132), 0.5, 16, 0.9, nil, 2)
   end
   m:SetAttribute("Imported", n > 0)
@@ -1725,7 +1947,7 @@ local function deckText(m, cf, size, text, face)
   local t = Instance.new("TextLabel")
   t.Size = UDim2.fromScale(1, 1)
   t.BackgroundTransparency = 1
-  t.Font = Enum.Font.BuilderSansExtraBold
+  t.Font = Enum.Font.BuilderSansBold
   t.TextScaled = true
   t.Text = text
   t.TextColor3 = CV.white
@@ -1747,8 +1969,10 @@ local function carrierHull(m, base)
         local mp = s0:Clone()
         mp.Anchored = true
         mp.CanCollide, mp.CanQuery, mp.CanTouch = false, false, false
-        mp.Size = V(p.s[1], p.s[2], p.s[3]) * sc
-        mp.CFrame = base * CF(p.c[1] * sc, p.c[2] * sc, p.c[3] * sc) * TURN
+        -- CarrierMeta 的块中心、大小已经是游戏里的格（生成时按 scale 换算过，甲板面 Y = 30.5），不再缩放
+        --   （原来照楼房导入抄来的 `* sc`，这里没有 sc：导入了福建舰原模型就报 nil 算术错）
+        mp.Size = V(p.s[1], p.s[2], p.s[3])
+        mp.CFrame = base * CF(p.c[1], p.c[2], p.c[3]) * TURN
         mp.Color = RGB(p.col[1], p.col[2], p.col[3])
         mp.Material = MAT[p.mat] or MAT.Metal
         mp.Parent = m
@@ -2866,6 +3090,26 @@ function World.details(f)
 end
 
 -- 开服时建整张地图；地形分块写（要好几秒），写完才让人出生
+-- 小零件不投影子（用户 11-28「现在感觉有点卡」）：雪山一张图三万多块零件、一万六千块投影子——阴影图每帧要把它们再画一遍；
+--   一两格大的木桩、铁丝网、沙袋、栏杆、碎块投下的影子几乎看不出来。最长边不到 3 格、或者体积不到 6 立方格的不投影子（房子、墙、车壳照旧投）
+--   11-28 晚（「这个图非常卡顿」）：量过还有一万块在投（两边基地的防爆墙一边一千二、营房六百、谷里的工事五百）——门槛放宽：
+--   最长边不到 8 格（约 3 米）、体积不到 60 立方格、或者薄板（最薄的一边不到半格、最长边不到 24 格：栅栏、木板、铁皮）都不投；
+--   房子的墙、屋顶、桥、大的掩体照旧投
+function World.trimShadows(root)
+  local n = 0
+  for _, d in ipairs(root:GetDescendants()) do
+    if d:IsA("BasePart") and d.CastShadow then
+      local s = d.Size
+      local mx, mn = math.max(s.X, s.Y, s.Z), math.min(s.X, s.Y, s.Z)
+      if mx < 8 or s.X * s.Y * s.Z < 60 or (mn < 0.5 and mx < 24) then
+        d.CastShadow = false
+        n += 1
+      end
+    end
+  end
+  return n
+end
+
 function World.build(G)
   World.lighting()
   local root = folder("Map")
@@ -2910,6 +3154,7 @@ function World.build(G)
   end
   G.pointModels = World.points(folder("Points", root))
   G.decks = World.fleet(folder("Fleet", root))
+  G.shadowTrim = World.trimShadows(root)
   G.worldReady = true
 end
 

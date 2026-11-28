@@ -65,7 +65,11 @@ function Store.init(G)
   -- 设置（客户端 Settings.lua，用户 11-25「那个设置界面不好看 重做」）：灵敏度、反转 Y、视野、镜头晃动、音量、车组语音——
   --   只收认得的键、数字夹在范围里；存在 P.data.prefs，给客户端写玩家属性 Prefs（JSON）；改了 10 秒后存一次档（连着拖滑块只存一次）
   local PREFS = { sens = { 0.25, 2.5 }, aim = { 0.25, 2.0 }, fov = { 60, 90 }, fovAir = { 60, 90 }, vol = { 0, 1 }, ui = { 0.85, 1.3 }, gamma = { -0.1, 0.1 },
-    invY = true, shake = true, voice = true, lang = { s = { [""] = true, zh = true, en = true } } }
+    invY = true, shake = true, voice = true, lang = { s = { [""] = true, zh = true, en = true } },
+    airAim = { s = { mouse = true, kb = true } }, camRoll = { 0, 1 }, autoGear = true,   -- 空战：操纵方式、镜头滚转、自动收起落架
+    sensAir = { 0.25, 2.5 }, sensVeh = { 0.25, 2.5 },   -- 开飞机 / 开车的鼠标灵敏度（用户 11-28「玩家要能调灵敏度」）
+    pv = { 1, 99 },   -- 设置的版本（Settings.lua：老存档的默认值换新默认时用）
+    gfx = { s = { auto = true, low = true, mid = true, high = true, ultra = true } } }   -- 画质（用户 11-28「设置里增加一个画质调整」）
   local function prefsAttr(P)
     local t = (P.data and P.data.prefs) or P.prefsEarly or {}
     local ok, js = pcall(function() return Http:JSONEncode(t) end)
@@ -221,6 +225,20 @@ function Store.init(G)
     s.dirty = true
     if P.leaving then s.final = true end
     if not s.busy then task.spawn(writer, P) end
+  end
+  -- 马上写一次、等它写完（金币充值 Shop.lua：存档写进去了才告诉 Roblox 发货成功——ProcessReceipt）；返回写进去没有
+  --   跟上面的写手并行也没事：UpdateAsync 一次一个、版本号在里面算；写进去的 JSON 记下（写手看到一样的就不再写）
+  function G.saveNow(P)
+    if not (store and P and P.data and P.canSave) then return false end
+    local data, js = snap(P)
+    if not data then return false end
+    local ok, err = writeOnce(P, data)
+    if ok then
+      stOf(P).js = js
+    else
+      warn("[存档] " .. tostring(P.pl and P.pl.Name) .. " 的存档马上写没写进去：" .. tostring(err))
+    end
+    return ok == true
   end
   -- 离开：Round.lua 先发 left 再调 G.saveData，这里先记下「在离开」——那一次就是最后一次，马上写
   G.on("left", function(P) P.leaving = true end)

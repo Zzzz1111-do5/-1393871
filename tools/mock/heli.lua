@@ -1,5 +1,6 @@
 -- 直升机操纵测试（模拟器）：python3 tools/mock/run.py tools/mock/heli.lua [v]
---   用户：升降 E 升、Q 降（Q 升 E 降之后又改回来）；W / S 前后、A / D 转向；鼠标只转镜头、瞄机炮（不再带着飞机转）
+--   11-28 起照战雷的鼠标瞄准（用户「直升机……反正就弄成和战雷一样就行」）：W 升、S 降（松开自动定高）；鼠标准心定方向
+--   （往下前倾往前飞、往上后仰减速）；A / D 侧飞；Q / E 转机头（转准心）。原来 E 升 Q 降、W / S 前推后拉
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
@@ -18,9 +19,12 @@ me:SetAttribute("Side", "atk")
 G.pushOne(P)
 R.run(1)
 local C = T.C
-T.act("deploy", "rifle", "af2")
+G.allowInfantry = true   -- 先当步兵出生，再走过去坐进测试放的直升机（11-25 起只开载具：同 wtcrisp.lua）
+if C.menuShown and C.menuShown() then C.menuEnter() end
+T.actAs(me, "deploy", "rifle", "base")
 R.run(2)
-check(P.alive, "出生了")
+check(P.alive and me.Character ~= nil, "出生了")
+if not me.Character then T.summary() return end
 
 print("① 在机场岛上放一架直升机、坐进去，等旋翼转起来")
 local A2 = G.Map.AFIELD2
@@ -47,36 +51,39 @@ local function keyShown(k)
 end
 R.run(0.2)
 check(#T.texts("^" .. (C.T("coach.spool"):gsub("%p", "%%%0")) .. "$") > 0, "旋翼还没转起来：提示等转速到 100%")
-check(C.coachCard and C.coachCard() == "heli" and #T.texts((C.T("coach.card.heli.2"):gsub("%p", "%%%0"))) > 0, "第一次开直升机：左边弹出三步卡（第二步写着 E 升、Q 降）")
+check(C.coachCard and C.coachCard() == "heli" and #T.texts((C.T("coach.card.heli.2"):gsub("%p", "%%%0"))) > 0, "第一次开直升机：左边弹出三步卡（第二步写着 W 升、S 降）")
 T.runUntil(function() return st.rpm and st.rpm >= 95 end, 15)
 check(st.rpm >= 95, string.format("旋翼转起来了（%.0f%%）", st.rpm))
 R.run(0.2)
-check(keyShown("E/Q") and keyShown("W/S") and keyShown("A/D") and #T.texts("^" .. C.T("coach.updown") .. "$") > 0,
-  "能飞了：最下面一排换成 鼠标 机头朝向、E/Q 升降、W/S 前倾 / 刹车、A/D 侧飞……")
+check(keyShown("W/S") and keyShown("A/D") and keyShown("Q/E") and not keyShown("E/Q") and #T.texts("^" .. C.T("coach.updown") .. "$") > 0,
+  "能飞了：最下面一排换成 鼠标 机头朝向、W/S 升降、A/D 侧飞、Q/E 转机头……（同战雷）")
 T.tap(Enum.KeyCode.Return)
 R.run(0.2)
 check(C.coachCard() == nil and me:GetAttribute("Seen") and me:GetAttribute("Seen"):find("heli", 1, true), "回车关上三步卡；服务器记下看过了（" .. tostring(me:GetAttribute("Seen")) .. "）")
 
-print("② E 升、Q 降")
+print("② W 升、S 降（同战雷：W / S 是总距）")
 local y0 = st.cf.Position.Y
-T.key(Enum.KeyCode.E, true)
+T.key(Enum.KeyCode.W, true)
 R.run(4)
-T.key(Enum.KeyCode.E, false)
+T.key(Enum.KeyCode.W, false)
 local y1 = st.cf.Position.Y
-check(y1 > y0 + 25 and not st.ground, string.format("按住 E 往上升（%.0f → %.0f 格）", y0, y1))
+check(y1 > y0 + 25 and not st.ground, string.format("按住 W 往上升（%.0f → %.0f 格）", y0, y1))
 R.run(2)
 local y2 = st.cf.Position.Y
-T.key(Enum.KeyCode.Q, true)
+T.key(Enum.KeyCode.S, true)
 R.run(2)
-T.key(Enum.KeyCode.Q, false)
+T.key(Enum.KeyCode.S, false)
 local y3 = st.cf.Position.Y
-check(y3 < y2 - 5, string.format("按住 Q 往下降（%.0f → %.0f 格）", y2, y3))
-T.key(Enum.KeyCode.E, true)
+check(y3 < y2 - 5, string.format("按住 S 往下降（%.0f → %.0f 格）", y2, y3))
+T.key(Enum.KeyCode.W, true)
 R.run(4)
-T.key(Enum.KeyCode.E, false)
+T.key(Enum.KeyCode.W, false)
 R.run(2)
+local y4 = st.cf.Position.Y
+R.run(3)
+check(math.abs(st.cf.Position.Y - y4) < 6, string.format("松开 W / S：自动定高（3 秒高度差 %.1f 格）", st.cf.Position.Y - y4))
 
-print("③ W 桨盘前倾往前冲；松杆桨盘回平、人还往前飘（有惯性）；S 往后带杆刹车")
+print("③ 准心往下桨盘前倾往前冲；准心放平桨盘回平、人还往前飘（有惯性）；准心往上往后带杆刹车")
 local function fwdSpeed()
   local f = V3(-math.sin(st.yaw), 0, -math.cos(st.yaw))
   return st.hv:Dot(f)
@@ -85,22 +92,41 @@ local function sideSpeed()
   local r = V3(math.cos(st.yaw), 0, -math.sin(st.yaw))
   return st.hv:Dot(r)
 end
+local AIM0 = -0.15   -- 坐进来时镜头的俯仰：这时桨盘是平的
 local v0 = fwdSpeed()
-T.key(Enum.KeyCode.W, true)
+st.camPitch = AIM0 - 0.35   -- 准心往下 20°
 R.run(4)
 local v1 = fwdSpeed()
-check(st.tiltP < -0.15, string.format("桨盘往前倾了（%.0f°）", math.deg(st.tiltP)))
+check(st.tiltP < -0.15, string.format("准心往下：桨盘往前倾了（%.0f°）", math.deg(st.tiltP)))
 check(v1 > v0 + 25, string.format("往前冲（前进速度 %.0f → %.0f 格 / 秒）", v0, v1))
-T.key(Enum.KeyCode.W, false)
+st.camPitch = AIM0
 R.run(1.5)
 local vc = fwdSpeed()
-check(math.abs(st.tiltP) < 0.12 and vc > v1 * 0.6, string.format("松开 W：桨盘回平（%.0f°），速度还留着（%.0f → %.0f），不会一下停住", math.deg(st.tiltP), v1, vc))
-T.key(Enum.KeyCode.S, true)
+check(math.abs(st.tiltP) < 0.12 and vc > v1 * 0.6, string.format("准心放平：桨盘回平（%.0f°），速度还留着（%.0f → %.0f），不会一下停住", math.deg(st.tiltP), v1, vc))
+st.camPitch = AIM0 + 0.3
 R.run(3)
-T.key(Enum.KeyCode.S, false)
+st.camPitch = AIM0
 local v2 = fwdSpeed()
-check(v2 < vc - 10, string.format("按 S 往后带杆刹车（%.0f → %.0f）", vc, v2))
+check(v2 < vc - 10, string.format("准心往上：往后带杆刹车（%.0f → %.0f）", vc, v2))
+R.run(1.5)   -- 桨盘回平（二阶弹簧，一秒多到位）
+local tw0 = st.tiltP
+T.key(Enum.KeyCode.W, true)
+R.run(0.5)
+T.key(Enum.KeyCode.W, false)
+check(math.abs(st.tiltP) < 0.12 and math.abs(st.tiltP - tw0) < 0.05,
+  string.format("按 W 不再前推杆（W 是升降）：桨盘 %.1f° → %.1f°", math.deg(tw0), math.deg(st.tiltP)))
 R.run(6)
+-- Q / E 转机头（转准心，机头跟过去；松开不被拽回去）
+local yq0, cq0 = st.yaw, st.camYaw
+T.key(Enum.KeyCode.E, true)
+R.run(1)
+T.key(Enum.KeyCode.E, false)
+local dcam = (st.camYaw - cq0 + math.pi) % (2 * math.pi) - math.pi
+check(dcam < -0.3, string.format("按住 E：准心往右转（%.0f°）", -math.deg(dcam)))
+R.run(2.5)
+local dn = (st.yaw - st.camYaw + math.pi) % (2 * math.pi) - math.pi
+check(math.abs(dn) < 0.06 and math.abs(((st.yaw - yq0 + math.pi) % (2 * math.pi) - math.pi) - dcam) < 0.1,
+  string.format("机头跟着转到那边、松开不被拽回去（还差 %.1f°）", math.deg(dn)))
 
 print("④ 准心决定机头朝向：鼠标转准心，机头跟过去（尾桨有惯性，不一下到位）；A / D 侧飞；按住 Alt 自由看")
 local function angd(a, b) return (b - a + math.pi) % (2 * math.pi) - math.pi end
@@ -130,7 +156,7 @@ R.run(0.2)
 check(math.abs(angd(cy, st.camYaw)) < 0.01, "松开 Alt：准心回到原来的方向")
 
 print("⑤ 快速前飞时转机头：桨盘自动往那边压坡度，航迹跟着机头弯过去")
-T.key(Enum.KeyCode.W, true)
+st.camPitch = AIM0 - 0.35   -- 准心往下：往前飞
 R.run(6)
 local sp0 = st.hv.Magnitude
 local yaw4 = st.yaw
@@ -145,10 +171,9 @@ local hu = (st.hv.Magnitude > 1) and st.hv.Unit or f4
 local off = math.deg(math.acos(math.max(-1, math.min(1, hu:Dot(f4)))))
 check(bankMax > 0.12, string.format("往右转时桨盘往右压坡度（最大 %.0f°，速度 %.0f 格 / 秒）", math.deg(bankMax), sp0))
 check(off < 35, string.format("五秒后航迹跟着机头弯过去了（还差 %.0f°）", off))
-T.key(Enum.KeyCode.W, false)
-T.key(Enum.KeyCode.S, true)
+st.camPitch = AIM0 + 0.3   -- 准心往上：刹车
 R.run(3)
-T.key(Enum.KeyCode.S, false)
+st.camPitch = AIM0
 R.run(3)
 local p = st.cf.Position
 check(p.X == p.X and p.Y == p.Y and p.Z == p.Z, "位置正常（没有 NaN）")
@@ -181,13 +206,13 @@ check(noseLeft > 0.45 and gunLeft > 25, string.format("准心一甩：机身才�
 check(math.abs(math.rad(gunLeft) - noseLeft) < noseLeft * 0.35, string.format("炮比机身先对上准心（炮还差 %.0f°，机身还差 %.0f°）", math.abs(math.deg(noseLeft) - gunLeft), math.deg(noseLeft)))
 R.run(4)
 -- 开了一会儿（看过三步卡的 10 秒后）：最下面收成一个「F1 全部按键」；F1 打开全部按键（原来最下面那一整行说明的全文）
-check(keyShown("F1") and not keyShown("E/Q"), "开了一会儿：最下面收成「F1 全部按键」")
+check(keyShown("F1") and not keyShown("Q/E"), "开了一会儿：最下面收成「F1 全部按键」")
 T.tap(Enum.KeyCode.F1)
 R.run(0.2)
 local panel = me.PlayerGui:FindFirstChild("CoachPanel", true)
-local qd = C.T("air.helpHeli"):match("E ([^·]-)%s*·")   -- 「升 / Q 降」：E 那一格的动作
-check(panel and T.visible(panel) and keyShown("E") and keyShown("A/D") and keyShown("F") and qd and #T.texts("^" .. qd:gsub("%p", "%%%0") .. "$") > 0,
-  "F1：全部按键面板（E 升 / Q 降、A/D 侧飞、F 导弹……）")
+local qd = C.T("air.helpHeli"):match("W ([^·]-)%s*·")   -- 「升 / S 降（松开自动定高）」：W 那一格的动作
+check(panel and T.visible(panel) and keyShown("W") and keyShown("A/D") and keyShown("Q/E") and keyShown("F") and qd and #T.texts("^" .. qd:gsub("%p", "%%%0") .. "$") > 0,
+  "F1：全部按键面板（W 升 / S 降、A/D 侧飞、Q/E 转机头、F 导弹……）")
 T.tap(Enum.KeyCode.F1)
 R.run(0.2)
 check(not T.visible(panel), "再按 F1 关上")

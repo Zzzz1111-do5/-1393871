@@ -44,7 +44,7 @@ function MapPick.init(G)
     if anchor then l.AnchorPoint = anchor end
     l.BackgroundTransparency = 1
     l.Text, l.TextSize, l.TextColor3 = s, ts or 14, color or WHITE
-    l.Font = font or Enum.Font.BuilderSansMedium
+    l.Font = font or Enum.Font.BuilderSans
     l.TextXAlignment = align or Enum.TextXAlignment.Left
     l.TextWrapped = true
     l.Parent = parent
@@ -71,12 +71,12 @@ function MapPick.init(G)
   if workspace.CurrentCamera then workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fit) end
 
   local cat = text(content, "", UDim2.fromOffset(400, 14), UDim2.fromOffset(0, 34), 11, MUTE)
-  local head = text(content, "", UDim2.fromOffset(700, 40), UDim2.fromOffset(0, 50), 34, WHITE, Enum.Font.BuilderSansBold)
+  local head = text(content, "", UDim2.fromOffset(700, 40), UDim2.fromOffset(0, 50), 34, WHITE, Enum.Font.BuilderSansMedium)
   local sub = text(content, "", UDim2.fromOffset(900, 16), UDim2.fromOffset(0, 96), 12, MUTE)
   local back = Instance.new("TextButton")
   back.Size, back.Position, back.AnchorPoint = UDim2.fromOffset(120, 28), UDim2.new(1, 0, 0, 50), V2(1, 0)
   back.BackgroundTransparency, back.BorderSizePixel = 1, 0
-  back.TextColor3, back.TextSize, back.Font = MUTE, 13, Enum.Font.BuilderSansMedium
+  back.TextColor3, back.TextSize, back.Font = MUTE, 13, Enum.Font.BuilderSans
   back.TextXAlignment = Enum.TextXAlignment.Right
   back.Parent = content
   frame(content, UDim2.new(1, 0, 0, 1), UDim2.fromOffset(0, 124), WHITE, 0.88)
@@ -210,23 +210,23 @@ function MapPick.init(G)
     g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 0) })
     g.Parent = fade
     K.bar = frame(b, UDim2.new(1, 0, 0, 3), nil, ACCENT[id] or WHITE, 0)
-    K.mode = text(b, "", UDim2.fromOffset(CW - 48, 16), UDim2.fromOffset(24, PH - 30), 11 + TS, ACCENT[id] or MUTE, Enum.Font.BuilderSansBold)
-    K.name = text(b, "", UDim2.fromOffset(CW - 46, 34), UDim2.fromOffset(22, PH + 12), 30, WHITE, Enum.Font.BuilderSansBold)
-    K.size = text(b, "", UDim2.fromOffset(CW - 48, 16), UDim2.fromOffset(24, PH + 52), 13 + TS, MUTE, Enum.Font.BuilderSansMedium)
+    K.mode = text(b, "", UDim2.fromOffset(CW - 48, 16), UDim2.fromOffset(24, PH - 30), 11 + TS, ACCENT[id] or MUTE, Enum.Font.BuilderSansMedium)
+    K.name = text(b, "", UDim2.fromOffset(CW - 46, 34), UDim2.fromOffset(22, PH + 12), 30, WHITE, Enum.Font.BuilderSansMedium)
+    K.size = text(b, "", UDim2.fromOffset(CW - 48, 16), UDim2.fromOffset(24, PH + 52), 13 + TS, MUTE, Enum.Font.BuilderSans)
     -- 说明到「正在打」那一行之间都给它（三张并排时一行 26 个字左右，沙海的说明要三行）
     local nowY = CH - 24 - 40 - 12 - 16
-    K.desc = text(b, "", UDim2.fromOffset(CW - 48, nowY - 8 - (PH + 78)), UDim2.fromOffset(24, PH + 78), 13 + TS, RGB(214, 218, 222), Enum.Font.BuilderSansMedium)
+    K.desc = text(b, "", UDim2.fromOffset(CW - 48, nowY - 8 - (PH + 78)), UDim2.fromOffset(24, PH + 78), 13 + TS, RGB(214, 218, 222), Enum.Font.BuilderSans)
     K.desc.TextYAlignment = Enum.TextYAlignment.Top
-    K.now = text(b, "", UDim2.fromOffset(CW - 48, 16), UDim2.fromOffset(24, nowY), 11 + TS, MUTE, Enum.Font.BuilderSansMedium)
+    K.now = text(b, "", UDim2.fromOffset(CW - 48, 16), UDim2.fromOffset(24, nowY), 11 + TS, MUTE, Enum.Font.BuilderSans)
     -- 按钮横跨整张卡的底边（原来 180 宽靠右，窄卡上和「正在打 · 几名玩家」那行挤在一起）
     K.go = Instance.new("TextLabel")
     K.go.Size, K.go.Position = UDim2.new(1, -48, 0, 40), UDim2.new(0, 24, 1, -64)
     K.go.BackgroundColor3, K.go.BorderSizePixel = WHITE, 0
-    K.go.TextColor3, K.go.TextSize, K.go.Font = RGB(10, 10, 12), 15 + TS, Enum.Font.BuilderSansBold
+    K.go.TextColor3, K.go.TextSize, K.go.Font = RGB(10, 10, 12), 15 + TS, Enum.Font.BuilderSansMedium
     K.go.TextTruncate = Enum.TextTruncate.AtEnd
     K.go.Parent = b
     -- 票数（投票中才有）：缩略图右上角一块深色小牌
-    K.votes = text(b, "", UDim2.fromOffset(96, 26), UDim2.new(1, -14, 0, 16), 13 + TS, WHITE, Enum.Font.BuilderSansBold, V2(1, 0), Enum.TextXAlignment.Center)
+    K.votes = text(b, "", UDim2.fromOffset(96, 26), UDim2.new(1, -14, 0, 16), 13 + TS, WHITE, Enum.Font.BuilderSansMedium, V2(1, 0), Enum.TextXAlignment.Center)
     K.votes.BackgroundColor3, K.votes.BackgroundTransparency = RGB(8, 10, 12), 0.25
     K.votes.Visible = false
     for _, l in ipairs({ K.bar, K.mode, K.name, K.size, K.desc, K.now, K.go, K.votes }) do l.ZIndex = 3 end   -- 字在缩略图上面
@@ -243,7 +243,7 @@ function MapPick.init(G)
     b.Name = "Tab_" .. k
     b.Size, b.Position, b.AnchorPoint = UDim2.fromOffset(150, 30), UDim2.new(1, -150 - (2 - i) * 160 - 140, 0, 50), V2(0, 0)
     b.BackgroundColor3, b.BorderSizePixel = RGB(16, 18, 20), 0
-    b.TextSize, b.Font = 13, Enum.Font.BuilderSansBold
+    b.TextSize, b.Font = 13, Enum.Font.BuilderSansMedium
     b.AutoButtonColor = true
     b.Parent = content
     tabs[k] = { b = b, st = stroke(b, 0.8) }
@@ -275,12 +275,12 @@ function MapPick.init(G)
     local st = stroke(b, 0.86)
     frame(b, UDim2.new(1, 0, 0, 3), nil, ACCENT[L.map] or WHITE, 0)
     local K = { b = b, st = st, L = L, n = n }
-    K.num = text(b, "", UDim2.fromOffset(LW - 32, 14), UDim2.fromOffset(16, 16), 11, ACCENT[L.map] or MUTE, Enum.Font.BuilderSansBold)
-    K.name = text(b, "", UDim2.fromOffset(LW - 32, 30), UDim2.fromOffset(16, 34), 24, WHITE, Enum.Font.BuilderSansBold)
+    K.num = text(b, "", UDim2.fromOffset(LW - 32, 14), UDim2.fromOffset(16, 16), 11, ACCENT[L.map] or MUTE, Enum.Font.BuilderSansMedium)
+    K.name = text(b, "", UDim2.fromOffset(LW - 32, 30), UDim2.fromOffset(16, 34), 24, WHITE, Enum.Font.BuilderSansMedium)
     K.map = text(b, "", UDim2.fromOffset(LW - 32, 16), UDim2.fromOffset(16, 74), 12, MUTE)
     K.goal = text(b, "", UDim2.fromOffset(LW - 32, 16), UDim2.fromOffset(16, 100), 13, RGB(214, 218, 222))
     K.forces = text(b, "", UDim2.fromOffset(LW - 32, 16), UDim2.fromOffset(16, 122), 13, RGB(214, 218, 222))
-    K.reward = text(b, "", UDim2.fromOffset(LW - 32, 32), UDim2.fromOffset(16, 146), 13, RGB(255, 206, 96), Enum.Font.BuilderSansBold)
+    K.reward = text(b, "", UDim2.fromOffset(LW - 32, 32), UDim2.fromOffset(16, 146), 13, RGB(255, 206, 96), Enum.Font.BuilderSansMedium)
     K.reward.TextYAlignment = Enum.TextYAlignment.Top
     -- 作战简报（敌情、任务、友军）：三行小字
     K.brief = text(b, "", UDim2.fromOffset(LW - 32, 50), UDim2.fromOffset(16, 180), 11, RGB(176, 182, 190))
@@ -288,7 +288,7 @@ function MapPick.init(G)
     K.state = Instance.new("TextLabel")
     K.state.Size, K.state.Position, K.state.AnchorPoint = UDim2.fromOffset(150, 34), UDim2.new(1, -16, 1, -16), V2(1, 1)
     K.state.BackgroundColor3, K.state.BorderSizePixel = WHITE, 0
-    K.state.TextSize, K.state.Font = 14, Enum.Font.BuilderSansBold
+    K.state.TextSize, K.state.Font = 14, Enum.Font.BuilderSansMedium
     K.state.Parent = b
     b.MouseEnter:Connect(function() st.Transparency, b.BackgroundTransparency = 0.5, 0.1 end)
     b.MouseLeave:Connect(function() st.Transparency, b.BackgroundTransparency = 0.86, 0.2 end)
@@ -324,7 +324,7 @@ function MapPick.init(G)
 
   local want = nil      -- 自己投的 / 要加入的哪张（投过票就有）
   local voteLeft, voteAt = nil, 0   -- 服务器说投票还剩几秒（收到时的本地时间）：本地往下数
-  local status = text(content, "", UDim2.fromOffset(1232, 18), UDim2.fromOffset(0, 680), 13 + TS, WHITE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Center)
+  local status = text(content, "", UDim2.fromOffset(1232, 18), UDim2.fromOffset(0, 680), 13 + TS, WHITE, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Center)
   -- 主菜单的字藏起来 / 放回来（Menu.lua 的 refreshMenu 看 G.mapPickShown）
   local function menuSync() if G.refreshMenu and G.S then G.refreshMenu(G.S) end end
   local wantPve = nil   -- 自己点的第几关（PvE）
@@ -334,9 +334,34 @@ function MapPick.init(G)
     wantPve = nil
     menuSync()
   end
+  -- 一张图一个服务器（服务器 Places.lua，用户 11-28「训练场 还有各种地图单独做成一个服务器」）：这张图有自己的地点（ReplicatedStorage 的 PlaceMaps）、
+  --   或者这里是训练场服务器（PlaceRole = range）：点了就是传送过去（服务器 ACT.pickMap 传），按钮写「前往 X」
+  local RS = game:GetService("ReplicatedStorage")
+  local function placeRole() return RS:GetAttribute("PlaceRole") or "all" end
+  local function teleportTo(id)
+    local role = placeRole()
+    if role == "range" then return true end
+    if role == id then return false end
+    local pm = RS:GetAttribute("PlaceMaps")
+    return type(pm) == "string" and string.find("," .. pm .. ",", "," .. id .. ",", 1, true) ~= nil
+  end
+  G.mapPickTeleports = teleportTo   -- 测试用
+  local going = nil   -- 点了要传送过去的那张
   local function choose(id)
     local S = G.S
-    if S and S.map and S.map ~= id then id = S.map end   -- 服务器已经在打另一张：按钮是「加入那张」
+    if teleportTo(id) then
+      going, want = id, nil
+      G.R.Act:FireServer("pickMap", id)
+      status.Text = T("place.going", T("place." .. id))
+      return
+    end
+    -- 服务器已经在打另一张：点「加入 X」那张卡（就是现在这张）照旧加入；点了别的图 = 换过去（用户 11-28 晚「然后目前没法切地图」：
+    --   原来点哪张都改成加入现在那张）——服务器 Places.lua G.switchMap：有自己地点的传送、没有的开个新服务器传过去，Studio 里提示重新开始
+    if S and S.map and S.map ~= id then
+      G.R.Act:FireServer("pickMap", id)
+      status.Text = T("map.switchNew", T("map." .. id .. ".name"))
+      return
+    end
     want = id
     G.R.Act:FireServer("pickMap", id)
     if S and S.map then status.Text = T("map.loading", 0) end
@@ -452,13 +477,20 @@ function MapPick.init(G)
       K.name.Text = T("map." .. id .. ".name")
       K.size.Text = T("map.size", string.format("%.0f", info.km or 0))
       K.desc.Text = T("map." .. id .. ".desc")
-      local cur = S.map == id
-      local other = S.map ~= nil and not cur
-      local mine = voting and want == id
+      local tele = teleportTo(id)
+      local cur = S.map == id and not tele
+      local other = S.map ~= nil and not cur and not tele
+      local mine = voting and want == id and not tele
       K.now.Text = cur and (T("map.now") .. "   ·   " .. T("map.players", n)) or (other and T("map.other", T("map." .. S.map .. ".name")) or "")
       if cur and S.pve then K.now.Text = T("pve.nowPve", S.pve, T("pve.n" .. S.pve)) .. "   ·   " .. T("map.players", n) end   -- 在打关卡：一个人点就退出关卡改打对战（Round.lua 的 ACT.pickMap）
       K.now.TextColor3 = cur and acc or MUTE
-      if voting then
+      if tele then   -- 有自己的服务器：传送过去
+        K.now.Text = T("map.gotoNote")
+        K.now.TextColor3 = MUTE
+        K.go.Text = T("map.goto") .. "  " .. T("map." .. id .. ".name")
+        K.go.BackgroundColor3, K.go.TextColor3 = (going == id) and acc or WHITE, RGB(10, 10, 12)
+        K.votes.Visible = false
+      elseif voting then
         K.go.Text = mine and T("map.voted") or T("map.vote")
         K.go.BackgroundColor3, K.go.TextColor3 = mine and acc or WHITE, RGB(10, 10, 12)
         local nv = (V and V.n and V.n[id]) or 0
@@ -466,7 +498,7 @@ function MapPick.init(G)
         K.votes.Text = T("map.votes", nv)
         K.votes.TextColor3 = (nv > 0) and acc or MUTE
       else
-        K.go.Text = other and (T("map.join") .. "  " .. T("map." .. S.map .. ".name")) or T("map.join")
+        K.go.Text = other and T("map.switch") or T("map.join")
         K.go.BackgroundColor3, K.go.TextColor3 = WHITE, RGB(10, 10, 12)
         K.votes.Visible = false
       end

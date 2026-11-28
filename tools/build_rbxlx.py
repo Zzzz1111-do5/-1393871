@@ -112,9 +112,12 @@ for f in ('UnitModels',):
 services.append(Item('Workspace', 'Workspace', props=[('bool', 'StreamingEnabled', 'true'), ('int', 'StreamingMinRadius', '512'),
                                                       ('int', 'StreamingTargetRadius', '4096'), ('token', 'ModelStreamingBehavior', '2'),
                                                       ('token', 'StreamOutBehavior', '1'), ('token', 'StreamingIntegrityMode', '1')]))
-# 同 tools/build.luau：夜战（开服时 World.lighting 还会再设一遍）
+# 同 tools/build.luau：夜战（开服时 World.lighting 还会再设一遍）；新版光照 LightingStyle = Realistic（0）、PrioritizeLightingQuality = false
+#   （画质档往下降时先保视野距离：用户要视野无限远、M3 上丝滑；游戏脚本写不了这两项，只能写进地点文件）。Technology（弃用）不再写：
+#   原来的 Future（4）读进来对成 Realistic + true，会把 false 盖回去
 services.append(Item('Lighting', 'Lighting', props=[('float', 'Brightness', '2.2'), ('float', 'ClockTime', '2.3'), ('float', 'EnvironmentDiffuseScale', '1'),
-                                                    ('float', 'EnvironmentSpecularScale', '1'), ('bool', 'GlobalShadows', 'true'), ('token', 'Technology', '4')]))
+                                                    ('float', 'EnvironmentSpecularScale', '1'), ('bool', 'GlobalShadows', 'true'),
+                                                    ('token', 'LightingStyle', '0'), ('bool', 'PrioritizeLightingQuality', 'false')]))
 # 导入过一次的原模型（models/imported/*.rbxm）：tools/build.luau 会塞进 ServerStorage.ImportedModels；这里读不了二进制 rbxm，有的话提示用 Lune 打包
 imp_dir = os.path.join(ROOT, 'models', 'imported')
 if os.path.isdir(imp_dir) and any(n.endswith(('.rbxm', '.rbxmx')) for n in os.listdir(imp_dir)):

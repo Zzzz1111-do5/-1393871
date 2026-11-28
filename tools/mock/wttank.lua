@@ -1,13 +1,17 @@
 -- 战雷式坦克（模拟器）：python3 tools/mock/run.py tools/mock/wttank.lua [veh=m1a2]
 --   用户 11-24 夜「把整个游戏做成战雷」：①② 车辆伤害模型 + 坦克界面
---   ① 坐上车：战雷界面开着（准星、底部弹药栏、左下损伤图），MWT 那套收起；弹药栏格数 = 主炮弹种 + 别的武器 + 烟幕 + 维修
+--   ① 坐上车：战雷界面开着（准星、底部弹药栏、左下损伤图），MWT 那套收起；弹药栏格数 = 主炮弹种 + 别的武器 + 烟幕 + 维修 + 望远镜
 --   ② 数字键：2 选第二种弹（M830）、1 回到 M829A3，5 选同轴机枪
 --   ③ 正前方放一辆敌方 T-90M：准星对着它不是白的（穿深指示）；M829A3 打车体正面、榴弹打正面颜色不一样
 --   ④ 开一炮：服务器走战雷伤害（G.wtHits 加一），客户端命中提示出来；损伤图里那辆车的状态跟着变
+--   弹药栏每格一张写实弹种图（AmmoPics，用户 11-27「完全按照战雷的风格……更拟真」）；[noedit=1]：当成用不了 EditableImage，每格退回单色剪影；
+--   屏幕从 1280 × 720 切到 1920 × 1080（1 倍那套 → 2 倍那套）时图一直显示着、新的一套解好了一起换
 local T = dofile(MOCK_DIR .. "/common.lua")
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 local VEH = TEST_ARGS:match("veh=(%w+)") or "m1a2"
+local NOEDIT = TEST_ARGS:find("noedit=1", 1, true) ~= nil
+if NOEDIT then R.noEditable = true end
 
 local G = T.boot()
 G.fortsHold = true
@@ -78,7 +82,56 @@ for _, sd in ipairs(slots) do table.insert(list, (sd.am or sd.wid or sd.k) .. (s
 print("  弹药栏：" .. table.concat(list, " "))
 local nGun = #(R.require(R.services.ReplicatedStorage:FindFirstChild("Ballistics")).GUN[def.weapons[1]] or { 1 })
 local extra = ((def.cat == "apc" or def.cat == "aa") and 1 or 0) + ((def.cat ~= "aa") and 1 or 0)   -- 侦察（轻型车）、火炮支援（不是防空车）
-check(#slots == nGun + (#def.weapons - 1) + 2 + extra, "弹药栏格数 = 主炮 " .. nGun .. " 种弹 + 别的武器 + 烟幕 + 维修 + 侦察 / 火炮（" .. #slots .. "）")
+check(#slots == nGun + (#def.weapons - 1) + 3 + extra, "弹药栏格数 = 主炮 " .. nGun .. " 种弹 + 别的武器 + 烟幕 + 维修 + 望远镜 + 侦察 / 火炮（" .. #slots .. "）")   -- 11-27 加了望远镜（C）
+-- 弹药栏的图：每格一张写实弹种图（AmmoPic）；用不了 EditableImage 时每格是单色剪影（Icon 里有零件），不报错
+local bar = find("WtAmmoBar")
+local nSlot, nPic, nIcon = 0, 0, 0
+for i = 1, #slots do
+  local sf = bar and bar:FindFirstChild("Slot" .. i)
+  if sf and T.visible(sf) then
+    nSlot = nSlot + 1
+    local pic, ic = sf:FindFirstChild("Pic"), sf:FindFirstChild("Icon")
+    if pic and T.visible(pic) and pic:GetAttribute("AmmoPic") then nPic = nPic + 1 end
+    if ic and T.visible(ic) and #ic:GetChildren() > 0 then nIcon = nIcon + 1 end
+  end
+end
+if NOEDIT then
+  check(nSlot == #slots and nPic == 0 and nIcon == nSlot, "用不了 EditableImage：每格退回单色剪影（" .. nIcon .. " / " .. nSlot .. "）")
+else
+  check(nSlot == #slots and nPic == nSlot, "每格一张写实弹种图（" .. nPic .. " / " .. nSlot .. "）")
+  -- 换分辨率（11-27 美术审查第二轮：窗口跨过逻辑高 850 时整排先清掉、约 18 帧后才淡入回来）：720p 用的是 1 倍那套，
+  --   切到 1920 × 1080 以后旧图一直显示着，新的一套（2 倍）在后台解好了一起换上；再切回 1280 × 720
+  local function picState()
+    local vis, k2 = 0, 0
+    for i = 1, #slots do
+      local sf = bar and bar:FindFirstChild("Slot" .. i)
+      local pic = sf and sf:FindFirstChild("Pic")
+      if pic and T.visible(pic) and pic:GetAttribute("AmmoPic") then
+        vis = vis + 1
+        if pic:GetAttribute("AmmoPicK") == 2 then k2 = k2 + 1 end
+      end
+    end
+    return vis, k2
+  end
+  local _, k2a = picState()
+  R.vpW, R.vpH = 1920, 1080
+  local minVis, steps, k2 = #slots, 0, 0
+  for _ = 1, 150 do
+    R.run(1 / 30)
+    steps = steps + 1
+    local v
+    v, k2 = picState()
+    minVis = math.min(minVis, v)
+    if k2 == #slots then break end
+  end
+  check(k2a == 0 and minVis == #slots and k2 == #slots, "切到 1920 × 1080：图一直显示着（最少 " .. minVis .. " / " .. #slots
+    .. " 格），" .. string.format("%.1f", steps / 30) .. " 秒后整排换成 2 倍那套（" .. k2 .. " 格）")
+  R.vpW, R.vpH = nil, nil
+  R.run(0.5)
+end
+local an = find("AmmoName")
+print("  名牌：" .. tostring(an and an.Text))
+check(an ~= nil and T.visible(an) and an.Text ~= "", "弹药栏上方名牌写着这一发的全称")
 local di = find("WtDamageInd")
 local sch = find("Schematic")
 local nSch = sch and #sch:GetDescendants() or 0
@@ -112,10 +165,12 @@ local e2 = G.newVehicle("atk", "t90m", G.vehBaseAt(d2, bx, bz - 180, V3(0, 0, 1)
 check(e2 ~= nil, "放了敌车")
 R.run(1.5)
 local ring = aim and aim:FindFirstChild("Frame") or nil
+-- 穿深指示的颜色在小圈上（用户 11-28：大圈是鼠标瞄的地方、小圈是炮真打到的地方——WtGunMark，粗 2 的那道白线）
+local mark = find("WtGunMark")
 local function ringColor()
-  for _, f in ipairs(aim:GetChildren()) do
+  for _, f in ipairs(mark and mark:GetChildren() or {}) do
     local s = f:FindFirstChildOfClass("UIStroke")
-    if s and s.Thickness > 1.5 and s.Thickness < 1.7 then return s.Color end
+    if s and s.Thickness > 1.9 and s.Thickness < 2.1 then return s.Color end
   end
 end
 -- 直接按炮口 → 敌车车体正面中间算一次（镜头在模拟器里不一定对着它）

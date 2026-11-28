@@ -211,17 +211,32 @@ if js and foe then
   -- 雷达屏是扫描的（E 11-24 战雷式雷达屏）：波束扫过目标才截获，最多一个扫描周期；等的时候敌机一直摆在正前方
   T.runUntil(function()
     foe.root.CFrame = js.cf * CF(60, 20, -700)
+    if not js.lock and w and w.seeker == "radar" and C.radarHas and C.radarHas(js, foe.model) then   -- 雷达弹照战雷手动锁（11-27）：屏上有了它，R 选中、Alt+F 锁定
+      T.tap(Enum.KeyCode.R)
+      T.key(Enum.KeyCode.LeftAlt, true)
+      T.tap(Enum.KeyCode.F)
+      T.key(Enum.KeyCode.LeftAlt, false)
+    end
     return js.lock ~= nil
   end, 4)
   check(js.lock ~= nil and w and w.kind == "aam", "锁着前方的 A-10（" .. tostring(js.wl[js.wi]) .. "）")
   local lm = find("LockMark")
+  -- 等的时候敌机一直跟着飞机摆在前面（off：相对机头的位置）：一直在飞的目标。原来只摆一下、敌机就停在半空——
+  --   脉冲多普勒雷达对停着不动（视线上没速度）的目标本来就置零看不见：这一段几条原来是靠「摆一下」那一跳算出来的假速度才过的
+  --   （11-27 审查：G.velTrack 停了很久以后的一跳不再算速度）
+  local function holdFoe(t, off)
+    for _ = 1, math.max(1, math.floor(t * 30 + 0.5)) do
+      foe.root.CFrame = js.cf * (off or CF(60, 20, -700))
+      R.run(1 / 30)
+    end
+  end
   if js.lock and lm then   -- 战雷式锁定（用户 11-23）：细的绿方框、框上型号、右边距离和接近速度
     js.lockT = 0.5 * (w.lockTime or 1)
     R.run(1 / 60)
     local box = lm:FindFirstChildOfClass("UIStroke")
     check(T.visible(lm) and lm:GetAttribute("Locked") == false and math.abs((lm:GetAttribute("Progress") or 0) - 0.5) < 0.1,
       string.format("锁定中：目标上的方框（进度 %.2f），还没锁上", lm:GetAttribute("Progress") or -1))
-    R.run((w.lockTime or 1) * 0.6)
+    holdFoe((w.lockTime or 1) * 0.6)
     local nm, rg = lm:FindFirstChild("TargetName"), lm:FindFirstChild("TargetRange")
     check(lm:GetAttribute("Locked") == true and box ~= nil and box.Transparency < 0.5, "锁上了：方框常亮")
     check(nm ~= nil and nm.Text ~= "" and rg ~= nil and rg.Text:match("%d") ~= nil,
@@ -241,31 +256,28 @@ if js and foe then
     -- 被雷达锁定告警（战雷的 RWR，A 11-24）：雷达弹锁着敌机，客户端半秒报一次服务器（服务器转告被锁那架的飞行员）；
     --   自己被锁：屏幕上「被雷达锁定！」
     if lm:GetAttribute("Seeker") == "radar" then
-      R.run(0.6)
+      holdFoe(0.6)
       check(jet.lockPingT ~= nil, "雷达弹锁着敌机：报给了服务器（服务器转告被锁的那架）")
     end
     R.as("server", function() G.R.Drive:FireClient(me, { op = "rwrLock", by = foe.id, full = true }) end)
     local seen = false
     for _ = 1, 20 do   -- 字一闪一闪的（亮七成）：看 0.6 秒里出没出现过
-      R.run(1 / 30)
+      holdFoe(1 / 30)
       if #T.texts(C.T("air.radarLock")) > 0 then seen = true end
     end
     check(js.rwrLockT ~= nil and seen, "被敌机雷达锁着：屏幕上写「被雷达锁定！」")
     js.rwrLockT = nil
-    foe.root.CFrame = js.cf * CF(60, 20, -700)   -- 上面多飞了一秒多：敌机摆回正前方
-    R.run(0.3)
+    holdFoe(0.3)   -- 敌机在正前方
     check(box and box.Color.G > 0.8 and box.Color.R < 0.6, "在离轴角里：框是绿的")
-    foe.root.CFrame = js.cf * CF(520, 20, -640)   -- 往右偏 39°（霹雳-15 离轴角 22°、跟踪 48°）
-    R.run(0.3)
+    holdFoe(0.3, CF(520, 20, -640))   -- 往右偏 39°（霹雳-15 离轴角 22°、跟踪 48°）
     check(js.lock ~= nil and js.lock.out == true and lm:GetAttribute("InCone") == false and box.Color.R > 0.9 and box.Color.G > 0.7 and box.Color.B < 0.4,
       "出了导弹的离轴角：锁还在、框变黄")
     local function stores() local n = 0 for i, v in ipairs(js.stores or {}) do n = n + v end return n end
     local s0 = stores()
     T.tap(Enum.KeyCode.F)
-    R.run(0.3)
+    holdFoe(0.3, CF(520, 20, -640))
     check(stores() == s0, string.format("这时按 F 不发射（挂载 %d → %d）", s0, stores()))
-    foe.root.CFrame = js.cf * CF(60, 20, -700)
-    R.run(0.3)
+    holdFoe(0.3)
     check(js.lock ~= nil and not js.lock.out and box.Color.G > 0.8 and box.Color.R < 0.6, "回到离轴角里：框变回绿的")
   end
   -- N：夜视 → 热成像 → 关（不用光电吊舱）

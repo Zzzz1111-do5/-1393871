@@ -4,6 +4,11 @@ return function(T, me, out, quiet)
 local R, V3, Enum = T.R, T.V3, T.Enum
 local print = quiet and function() end or print
 local VW, VH, INSET = 1280, 720, 36
+do   -- 画面多大照镜头的 ViewportSize（测试可以改：R.viewSize 手机横屏的截图、R.vpW / R.vpH hudshot 的 vp=1920x1080）；hud_render.py 用 WH=宽x高 画同样大
+  local cam0 = R.services.Workspace and R.services.Workspace.CurrentCamera
+  local vs0 = cam0 and cam0.ViewportSize
+  if vs0 then VW, VH = vs0.X, vs0.Y end
+end
 local items, perGui = {}, {}
 local function c3(c) return c and { math.floor(c.R * 255 + 0.5), math.floor(c.G * 255 + 0.5), math.floor(c.B * 255 + 0.5) } or nil end
 local function isGui(o) return R.base.IsA(o, "GuiObject") end
@@ -30,6 +35,12 @@ local function walk(o, ax, ay, uw, uh, s, guiName, depth, clip, ga, rootU)
   end
   local cx, cy = 0, 0
   local horiz = layout and layout.FillDirection == Enum.FillDirection.Horizontal
+  -- 卷动框：里面的东西按卷到的位置挪（CanvasPosition；整备的武器列表打开时卷到装着的那张）
+  local scx, scy = 0, 0
+  if o._cls == "ScrollingFrame" then
+    local okc, cp = pcall(function() return o.CanvasPosition end)
+    if okc and cp then scx, scy = cp.X, cp.Y end
+  end
   local pad = layout and layout.Padding or nil
   for _, c in ipairs(kids) do
     local sz, ps, ap = c.Size, c.Position, c.AnchorPoint
@@ -50,8 +61,8 @@ local function walk(o, ax, ay, uw, uh, s, guiName, depth, clip, ga, rootU)
       local padPx = pad and (pad.Scale * (horiz and uw or uh) + pad.Offset) or 0
       if horiz then cx = cx + cuw + padPx else cy = cy + cuh + padPx end
     else
-      x = ax + (ps.XS * uw + ps.XO) * s - ap.X * w
-      y = ay + (ps.YS * uh + ps.YO) * s - ap.Y * h
+      x = ax + (ps.XS * uw + ps.XO - scx) * s - ap.X * w
+      y = ay + (ps.YS * uh + ps.YO - scy) * s - ap.Y * h
     end
     local sc = s * u
     local p = c._p
@@ -63,6 +74,7 @@ local function walk(o, ax, ay, uw, uh, s, guiName, depth, clip, ga, rootU)
     if corner then rec.corner = corner.CornerRadius.Scale * math.min(w, h) + corner.CornerRadius.Offset * sc end
     if stroke and stroke._p.Enabled ~= false then
       rec.st = c3(stroke.Color) rec.stT = stroke.Transparency rec.stW = stroke.Thickness * sc
+      rec.stB = (stroke.ApplyStrokeMode == Enum.ApplyStrokeMode.Border) or nil   -- 框线（不是字的描边）：字标签上也画成框
       local sg = stroke:FindFirstChildOfClass("UIGradient")
       if sg then
         pcall(function()
@@ -76,11 +88,19 @@ local function walk(o, ax, ay, uw, uh, s, guiName, depth, clip, ga, rootU)
       rec.text, rec.tc, rec.tT, rec.ts = c.Text, c3(c.TextColor3), c.TextTransparency, (c.TextSize or 14) * sc
       rec.scaled = c.TextScaled
       rec.xa = tostring(c.TextXAlignment)
+      rec.font = c.Font and c.Font.Name or nil
+      rec.tsz = c.TextSize   -- 原本的字号（RichText 里 size="13" 按它换算）
+      rec.tsT = c.TextStrokeTransparency   -- 字的黑描边（战场上的字）：小于 1 才画   -- 字体（hud_render.py 照它挑字：等宽、窄体、粗细；中文退到文泉驿，粗的描一圈模拟）
+      rec.rich = c.RichText or nil
+      rec.trunc = (c.TextTruncate == Enum.TextTruncate.AtEnd) or nil
+      rec.ya = tostring(c.TextYAlignment)
     end
     if c._cls == "ImageLabel" or c._cls == "ImageButton" then
       rec.img = c.Image rec.ic = c3(c.ImageColor3) rec.iT = c.ImageTransparency
       rec.icon = c:GetAttribute("Icon")   -- HudArt 装上的图标（HudIcons 里的名字）
       rec.pic = c:GetAttribute("PicName")   -- 写实车图（VehPics 里的名字；模拟器解不出 EditableImage，渲染时照游戏的解法还原）
+      rec.apic = c:GetAttribute("AmmoPic")   -- 写实弹种图（AmmoPics 里的名字，「#g」结尾的是去色的）
+      rec.apicK = c:GetAttribute("AmmoPicK")   -- 用的哪一套（1 倍 / 2 倍）
       rec.fit = (c.ScaleType == Enum.ScaleType.Fit) or nil
     end
     rec.clip, rec.ga = clip, ga
@@ -94,7 +114,7 @@ local function walk(o, ax, ay, uw, uh, s, guiName, depth, clip, ga, rootU)
         if grad.Enabled ~= false then
           for _, k in ipairs(grad.Color.Keypoints) do ck[#ck + 1] = { k.Time, c3(k.Value) } end
         end
-        rec.grad = { rot = grad.Rotation or 0, kp = kp, ck = (#ck > 0) and ck or nil }
+        rec.grad = { rot = grad.Rotation or 0, kp = kp, ck = (#ck > 0) and ck or nil, en = grad.Enabled ~= false }
       end)
     end
     items[#items + 1] = rec

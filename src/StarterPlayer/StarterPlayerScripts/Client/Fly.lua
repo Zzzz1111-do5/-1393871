@@ -3,13 +3,13 @@
 --     （Thr、Gear、Pit、Rol、Yaw、Bay、BayS、Rpm、Ty、Gp……）摆；自己开的用本地的；被击毁的往下掉、冒火冒黑烟，落地炸一下
 --   驾驶（服务器推来的 S.veh.air）：位置在本地算，每秒 15 次报给服务器（Air.lua 查速度、查撞地）
 --     固定翼（用户 11-21：改成 WASD 控制方向、不要准心控制；飞机太灵活）：键盘就是驾驶杆——S 拉杆抬头、W 推杆低头、A / D 滚转、
---       Q / E 方向舵（杆量 0.3 秒推满、松开回中），Shift / Ctrl 油门（推满再推进加力，↑ / ↓ 同样）；松杆 1 g，小坡度自己慢慢摆平；
+--       Q / E 方向舵（杆量按住 0.25～0.3 秒匀速推满、松开回中），Shift / Ctrl 油门（推满再推进加力，↑ / ↓ 同样）；松杆 1 g，小坡度自己慢慢摆平；
 --       镜头钉在机身后上方顺着机头看，机头前方的全息标记一直在屏幕正中（航炮就打那里）；按住 Alt 鼠标自由看；
 --       滚转、俯仰角速度和最大过载收到真飞机的五六七成（AGIL）。无人机（平板上飞）照旧鼠标给方向、W / S 油门；
 --       开着光电吊舱、飞出作战区自动掉头时也是按给的方向自动飞（教官）；
 --       速度不够失速（机头往下掉）、爬升掉速、俯冲加速、拉杆转弯掉能量；跑道 / 甲板上：油门加速，速度够了按 S 抬头离地；
 --       放着起落架、下沉不快、速度不快、姿态平就能落地（落在自己的机场 / 甲板上停 5 秒补弹修理）
---     直升机：W / S 前后、A / D 转向（快的时候压坡度转弯）、E 升 / Q 降，旋翼先转起来才飞得动；鼠标转镜头、机头炮塔跟着镜头瞄
+--     直升机（11-28 起照战雷的鼠标瞄准）：鼠标准心定方向（往下往前飞、往上减速）、W 升 / S 降、A / D 侧飞、Q / E 转机头（快的时候压坡度转弯），旋翼先转起来才飞得动；机头炮塔跟着镜头瞄
 --     武器：鼠标左键 机炮（直升机机头炮塔跟着鼠标瞄）；F 发导弹 / 火箭 / 炸弹（1～6 选用哪种；导弹、制导炸弹要锁定：目标在导引头视场里待够锁定时间），
 --       R 换目标；X 热诱弹；G 起落架；空格 下飞机（在天上跳伞）
 --     平显：速度、高度、油门、准星（机头指向）、锁定框、炸弹落点、失速 / 拉起 / 导弹来袭 / 飞出作战区警告（鼠标瞄准圈只有无人机画）
@@ -42,6 +42,22 @@ function Fly.init(G)
   local function angDiff(a, b) return (b - a + math.pi) % (2 * math.pi) - math.pi end
   local function smooth(a, b, v) local t = clamp((v - a) / (b - a), 0, 1) return t * t * (3 - 2 * t) end
   local function ground(x, z) return AD.ground(Map, x, z) end
+  -- 看得见的地面（用户 11-28 夜「目前飞机开一会就自动爆炸显示被ground击杀」）：雪山图的地形开服以后在后台写十几二十分钟（服务器在
+  --   workspace 上挂着 TerrainBusy），没写到的地方真的山还没出来——只有垫底的一层雪、或者什么都没有；原来按地图的高度函数判撞地，
+  --   一头撞进看不见的山。地形还在写时：高度函数说碰到地了，再从上往下打一条射线看那里真有没有地形 / 零件，没有就按看得见的算
+  --   （服务器 Air.lua 按 World.lua 记的写没写到判，同一个意思）；海上、甲板不用看；地形写完了（烘焙过的地点文件开服就是）照旧
+  local seenParams = RaycastParams.new()
+  seenParams.FilterType = Enum.RaycastFilterType.Include
+  local function seenGround(x, z, y, g)
+    if g <= 2 or workspace:GetAttribute("TerrainBusy") ~= true or AD.onDeck(Map, x, z) then return g end
+    local m = workspace:FindFirstChild("Map")
+    seenParams.FilterDescendantsInstances = m and { workspace.Terrain, m } or { workspace.Terrain }
+    local top, bot = math.max(g, y) + 40, y - 80
+    local res = workspace:Raycast(Vector3.new(x, top, z), Vector3.new(0, bot - top, 0), seenParams)
+    if res then return math.min(g, res.Position.Y) end
+    return math.min(g, bot)
+  end
+  G.flySeenGround = seenGround   -- 测试用
 
   local st = nil   -- 正在开 / 坐的飞机
   G.fly = nil
@@ -190,6 +206,16 @@ function Fly.init(G)
       end
     end
   end)
+
+  -- 阵亡镜头跟着自己那架往下掉的残骸（DeathFx.lua，用户 11-27「飞机被干掉后不要立马爆炸 先跟随视角」）：
+  --   实体还在就是 View 里那一份，服务器收走以后在上面的 falling 里接着演
+  G.airWreckView = function(id)
+    if id == nil then return nil end
+    local v = G.viewById and G.viewById(id)
+    if v and v.def then return v end
+    for _, f in ipairs(falling) do if f.id == id then return f end end
+    return nil
+  end
 
   G.viewKind = G.viewKind or {}
   G.viewKind.air = {
@@ -342,11 +368,11 @@ function Fly.init(G)
   dcs.Visible = false
   local panel = ui.frame(gui, UDim2.fromOffset(460, 86), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.35, Vector2.new(0.5, 1))   -- 操作说明在屏幕最下面一行（UI.lua，st.help）
   panel.Visible = false
-  local aName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local aName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 8), UDim2.fromOffset(10, 30), RGB(0, 0, 0), 0.4)
   local hpBar = ui.frame(hpBg, UDim2.fromScale(1, 1), nil, RGB(90, 210, 110), 0)
-  local aInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 44), 14, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
-  local aWpn = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 62), 14, RGB(255, 220, 120), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local aInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 44), 14, Color3.new(1, 1, 1), Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
+  local aWpn = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 62), 14, RGB(255, 220, 120), Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
   ui.flatPanel(panel, { hp = hpBg, name = aName })   -- 跟新界面一个样子（UI.lua）
   local bore = hud("+", UDim2.fromOffset(40, 40), UDim2.fromScale(0.5, 0.5), 34, Vector2.new(0.5, 0.5))   -- 机头指向
   local aimRing = hud("◯", UDim2.fromOffset(36, 36), UDim2.fromScale(0.5, 0.5), 30, Vector2.new(0.5, 0.5))   -- 鼠标想去的方向
@@ -500,11 +526,14 @@ function Fly.init(G)
     end
   end
 
-  -- 光电吊舱的画面（P 键；用户给的参考：F-16 的瞄准吊舱页面 TGP）：
-  --   中间 4:3 的显示器（外面全黑），四边是多功能显示器的按键字（上 A-G / NARO 1.0x / OVRD / CNTL，左 WHOT / SP / CZ，下 SWAP / HSD / SMS / [TGP] / DCLT），
-  --   贯穿全屏、中间留空的细十字；跟踪到车、船、飞机就套一个 POINT 方框，没跟踪是 AREA；右上指北箭头；
-  --   左下激光编码 L 1688、目标斜距 T（海里），右下高度（英尺）、TTI 弹着时间；
-  --   显示器右边一栏：投放方式 · 武器、TTI 大字和进度条、武器状态（投出去了 AWAY、激光 ARM、LST）、一句提示、按键说明
+  -- 光电吊舱的画面（P 键）。用户 11-28「吊舱ui和战雷对其」：照战雷的瞄准吊舱画面重排（原来照 F-16 多功能显示器的 TGP 页：中间 4:3 的框、
+  --   四边一圈 A-G / NARO / OVRD / SWAP / HSD 之类的按键字）——
+  --   · 整屏就是吊舱的画面，四边一圈渐暗（镜头的暗角）；贯穿全屏的细十字，正中留空、空口两头各一小横，正中一个小点
+  --   · 跟踪：看着车、船、飞机套 POINT 方框（按它在画面里多大），没跟踪是正中一个小 AREA 框，框下面写跟踪方式
+  --   · 左上：模式（CCD / WHOT / BHOT）大字，下面倍率和视场角、对地 / 对空，再下面指北箭头和视线方位（右上留给小地图）
+  --   · 下面正中：目标距离（公里）、激光编码；它左边：吊舱转角框（横着是方位、竖着是俯仰，亮点是吊舱看着的方向，上沿中间的刻度是机头）
+  --     和俯视的小飞机（飞机往哪飞，相对吊舱看的方向）；右下：高度（米）、弹着时间（左下留给小队名单）
+  --   · 右边一栏（小地图下面）：投放方式 · 武器、TTI 大字和进度条、投放状态、一句提示、按键说明
   local MFD = RGB(232, 234, 230)
   local MFD_DIM = RGB(150, 154, 150)
   local MOB = G.mobile == true
@@ -513,40 +542,92 @@ function Fly.init(G)
   eoGui.Visible = false
   eoGui.ZIndex = 10   -- 盖住平显（速度、高度框等）
   local TG = {}
-  local disp = ui.frame(eoGui, UDim2.fromScale(1, 0.78), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+  local disp = ui.frame(eoGui, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
   disp.Name = "TgpDisplay"
   disp.ZIndex = 10
-  do
-    local a = Instance.new("UIAspectRatioConstraint")
-    a.AspectRatio = 4 / 3
-    a.Parent = disp
-    local mask = Instance.new("UIStroke")   -- 显示器外面全黑
-    mask.Thickness = 3000
-    mask.Color = RGB(0, 0, 0)
-    mask.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
-    mask.Parent = disp
-    local edge = ui.frame(disp, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
-    edge.ZIndex = 11
-    ui.stroke(edge, RGB(90, 94, 90), 1, 0.2)
+  do   -- 暗角：四边一圈渐暗
+    for _, e in ipairs({ { UDim2.new(1, 0, 0.16, 0), UDim2.fromScale(0, 0), 90 }, { UDim2.new(1, 0, 0.16, 0), UDim2.fromScale(0, 0.84), 270 },
+      { UDim2.new(0.12, 0, 1, 0), UDim2.fromScale(0, 0), 0 }, { UDim2.new(0.12, 0, 1, 0), UDim2.fromScale(0.88, 0), 180 } }) do
+      local f = ui.frame(disp, e[1], e[2], RGB(0, 0, 0), 0)
+      f.Name = "Vignette"
+      f.ZIndex = 10
+      local g = Instance.new("UIGradient")
+      g.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.25), NumberSequenceKeypoint.new(1, 1) })
+      g.Rotation = e[3]
+      g.Parent = f
+    end
   end
   local function mfd(text, pos, anchor, size, col, align)
-    local l = ui.label(disp, text, UDim2.fromOffset(150, (size or 16) + 4), pos, size or (MOB and 12 or 16), col or MFD, Enum.Font.RobotoMono, anchor or Vector2.new(0.5, 0.5), align)
+    local l = ui.label(disp, text, UDim2.fromOffset(170, (size or 16) + 4), pos, size or (MOB and 12 or 16), col or MFD, Enum.Font.RobotoMono, anchor or Vector2.new(0.5, 0.5), align)
     l.TextStrokeTransparency, l.TextStrokeColor3 = 0.55, RGB(0, 0, 0)
     l.ZIndex = 12
     return l
   end
   local TS = MOB and 12 or 16
-  -- 上排、下排、左列的按键字
-  TG.ag = mfd("A-G", UDim2.new(0.165, 0, 0, 22), nil, TS)
-  TG.fov = mfd("NARO", UDim2.new(0.5, 0, 0, 22), nil, TS)
-  TG.zoom = mfd("1.0x", UDim2.new(0.5, 0, 0, 22 + TS + 4), nil, TS)
-  mfd("OVRD", UDim2.new(0.665, 0, 0, 22), nil, TS)
-  mfd("CNTL", UDim2.new(0.83, 0, 0, 22), nil, TS)
-  local eoMode = mfd("WHOT", UDim2.new(0.1, 0, 0.1, 0), nil, TS)
-  -- 飞机航向（用户 11-22：「那个飞机图标不应该放在屏幕下面，用来在电子吊舱的时候知道飞机航向嘛」）：吊舱画面下面正中一个俯视的小飞机，
+  local L0, T0 = MOB and 18 or 34, MOB and 14 or 28   -- 左右、上下的边距
+  local LEFT, RIGHT = Enum.TextXAlignment.Left, Enum.TextXAlignment.Right
+  -- 左上：模式大字、倍率、视场角、对地 / 对空
+  local eoMode = mfd("CCD", UDim2.fromOffset(L0, T0), Vector2.new(0, 0), TS + 8, nil, LEFT)
+  TG.zoom = mfd("1.0x", UDim2.fromOffset(L0, T0 + TS + 14), Vector2.new(0, 0), TS + 2, nil, LEFT)
+  TG.fov = mfd("", UDim2.fromOffset(L0 + (MOB and 52 or 72), T0 + TS + 16), Vector2.new(0, 0), TS - 2, MFD_DIM, LEFT)
+  TG.ag = mfd("A-G", UDim2.fromOffset(L0, T0 + 2 * TS + 22), Vector2.new(0, 0), TS - 2, MFD_DIM, LEFT)
+  -- 左上那一组的下面：指北箭头、视线方位
+  local NY = T0 + 3 * TS + 42
+  TG.northN = mfd("N", UDim2.fromOffset(L0 + 6, NY), nil, TS - 2)
+  TG.north = ui.label(disp, "➤", UDim2.fromOffset(30, 30), UDim2.fromOffset(L0 + 30, NY), MOB and 18 or 22, MFD, Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0.5))
+  TG.north.ZIndex = 12
+  TG.brg = mfd("BRG 000", UDim2.fromOffset(L0 + 52, NY), Vector2.new(0, 0.5), TS - 2, MFD_DIM, LEFT)
+  TG.brg.Name = "EoBearing"
+  -- 细十字：横竖贯穿，中间留空；空口两头各一小横；正中一个小点
+  local GAP = MOB and 22 or 34
+  for _, c in ipairs({ { UDim2.new(0, 1, 0.5, -GAP), UDim2.fromScale(0.5, 0), Vector2.new(0.5, 0) }, { UDim2.new(0, 1, 0.5, -GAP), UDim2.fromScale(0.5, 1), Vector2.new(0.5, 1) },
+    { UDim2.new(0.5, -GAP, 0, 1), UDim2.fromScale(0, 0.5), Vector2.new(0, 0.5) }, { UDim2.new(0.5, -GAP, 0, 1), UDim2.fromScale(1, 0.5), Vector2.new(1, 0.5) } }) do
+    local l = ui.frame(disp, c[1], c[2], MFD, 0.35, c[3])
+    l.Name = "Cross"
+    l.ZIndex = 11
+  end
+  local TICK = MOB and 5 or 8
+  for _, c in ipairs({ { 0, -GAP }, { 0, GAP }, { -GAP, 0 }, { GAP, 0 } }) do
+    local horiz = c[1] == 0
+    local f = ui.frame(disp, horiz and UDim2.fromOffset(TICK * 2, 1) or UDim2.fromOffset(1, TICK * 2), UDim2.new(0.5, c[1], 0.5, c[2]), MFD, 0.2, Vector2.new(0.5, 0.5))
+    f.Name = "CrossTick"
+    f.ZIndex = 11
+  end
+  local cdot = ui.frame(disp, UDim2.fromOffset(3, 3), UDim2.fromScale(0.5, 0.5), MFD, 0.1, Vector2.new(0.5, 0.5))
+  cdot.Name = "CrossDot"
+  cdot.ZIndex = 11
+  -- 跟踪框（POINT）/ 区域跟踪的小框（AREA）、跟踪方式字
+  TG.box = ui.frame(disp, UDim2.fromOffset(52, 52), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+  TG.box.Name = "TrackBox"
+  TG.box.ZIndex = 12
+  TG.boxStroke = ui.stroke(TG.box, MFD, 1.5, 0)
+  TG.track = mfd("AREA", UDim2.new(0.5, 0, 0.5, MOB and 52 or 78), nil, TS - 2, MFD_DIM)
+  TG.track.Name = "TrackMode"
+  -- 下面正中：目标距离（公里）、激光编码
+  TG.rng = mfd("D --", UDim2.new(0.5, 0, 1, -(MOB and 46 or 72)), nil, TS + 6)
+  TG.laser = mfd("LSR 1688", UDim2.new(0.5, 0, 1, -(MOB and 26 or 44)), nil, TS - 2, MFD_DIM)
+  -- 下面正中偏左：吊舱转角框（横着方位 −180°～180°，竖着俯仰 +20°～−90°）
+  local GW, GH = MOB and 84 or 120, MOB and 44 or 62
+  local EL_TOP, EL_BOT = 20, -90
+  local GX = MOB and -250 or -360   -- 框的左边离屏幕中线
+  do
+    local gb = ui.frame(disp, UDim2.fromOffset(GW, GH), UDim2.new(0.5, GX, 1, -(MOB and 30 or 46)), RGB(0, 0, 0), 0.6, Vector2.new(0, 1))
+    gb.Name = "EoGimbal"
+    gb.ZIndex = 11
+    ui.stroke(gb, MFD, 1, 0.35)
+    local nose = ui.frame(gb, UDim2.fromOffset(1, 7), UDim2.new(0.5, 0, 0, 0), MFD, 0.15, Vector2.new(0.5, 0))
+    nose.ZIndex = 12
+    local hz = ui.frame(gb, UDim2.new(1, 0, 0, 1), UDim2.new(0, 0, EL_TOP / (EL_TOP - EL_BOT), 0), MFD, 0.7)
+    hz.ZIndex = 12
+    TG.gimDot = ui.frame(gb, UDim2.fromOffset(6, 6), UDim2.fromScale(0.5, 0.5), MFD, 0, Vector2.new(0.5, 0.5))
+    TG.gimDot.Name = "Dot"
+    TG.gimDot.ZIndex = 13
+    TG.gimTxt = mfd("", UDim2.new(0.5, GX, 1, -(MOB and 30 or 46) - GH - 4), Vector2.new(0, 1), TS - 4, MFD_DIM, LEFT)
+  end
+  -- 飞机航向（用户 11-22：「那个飞机图标……用来在电子吊舱的时候知道飞机航向嘛」）：转角框右边一个俯视的小飞机，
   --   机头朝哪 = 飞机往哪飞（相对吊舱现在看的方向：朝上就是吊舱顺着机头看），下面一行写航向度数
   do
-    local hb = ui.frame(disp, UDim2.fromOffset(56, 56), UDim2.new(0.5, 0, 1, -64), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
+    local hb = ui.frame(disp, UDim2.fromOffset(56, 56), UDim2.new(0.5, GX + GW + 44, 1, -(MOB and 52 or 74)), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
     hb.Name = "EoHeading"
     hb.ZIndex = 12
     local ring = ui.frame(hb, UDim2.fromScale(1, 1), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
@@ -568,57 +649,28 @@ function Fly.init(G)
     bar(14, 3, 0, 13)       -- 平尾
     bar(6, 6, 0, -16)       -- 机头
     TG.plane = plane
-    TG.hdg = mfd("000", UDim2.new(0.5, 0, 1, -28), nil, TS - 2)
+    TG.hdg = mfd("000", UDim2.new(0.5, GX + GW + 44, 1, -(MOB and 18 or 32)), nil, TS - 2)
   end
-  mfd("SP", UDim2.new(0, 10, 0.33, 0), Vector2.new(0, 0.5), TS, nil, Enum.TextXAlignment.Left)
-  mfd("CZ", UDim2.new(0, 10, 0.5, 0), Vector2.new(0, 0.5), TS, nil, Enum.TextXAlignment.Left)
-  for i, tx in ipairs({ "SWAP", "HSD", "SMS", "TGP", "DCLT" }) do
-    local l = mfd(tx, UDim2.new(({ 0.165, 0.33, 0.5, 0.665, 0.83 })[i], 0, 1, -18), nil, TS)
-    if tx == "TGP" then   -- 现在这一页：框起来
-      local b = ui.frame(disp, UDim2.fromOffset(TS * 3 + 10, TS + 10), UDim2.new(0.665, 0, 1, -18), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
-      b.ZIndex = 12
-      ui.stroke(b, MFD, 1, 0.15)
-      l.Name = "TgpPage"
-    end
-  end
-  -- 左下、右下的数
-  TG.laser = mfd("L 1688", UDim2.new(0, 46, 1, -76), Vector2.new(0, 0.5), TS + 2, nil, Enum.TextXAlignment.Left)
-  TG.rng = mfd("T --", UDim2.new(0, 46, 1, -50), Vector2.new(0, 0.5), TS + 2, nil, Enum.TextXAlignment.Left)
-  TG.alt = mfd("", UDim2.new(1, -46, 1, -76), Vector2.new(1, 0.5), TS + 2, nil, Enum.TextXAlignment.Right)
-  TG.tti = mfd("", UDim2.new(1, -46, 1, -50), Vector2.new(1, 0.5), TS + 4, nil, Enum.TextXAlignment.Right)
-  -- 细十字：横竖贯穿，中间留空
-  local GAP = MOB and 22 or 34
-  for _, c in ipairs({ { UDim2.new(0, 1, 0.5, -GAP), UDim2.fromScale(0.5, 0), Vector2.new(0.5, 0) }, { UDim2.new(0, 1, 0.5, -GAP), UDim2.fromScale(0.5, 1), Vector2.new(0.5, 1) },
-    { UDim2.new(0.5, -GAP, 0, 1), UDim2.fromScale(0, 0.5), Vector2.new(0, 0.5) }, { UDim2.new(0.5, -GAP, 0, 1), UDim2.fromScale(1, 0.5), Vector2.new(1, 0.5) } }) do
-    local l = ui.frame(disp, c[1], c[2], MFD, 0.35, c[3])
-    l.ZIndex = 11
-  end
-  -- 跟踪框（POINT）/ 区域跟踪的小框（AREA）、跟踪方式字
-  TG.box = ui.frame(disp, UDim2.fromOffset(52, 52), UDim2.fromScale(0.5, 0.5), RGB(0, 0, 0), 1, Vector2.new(0.5, 0.5))
-  TG.box.Name = "TrackBox"
-  TG.box.ZIndex = 12
-  TG.boxStroke = ui.stroke(TG.box, MFD, 1.5, 0)
-  TG.track = mfd("AREA", UDim2.new(0.5, 0, 0.5, MOB and 70 or 112), nil, TS + 2)
-  TG.track.Name = "TrackMode"
-  -- 指北箭头
-  TG.north = ui.label(disp, "➤", UDim2.fromOffset(30, 30), UDim2.new(0.9, 0, 0.11, 0), MOB and 18 or 26, MFD, Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
-  TG.north.ZIndex = 12
-  TG.northN = mfd("N", UDim2.new(0.9, -22, 0.11, -18), nil, TS - 2)
-  -- 右边一栏（显示器外面的黑边上）
-  local side = ui.frame(disp, UDim2.fromOffset(MOB and 170 or 236, 300), UDim2.new(1, 18, 0, 0), RGB(0, 0, 0), 1)
+  -- 右下：高度（米）、弹着时间
+  TG.alt = mfd("", UDim2.new(1, -L0, 1, -(MOB and 46 or 72)), Vector2.new(1, 0.5), TS + 2, nil, RIGHT)
+  TG.tti = mfd("", UDim2.new(1, -L0, 1, -(MOB and 26 or 44)), Vector2.new(1, 0.5), TS + 2, nil, RIGHT)
+  -- 右边一栏
+  local side = ui.frame(disp, UDim2.fromOffset(MOB and 170 or 236, 300), UDim2.new(1, -L0, 0.38, 0), RGB(0, 0, 0), 1, Vector2.new(1, 0))
   side.Name = "TgpSide"
   side.ZIndex = 12
   local function sl(text, y, size, col, font)
-    local l = ui.label(side, text, UDim2.new(1, 0, 0, (size or 12) + 4), UDim2.fromOffset(0, y), size or 12, col or MFD, font or Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left)
+    local l = ui.label(side, text, UDim2.new(1, 0, 0, (size or 12) + 4), UDim2.fromOffset(0, y), size or 12, col or MFD, font or Enum.Font.RobotoMono, nil, RIGHT)
     l.ZIndex = 12
     l.TextWrapped = true
+    l.TextStrokeTransparency, l.TextStrokeColor3 = 0.6, RGB(0, 0, 0)
     return l
   end
-  TG.rel = sl("", 0, MOB and 10 or 11, MFD_DIM)
-  ui.label(side, "TTI", UDim2.fromOffset(30, 14), UDim2.fromOffset(0, MOB and 36 or 52), MOB and 10 or 11, MFD_DIM, Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left).ZIndex = 12
-  TG.ttiBig = ui.label(side, "-:--", UDim2.fromOffset(160, 34), UDim2.fromOffset(34, MOB and 22 or 34), MOB and 22 or 32, MFD, Enum.Font.RobotoMono, nil, Enum.TextXAlignment.Left)
+  TG.rel = sl("", 0, MOB and 10 or 12, MFD_DIM)
+  local ttiCap = ui.label(side, "TTI", UDim2.fromOffset(30, 14), UDim2.new(1, -(MOB and 112 or 150), 0, MOB and 36 or 52), MOB and 10 or 11, MFD_DIM, Enum.Font.RobotoMono, nil, LEFT)
+  ttiCap.ZIndex = 12
+  TG.ttiBig = ui.label(side, "-:--", UDim2.fromOffset(MOB and 80 or 112, 34), UDim2.new(1, 0, 0, MOB and 22 or 34), MOB and 22 or 32, MFD, Enum.Font.RobotoMono, Vector2.new(1, 0), RIGHT)
   TG.ttiBig.ZIndex = 12
-  local barBg = ui.frame(side, UDim2.new(0.86, 0, 0, 3), UDim2.fromOffset(0, MOB and 58 or 76), RGB(70, 72, 70), 0)
+  local barBg = ui.frame(side, UDim2.new(0.7, 0, 0, 3), UDim2.new(1, 0, 0, MOB and 58 or 76), RGB(70, 72, 70), 0, Vector2.new(1, 0))
   barBg.ZIndex = 12
   TG.bar = ui.frame(barBg, UDim2.fromScale(0, 1), nil, MFD, 0)
   TG.bar.ZIndex = 13
@@ -626,7 +678,7 @@ function Fly.init(G)
   TG.away = sl("", y0, MOB and 10 or 11, MFD)
   TG.arm = sl("", y0 + (MOB and 15 or 20), MOB and 10 or 11, RGB(236, 200, 120))
   TG.lst = sl("", y0 + (MOB and 30 or 40), MOB and 10 or 11, MFD)
-  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 16, MFD, Enum.Font.BuilderSansMedium)
+  TG.say = sl("", y0 + (MOB and 50 or 70), MOB and 12 or 15, MFD, Enum.Font.BuilderSans)
   TG.say.Size = UDim2.new(1, 0, 0, MOB and 40 or 56)
   local eoHint = sl("", y0 + (MOB and 96 or 140), MOB and 9 or 10, MFD_DIM)
   eoHint.Size = UDim2.new(1, 0, 0, 90)
@@ -752,7 +804,7 @@ function Fly.init(G)
       local ic = ui.frame(f, UDim2.fromOffset(60, 20), UDim2.new(0, 38, 0.5, 0), RGB(0, 0, 0), 1, Vector2.new(0, 0.5))
       ic.Name = "Icon"
       drawIcon(ic, it)
-      local nm = ui.label(f, it.flare and T("air.flareName") or T("aw." .. it.wid), UDim2.new(1, -164, 1, 0), UDim2.fromOffset(104, 0), 14, HUD, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+      local nm = ui.label(f, it.flare and T("air.flareName") or T("aw." .. it.wid), UDim2.new(1, -164, 1, 0), UDim2.fromOffset(104, 0), 14, HUD, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
       nm.TextWrapped = false
       nm.Name = "Name"
       local cnt = ui.label(f, "", UDim2.fromOffset(58, H), UDim2.new(1, -6, 0, 0), 17, HUD, Enum.Font.RobotoMono, Vector2.new(1, 0), Enum.TextXAlignment.Right)
@@ -777,6 +829,7 @@ function Fly.init(G)
   local function eoApply()
     local on = st ~= nil and st.eo == true
     eoGui.Visible = on
+    if not on and G.sceneryFocus then G.sceneryFocus(nil) end
     if st then   -- 吊舱页面盖满屏幕：平显的速度、高度、航向框、武器栏、下面的信息栏收起来，出来再放回去
       for _, l in ipairs(HUDS) do if l ~= warnText then l.Visible = st.pilot == true and not on end end
       panel.Visible = not on
@@ -915,7 +968,10 @@ function Fly.init(G)
       local _, _, _, r00, r01, r02, r10, r11, r12, r20, r21, r22 = cf:GetComponents()
       st.fm = FM.new(st.fmD, { r00, r01, r02, r10, r11, r12, r20, r21, r22 }, st.vel.X / AD.M, st.vel.Y / AD.M, st.vel.Z / AD.M, st.thr)
       st.fm.live = false
+      -- 对空雷达（Radars.lua）：同 FM 按科技树的版本取（F-16A 是 APG-66、苏-30SM 是 N011M）；不退回 like（苏-27 借苏-35S 的模型，雷达是 N001）
+      st.rd = AD.radarOf and AD.radarOf(d.id, tk) or d.radar
     end
+    if G.radarReset then G.radarReset(st) end   -- 雷达每架次重置：开着、量程最大（上一架关了雷达，这一架照旧开着）
     -- 遥控无人机（服务器 vs.uav）：人在地上端着战术平板，画面是平板（Tablet.lua）；默认前视光电，右键 / V 换外部视角，Z 变焦
     st.uav = vs.uav == true and d.drone == true
     st.dcam, st.zoom, st.zoomS = st.uav and "nose" or nil, 1, 1
@@ -1126,7 +1182,7 @@ function Fly.init(G)
       if root and em ~= st.em and em:GetAttribute("Team") ~= myTeam and not em:GetAttribute("Wreck") and (em:GetAttribute("Hp") or 1) > 0 then
         local ok = (w.kind == "aam") and kind == "air" or ((w.kind == "agm" or w.kind == "bomb") and GROUND_KINDS[kind])
         -- 雷达弹（战雷，用户 11-24 夜）：只能锁自己雷达看得见的（Radar.lua：扫描范围、距离、置零、地杂波）
-        if ok and w.seeker == "radar" and st.d.radar and G.radarSees and not G.radarSees(st, em) then ok = false end
+        if ok and w.seeker == "radar" and st.rd and G.radarSees and not G.radarSees(st, em) then ok = false end
         if ok then
           local to = root.CFrame.Position - p0
           local dist = to.Magnitude
@@ -1147,6 +1203,34 @@ function Fly.init(G)
     if st.d.kind == "heli" and w.kind == "agm" then cone += 20 end
     return fwd:Dot(c.dir) > math.cos(rad(cone))
   end
+  -- 红外空空弹的导引头（用户 11-28 夜「然后目前飞机驾驶的导弹ui不够还原战雷 我们的锁定圈貌似比战雷小 你去对照一下以及各种音效以及锁定机制」，
+  --   对照战雷官方 wiki「Infrared Missiles in War Thunder」的说法和截图）：
+  --   · 小圈是导引头的截获圈：目标要进了这个圈导引头才看得见、才锁得上（原来大圈里哪儿都自动挑最近的）。战雷截图里小圈约占屏幕高的
+  --     8～9%（原来固定 26 像素，1080p 上只有 2.4%）：按 3.4°（默认镜头下屏幕高的 8.5%，放大镜头跟着变大）；旧式不能离轴的（w.caged）5°
+  --   · 导引头指哪：雷达锁着、在万向架里——跟着雷达指（战雷「导引头随动雷达」）；有头盔瞄准具的飞机——看哪指哪；不然就是机头正前方
+  --   · 锁上以后：能离轴的导引头自己跟着目标转，目标在大圈（万向架 w.cone）里就一直锁着；旧式的目标出了小圈就丢
+  local SEEK_R = rad(3.4)
+  local function irAam(w) return w ~= nil and w.kind == "aam" and w.seeker ~= "radar" end
+  local function seekR(w) return (w and w.seekR and rad(w.seekR)) or (w and w.caged and rad(5)) or SEEK_R end
+  local function hasHmd() return st.rd ~= nil and type(st.rd.acm) == "table" and table.find(st.rd.acm, "hmd") ~= nil end
+  local function seekAxis(w)
+    local fwd = st.cf.LookVector
+    local cosG = math.cos(rad(w.cone or 30))
+    local rdl = st.rdLock
+    if rdl and not rdl.mem and rdl.em and not w.caged then
+      local root = rdl.em:FindFirstChild("Root")
+      if root then
+        local to = root.CFrame.Position - st.cf.Position
+        if to.Magnitude > 1 and fwd:Dot(to.Unit) > cosG then return to.Unit, "radar" end
+      end
+    end
+    if not w.caged and hasHmd() then
+      local ld = st.flDir or cam.CFrame.LookVector
+      if fwd:Dot(ld) > cosG then return ld, "hmd" end
+    end
+    return fwd, "bore"
+  end
+  G.flySeekR = function(w) return seekR(w) end   -- 测试用
   -- 出了导弹的离轴角还能跟多宽（用户 11-19：脱离导弹发射角度锁定的菱形变黄——锁还留着、这时不能发射；再偏更多或者偏太久才丢）
   local function inTrack(w, c)
     local fwd = st.cf.LookVector
@@ -1179,6 +1263,8 @@ function Fly.init(G)
     local myTeam = me:GetAttribute("Side")
     local p0, fwd = st.cf.Position, st.cf.LookVector
     local keep = st.stick and st.stick.em
+    -- 雷达单目标跟踪着的（Radar.lua 的 st.rdLock，跟选的什么弹无关）在圈里就先算它：雷达测的距离、速度（真机的机炮提前量就靠雷达测距）
+    local rdl = (st.rdLock and not st.rdLock.mem) and st.rdLock or nil
     local best, bestS = nil, math.huge
     for _, em in ipairs(f:GetChildren()) do
       local root = em:FindFirstChild("Root")
@@ -1190,24 +1276,29 @@ function Fly.init(G)
         if dist > 40 and dist < gw.range * (wt and 1.3 or 1) then
           local c = fwd:Dot(to / dist)
           if c > ((em == keep) and (wt and LEAD_OUT or STICK_OUT) or (wt and LEAD_IN or STICK_IN)) then
-            local sc = (1 - c) * 1000 + dist / gw.range - ((em == keep) and 2 or 0)
+            local sc = (1 - c) * 1000 + dist / gw.range - ((em == keep) and 2 or 0) - ((rdl and rdl.em == em) and 1e4 or 0)
             if sc < bestS then best, bestS = { em = em, p = p, dist = dist }, sc end
           end
         end
       end
     end
     if not best then st.stickV = nil return nil end
-    -- 目标的速度：两帧位置差，平滑一下
+    -- 目标的速度：只在服务器真挪了它时按两次挪之间的时间算、按时间平滑（View.lua G.velTrack；原来每帧差分 × 0.3，
+    --   提前量一跳一跳、帧率不同手感也不同）；换了目标重新量。雷达单目标跟踪着的用雷达测的速度（velTrack 照样跟着量，丢了雷达锁接得上）
     local now = os.clock()
     local sv = st.stickV
-    local vT = V()
-    if sv and sv.em == best.em and now > sv.t + 1e-3 then
-      local raw = (best.p - sv.p) / (now - sv.t)
-      vT = (raw.Magnitude < 1500) and (sv.v or raw):Lerp(raw, 0.3) or (sv.v or V())
-    elseif sv and sv.em == best.em then
-      vT = sv.v or V()
+    if not sv or sv.em ~= best.em then
+      sv = { em = best.em }
+      st.stickV = sv
     end
-    st.stickV = { em = best.em, p = best.p, t = now, v = vT }
+    local vT
+    if G.velTrack then vT = G.velTrack(sv, best.p, now, 1500)
+    else
+      sv.p, sv.t, sv.v = best.p, now, sv.v or V()
+      vT = sv.v
+    end
+    best.radar = rdl ~= nil and rdl.em == best.em
+    if best.radar and rdl.v then vT = rdl.v end
     local vr = vT - (st.vel or V())
     local t = best.dist / gw.speed
     local lead = best.p
@@ -1222,10 +1313,19 @@ function Fly.init(G)
   --   鼠标转的是想去的方向（屏幕正中的小圈），镜头顺着它看，教官自动压坡度、拉杆把机头追过去（机头的「+」在画面里跟着走）；
   --   按着 W / S / A / D / Q / E 就是直接操纵（松开教官又追回鼠标那里）；按住 C 自由看（飞机照旧往鼠标那里飞）。
   --   M 切换：战雷鼠标瞄准 ↔ 纯键盘驾驶（用户 11-21 要的那一套：鼠标只转视角）
-  -- 默认纯键盘驾驶（用户 11-24 夜：「我不想让准心控制飞机飞行方向」——11-21 就要过「飞机改成 WASD 控制方向、不要准心控制」，
-  --   早上照战雷改的时候默认换成了鼠标瞄准，又成了准心带着飞）：鼠标只转视角；想要战雷鼠标瞄准的按 M
-  local mouseAim = false
-  G.flyMouseAim = function(v) if v ~= nil then mouseAim = v == true end return mouseAim end
+  -- 11-24 夜（「我不想让准心控制飞机飞行方向」）一度默认纯键盘驾驶；11-27 用户又要「目前飞机机头朝向会影响我的准心位置 这个也改一下
+  --   不要影响我的视角位置 驾驶飞机时我也要有自由准心」——纯键盘时镜头钉在机身上、准心就是机头。默认改回战雷鼠标瞄准（准星自由、镜头跟着鼠标、
+  --   地平线水平），设置「固定翼操纵」里能换纯键盘（存档），飞行中按 M 也能换（一并存进设置）
+  -- 11-28 用户「默认飞机不要准心控制吧 就键盘控制」：默认又是纯键盘（Settings.lua 的默认值；设置还没读到时也按纯键盘）
+  local mouseAim = G.airMouseAim == true
+  G.flyMouseAim = function(v, fromPrefs)
+    if v ~= nil then
+      mouseAim = v == true
+      G.airMouseAim = mouseAim
+      if not fromPrefs and G.setPref then G.setPref("airAim", mouseAim and "mouse" or "kb") end
+    end
+    return mouseAim
+  end
   -- 自由视角（用户 11-26 晚：「自由视角不要因为飞机的机动动作而影响 然后 自由视角的移动改成鼠标右键拖动」）：
   --   按住右键（战雷鼠标瞄准时 C 也行）拖动——看的是世界里的一个方向（方位、俯仰），飞机怎么滚、怎么拉都不带着它转；地平线是平的；
   --   松开 0.35 秒滑回追尾镜头。原来鼠标一动就绕着飞机转（跟着机身坐标走，飞机一滚画面也滚），2.5 秒不动才回去
@@ -1235,7 +1335,12 @@ function Fly.init(G)
     st.fl = { by = by, yaw = math.atan2(-lk.X, -lk.Z), pitch = math.asin(clamp(lk.Y, -1, 1)) }
   end
   flStop = function()
-    if st then st.fl = nil end
+    if not st then return end
+    -- 纯键盘驾驶、在地上：右键拖到哪，松开镜头就停在哪（不滑回机头，用户 11-28）；战雷鼠标瞄准在空中照旧回到准星圈
+    if st.fl and st.fl.by == "rmb" and (not mouseAim or st.ground) and st.pilot and not st.uav then
+      st.kbLook = { yaw = st.fl.yaw, pitch = st.fl.pitch }
+    end
+    st.fl = nil
   end
   G.flyFreeLook = function(on) if on then flStart("rmb") else flStop() end end   -- 测试用
   -- 战雷的投弹（用户 11-24：「……包括投弹以及各方面操作细节和手感」）：Shift + B 投弹数量（单投 → 双投 → 齐投，整局记着）；
@@ -1253,7 +1358,7 @@ function Fly.init(G)
   local function jetCamBasis()
     local cf = st.cf
     local fwd = cf.LookVector
-    local kw = st.camUpK or 0.7
+    local kw = st.camUpK or (1 - math.clamp(G.camRollK or 0, 0, 1))
     local upC = V(0, 1, 0) * kw + cf.UpVector * (1 - kw)
     local rt = fwd:Cross(upC)
     if rt.Magnitude < 1e-3 then rt = cf.RightVector end
@@ -1301,6 +1406,20 @@ function Fly.init(G)
   local function lookDir() return st.eo and eoDir() or aimDirNow() end
   local function pickTarget(w, skip)
     local best, bs = nil, math.huge
+    if irAam(w) then   -- 红外空空弹：只截获导引头小圈里的（导引头指哪看哪；没随动雷达、没头盔的要先把机头前的小圈压到目标上）
+      local ax = seekAxis(w)
+      local cr = math.cos(seekR(w))
+      for _, c in ipairs(candidates(w)) do
+        if c.id ~= skip and inCone(w, c) then
+          local dd = ax:Dot(c.dir)
+          if dd > cr then
+            local sc = 1 - dd + c.dist / 200000
+            if sc < bs then best, bs = c, sc end
+          end
+        end
+      end
+      return best
+    end
     local want = lookDir()
     for _, c in ipairs(candidates(w)) do
       if inCone(w, c) and c.id ~= skip then
@@ -1310,17 +1429,95 @@ function Fly.init(G)
     end
     return best
   end
-  function G.flyNextTarget()
+  -- 雷达弹照战雷手动锁（用户 11-27 定的）：不再「选了雷达弹就自动锁最近的」——雷达屏上的目标 R / Alt+T 选中（st.rdSel，屏上「|—|」），
+  --   Alt+F 锁定进雷达的单目标跟踪（STT：Radar.lua 的 st.rdLock）、再按一下解锁；锁着时 R / Alt+T 换成屏上的下一个。红外弹、空地弹、炸弹照旧自动挑
+  --   **雷达锁定跟所选武器脱钩**（战雷那样）：STT 是雷达自己的，选什么弹都能锁；雷达弹的锁（st.lock）就锁雷达跟踪着的那架（或者 TWS 里指定的航迹），
+  --   红外弹的导引头跟着雷达指（雷达锁着的在导引头视场里就先咬它），机炮的提前量优先算雷达锁着的（gunStick）
+  --   手机还没有锁定键（第 7 步加：点亮点选、按钮锁）：R 选中就锁
+  local function radarManual(w) return st ~= nil and st.rd ~= nil and w ~= nil and w.kind == "aam" and w.seeker == "radar" end
+  local function toastT(k, ...) if G.toast then G.toast(T(k, ...), "info") end end
+  local function candOf(w, em)
+    for _, c in ipairs(candidates(w)) do if c.em == em then return c end end
+    return nil
+  end
+  -- 雷达锁这一架（进 STT）：要在雷达屏上、看得见、在这部雷达的锁定距离里；锁不上返回 false、原因（Lang 键）、参数。
+  --   选着雷达弹的话马上接上弹的锁（射程、离轴角够不着的等飞近了下面每帧自己接上）
+  local function radarLockOn(em)
+    local ok, why, _, _, dist = G.radarSees(st, em)
+    if why == "off" then return false, "rd.isOff" end
+    if not ok or not (G.radarHas and G.radarHas(st, em)) then return false, "rd.cantSee" end
+    local lockR = st.rd.lock * (G.radarRcsK and G.radarRcsK(em, st) or 1)   -- 按它的 RCS（隐身机要近得多才锁得上）
+    if dist > lockR then return false, "rd.lockFar", string.format("%.1f", lockR / AD.M / 1000) end
+    if not (G.radarStt and G.radarStt(st, em)) then return false, "rd.cantSee" end
+    local _, w = storeW()
+    if radarManual(w) then
+      local c = candOf(w, em)
+      if c and inTrack(w, c) then st.lock, st.lockT = c, 0 end
+    end
+    return true
+  end
+  G.flyRadarLockOn = function(em)   -- 直接锁这一架（同 Alt+F 锁选中的；测试用）：锁上返回 true
+    if not st or not st.rd then return false end
+    return (radarLockOn(em))
+  end
+  -- radarKey：Alt+T（Radar.lua 转过来）——只在雷达屏上选，不管选的什么弹；R 照旧：选着雷达弹在雷达屏上选，别的弹按导引头挑
+  function G.flyNextTarget(radarKey)
     if not st then return end
     local _, w = storeW()
+    if st.rd and (radarKey == true or radarManual(w)) then
+      local lk = st.rdLock
+      local cur = (lk and lk.em) or st.rdSel
+      local nx = G.radarNext and G.radarNext(st, cur)
+      if not nx then
+        if not lk then toastT((G.radarOn and not G.radarOn()) and "rd.isOff" or "rd.noTgt") end
+        return
+      end
+      local ok, why, arg = true, nil, nil
+      if lk then   -- 锁着：换成下一个（锁不上就留着原来的）
+        if nx ~= lk.em then ok, why, arg = radarLockOn(nx) end
+      else
+        st.rdSel = nx
+        if G.mobile then ok, why, arg = radarLockOn(nx) end
+      end
+      if not ok then toastT(why, arg) end
+      return
+    end
     if not w or w.kind == "gun" or w.kind == "rkt" then return end
     local c = pickTarget(w, st.lock and st.lock.id)
     st.lock, st.lockT = c, 0
   end
+  -- Alt+F（Radar.lua 转过来）：雷达锁着就解锁（还选着它），没锁就锁选中的（没选中的挑屏上离扫描中心最近的）
+  function G.flyRadarLock()
+    if not st or not st.pilot or not st.rd then return end
+    local lk = st.rdLock
+    if lk then
+      st.rdSel = lk.em
+      if G.radarUnlock then G.radarUnlock(st) end
+      local _, w = storeW()
+      if st.lock and st.lock.em == lk.em and radarManual(w) then st.lock, st.lockT = nil, 0 end
+      toastT("rd.unlock")
+      return
+    end
+    local em = st.rdSel or (G.radarNext and G.radarNext(st, nil))
+    if not em then toastT((G.radarOn and not G.radarOn()) and "rd.isOff" or "rd.noTgt") return end
+    st.rdSel = em
+    local ok, why, arg = radarLockOn(em)
+    if not ok then toastT(why, arg) end
+  end
+  -- 选中这一架（手机点雷达屏上的亮点用，第 7 步接）：要在雷达屏上
+  function G.flyPickTarget(em)
+    if not st or not st.rd or not (G.radarHas and G.radarHas(st, em)) then return false end
+    st.rdSel = em
+    return true
+  end
 
+  -- 武器能不能用：开战以后；试驾（训练场，模型的 TestDrive 属性）什么时候都能打靶——真游戏开着匹配，机库里试驾时这一局还在「匹配中」
+  local function weaponsHot()
+    return not G.S or G.S.phase == "battle" or (st and st.em and st.em:GetAttribute("TestDrive") == true)
+  end
   local function setTrig(on)
     -- 航炮声：按住扳机就一直响（循环一小段起爆声，一圈一发），打光了就停
-    local loud = on and (st.gunAmmo or 0) > 0 and (not G.S or G.S.phase == "battle")
+    local loud = on and (st.gunAmmo or 0) > 0 and weaponsHot()
     if G.gunLoop and loud ~= (st.gunSnd == true) then
       st.gunSnd = loud
       G.gunLoop("me", st.d.gun, nil, loud)
@@ -1334,10 +1531,15 @@ function Fly.init(G)
   local function fireStore(wid, w, aimAt)
     local t = os.clock()
     if t < st.nextFire or left(wid) <= 0 then return false end
-    if G.S and G.S.phase ~= "battle" then G.toast(T("air.notYet"), "info") return false end
+    if not weaponsHot() then G.toast(T("air.notYet"), "info") return false end
     local locked = (not aimAt) and st.lock and st.lockT >= (w.lockTime or 1)
     if locked and st.lock.out and w.kind ~= "rkt" then G.toast(T("air.outCone"), "info") return false end   -- 出了发射角度：锁着也不能打（菱形是黄的）
-    if w.kind == "aam" and not locked then G.toast(T("air.needLock"), "info") return false end
+    -- 没锁就打（用户 11-28 夜「然后有的导弹不需要雷达锁定就能发射吧」，照战雷）：主动雷达弹（w.act）「疯狗」打出去，飞一段自己开导引头找；
+    --   红外弹打出去自己盯着前方找（服务器 Air.lua searchFor）；半主动雷达弹要发射机的雷达一直照着——没有雷达锁不让打
+    if w.kind == "aam" and not locked then
+      if w.seeker == "radar" and not w.act then G.toast(T("air.needRadar"), "info") return false end
+      if w.seeker == "radar" then G.toast(T("air.madDog"), "info") end
+    end
     if st.d.sideArm and select(2, bayOf(wid)) and st.bayS < 0.75 then return false end   -- 歼-20 侧弹舱：挂架还没把弹转出舱外（选中后约一秒）
     -- 炸弹按投弹数量（Shift + B）：单投一枚、双投两枚一起、齐投这种全部一枚接一枚
     local n = 1
@@ -1369,22 +1571,15 @@ function Fly.init(G)
 
   -- 质量（kg）和外挂的阻力系数增量：空重 + 内油（st.fuel 几成）+ 副油箱里的油（st.fuelX，按内油的几成）+ 挂着的弹 / 副油箱（按外形估的重量）；
   --   弹舱里的不算阻力
+  --   火箭巢（kind rkt）：一个挂点挂一个巢，stores 记的是巢里还剩几发（AD.count = 管数 19 / 20），FM.storeMass / storeDrag 按外形算的是一整个装满的巢——
+  --   原来照「发数 × 一整个巢」算（用户 11-27「飞机试驾不了」时查到）：苏-25（四个 B-8 巢）凭空重了 27 吨、43 吨推不动，推满油门滑出跑道两三公里还离不了地；
+  --   A-10（两个火箭巢）重 11 吨、滑出跑道才离地。现在一个巢：空巢壳四成 + 剩下的火箭按发数折，阻力按一个巢（打空了巢还挂着）
+  --   算法挪进了 FlightModel.loadout（机库整备的性能对比、资料卡用同一套，不另编数）：这里给它现在挂的、每个挂点还剩几枚、两种油
   local function fmMass(D)
-    local d = st.d
-    local m = D.m0 + D.fi * clamp(st.fuel or 1, 0, 1) + D.fi * math.max(st.fuelX or 0, 0)
-    local dS = 0
-    for i, s in ipairs(d.st or {}) do
-      local wid = st.load and st.load[i]
-      local w = wid and AD.W[wid]
-      local n = (st.stores and st.stores[i]) or 0
-      if w and n > 0 then
-        m += FM.storeMass(w, AD.M) * n
-        if not s.bay then dS += FM.storeDrag(w, AD.M) * n end
-      end
-    end
-    return m, dS / D.S
+    local L = FM.loadout(st.d, st.load, st.fuel or 1, { D = D, stores = st.stores or {}, fuelX = st.fuelX or 0, AD = AD })
+    return L.m, L.dCD0
   end
-  G.flyMass = function() return st and st.fmD and fmMass(st.fmD) end   -- 测试用
+  G.flyMass = function() if st and st.fmD then return fmMass(st.fmD) end return nil end   -- 测试用：质量、外挂阻力增量
 
   local function jetPhysics(dt)
     local d = st.d
@@ -1397,14 +1592,28 @@ function Fly.init(G)
     local kb = not st.uav and not G.mobile
     local mAim = kb and mouseAim   -- 战雷式：鼠标给方向（教官飞），按方向键时直接操纵
     local up, dn
+    -- 按住 Alt 的 ↑↓ 归雷达（有雷达的飞机：Alt+↑↓ 天线俯仰；←→ 不按 Alt 就是方位偏转，Radar.lua），不动油门；Alt+Q / Alt+E 也不打舵（下面）
+    local altRd = st.rd ~= nil and (key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt))
+    local kUp, kDn = key(Enum.KeyCode.Up) and not altRd, key(Enum.KeyCode.Down) and not altRd
     if kb then
-      up = key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or key(Enum.KeyCode.Up) or (touch and touch.up)
-      dn = key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or key(Enum.KeyCode.Down) or (touch and touch.down)
+      up = key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or kUp or (touch and touch.up)
+      dn = key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or kDn or (touch and touch.down)
     else
-      up = key(Enum.KeyCode.W) or key(Enum.KeyCode.Up) or key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or (touch and touch.up)
-      dn = key(Enum.KeyCode.S) or key(Enum.KeyCode.Down) or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or (touch and touch.down)
+      up = key(Enum.KeyCode.W) or kUp or key(Enum.KeyCode.LeftShift) or key(Enum.KeyCode.RightShift) or (touch and touch.up)
+      dn = key(Enum.KeyCode.S) or kDn or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.RightControl) or (touch and touch.down)
     end
     st.thr = clamp(st.thr + ((up and 1 or 0) - (dn and 1 or 0)) * 55 * dt, 0, d.ab and 130 or 100)
+    -- 准备阶段在跑道上等开战（用户 11-28 晚「点加入战斗就进入地图里面等着吧 等倒计时结束就开战」，WtBattle.lua G.wtHold）：油门推不上去、滑不起来
+    if st.ground and G.wtHold and G.wtHold() then st.thr = 0 end
+    -- 超速保护（用户 11-27「j6为什么这么容易坠机」：歼-6 低空加力平飞就快到撕翼速度，带着加力一俯冲就超、机翼被撕掉）：
+    --   鼠标瞄准（教官飞）时，到了极限速度九成三先把加力关掉、九成七收到慢车，降回八成八再放开——玩家自己再推油门照样能推上去（下一帧又收）
+    if mAim and not st.ground and st.fmD and st.fmD.vne then
+      local vneG = d.vne or (st.fmD.vne * AD.M * 1.03)
+      if st.spd > vneG * 0.97 then st.vneCut = 0
+      elseif st.spd > vneG * 0.93 then st.vneCut = math.min(st.vneCut or 100, 100)
+      elseif st.vneCut and st.spd < vneG * 0.88 then st.vneCut = nil end
+      if st.vneCut then st.thr = math.min(st.thr, st.vneCut) end
+    end
     -- 自动收油门（真飞机拉平时自动油门收到慢车）：接地太快贴着跑道飘的时候不按 W 就自己往回收（按住 W 是复飞）
     if not up and os.clock() - (st.floatT or -9) < 0.3 then st.thr = math.max(0, st.thr - 55 * dt) end
     if st.out then st.thr = 0 end   -- 油烧干了：发动机熄火，只能滑翔
@@ -1412,24 +1621,31 @@ function Fly.init(G)
     local rollIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
     local yawIn, pitchIn = 0, 0   -- 无人机：键盘不管俯仰、方向舵（鼠标给方向）；手机上摇杆当驾驶杆
     if kb then
-      -- 键盘当驾驶杆（用户 11-26 晚「飞机驾驶感觉过于灵敏」；原来 0.12 秒推满杆）：按住是往满杆指数地推（时间常数 0.28 秒：点一下只有三成杆、
-      --   按住半秒八成、一秒才满），松开 0.05 秒回中、反着按先回中再推——小修正点一下就够，猛拉要按住；杆量再过飞控的非线性（小杆量更细）
-      local function ramp(cur, want)
+      -- 键盘当驾驶杆（用户 11-26 晚「飞机驾驶感觉过于灵敏」；原来 0.12 秒推满杆）。11-28 用户「有时候不该灵敏的时候过于灵敏 该灵敏的时候又有点迟钝」：
+      --   原来按住是往满杆指数地推（时间常数 0.28 秒，按住一秒才满），再过飞控的前置滤波、低速时跟得慢的增益——量出来 F-16 在 450 公里 / 时
+      --   按住 S 半秒才 1.8 g、按住 D 半秒才 56°/s（tools/mock/kbfeel.lua）。现在按住匀速推杆、T 秒满杆（俯仰、滚转 0.25 秒，方向舵 0.3 秒）——
+      --   点一下（0.08 秒）三成杆；松开 0.05 秒回中、反着按先回中再推。杆量进飞控不再过给摇杆的那道三次方（inp.lin：两道叠起来按住头 0.2 秒
+      --   几乎没反应、之后猛冲上去），飞控那边：拉杆按这个速度拉得出来的过载分、迎角往要的地方靠时按平尾转得过来的时间刹住、平尾副翼转得快一倍
+      --   （FlightModel；量的见 tools/test/kbfeel.luau：F-16 在 450 公里 / 时点 S 0.3 秒，机头原来自己翻上去 45°，现在 11°）
+      local function ramp(cur, want, T)
         if want ~= 0 and (cur == 0 or (cur > 0) == (want > 0)) then
-          return cur + (want - cur) * (1 - math.exp(-dt / 0.28))
+          return approach(cur, want, dt / T)
         end
         return approach(cur, want, dt / 0.05)
       end
-      st.kP = ramp(st.kP or 0, (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0))
-      st.kR = ramp(st.kR or 0, rollIn)
-      st.kY = ramp(st.kY or 0, (key(Enum.KeyCode.E) and 1 or 0) - (key(Enum.KeyCode.Q) and 1 or 0))
+      st.kP = ramp(st.kP or 0, (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0), 0.25)
+      st.kR = ramp(st.kR or 0, rollIn, 0.25)
+      st.kY = ramp(st.kY or 0, altRd and 0 or ((key(Enum.KeyCode.E) and 1 or 0) - (key(Enum.KeyCode.Q) and 1 or 0)), 0.3)   -- Alt+Q 是雷达量程、Alt+E 雷达模式
       pitchIn, rollIn, yawIn = st.kP, st.kR, st.kY
     end
     if G.mobile and controls then   -- 手机：摇杆直接当驾驶杆（往前推是低头）
+      -- pitchIn 的符号同键盘：W 推杆（低头）= +1、S 拉杆（抬头）= −1（下面 pull = −pitchIn、inp.sy = −pitchIn，地上 pitchIn < −0.3 抬机头）。
+      --   Roblox 的 MoveVector 往前推（同按 W）Z = −1，所以要取反——原来 pitchIn = mv.Z：往前推成了拉杆、往回拉成了推杆，
+      --   手机上往回拉想抬头起飞反倒压机头（试驾审查 8；直升机那段 fwdIn = −mv.Z 本来就是对的）
       local ok, mv = pcall(function() return controls:GetMoveVector() end)
       if ok and typeof(mv) == "Vector3" then
         if math.abs(mv.X) > 0.1 then rollIn = mv.X end
-        if math.abs(mv.Z) > 0.1 then pitchIn = mv.Z end
+        if math.abs(mv.Z) > 0.1 then pitchIn = -mv.Z end
       end
     end
     local cf = st.cf
@@ -1493,7 +1709,7 @@ function Fly.init(G)
     local upright = upV.Y > 0.3   -- 没倒飞、没在翻筋斗
     local nCmd, rc, yc
     local stickHeld = math.abs(st.kP or 0) + math.abs(st.kR or 0) + math.abs(st.kY or 0) > 0.02
-    if G.mobile or (kb and not st.eo and not st.oob and (not mAim or stickHeld)) then
+    if G.mobile or (kb and not st.eo and (not mAim or stickHeld)) then   -- 出作战区也照旧自己飞（不再自动掉头，服务器读秒）
       -- 驾驶杆（键盘 / 手机摇杆）：往后拉要过载、松杆 1 g，坡度 33° 以内补一点杆保高度；没压 A / D、坡度 20° 以内机翼慢慢自己摆平
       local pull = -pitchIn   -- 往后拉为正
       nCmd = (pull >= 0) and (1 + pull * (GMAX - 1)) or (1 + pull * 3)   -- 推杆到 −2 g
@@ -1623,10 +1839,26 @@ function Fly.init(G)
       yc = clamp(psi * 2.2, -rad(d.yaw) * 0.6, rad(d.yaw) * 0.6) * (1 - Map.smooth(rad(6), rad(12), off)) * bankK
       if rollIn ~= 0 then rc = rollIn * ROLL end
     end
+    -- 鼠标瞄准：方向键接管完松开以后，教官不马上全力追回准星圈（用户 11-28 夜「飞机不管转弯还有滚筒 为什么都会回正呢
+    --   我觉得这回正可以有但是目前回正太明显了」）：原来一松键教官就按满滚转角速度、满过载拽回去（压着坡度松手马上整架滚回来）；
+    --   现在松开以后 1.5 秒里教官的滚转、过载从两成慢慢放到满——照样回到准星圈那里（战雷的教官也回去），只是不猛
+    if mAim and kb then
+      if stickHeld then st.ovrOn = true
+      elseif st.ovrOn then
+        st.ovrOn = false
+        st.ovrEnd = os.clock()
+      end
+      local ek = (st.ovrEnd and not stickHeld) and clamp((os.clock() - st.ovrEnd) / 1.5, 0, 1) or 1
+      if ek < 1 then
+        local k = 0.2 + 0.8 * ek * ek
+        rc = rc * k
+        nCmd = 1 + (nCmd - 1) * k
+      end
+    end
     -- 教官给的过载、滚转角速度、偏航（飞行员昏迷、断翼、平尾没了这些交给 FlightModel 按受伤算）
     st.nCmd = clamp(nCmd, -2, GMAX)
     st.yawCmd = yc
-    local stickMode = G.mobile or (kb and not st.eo and not st.oob and (not mAim or stickHeld))   -- 键盘 / 手机摇杆直接操纵（不然教官飞）
+    local stickMode = G.mobile or (kb and not st.eo and (not mAim or stickHeld))   -- 键盘 / 手机摇杆直接操纵（不然教官飞）
     if st.ground then st.pr, st.rr, st.yr = 0, 0, 0 st.c.pit, st.c.rol, st.c.yaw = 0, 0, 0 end
     local pos = cf.Position
     if st.ground and st.cat then
@@ -1768,6 +2000,7 @@ function Fly.init(G)
       local inp = { thr = apc and math.max(st.thr, 92) or st.thr, gear = st.gear, flap = st.flapK or 0, brake = (not G.mobile and key(Enum.KeyCode.B)) or false }
       if stickMode then
         inp.mode, inp.sx, inp.sy, inp.sz = "stick", rollIn, -pitchIn, yawIn   -- W 推杆（低头）、S 拉杆
+        inp.lin = kb and not G.mobile   -- 键盘：杆量是按住多久匀速推出来的，飞控不再过给摇杆的那道三次方（FlightModel inp.lin）
         inp.level = rollIn == 0
         inp.levelHard = landAid ~= nil and rollIn == 0   -- 贴着跑道 / 甲板：机翼自动摆平
         inp.ovr = st.ovr and not landAid   -- T 解除迎角限制（过失速机动）；进近着陆时照常限制
@@ -1839,21 +2072,22 @@ function Fly.init(G)
         local over = spd > vne or n > gLim
         if over and not st.ground then
           st.overT = (st.overT or 0) + dt
-          if st.overT > 0.8 and not st.overSent then
+          if st.overT > ((spd > vne) and 1.5 or 0.8) and not st.overSent then   -- 超速给 1.5 秒（过载照旧 0.8 秒）
             st.overSent = true
             G.R.Act:FireServer("wtaOver", (spd > vne) and "speed" or "g")
           end
         else
           st.overT = math.max(0, (st.overT or 0) - dt * 2)
         end
-        if (spd > vne * 0.95 or n > gLim * 0.9) and os.clock() > (st.overWarnT or 0) and G.toast then
-          st.overWarnT = os.clock() + 3
-          G.toast(T((spd > vne * 0.95) and "wta.warnSpeed" or "wta.warnG"), "bad")
+        if (spd > vne * 0.92 or n > gLim * 0.9) and os.clock() > (st.overWarnT or 0) and G.toast then   -- 九成二就警告（原来九成五，来不及）
+          st.overWarnT = os.clock() + 2
+          G.toast(T((spd > vne * 0.92) and "wta.warnSpeed" or "wta.warnG"), "bad")
         end
       end
       st.sink = 0
       -- 撞地 / 落地
       local g = ground(pos.X, pos.Z)
+      if pos.Y - d.gearH <= g + 0.3 then g = seenGround(pos.X, pos.Z, pos.Y, g) end   -- 地形还没写到的山：按看得见的算
       if pos.Y - d.gearH <= g + 0.3 then
         local fw = cf.LookVector
         local bank = math.abs(deg(math.asin(clamp(cf.RightVector.Y, -1, 1))))
@@ -1899,8 +2133,12 @@ function Fly.init(G)
     if st.fm and st.fm.live then st.fmCF, st.fmVel = cf, st.vel end   -- 飞行物理这一帧的结果（下一帧看别处改没改过）
     -- 起落架（用户：起飞自动把起落架收了）：离地爬过 15 米、还在往上爬就自动收一次；这次起飞只收一次，之后按 G 放下就听玩家的；
     --   地上一直放着，落地重置
+    --   对标战雷（用户 11-27「你看一下战雷有没有自动收起落架这些 对标」）：战雷里起落架是自己按 G 收放的（没有自动收），襟翼有自动管理——
+    --   这里自动收起落架留着（用户早先要的），设置「起飞后自动收起落架」能关；襟翼照战雷自动（下面）
     if st.ground then
       st.gearWant, st.gearAuto = 1, false
+    elseif G.autoGearOff then
+      st.gearAuto = true   -- 关了：这一趟不再自动收
     elseif not st.gearAuto and st.gearWant > 0.5 and st.vel and st.vel.Y > 0.5 then
       local p0 = cf.Position
       if p0.Y - d.gearH - math.max(ground(p0.X, p0.Z), 0) > 15 * AD.M then
@@ -1922,7 +2160,12 @@ function Fly.init(G)
     st.gear = approach(st.gear, st.gearWant, dt / 2.5)
     st.c.gear = st.gear
     st.c.thr = st.thr
-    st.c.flap = (st.gear > 0.5 and st.spd < d.stall * 1.6) and 1 or 0
+    -- 襟翼（战雷的自动襟翼）：放着起落架、慢的时候放着陆襟翼（全放）；收着起落架、速度不快（2.2 倍失速以下）拉 2.5 g 以上放战斗襟翼（三成，
+    --   多一点升力好转弯）；快了自己收（不会被吹坏）
+    local wantFlap = 0
+    if st.gear > 0.5 and st.spd < d.stall * 1.6 then wantFlap = 1
+    elseif not st.ground and d.kind == "jet" and (st.gLoad or 1) > 2.5 and st.spd < d.stall * 2.2 then wantFlap = 0.33 end
+    st.c.flap = wantFlap
     st.flapK = approach(st.flapK or 0, st.c.flap, dt / 2)   -- 襟翼放下 / 收起要两秒（升力、阻力按它）
     st.c.can = (st.ground and st.thr < 5 and st.spd < 3) and 1 or 0
     -- 折翼（用户：飞机机翼折叠没有动画）：原来直接 0 / 1 一下就折好；现在约 4 秒折起 / 展开（真机十几秒，游戏里缩短），
@@ -1941,7 +2184,7 @@ function Fly.init(G)
   -- 直升机（用户：直升机操作感觉不太真实）：按真直升机的道理飞——旋翼拉力沿桨盘法线，桨盘往哪倾就往哪加速：
   --   W / S 前推后拉驾驶杆（低头加速、抬头减速 / 后退）；姿态有惯性（二阶弹簧），松杆自动回平；
   --   低速（悬停附近）松杆时自动往反方向带一点把飘移收住，快的时候松杆就保持平飞、靠阻力慢慢减速（要停下来得抬头拉一下）；
-  --   E / Q 总距（E 升、Q 降）：拉力大小（同样的总距，机身一倾、竖直方向的拉力就小了，会掉高度）；不按时自动把升降速度收到 0（定高）；
+  --   W / S 总距（W 升、S 降；11-28 前是 E / Q）：拉力大小（同样的总距，机身一倾、竖直方向的拉力就小了，会掉高度）；不按时自动把升降速度收到 0（定高）；
   --   A / D 脚蹬：偏航角速度，有惯性；速度上来以后压坡度就会转弯（协调转弯），尾翼让机头顺着来流（风标效应）；
   --   平移升力（二十几格每秒以上旋翼效率高一点）、地效（离地一个旋翼直径以内托得更稳）；最高平飞速度、爬升率照型号表
   local function heliPhysics(dt)
@@ -1951,14 +2194,24 @@ function Fly.init(G)
     local auto = st.out and not st.ground   -- 熄火自转下滑：还能往前飘一点，快落地时拉总距（空格）下沉慢一些
     -- 用户：桨盘对着哪里往哪飞（按受力算，要有物理引擎的感觉），准心决定机头朝向——
     --   鼠标转准心（镜头），机头跟着准心转：尾桨有惯性，最快 d.yaw 度 / 秒，起转、停住都要一会儿（按住 Alt 自由看，机头不跟）
-    --   W / S 桨盘前倾 / 后仰（往前飞 / 带杆刹车、倒飞），A / D 桨盘左右倾（侧飞）；E 升、Q 降（Ctrl / C 也降）；空格下飞机
+    --   准心往下 / 往上：桨盘前倾 / 后仰（往前飞 / 带杆刹车、倒飞），A / D 桨盘左右倾（侧飞）；W 升、S 降；空格下飞机
     --   拉力顺着桨盘法线：倾得越多水平推力越大、往上托的越少（猛一推杆先掉一点高度）；速度有惯性，松杆桨盘回平但人还往前冲，靠阻力慢慢停
     --   快速前飞时转机头，桨盘自动往那边压坡度（协调转弯），航迹跟着机头弯过去；侧面阻力大，侧飞快不起来
-    local fwdIn = (key(Enum.KeyCode.W) and 1 or 0) - (key(Enum.KeyCode.S) and 1 or 0)
+    -- 照战雷的鼠标瞄准（用户 11-28「直升机……反正就弄成和战雷一样就行」；战雷开发日志：鼠标定直升机要去的方向，
+    --   教官管周期变距和脚蹬，总距玩家自己管）：W / S 总距（升 / 降，松开自动定高）、鼠标准心定方向（往下前倾往前飞、往上后仰减速）、
+    --   A / D 侧飞、Q / E 转机头（直接转准心，机头跟过去、不会被拽回去）。原来 E / Q 升降、W / S 前推后拉
+    local fwdIn = 0
     local sideIn = (key(Enum.KeyCode.D) and 1 or 0) - (key(Enum.KeyCode.A) and 1 or 0)
     local yawIn = 0
-    local upIn = ((key(Enum.KeyCode.E) or (touch and touch.up)) and 1 or 0)
-      - ((key(Enum.KeyCode.Q) or key(Enum.KeyCode.LeftControl) or key(Enum.KeyCode.C) or (touch and touch.down)) and 1 or 0)
+    local upIn = ((key(Enum.KeyCode.W) or (touch and touch.up)) and 1 or 0)
+      - ((key(Enum.KeyCode.S) or (touch and touch.down)) and 1 or 0)
+    if not G.mobile then
+      local qe = (key(Enum.KeyCode.E) and 1 or 0) - (key(Enum.KeyCode.Q) and 1 or 0)
+      if qe ~= 0 then   -- Q / E：转准心的方位（按住 Alt 自由看时转机头记着的那个方位）
+        local dy = -qe * rad(d.yaw) * dt
+        if st.noseYaw then st.noseYaw += dy else st.camYaw = (st.camYaw or st.yaw) + dy end
+      end
+    end
     if G.mobile and controls then
       local ok, mv = pcall(function() return controls:GetMoveVector() end)
       if ok and typeof(mv) == "Vector3" then
@@ -1990,7 +2243,7 @@ function Fly.init(G)
     -- 驾驶杆 → 桨盘想要的倾角（俯仰：负的是低头 = 往前倾）；松杆桨盘回平
     --   用户 11-22：「准心决定机头对准哪里——鼠标准心往下，螺旋桨对准前面，往前飞；准心突然往上，直升机受力往后和往上」：
     --   电脑上俯仰跟着准心（镜头的俯仰）：准心比平常那个略往下看的角度（AIM0）低多少，机头、桨盘就往前倾多少（到型号的最大倾角为止），
-    --   高多少就往后仰多少；W / S 照样能前推后拉（加在准心上，合起来不超过最大倾角）；按住 Alt 自由看时停在按下那一刻的俯仰；手机没有鼠标照旧用摇杆前后
+    --   高多少就往后仰多少（W / S 是总距，不再前推后拉）；按住 Alt 自由看时停在按下那一刻的俯仰；手机没有鼠标照旧用摇杆前后
     local tP = -fwdIn * maxT
     if not G.mobile then
       local AIM0 = -0.15   -- 坐进来时镜头的俯仰（略往下看）：这时桨盘是平的
@@ -2056,6 +2309,7 @@ function Fly.init(G)
     end
     local pos = st.cf.Position + (st.hv + V(0, st.vy, 0)) * dt
     local g = ground(pos.X, pos.Z)
+    if pos.Y - d.gearH <= g then g = seenGround(pos.X, pos.Z, pos.Y, g) end   -- 地形还没写到的山：按看得见的算
     if pos.Y - d.gearH <= g then
       local overSea = g <= 0.4 and not AD.onDeck(Map, pos.X, pos.Z)
       if (st.vy < -30 or overSea) and not st.ground and not st.crashed then crash() end
@@ -2078,12 +2332,17 @@ function Fly.init(G)
 
   ---------------------------------------------------------------- 输入
 
+  local RADAR_ALT = {}   -- 按住 Alt 时归雷达的键（Radar.lua：R 开关、T 选目标、F 锁定、Q 量程、E 模式、Z 扫描方式、C 回中、方向键挪天线）
+  for _, kc in ipairs({ "R", "T", "F", "Q", "E", "Z", "C", "Up", "Down", "Left", "Right" }) do RADAR_ALT[Enum.KeyCode[kc]] = true end
   UIS.InputBegan:Connect(function(io, gp)
     if gp or not st then return end
     local k = io.KeyCode
     -- 用户：空格键脱离载具（在天上就跳伞）；战雷式（不当步兵）没有跳伞、下飞机——空格是机轮刹车（地上），回机库长按 H（Hud.lua）
     if k == Enum.KeyCode.Space and not (G.hangarActive and G.hangarActive()) then G.R.Drive:FireServer({ op = "exit" }) return end
     if not st.pilot then return end
+    -- Alt 组合键只给雷达（有雷达的固定翼；战雷的默认键 Alt+R 开关、Alt+T 选目标、Alt+F 锁定，Radar.lua 接）：原来 Alt+T 同时切迎角限制、
+    --   Alt+R 同时换目标、Alt+F 同时发导弹。W / S / A / D 不拦（座舱里按住 Alt 转头时还得能拉杆）；Alt+中键标目标点按 UserInputType 判断，不受影响
+    if st.rd and RADAR_ALT[k] and (key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt)) then return end
     if io.UserInputType == Enum.UserInputType.MouseButton1 then
       if G.interiorHover and G.interiorHover() then return end   -- 座舱里对着屏幕边的按键：左键是按键，不开炮（Interior.lua）
       st.firing = true
@@ -2097,7 +2356,7 @@ function Fly.init(G)
     elseif io.UserInputType == Enum.UserInputType.MouseButton2 and st.d.kind == "jet" and not st.uav and not st.eo and not st.bsight then
       flStart("rmb")   -- 自由视角：按住右键拖动
     elseif k == Enum.KeyCode.C and st.d.kind == "jet" and st.pilot then
-      if mouseAim then flStart("c") else flStop() end   -- 战雷鼠标瞄准：按住 C 也是自由视角；纯键盘：C 视角回到身后
+      if mouseAim and not st.ground then flStart("c") else st.fl, st.kbLook = nil, nil end   -- 战雷鼠标瞄准：按住 C 也是自由视角；纯键盘、地上：C 镜头回到身后
     elseif k == Enum.KeyCode.X then   -- 热诱弹：按住连续放（用户），每帧里按节拍发（stepFly）
       st.flareHold = true
       if os.clock() >= (st.flareNext or 0) and (st.flares or 0) > 0 then   -- 点一下也放一组（按下、松开在同一帧里的话，按住的逻辑一组都发不出去）
@@ -2108,7 +2367,7 @@ function Fly.init(G)
     elseif k == Enum.KeyCode.T and st.d.kind == "jet" then   -- 解除 / 恢复迎角限制
       toggleOvr()
     elseif k == Enum.KeyCode.M and st.d.kind == "jet" and not st.uav and not G.mobile then   -- 战雷式鼠标瞄准 ↔ 纯键盘驾驶
-      mouseAim = not mouseAim
+      G.flyMouseAim(not mouseAim)   -- 一并存进设置（「固定翼操纵」）
       setAim((not st.ground and st.vdir) or st.cf.LookVector)   -- 从现在的航向接着飞，不猛地一转
       st.lookYaw, st.lookPitch = 0, 0
       if G.toast then G.toast(T(mouseAim and "air.mouseAimOn" or "air.mouseAimOff"), "info") end
@@ -2153,6 +2412,8 @@ function Fly.init(G)
     if gp or not st or io.UserInputType ~= Enum.UserInputType.MouseWheel then return end
     if st.uav or st.eo then   -- 平板前视光电：滚轮细调倍率（1× ~ 12×）
       st.zoom = clamp(st.zoom * (1 + 0.18 * io.Position.Z), 1, 40)
+    elseif st.pilot and st.rd and (key(Enum.KeyCode.LeftAlt) or key(Enum.KeyCode.RightAlt)) then   -- Alt+滚轮归雷达（挪天线俯仰），不动油门
+      if G.radarWheel then G.radarWheel(io.Position.Z) end
     elseif st.pilot and st.d.kind == "jet" then   -- 战雷：滚轮是油门（一格 5%，推过 100% 就是加力）
       st.thr = clamp(st.thr + io.Position.Z * 5, 0, st.d.ab and 130 or 100)
     end
@@ -2320,9 +2581,11 @@ function Fly.init(G)
   function tgpStep(pos, wid, w)
     local m = EO_MODES[st.eoMode or 1]
     eoMode.Text = T("eo." .. m)
-    TG.fov.Text = (st.zoomS >= 3) and "NARO" or "WIDE"
+    TG.fov.Text = string.format("%.1f°", cam.FieldOfView)
     TG.zoom.Text = string.format("%.1fx", st.zoomS)
     TG.ag.Text = (w and w.kind == "aam") and "A-A" or "A-G"
+    -- 放大看的那一片：树按放大后的距离挑版本（Scenery.lua）；服务器那边按同步的瞄准点把那一片先送过来（Air.lua aheadStep）
+    if G.sceneryFocus then G.sceneryFocus(st.aimPt, st.zoomS) end
     -- 下面的小飞机：机头朝向相对吊舱镜头转（镜头朝北、飞机朝东：小飞机机头朝右）
     do
       local acf = st and st.cf
@@ -2335,10 +2598,24 @@ function Fly.init(G)
         TG.hdg.Text = string.format("%03d", math.floor((math.deg(-ya) % 360) + 0.5) % 360)
       end
     end
+    -- 吊舱转角：横着是吊舱视线相对机头的方位，竖着是俯仰；视线方位（真方位，度）
+    do
+      local lv0 = cam.CFrame.LookVector
+      local al = st.cf.LookVector
+      if (lv0.X * lv0.X + lv0.Z * lv0.Z) > 1e-6 and (al.X * al.X + al.Z * al.Z) > 1e-6 then
+        local yc = math.atan2(-lv0.X, -lv0.Z)
+        local ya = math.atan2(-al.X, -al.Z)
+        local az = math.deg(angDiff(yc, ya))   -- 往右为正
+        local el = math.deg(math.asin(clamp(lv0.Y, -1, 1)))
+        TG.gimDot.Position = UDim2.fromScale(clamp(0.5 + az / 360, 0, 1), clamp((EL_TOP - el) / (EL_TOP - EL_BOT), 0, 1))
+        TG.gimTxt.Text = string.format("AZ %+04d  EL %+03d", math.floor(az + 0.5), math.floor(el + 0.5))
+        TG.brg.Text = string.format("BRG %03d", math.floor((math.deg(-yc) % 360) + 0.5) % 360)
+      end
+    end
     local camP = cam.CFrame.Position
     local vs = cam.ViewportSize
-    local dispH = vs.Y * 0.78
-    local dispW = math.min(vs.X, dispH * 4 / 3)
+    local dispH = vs.Y   -- 整屏就是吊舱画面（11-28 照战雷；原来中间 4:3 的显示器）
+    local dispW = vs.X
     -- 跟踪：吊舱正看着车、船、飞机 → POINT，框按它在画面里多大；锁着的目标不在中间就框到它那里；都没有是 AREA（中间一个小框）
     local point, bx, by, bs = false, dispW / 2, dispH / 2, MOB and 18 or 26
     local function sizeOf(model, at)
@@ -2364,10 +2641,10 @@ function Fly.init(G)
     TG.box.Size = UDim2.fromOffset(bs, bs)
     TG.boxStroke.Thickness = point and 1.5 or 1
     TG.track.Text = point and "POINT" or "AREA"
-    -- 斜距（海里）、高度（英尺）、指北
+    -- 目标距离（公里）、高度（米）、指北（照战雷用公制；原来照 F-16 写海里、英尺）
     local slant = (st.aimPt - camP).Magnitude / AD.M
-    TG.rng.Text = string.format("T %.1f", slant / 1852)
-    TG.alt.Text = string.format("%d", math.floor(pos.Y / AD.M * 3.281 + 0.5))
+    TG.rng.Text = string.format("D %.2f km", slant / 1000)
+    TG.alt.Text = string.format("ALT %d m", math.floor(pos.Y / AD.M + 0.5))
     local lv = cam.CFrame.LookVector
     TG.north.Rotation = -90 - math.deg(math.atan2(lv.X, -lv.Z))
     -- 投出去的弹还在飞：TTI 按它离瞄准点多远、多快；没投就按现在投下去要飞多久
@@ -2419,6 +2696,9 @@ function Fly.init(G)
     if not st.em.Parent then stop() return end
     local d = st.d
     st.pilot = vs.pilot == true
+    local fl = G.flyLast or {}   -- 阵亡镜头（DeathFx.lua）：刚才坐的是哪一架（死的那一刻这里可能已经 stop 了）
+    fl.id, fl.t, fl.kind, fl.test = st.id, os.clock(), d.kind, st.em:GetAttribute("TestDrive") == true
+    G.flyLast = fl
     st.stores = st.storesLocal or {}
     -- 服务器推来的弹药数（半秒一次）：比本地扣的数少才换（本地先扣过的不回弹）
     if vs.stores then
@@ -2465,12 +2745,22 @@ function Fly.init(G)
         if st.fl then   -- 自由视角（右键拖着）：鼠标转世界里的方向（准心、飞机照旧）
           st.fl.yaw -= md.X * SENS
           st.fl.pitch = clamp(st.fl.pitch - md.Y * SENS, -1.45, 1.45)
-        elseif st.pilot and not st.uav and mouseAim and not key(Enum.KeyCode.C) then
+        elseif st.pilot and not st.uav and mouseAim and not key(Enum.KeyCode.C) and not st.ground then
           -- 战雷式鼠标瞄准：鼠标转想去的方向（世界里的方向，可以转到身后——飞机掉头追过去）
           st.aimYaw -= md.X * SENS
           st.aimPitch = clamp(st.aimPitch - md.Y * SENS, -1.45, 1.45)
         elseif st.pilot and not st.uav then
-          -- 有人开的固定翼（用户 11-21：WASD 控制方向、不要准心控制）：鼠标不管方向；转视角改成按住右键拖动（上面 st.fl，用户 11-26 晚）
+          -- 有人开的固定翼（用户 11-21：WASD 控制方向、不要准心控制）、战雷鼠标瞄准时在地上滑跑：鼠标不管方向，鼠标直接转镜头——
+          --   看世界里的一个方向（方位、俯仰），转到哪停在哪，不再被拽回机头（用户 11-28「飞机驾驶不要强制让镜头跟着机头」；
+          --   原来纯键盘时镜头钉在机头上，只有按住右键才能转、松开就滑回去）；按 C 回到身后
+          if md.X ~= 0 or md.Y ~= 0 then
+            if not st.kbLook then
+              local lk = cam.CFrame.LookVector
+              st.kbLook = { yaw = math.atan2(-lk.X, -lk.Z), pitch = math.asin(clamp(lk.Y, -1, 1)) }
+            end
+            st.kbLook.yaw -= md.X * SENS
+            st.kbLook.pitch = clamp(st.kbLook.pitch - md.Y * SENS, -1.45, 1.45)
+          end
         elseif st.pilot then   -- 无人机：鼠标推的是想去的方向（飞机自动转过去）
           -- 镜头跟着机身：按镜头的左右、上下转（倒飞、竖直爬升时鼠标往上照样是画面上方），再限制在机头前方的椭圆里
           --   （鼠标没动就不管：自动驾驶、降落辅助给的方向照原样）
@@ -2521,13 +2811,11 @@ function Fly.init(G)
       if Zn then cx, cz = Zn.center(zn) end
       local lim = Zn and Zn.play(zn, Map) or Map.PLAY
       local rx, rz = p.X - cx, p.Z - cz
+      -- 出了作战区：不再自动掉头（用户 11-27「超出战场区域开始读秒吧 读完了自动炸」，同战雷）——操纵照旧在玩家手里，
+      --   服务器读秒（Air.lua oobStep，剩几秒在飞机的 Oob 属性上，平显正中写），读完判毁；再往外 12000 格服务器直接判毁，
+      --   这里的硬边只是保险（别飞进别的区块）
       st.oob = math.abs(rx) > lim or math.abs(rz) > lim
-      if st.oob and d.kind == "jet" then
-        local back = V(-rx, 0, -rz).Unit
-        st.aimYaw = math.atan2(-back.X, -back.Z)
-        st.aimPitch = 0.05
-      end
-      local hard = lim + 1000
+      local hard = lim + 12500
       if math.abs(rx) > hard or math.abs(rz) > hard then
         st.cf = st.cf - p + V(cx + math.clamp(rx, -hard, hard), p.Y, cz + math.clamp(rz, -hard, hard))
         if d.kind == "heli" then st.hv = V() end
@@ -2558,17 +2846,25 @@ function Fly.init(G)
       end
       if st.crashed then st.engSnd.Volume = 0 end
     end
+    -- 摔了（客户端判的坠毁）3 秒服务器还没判毁（没认成坠机、或者那一包丢了）：自己回机库，不用再长按 H
+    --   （用户 11-27「我坠机能不能自动返回主页」；服务器判毁的照常走阵亡画面，几秒后自动回机库）
+    if st.pilot and st.crashed then
+      st.crashT = st.crashT or os.clock()
+      if not st.crashBack and os.clock() - st.crashT > 3 then
+        st.crashBack = true
+        G.R.Drive:FireServer({ op = "exit", hangar = true })
+      end
+    end
     -- 航炮后坐：开火时机身高频抖一点（模型跟着抖，用户：飞机机炮要有散布、后坐力和打击感）
     local gunOn = st.pilot and st.trig and (st.gunAmmo or 0) > 0 and not st.crashed
     st.recoil = approach(st.recoil or 0, gunOn and 1 or 0, dt * (gunOn and 14 or 6))
     st.hitKick = math.max(0, (st.hitKick or 0) - dt * 5)
-    if st.recoil > 0.02 and st.pilot then
-      local t = os.clock()
-      local a = math.rad(0.05) * st.recoil
-      st.cf = st.cf * CFrame.Angles(math.noise(t * 37, 2.1) * a, math.noise(t * 33, 5.3) * a, math.noise(t * 29, 8.7) * a)
-    end
+    -- 航炮开火不再抖机身（用户 11-27「机炮开打的时候屏幕不要往前拉 就正常就行 也别搞后坐力」）：st.recoil 只留给界面用
     -- 镜头
     local pos = st.cf.Position
+    -- 按 L 跟踪自己的导弹（MslCam.lua，用户 11-27「l没法看导弹视角」）：那边每帧摆镜头，这一帧飞行镜头算完照旧还给它——
+    --   两边都在每帧写镜头，谁后写谁赢：原来飞行镜头在 RenderStepped 里后写，跟踪导弹的镜头一闪就被盖掉
+    local mslHold = (G.mslFollowing ~= nil and G.mslFollowing()) and { cam.CFrame, cam.FieldOfView } or nil
     if st.eo then
       -- 光电吊舱：机腹下面（固定翼）/ 机头下面的光电球（直升机），视线稳定在世界方向上，不画镜头抖动
       local eye = (d.kind == "jet") and (st.cf * CF(0, -d.H * 0.5 - 0.6, -d.L * 0.12)).Position or (st.cf * CF(0, -d.H * 0.3, -d.L * 0.5 - 0.8)).Position
@@ -2605,7 +2901,13 @@ function Fly.init(G)
       --   鼠标推的准星圈在画面里走（原来镜头顺着鼠标瞄准方向看，标记跟着机头在画面里到处跑）；手机上一样
       local fwd0 = st.cf.LookVector
       local upY = st.cf.UpVector.Y
-      local kwT = 0.7 * clamp((0.97 - math.abs(fwd0.Y)) / 0.25, 0, 1) * clamp((upY + 0.3) / 0.6, 0, 1)
+      -- 镜头跟着机身滚转几成：设置「纯键盘时镜头跟着滚转」（默认 0：地平线水平，同战雷；用户 11-27 问「视角会跟随飞机滚筒而滚动 战雷是否是这样」）
+      --   用户 11-28 夜「飞机不管转弯还有滚筒 为什么都会回正呢 我觉得这回正可以有但是目前回正太明显了」：原来坡度过了七十来度、倒飞时
+      --   镜头就跟着机身滚（画面里的飞机看着「回正」了），转完、滚完又滚回地平线——大坡度转弯、横滚一圈都看得见镜头来回转。
+      --   现在只有翻筋斗（机头竖过 58°、从上面翻过去）时才跟着机身转，回到正飞再慢慢回地平线；平着横滚、大坡度转弯地平线一直是平的，
+      --   飞机在画面里照实滚（战雷的第三人称）
+      if math.abs(fwd0.Y) > 0.85 then st.camLoop = true elseif upY > 0.5 then st.camLoop = false end
+      local kwT = (1 - clamp(G.camRollK or 0, 0, 1)) * clamp((0.97 - math.abs(fwd0.Y)) / 0.25, 0, 1) * (st.camLoop and clamp((upY + 0.3) / 0.6, 0, 1) or 1)
       st.camUpK = (st.camUpK or kwT) + (kwT - (st.camUpK or kwT)) * math.min(1, dt * 2.5)
       local fwd, upC = jetCamBasis()
       local wtCam = mouseAim and not st.uav and not G.mobile and not st.ground
@@ -2618,7 +2920,12 @@ function Fly.init(G)
       -- 机头标记跟着机动小幅位移（用户 11-21：像 MWT 那样视角里有个会位移的飞机小标志）：镜头的朝向慢半拍跟上机头——
       --   一阶平滑（不会来回晃），最多偏 7°；压杆转弯时标记往转的那边挪一点，松杆回到正中。原来镜头死钉在机头上，标记一动不动；
       --   再原来镜头跟着鼠标瞄准方向，标记在画面里到处跑（偏 229 像素、来回摆四次，用户嫌乱）
-      if not wtCam then
+      if wtCam then st.kbLook = nil end   -- 离地以后交给鼠标瞄准（镜头顺着准星圈）
+      if not wtCam and st.kbLook then   -- 鼠标转开的镜头：停在那个方向，地平线放平（不跟着机头）
+        fwd = (CFrame.Angles(0, st.kbLook.yaw, 0) * CFrame.Angles(st.kbLook.pitch, 0, 0)).LookVector
+        upC = V(0, 1, 0)
+        st.camF = fwd
+      elseif not wtCam then
         local noseF = fwd
         local cf2 = noseF
         if st.camF and st.camF:Dot(noseF) > 0.5 then
@@ -2708,13 +3015,9 @@ function Fly.init(G)
     if st.bsight and st.bsFov then fovT = st.bsFov end
     st.fov = st.fov or cam.FieldOfView
     st.fov += (fovT - st.fov) * math.min(1, dt * ((st.uav and 10) or 4))
-    local kick = ((st.eo or st.bsight) and 0) or ((st.recoil or 0) * 0.8 + (st.hitKick or 0))
-    if kick > 0.01 then
-      local t = os.clock()
-      local a = math.rad(0.32) * kick
-      cam.CFrame = cam.CFrame * CFrame.Angles(math.noise(t * 31, 1.3) * a, math.noise(t * 27, 7.1) * a, math.noise(t * 23, 4.7) * a * 0.5)
-    end
-    cam.FieldOfView = st.fov - ((st.eo or st.bsight) and 0 or (1.6 * (st.recoil or 0) + 1.2 * (st.hitKick or 0)))
+    -- 开火、打中都不再晃镜头、收视场角（用户 11-27「机炮开打的时候屏幕不要往前拉 就正常就行 也别搞后坐力」）
+    cam.FieldOfView = st.fov
+    if mslHold then cam.CFrame, cam.FieldOfView = mslHold[1], mslHold[2] end   -- 跟踪导弹：镜头还给 MslCam
     -- 瞄准点：镜头中间（固定翼：鼠标瞄准方向）打出去碰到的地方
     local ex = { G.viewFolder }
     if me.Character then table.insert(ex, me.Character) end
@@ -2830,6 +3133,27 @@ function Fly.init(G)
     end
     -- 锁定：选中的弹要锁的话，目标在视场里待够锁定时间
     if st.pilot and w and (w.kind == "aam" or w.kind == "agm" or (w.kind == "bomb" and w.guided)) then
+      local rdl = st.rdLock   -- 雷达的单目标跟踪（Radar.lua）：跟选的什么弹无关
+      if radarManual(w) then
+        -- 雷达弹锁的就是雷达跟踪着的：STT，或者 TWS 里指定的航迹（不用 STT：对方告警器不报锁定，Radar.lua 每次航迹更新报一次数据链）
+        local want = (rdl and rdl.em) or (G.radarTwsSel and G.radarTwsSel(st)) or nil
+        if st.lock and st.lock.em ~= want then st.lock, st.lockT = nil, 0 end
+        if st.lock then st.lock.tws = rdl == nil end   -- 指定航迹上又按了 Alt+F（进了 STT）/ STT 丢了还在航迹里：同一架，换个跟法
+        if not st.lock and want then
+          local c = candOf(w, want)
+          if c and inTrack(w, c) then
+            c.tws = rdl == nil
+            st.lock, st.lockT = c, 0
+          end
+        end
+      elseif rdl and not rdl.mem and w.kind == "aam" and w.seeker == "ir" and not w.caged and not (st.lock and st.lock.em == rdl.em) then
+        -- 红外弹的导引头跟着雷达指：雷达锁着的在导引头视场里就先咬它（不按离机头最近的挑）
+        local c = candOf(w, rdl.em)
+        if c and inCone(w, c) then
+          c.slaved = true
+          st.lock, st.lockT = c, 0
+        end
+      end
       if st.lock and (not st.lock.em.Parent or st.lock.em:GetAttribute("Wreck")) then st.lock = nil end
       if st.lock then
         local root = st.lock.em:FindFirstChild("Root")
@@ -2841,18 +3165,36 @@ function Fly.init(G)
             local vc = (d0 - st.lock.dist) / dt / AD.M
             st.lock.vc = st.lock.vc and (st.lock.vc + (vc - st.lock.vc) * math.min(1, dt * 3)) or vc
           end
-          -- 雷达弹（战雷）：雷达得一直看得见它——它侧着飞把你放在 3 / 9 点（置零）、钻进地杂波、出了雷达的扫描范围，超过 1 秒丢锁
+          -- 雷达弹（战雷）：雷达得一直跟着它——STT 这一帧看得见（它侧着飞把你放在 3 / 9 点置零、钻进地杂波、出了万向架时 Radar.lua 先按记忆外推，
+          --   这时进度不涨、不能发射；记忆外推 RD.MEM 秒还没找回来 Radar.lua 丢锁、提示，上面 want 没了这里跟着丢）；TWS 的航迹还在（没过期）
           local rOk, rWhy = true, nil
-          if w.seeker == "radar" and st.d.radar and G.radarSees then rOk, rWhy = G.radarSees(st, st.lock.em) end
-          st.lock.radarWhy = (not rOk) and rWhy or nil
-          if rOk then
-            st.lock.radarLostT = 0
-          else
-            st.lock.radarLostT = (st.lock.radarLostT or 0) + dt
+          if radarManual(w) then
+            if st.lock.tws then
+              rOk = G.radarTrackOf ~= nil and G.radarTrackOf(st, st.lock.em) ~= nil
+              rWhy = (not rOk) and "track" or nil
+            else
+              rOk = rdl ~= nil and rdl.em == st.lock.em and not rdl.mem
+              rWhy = (rdl and rdl.why) or "track"
+            end
           end
+          st.lock.radarWhy = (not rOk) and rWhy or nil
           -- 在离轴角里：锁定进度往上走；出了离轴角、还在跟踪范围里：锁留着（菱形变黄、不能发射，进度不涨），偏出去 4 秒才丢
           local inside = inCone(w, st.lock) and rOk
-          if st.lock.dist < (w.range or 3200) * 1.1 and (inside or inTrack(w, st.lock)) then
+          local irDrop = false
+          if irAam(w) then
+            local lockedNow = st.lockT >= (w.lockTime or 1)
+            if w.caged then   -- 旧式：导引头不离轴，目标一直得在机头前的小圈里
+              inside = st.cf.LookVector:Dot(st.lock.dir) > math.cos(seekR(w))
+              irDrop = not inside and lockedNow
+            elseif not lockedNow then   -- 还没锁上：目标得在导引头的小圈里（导引头还没跟着它转）
+              local ax = seekAxis(w)
+              inside = inside and ax:Dot(st.lock.dir) > math.cos(seekR(w))
+            end
+            if not inside and not lockedNow then irDrop = true end   -- 截获的时候出了小圈：重新找（下面 pickTarget）
+          end
+          if irDrop then
+            st.lock, st.lockT = nil, 0
+          elseif st.lock.dist < (w.range or 3200) * 1.1 and (inside or inTrack(w, st.lock)) then
             st.lock.out = not inside
             if inside then
               st.lockT += dt
@@ -2860,11 +3202,6 @@ function Fly.init(G)
             else
               st.lock.outT = (st.lock.outT or 0) + dt
               if st.lock.outT > 4 then st.lock, st.lockT = nil, 0 end
-            end
-            if st.lock and (st.lock.radarLostT or 0) > 1.0 then   -- 雷达丢了：置零 / 地杂波 / 出了范围
-              local why = st.lock.radarWhy
-              st.lock, st.lockT = nil, 0
-              if G.toast then G.toast(T((why == "notch") and "air.radarLostNotch" or "air.radarLost"), "info") end
             end
           else
             st.lock, st.lockT = nil, 0
@@ -2874,7 +3211,7 @@ function Fly.init(G)
         end
       end
       if not st.lock then
-        st.lock = pickTarget(w)
+        if not radarManual(w) then st.lock = pickTarget(w) end   -- 雷达弹照战雷手动锁（R / Alt+T 选、Alt+F 锁），不自动挑
         st.lockT = 0
       end
     else
@@ -2891,7 +3228,7 @@ function Fly.init(G)
     if st.sendT <= 0 and st.pilot and not st.crashed then
       st.sendT = math.max(st.sendT + 1 / 15, 0)   -- 按平均每秒 15 次（原来每次重设，帧率低时间隔拖成两三帧）
       local c = st.c
-      G.R.Drive:FireServer({ op = "state", cf = st.cf, v = st.vel, gd = st.ground, aim = st.aimPt, stk = st.stick ~= nil, thr = c.thr, gear = c.gear, flap = c.flap, cp = c.pit, cr = c.rol,
+      G.R.Drive:FireServer({ op = "state", cf = st.cf, v = st.vel, gd = st.ground, aim = st.aimPt, eo = st.eo or nil, stk = st.stick ~= nil, thr = c.thr, gear = c.gear, flap = c.flap, cp = c.pit, cr = c.rol,
         cy = c.yaw, bay = c.bay, bays = c.bayS, rpm = c.rpm, col = c.col, can = c.can, hook = c.hook, brk = c.brk, ty = c.ty, gp = c.gp, fold = c.fold })
     end
     -- 平显
@@ -2998,7 +3335,9 @@ function Fly.init(G)
       if st.rwrT and os.clock() < st.rwrT then warn = ((os.clock() * 4) % 1 < 0.6) and T("air.missile") or ""
       elseif st.rwrLockT and os.clock() < st.rwrLockT then warn = ((os.clock() * 2) % 1 < 0.7) and T(st.rwrLockFull and "air.radarLock" or "air.radarTrack") or ""
       elseif st.out and not st.ground then warn = T("air.flameout")
-      elseif st.oob then warn = T("air.oob")
+      elseif st.oob or st.em:GetAttribute("Oob") then   -- 出作战区：服务器读的秒（Air.lua oobStep）
+        local left = st.em:GetAttribute("Oob")
+        warn = left and T("air.oobT", left) or T("air.oob")
       elseif d.kind == "jet" and not st.ground and st.spd < d.stall * 1.05 then warn = T("air.stall")
       elseif os.clock() - (st.floatT or -9) < 0.6 then warn = T("air.tooFast")   -- 接地太快、贴着跑道飘：收油门
       elseif not st.ground and agl < 60 and st.vel.Y < -25 then warn = T("air.pullup")
@@ -3077,13 +3416,25 @@ function Fly.init(G)
       else
         lockBox.Visible, lockText.Visible = false, false
       end
-      -- 锁定音（导引头嗡嗡、雷达弹嘀声）：B 的 AirAudio.lua（上面 G.airAudioStep），A 原来在这里那套 11-24 合并时去掉了（两套一起响）
-      -- 雷达锁着敌机：半秒告诉服务器一次（对方的雷达告警会响；红外弹是被动的不报）
-      if st.lock and w and w.seeker == "radar" and w.kind == "aam" and st.lock.em and st.lock.em:GetAttribute("Kind") == "air" and os.clock() >= (st.lockPingT or 0)
-        and not st.lock.radarWhy then   -- 雷达真跟踪着（没置零、没出范围）才报：服务器按这个给飞出去的雷达弹走数据链
-        st.lockPingT = os.clock() + 0.5
-        G.R.Drive:FireServer({ op = "lockOn", tgt = st.lock.id, full = st.lockT >= (w.lockTime or 1) })
+      -- 空空弹的导引头圈（WtFlight 画，用户 11-28 夜「锁定圈貌似比战雷小」）：小圈画在导引头指着的地方、大小是截获圈；
+      --   红外弹锁上以后（能离轴的）跟着目标转；雷达弹雷达锁着谁小圈就在谁身上（导弹还没锁上是白的，锁上了两个圈一起变红）
+      --   state：search 搜索（嗡嗡低）/ acq 截获中（目标在小圈里，嗡嗡变响变尖）/ lock 锁上（尖的长音，红）
+      if w and w.kind == "aam" and (w.cone or 0) > 0 and st.pilot then
+        local locked2 = st.lock ~= nil and (st.lockT or 0) >= (w.lockTime or 1)
+        local ax
+        if w.seeker == "radar" then
+          ax = st.lock and st.lock.dir or st.cf.LookVector
+        elseif locked2 and not w.caged then
+          ax = st.lock.dir
+        else
+          ax = seekAxis(w)
+        end
+        local sp, son = project(pos + ax * 400)
+        info.seek = { p = sp, on = son, r = deg(seekR(w)), caged = w.caged == true,
+          state = (locked2 and not st.lock.out) and "lock" or (st.lock and "acq" or "search") }
       end
+      -- 锁定音（导引头嗡嗡、雷达弹嘀声）：B 的 AirAudio.lua（上面 G.airAudioStep），A 原来在这里那套 11-24 合并时去掉了（两套一起响）
+      -- 雷达锁着敌机报服务器（lockOn：数据链、对方的告警）挪到了 Radar.lua：STT 跟踪着半秒一次、TWS 指定的航迹每次更新一次——跟选的什么弹无关
       -- 炸弹落点（不制导的、或者没锁上的制导炸弹）
       if w and w.kind == "bomb" and not (st.lock and st.lockT >= (w.lockTime or 1)) then
         local gp2, gon = project((bombNow()))   -- 按服务器的炸弹物理算（跟地上的红圈、瞄准镜十字一个点）
@@ -3119,12 +3470,8 @@ function Fly.init(G)
     elseif G.airHudOff then
       G.airHudOff()
     end
-    -- 战雷式机载雷达屏（Radar.lua）：搜索扫描、锁着雷达弹的目标时 STT
-    if G.radarStep then
-      local _, rw = storeW()
-      local lockEm = (st.lock and rw and rw.seeker == "radar") and st.lock.em or nil
-      G.try_(G.radarStep, st, dt, lockEm)
-    end
+    -- 战雷式机载雷达屏（Radar.lua）：搜索 / 边扫边跟 / 近战扫描、单目标跟踪（st.rdLock，跟选的什么弹无关）
+    if G.radarStep then G.try_(G.radarStep, st, dt) end
     -- 战雷的轰炸瞄准镜画面、CCRP 目标点的方框和箭头（Bombsight.lua）
     if G.bsDraw then
       local s2 = { on = st.bsight == true, poi = (st.pilot and not st.crashed) and st.poi or nil, ccrp = st.ccrp, relT = st.ccrpRelT }

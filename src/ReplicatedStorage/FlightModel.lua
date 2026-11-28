@@ -25,6 +25,16 @@ local RAD = math.pi / 180
 local sin, cos, sqrt, abs, exp, atan2, asin = math.sin, math.cos, math.sqrt, math.abs, math.exp, math.atan2, math.asin
 FM.DT = 1 / 120
 FM.G = G0
+-- 收住滚转的刹车（1/秒，FM.sub 积分前那段；用户 11-28「滚筒做着突然不做 惯性要能收住」，又「你减少三分之一的角度」）：
+--   满速滚转松杆多滚的角度比只靠副翼时少三分之一（F-16 71° → 47°、苏-27 76° → 49°、歼-6 41° → 30°）——
+--   电传 / 增稳 / 教官飞 4.5，机械操纵松杆 2（没有飞控，同样的刹车对它们收得更狠）；各型可以在自己那一行写 rollBrake 改
+local ROLL_BRAKE, ROLL_BRAKE_MECH = 4.5, 2
+FM.ROLL_BRAKE = ROLL_BRAKE
+-- 转弯机动性（用户 11-28「我指的机动性 是我飞行转向的机动性 稍微高一点」；战雷的飞机也比真机灵一点）：
+--   整条升力曲线 × lift（失速迎角不变：同一个迎角升力多一成）、诱导阻力 × ind——升力限制的那一段（拐角速度以下）瞬时转弯率、
+--   推力限制的持续盘旋率各高约一成；过载限制、极速、零升阻力不变。FM.get 建表时乘（F-14 收后掠那一套 FM.sweep 里也乘）
+local AGILE = { lift = 1.1, ind = 0.83, servo = 2 }
+FM.AGILE = AGILE
 
 local function clamp(v, a, b) if v < a then return a elseif v > b then return b end return v end
 local function lerp(a, b, t) return a + (b - a) * t end
@@ -256,11 +266,15 @@ function FM.get(id, treeKey)
     if v ~= nil then D[f] = v end
   end
   -- 前置滤波按操纵方式给默认：电传脆、增稳次之、机械（教官飞的时候）最慢
-  D.tn = D.tn or ((D.fcs == "fbw") and 0.16 or ((D.fcs == "cas") and 0.22 or 0.3))
-  D.tp = D.tp or ((D.fcs == "fbw") and 0.12 or ((D.fcs == "cas") and 0.16 or 0.22))
+  -- 11-28 用户「有时候不该灵敏的时候过于灵敏 该灵敏的时候又有点迟钝」：原来 0.16 / 0.12 秒（电传）、0.22 / 0.16（增稳）、0.3 / 0.22（机械）——
+  --   加上键盘推杆、低速时跟得慢的增益，按住半秒才拉起一两个 g；收快三四成（kbfeel.lua 量的）
+  D.tn = D.tn or ((D.fcs == "fbw") and 0.1 or ((D.fcs == "cas") and 0.14 or 0.2))
+  D.tp = D.tp or ((D.fcs == "fbw") and 0.08 or ((D.fcs == "cas") and 0.11 or 0.15))
   if D.prop and not D.Tm then D.Tm = D.prop.Tst end
   D.Ta = D.Ta or D.Tm
   D.vne = D.vne or 400
+  D.CLa, D.CLm = D.CLa * AGILE.lift, D.CLm * AGILE.lift   -- 转弯机动性（见上面 AGILE）
+  if D.K then D.K = D.K * AGILE.ind else D.e = D.e / AGILE.ind end
   FM.finish(D)
   cache[key] = D
   return D
@@ -274,7 +288,10 @@ function FM.finish(D)
   D.aLr = D.aL and D.aL * RAD or nil
   D.pmaxr = D.pmax * RAD
   D.der, D.dar, D.drr = D.de * RAD, D.da * RAD, D.dr * RAD
-  D.rder, D.rdar, D.rdrr = D.rde * RAD, D.rda * RAD, D.rdr * RAD
+  -- 平尾、副翼的舵偏速率 × AGILE.servo（11-28 用户「有时候不该灵敏的时候过于灵敏 该灵敏的时候又有点迟钝」）：按真机的 40～120°/s，
+  --   键盘一松手平尾、副翼要转零点几秒才转到另一头去刹——松手后滚转多滚、机头接着往上抬（F-16 700 公里 / 时满速滚转松手多滚 46°）。
+  --   战雷的舵面也比真机快；方向舵不变
+  D.rder, D.rdar, D.rdrr = D.rde * RAD * AGILE.servo, D.rda * RAD * AGILE.servo, D.rdr * RAD
   D.Cma = -D.CLa * D.sm
   -- 升力曲线：线性段到 a1，之后二次曲线圆滑到失速迎角处的最大升力（斜率连续）
   local aLin = D.CLm / D.CLa
@@ -313,8 +330,8 @@ function FM.sweep(D, M)
     local t = k / 50
     E = setmetatable({}, { __index = D })
     E.b = lerp(D.b, W.b, t)
-    E.CLa = lerp(D.CLa, W.CLa, t)
-    E.CLm = lerp(D.CLm, W.CLm, t)
+    E.CLa = lerp(D.CLa, W.CLa * AGILE.lift, t)   -- 收后掠那一套也乘转弯机动性（D 的已经在 FM.get 里乘过）
+    E.CLm = lerp(D.CLm, W.CLm * AGILE.lift, t)
     E.aS = lerp(D.aS, W.aS, t)
     E.Mcr = lerp(D.Mcr, W.Mcr, t)
     E.CDw = lerp(D.CDw, W.CDw, t)
@@ -405,6 +422,56 @@ function FM.storeDrag(w, M)
   return 0.35 * math.pi * (d / 2) ^ 2 + 0.01
 end
 
+-- 一套挂载的重量和阻力（开飞机 Fly.lua、机库整备的性能对比、资料卡都用这一个，不另编数）：
+--   d 是 AirDefs 的型号（d.st 挂点），load 每个挂点挂什么（同 AirDefs.presetLoad，false 是空），fuel 内油几成（0～1，默认满）
+--   o（可选）：D 飞行物理量（默认 FM.get(d.id, o.key)，没登记的借 d.like）、stores 每个挂点还剩几枚（默认挂满：AD.count）、
+--     fuelX 副油箱里的油（按内油的几成，默认副油箱加满：AD.tankFuel）、AD（AirDefs 模块：FM 本身不 require 它——它反过来要 FM；Lune 里跑要传）
+--   每个挂点：弹 / 副油箱的壳按外形估的重量（FM.storeMass）× 枚数；火箭巢一个挂点一个巢（空巢壳四成 + 剩下的火箭按发数折）；
+--     阻力面积（FM.storeDrag）只算外挂，弹舱里的不算；火箭巢打空了巢还挂着、照算阻力
+--   返回 { m 总重 kg（空重 + 内油 + 副油箱里的油 + 外挂）, ext 外挂重 kg（弹、巢、副油箱的壳，不含油）, xf 副油箱里的油 kg,
+--     dS 外挂阻力面积 m², dCD0 零升阻力系数增量（dS / 翼面积）, fuelX, D }；没有飞行物理量（直升机、没登记的）D、m、dCD0 是 nil
+local ADlazy = nil
+local function airDefs(o)
+  if o and o.AD then return o.AD end
+  if ADlazy == nil then
+    local ok, m = pcall(function() return require(game:GetService("ReplicatedStorage"):WaitForChild("AirDefs", 5)) end)
+    ADlazy = (ok and type(m) == "table") and m or false
+  end
+  return ADlazy or nil
+end
+function FM.loadout(d, load, fuel, o)
+  o = o or {}
+  local AD = airDefs(o)
+  local D = o.D or (d and (FM.get(d.id, o.key) or (d.like and FM.get(d.like)))) or nil
+  local W = AD and AD.W or {}
+  local Mst = (AD and AD.M) or 2.8
+  local fuelX = o.fuelX
+  if fuelX == nil then fuelX = (AD and AD.tankFuel and d) and (AD.tankFuel(d, load)) or 0 end
+  local fi = D and D.fi or 0
+  -- 同 Fly.lua 原来的 fmMass：先空重 + 内油 + 副油箱的油，再一个挂点一个挂点加（加的顺序一样，结果一位不差）
+  local m = D and (D.m0 + fi * clamp(fuel or 1, 0, 1) + fi * math.max(fuelX or 0, 0)) or 0
+  local ext, dS = 0, 0
+  for i, s in ipairs((d and d.st) or {}) do
+    local wid = load and load[i]
+    local w = wid and W[wid]
+    local n
+    if o.stores then n = o.stores[i] or 0 else n = (w and AD and AD.count(s, wid)) or 0 end
+    if w and w.kind == "rkt" then
+      local full = math.max(w.tubes or 1, 1)
+      local mm = FM.storeMass(w, Mst) * (0.4 + 0.6 * clamp(n / full, 0, 1))
+      m += mm
+      ext += mm
+      if not s.bay then dS += FM.storeDrag(w, Mst) end
+    elseif w and n > 0 then
+      local mm = FM.storeMass(w, Mst) * n
+      m += mm
+      ext += mm
+      if not s.bay then dS += FM.storeDrag(w, Mst) * n end
+    end
+  end
+  return { m = D and m or nil, ext = ext, xf = fi * math.max(fuelX or 0, 0), dS = dS, dCD0 = D and dS / D.S or nil, fuelX = fuelX, D = D }
+end
+
 ---------------------------------------------------------------- 状态
 
 -- 四元数（w, x, y, z）：机体（Roblox 局部：X 右、Y 上、Z 后）→ 世界；从旋转矩阵（CFrame:GetComponents 的 R00 … R22）求
@@ -460,6 +527,10 @@ end
 -- 杆的非线性：小杆量细、推满才是全量（键盘、手机摇杆都过一遍）
 local function shape(s) return 0.45 * s + 0.55 * s * s * s end
 FM.shape = shape
+-- 键盘（inp.lin）：杆量是「按住了多久」推出来的（Fly.lua 匀速推杆），本身就是渐进的，不再过上面这道给摇杆、鼠标的三次方——
+--   用户 11-28「有时候不该灵敏的时候过于灵敏 该灵敏的时候又有点迟钝」：两道叠起来，按住头 0.2 秒杆量只有一成多（几乎没反应），
+--   0.2 秒以后一下子冲上去（量的：F-16 在 700 公里 / 时按住 S，0.2 秒 1.2 g、0.5 秒 5.2 g）
+local function linear(s) return s end
 
 ---------------------------------------------------------------- 一步
 
@@ -553,6 +624,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
   local kInd = 1 - 0.45 * ge * ge
 
   ---------------------------------------------------------------- 飞控：三个舵面（和推力矢量喷口）要的偏度
+  local shp = inp.lin and linear or shape
   local mode = inp.mode or "stick"
   local fcs = D.fcs
   local cmdLaw = mode == "cmd" or fcs ~= "mech"
@@ -580,11 +652,26 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     if mode == "cmd" then
       nc = inp.n or n0
     else
-      local s = shape(clamp(inp.sy or 0, -1, 1))
-      nc = (s >= 0) and lerp(n0, nzP, s) or lerp(n0, nzN, -s)
+      local s = shp(clamp(inp.sy or 0, -1, 1))
+      -- 拉杆的量按「这个速度拉得出来的过载」分（11-28 用户「有时候不该灵敏的时候过于灵敏 该灵敏的时候又有点迟钝」）：原来满杆 = 过载上限，
+      --   F-16 在 450 公里 / 时只拉得出四点几 g，杆到四成就已经顶到迎角限制——键盘点 S 0.3 秒，飞控照着限制猛拉，松手以后机头还自己往上翻四十几度。
+      --   现在满杆 = 迎角限制那儿的过载（快了照样封顶在过载上限）：哪个速度都是按住越久拉得越多；增稳的杆拉到底照旧能硬拉过最大升力
+      local aT = (fcs == "fbw") and (D.aLr or D.aSr * 0.92) or D.aSr * 0.97
+      local nAv = (CLof(D, aT, fl) * liftK) * qS / (m * G0)
+      local top = clamp(nAv, math.min(n0 + 0.5, nzP), nzP)
+      if fcs ~= "fbw" then top = lerp(top, nzP, smooth(0.9, 1, s)) end
+      nc = (s >= 0) and lerp(n0, top, s) or lerp(n0, nzN, -s)
     end
     nc = clamp(nc, nzN, nzP)
-    F.nf = F.nf + (nc - F.nf) * (1 - exp(-h / D.tn))
+    -- 前置滤波：拉杆按型号的时间常数起来；松杆（往配平收、反打）快三倍，同滚转（原来松杆照样慢慢收，过载半秒多才卸掉）；
+    --   键盘（inp.lin）再快一倍：杆量本来就是按住多久匀速推出来的（Fly.lua），不用再滤一遍
+    local tne = D.tn
+    if mode ~= "cmd" then
+      local dn, en = nc - n0, F.nf - n0
+      if abs(dn) < abs(en) or dn * en < 0 then tne = D.tn * 0.35 end
+      if inp.lin then tne = tne * 0.5 end
+    end
+    F.nf = F.nf + (nc - F.nf) * (1 - exp(-h / tne))
     -- 迎角上限：电传按限制器；增稳的杆拉到最大升力系数为止（米格-29 的限制器能硬拉过去）；教官飞的不进失速
     local aMaxC
     if fcs == "fbw" or mode == "cmd" then aMaxC = D.aLr or D.aSr * 0.92
@@ -598,14 +685,16 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     end
     local nAch = (CLof(D, ac, fl) * liftK) * qS / (m * G0)
     local qk = smooth(4000, 16000, qb)
-    local ka = lerp(1.4, 3.6, qk) * bw
+    -- 跟随的增益按动压排：原来低速只有高速的四成（1.4 → 3.6、3.5 → 7、7 → 13），慢的时候拉杆、压杆反应得慢，快了又冲——
+    --   低速抬到高速的七成多（舵面真没劲的时候照样跟不上：舵偏、舵偏速率有限），高速不变
+    local ka = lerp(2.0, 3.6, qk) * bw
     local qc = clamp(ka * (ac - al) + G0 / Vn * (nAch - uY), -1.5, 1.5)
     -- 过失速机动（T 解除迎角限制；用户待办「飞控放开机动：大迎角、失速后、推力矢量、尾冲」）：杆直接要俯仰角速度，
     --   飞控不再管迎角、过载——拉满杆机头仰过 90° 再推回来是眼镜蛇，有推力矢量的低速一直拉着能翻一整圈（库尔比特）；
     --   松杆：飞控把迎角拉回到配平（在限制以内），不会一直挂在大迎角上；能拉多快看真的力矩（平尾在分离气流里没劲，推力矢量顶上）
     local ovr = inp.ovr and mode == "stick"
     if ovr then
-      local s = shape(clamp(inp.sy or 0, -1, 1))
+      local s = shp(clamp(inp.sy or 0, -1, 1))
       local qmx = tvc and 1.6 or 1.0
       if abs(s) > 0.05 then
         qc = s * qmx
@@ -613,16 +702,30 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
         qc = clamp(-2 * (al - ac), -qmx, qmx)
       end
     end
-    -- 迎角限制的预见（电传、教官）：迎角变化率 = 俯仰角速度 − 航迹转动角速度。离限制还剩 dA，按平尾推满（加推力矢量）能打出的低头角加速度，
-    --   只许以「刹得住」的速度往限制靠；太慢了托不住（航迹往下掉）时机头跟着航迹往下压——原来低速满杆照样一头冲过限制（歼-11 拉到 38°）
-    if (fcs == "fbw" or mode == "cmd") and not ovr then
-      local Mdn = abs(Me) * D.der * 0.8 + Tl * sin(tvP) - qSc * (D.Cm0 + D.Cma * sin(al))
-      local qdd = math.max(Mdn / Iyy, 0.05)
+    -- 刹得住（电传、增稳、教官）：迎角变化率 = 俯仰角速度 − 航迹转动角速度。离要的迎角（电传、教官再加上迎角限制）还剩 dA，
+    --   按平尾打满（加推力矢量）能打出的角加速度、平尾从现在的位置转到另一头要的时间（舵偏速率有限，先得转过来才刹得住），
+    --   只许以「刹得住」的速度往那儿靠：拉杆往上、松杆 / 推杆往下都管；太慢了托不住（航迹往下掉）时机头跟着航迹往下压。
+    --   原来只管迎角限制、不算平尾转过来的时间：F-16 在 450 公里 / 时点 S 0.3 秒，迎角冲到 38°（限制 25°），松手后机头还翻了四十几度；
+    --   700 公里 / 时点 0.3 秒冲到 9.8 g（kbdiag 量的）。更早：低速满杆一头冲过限制（歼-11 拉到 38°）
+    if not ovr then
       local gd = G0 / Vn * ((CLof(D, al, fl) * liftK) * qS / (m * G0) - uY)   -- 航迹现在往上转多快（负的：托不住，往下掉）
-      local qcap = gd + sqrt(2 * qdd * math.max(aMaxC - al, 0) * 0.6)
+      local Mdn = abs(Me) * D.der * 0.8 + Tl * sin(tvP) - qSc * (D.Cm0 + D.Cma * sin(al))
+      local qddD = math.max(Mdn / Iyy, 0.05)
+      -- 平尾转过来的时间按全程算（保守：松手就刹得住）；教官、AI（cmd）按一半——它们的过载指令本来就是平滑给的，全程算拉起、卸载都慢一成多
+      local kR = (mode == "cmd") and 0.5 or 1
+      local tRD = math.max(0, D.der * 0.8 - F.de) / D.rder * kR   -- 平尾转到低头打满要多久
+      local top = (fcs == "fbw" or mode == "cmd") and math.min(ac, aMaxC) or ac
+      local mD = math.max(top - al, 0)
+      local qcap = gd + qddD * (-tRD + sqrt(tRD * tRD + 2 * mD / qddD))   -- 先按这个角速度转 tRD 秒、再刹到零，正好停在 top
       if qc > qcap then qc = math.max(qcap, -1.5) end
+      local Mup = abs(Me) * D.der + Tl * sin(tvP) + qSc * (D.Cm0 + D.Cma * sin(al))
+      local qddU = math.max(Mup / Iyy, 0.05)
+      local tRU = math.max(0, F.de + D.der) / D.rder * kR
+      local mU = math.max(al - ac, 0)
+      local qflo = gd - qddU * (-tRU + sqrt(tRU * tRU + 2 * mU / qddU))
+      if qc < qflo then qc = math.min(qflo, 1.5) end
     end
-    local kq = lerp(3.5, 7, qk) * bw
+    local kq = lerp(5.2, 7, qk) * bw
     local Mreq = Iyy * kq * (qc - q) - (Izz - Ixx) * p * r
     local M0 = qSc * (D.Cm0 + D.Cma * sin(al) + D.Cmq * qh + CmSt + (env.Mext or 0))
     local need = Mreq - M0
@@ -639,7 +742,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     if mode == "cmd" then
       pc = inp.p or 0
     else
-      local s = shape(clamp(inp.sx or 0, -1, 1))
+      local s = shp(clamp(inp.sx or 0, -1, 1))
       -- 飞控按动压、迎角排滚转角速度上限：快到最大允许速度时收三成多（结构载荷），大迎角时收（防惯性耦合）
       local qv = 0.5 * 1.225 * D.vne * D.vne
       local sched = (1 - 0.45 * smooth(0.55 * qv, 1.1 * qv, qb)) * (1 - 0.6 * smooth(0.5 * D.aSr, D.aSr, aa))
@@ -649,8 +752,9 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     end
     -- 前置滤波：压杆按型号的时间常数起来；松杆（往零收、反打）快三倍——滚得起来要时间，停住要干脆（用户 11-25「松手一两帧就收住」）
     local tpe = (abs(pc) < abs(F.pf) or pc * F.pf < 0) and D.tp * 0.35 or D.tp
+    if inp.lin then tpe = tpe * 0.5 end   -- 键盘：杆量本来就是匀速推的，前置滤波减半（同俯仰）
     F.pf = F.pf + (pc - F.pf) * (1 - exp(-h / tpe))
-    local kp = lerp(7, 13, qk) * bw
+    local kp = lerp(10, 13, qk) * bw
     local Lreq = Ixx * kp * (F.pf - p) - (Iyy - Izz) * q * r
     -- 飞控不知道哪边翼尖先失速（掉翼是扰动，只靠角速度反馈去顶；失速时副翼也不灵了，顶不住）
     local L0 = qSb * (D.Clb * sbe + Clp * ph + D.Clr * rh + (env.Lext or 0))
@@ -668,7 +772,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     if mode == "cmd" then
       rc = G0 / Vn * sph * cth + 3 * be + (inp.r or 0)
     else
-      local ped = shape(clamp(inp.sz or 0, -1, 1))
+      local ped = shp(clamp(inp.sz or 0, -1, 1))
       if ovr and tvY > 0 then
         rc = G0 / Vn * sph * cth + ped * 0.9 + 3 * be * (1 - abs(ped))
       else
@@ -698,7 +802,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     end
     local trimT = deFor(uY)
     F.trim = F.trim and (F.trim + (trimT - F.trim) * (1 - exp(-h / 1.2))) or trimT
-    local s = shape(clamp(inp.sy or 0, -1, 1))
+    local s = shp(clamp(inp.sy or 0, -1, 1))
     local tgt = (s >= 0) and lerp(F.trim, deFor(nzP * 1.05), s) or lerp(F.trim, deFor(nzN), -s)
     -- 俯仰阻尼器（洗出滤波：只挡变化，不改稳态）
     F.qf = (F.qf or q) + (q - (F.qf or q)) * (1 - exp(-h / 1.0))
@@ -706,10 +810,10 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     -- 副翼：满杆的稳态滚转角速度不超过 pmax；高速时铰链力矩大、舵偏不满（老飞机高速副翼发硬）
     local pPerDa = (D.Clda / math.max(abs(Clp), 0.05)) * (2 * Vn / D.b)
     local daFull = math.min(D.dar * clamp(sqrt(30000 / math.max(qb, 1)), 0.35, 1), D.pmaxr / math.max(pPerDa, 1e-3))
-    local sx = shape(clamp(inp.sx or 0, -1, 1))
+    local sx = shp(clamp(inp.sx or 0, -1, 1))
     if abs(sx) < 0.01 and inp.levelHard then sx = clamp(-phi * 2.5, -0.7, 0.7) end
     da_c = sx * daFull
-    dr_c = -shape(clamp(inp.sz or 0, -1, 1)) * D.drr * clamp(sqrt(20000 / math.max(qb, 1)), 0.3, 1) + D.Kr * r
+    dr_c = -shp(clamp(inp.sz or 0, -1, 1)) * D.drr * clamp(sqrt(20000 / math.max(qb, 1)), 0.3, 1) + D.Kr * r
   end
   -- 舵机：限偏度、限速率（平尾往下打的范围小一点）
   F.de = moveTo(F.de, clamp(de_c, -D.der, D.der * 0.8), D.rder * h)
@@ -745,6 +849,22 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
   local az = (rZ * Fy - uZ * Fz - bZ * Fx) / m
   Vx, Vy, Vz = Vx + ax * h, Vy + ay * h, Vz + az * h
   F.vx, F.vy, F.vz = Vx, Vy, Vz
+  -- 收住滚转（用户 11-28「惯性的意思是 飞机滚筒做着 然后突然不做滚筒 惯性要能收住」，照战雷）：
+  --   要的滚转角速度（电传 / 教官：前置滤波后的指令；机械操纵：松杆就是 0）比现在的小、或者反过来——另加一个刹车力矩把多出来的那截收掉，
+  --   不受副翼偏度、偏转速率限制（只靠副翼：打满反向要零点几秒，满速滚转松手还要多滚 40～76°；战雷里一松手十几二十度就停）。
+  --   只在「要停 / 要慢下来」时起作用（加速滚转不管，满杆滚转角速度照旧）；接近失速（掉翼、自转）时不刹，掉翼照样掉
+  do
+    local pWant
+    if cmdLaw then
+      pWant = F.pf
+    elseif abs(inp.sx or 0) < 0.02 and not inp.levelHard then
+      pWant = 0
+    end
+    if pWant and (abs(pWant) < abs(p) or pWant * p < 0) then
+      -- 接近失速迎角（八成起）就逐渐不刹：掉翼、自转照真的来（机械操纵低速拉满杆一边机翼先掉，滚过去机头才掉得下来、改得出）
+      Lm = Lm - Ixx * (D.rollBrake or (cmdLaw and ROLL_BRAKE or ROLL_BRAKE_MECH)) * (1 - smooth(0.8 * D.aSr, D.aSr, aa)) * (p - pWant)
+    end
+  end
   p = p + (Lm + (Iyy - Izz) * q * r) / Ixx * h
   q = q + (Mm + (Izz - Ixx) * p * r) / Iyy * h
   r = r + (Nm + (Ixx - Iyy) * p * q) / Izz * h
@@ -799,38 +919,52 @@ function FM.em(D, m, V, h, thr, dCD0)
 end
 
 -- 平飞最大速度（m/s，海平面附近 1000 米、这个质量、thr 油门）：剩余推力加速度过零的速度（二分）
-function FM.vTop(D, m, thr, h)
+--   dCD0：外挂的零升阻力增量（FM.loadout 的 dCD0；不给就是干净构型，同原来）
+function FM.vTop(D, m, thr, h, dCD0)
   -- 从失速速度往上找最后一个还有剩余推力的速度（再二分细找）：太慢时诱导阻力大、加速度也是负的，不能从低速一头二分
   local rho = FM.atmo(h or 1000)
   local vs = sqrt(2 * m * G0 / (rho * D.S * D.CLm))
   local lo, hi = nil, nil
   for V = vs * 1.15, 720, 5 do
-    if FM.em(D, m, V, h or 1000, thr).acc > 0 then lo = V elseif lo then hi = V break end
+    if FM.em(D, m, V, h or 1000, thr, dCD0).acc > 0 then lo = V elseif lo then hi = V break end
   end
   if not lo then return vs * 1.15 end
   hi = hi or 720
   for _ = 1, 30 do
     local mid = (lo + hi) / 2
-    if FM.em(D, m, mid, h or 1000, thr).acc > 0 then lo = mid else hi = mid end
+    if FM.em(D, m, mid, h or 1000, thr, dCD0).acc > 0 then lo = mid else hi = mid end
   end
   return lo
 end
 
--- 一型的性能摘要（机库信息卡、测试）：海平面附近（1000 米）、一半内油 + 两枚中距弹
-function FM.card(D, m)
+-- 一型的性能摘要（机库信息卡、测试）：海平面附近（1000 米）、一半内油 + 两枚中距弹；
+--   给了 m、dCD0（FM.loadout 算的这一套挂载）就按那套算。roc 最大爬升率 m/s（全加力、剩余功率 = 剩余推力 × 速度 / 重量）、rocV 在哪个速度
+function FM.card(D, m, dCD0)
   m = m or (D.m0 + 0.5 * D.fi + 320)
   local W = m * G0
   local rho = FM.atmo(1000)
-  local best = { ws = 0, wi = 0 }
+  local best = { ws = 0, wi = 0, roc = 0 }
   for V = 60, 420, 5 do
     if V < D.vne * 1.02 then
-      local e = FM.em(D, m, V, 1000)
+      local e = FM.em(D, m, V, 1000, nil, dCD0)
       if e.ws > best.ws then best.ws, best.vs = e.ws, V end
       if e.wi > best.wi then best.wi, best.vi = e.wi, V end
+      local roc = e.acc * V / G0
+      if roc > best.roc then best.roc, best.vr = roc, V end
     end
   end
   return { m = m, tw = D.Ta / W, wl = m / D.S, vs = sqrt(2 * W / (rho * D.S * D.CLm)), str = best.ws, strV = best.vs, itr = best.wi, itrV = best.vi,
-    roll = D.pmax, nz = D.nzP }
+    roll = D.pmax, nz = D.nzP, roc = best.roc, rocV = best.vr }
+end
+
+-- 性能卡（整备「挂载」页右栏：空挂 vs 当前）：这一质量、这一阻力增量下的极速（军推 / 加力，1000 米）、推重比、持续 / 瞬时转弯、最大爬升率——
+--   全是上面现成的 vTop / card（em）算的；m、dCD0 一般来自 FM.loadout
+function FM.perf(D, m, dCD0)
+  local c = FM.card(D, m, dCD0)
+  c.vMil = FM.vTop(D, m, 100, 1000, dCD0)
+  c.vAB = (D.Ta > D.Tm) and FM.vTop(D, m, 130, 1000, dCD0) or c.vMil
+  c.dCD0 = dCD0 or 0
+  return c
 end
 
 return FM

@@ -1,0 +1,150 @@
+FCS BIT⟫FCS 自己診断⟫FCS 자체 점검⟫САМОКОНТРОЛЬ СУО⟫FLA-SELBSTTEST⟫TEST CONDUITE DE TIR⟫PRUEBA DEL CONTROL DE TIRO⟫TESTE DO CONTROLE DE TIRO
+FCS MODE⟫FCS モード⟫FCS 모드⟫РЕЖИМ СУО⟫FLA-MODUS⟫MODE CONDUITE DE TIR⟫MODO DE CONTROL DE TIRO⟫MODO DO CONTROLE DE TIRO
+FIELD OF VIEW⟫視野（倍率）⟫시야(배율)⟫ПОЛЕ ЗРЕНИЯ⟫SICHTFELD⟫CHAMP DE VISION⟫CAMPO DE VISIÓN⟫CAMPO DE VISÃO
+LASE⟫レーザー測距⟫레이저 측거⟫ЗАМЕР⟫LASERN⟫TÉLÉMÉTRIE⟫MEDIR⟫MEDIR
+LRF⟫レーザー測距儀⟫레이저 측거기⟫ЛАЗЕРНЫЙ ДАЛЬНОМЕР⟫LASER-EM⟫TÉLÉMÈTRE LASER⟫TELÉMETRO LÁSER⟫TELÊMETRO LASER
+LRF FIRST/LAST⟫測距 先頭 / 最終エコー⟫측거 첫 / 마지막 반사⟫ДАЛЬНОМЕР ПЕРВЫЙ/ПОСЛЕДНИЙ⟫LASER ERSTES/LETZTES⟫TÉLÉMÈTRE PREMIER/DERNIER⟫TELÉMETRO PRIMERO/ÚLTIMO⟫TELÊMETRO PRIMEIRO/ÚLTIMO
+LRF RETURN⟫測距エコー選択⟫측거 반사 선택⟫ВЫБОР ОТРАЖЕНИЯ⟫LASER-ECHOWAHL⟫SÉLECTION D'ÉCHO⟫SELECCIÓN DE ECO⟫SELEÇÃO DE ECO
+MRS UPDATE⟫砲口基準更新（砲身の熱曲がり補正）⟫포구 기준 갱신(포신 열 변형 보정)⟫ВЫВЕРКА ДУЛЬНОГО СРЕЗА (термоизгиб ствола)⟫MÜNDUNGSREFERENZ (Rohrverkrümmung)⟫MISE À JOUR MRS (flexion thermique du tube)⟫ACTUALIZAR MRS (curvatura térmica del tubo)⟫ATUALIZAR MRS (curvatura térmica do tubo)
+RATE SELECT⟫発射速度選択⟫발사 속도 선택⟫ВЫБОР ТЕМПА⟫KADENZWAHL⟫SÉLECTION DE CADENCE⟫SELECCIÓN DE CADENCIA⟫SELEÇÃO DE CADÊNCIA
+RETICLE BRIGHTNESS⟫レティクル輝度⟫조준선 밝기⟫ЯРКОСТЬ СЕТКИ⟫STRICHPLATTENHELLIGKEIT⟫LUMINOSITÉ DU RÉTICULE⟫BRILLO DE LA RETÍCULA⟫BRILHO DO RETÍCULO
+RETICLE ILLUMINATION⟫レティクル照明⟫조준선 조명⟫ПОДСВЕТКА СЕТКИ⟫STRICHPLATTENBELEUCHTUNG⟫ÉCLAIRAGE DU RÉTICULE⟫ILUMINACIÓN DE LA RETÍCULA⟫ILUMINAÇÃO DO RETÍCULO
+SIGHT EXT  DAY / TIS⟫延長接眼部：昼間 / 熱線⟫연장 접안부: 주간 / 열상⟫ВЫНОСНОЙ ОКУЛЯР: ДЕНЬ / ТПВ⟫VISIERVERLÄNGERUNG TAG / WB⟫EXTENSION DE VISÉE JOUR / THERMIQUE⟫EXTENSIÓN DE MIRA DÍA / TÉRMICA⟫EXTENSÃO DA MIRA DIA / TÉRMICA
+SIGHT EXT  POLARITY⟫延長接眼部：極性⟫연장 접안부: 극성⟫ВЫНОСНОЙ ОКУЛЯР: ПОЛЯРНОСТЬ⟫VISIERVERLÄNGERUNG POLARITÄT⟫EXTENSION DE VISÉE POLARITÉ⟫EXTENSIÓN DE MIRA POLARIDAD⟫EXTENSÃO DA MIRA POLARIDADE
+STABILIZATION⟫安定化装置⟫안정화 장치⟫СТАБИЛИЗАТОР⟫STABILISIERUNG⟫STABILISATION⟫ESTABILIZACIÓN⟫ESTABILIZAÇÃO
+SYMBOLOGY BRIGHTNESS⟫シンボル輝度⟫심볼 밝기⟫ЯРКОСТЬ СИМВОЛОВ⟫SYMBOLHELLIGKEIT⟫LUMINOSITÉ DES SYMBOLES⟫BRILLO DE SIMBOLOGÍA⟫BRILHO DA SIMBOLOGIA
+TIS GAIN⟫熱線ゲイン（コントラスト）⟫열상 이득(대비)⟫УСИЛЕНИЕ ТПВ⟫WB-VERSTÄRKUNG⟫GAIN THERMIQUE⟫GANANCIA TÉRMICA⟫GANHO TÉRMICO
+TIS LEVEL⟫熱線レベル（輝度）⟫열상 레벨(밝기)⟫УРОВЕНЬ ТПВ⟫WB-PEGEL⟫NIVEAU THERMIQUE⟫NIVEL TÉRMICO⟫NÍVEL TÉRMICO
+TIS POLARITY⟫熱線極性⟫열상 극성⟫ПОЛЯРНОСТЬ ТПВ⟫WB-POLARITÄT⟫POLARITÉ THERMIQUE⟫POLARIDAD TÉRMICA⟫POLARIDADE TÉRMICA
+VISION SELECT⟫視野選択⟫시야 선택⟫ВЫБОР ОБЗОРА⟫SICHTWAHL⟫SÉLECTION DE VISION⟫SELECCIÓN DE VISIÓN⟫SELEÇÃO DE VISÃO
+WEAPON SELECT⟫武器選択⟫무기 선택⟫ВЫБОР ОРУЖИЯ⟫WAFFENWAHL⟫SÉLECTION D'ARME⟫SELECCIÓN DE ARMA⟫SELEÇÃO DE ARMA
+Push button⟫押しボタン⟫누름 버튼⟫Кнопка⟫Drucktaster⟫Bouton-poussoir⟫Pulsador⟫Botão
+Rotary knob⟫ロータリーノブ⟫회전 노브⟫Поворотный переключатель⟫Drehknopf⟫Bouton rotatif⟫Mando giratorio⟫Botão giratório
+Toggle switch⟫トグルスイッチ⟫토글 스위치⟫Тумблер⟫Kippschalter⟫Interrupteur à bascule⟫Interruptor de palanca⟫Interruptor de alavanca
+Ammo detonation⟫弾薬誘爆⟫탄약 유폭⟫Детонация БК⟫Munitionsexplosion⟫Explosion des munitions⟫Detonación de munición⟫Detonação da munição
+Coins⟫コイン⟫코인⟫Монеты⟫Münzen⟫Pièces⟫Monedas⟫Moedas
+Higher BR⟫格上撃破⟫상위 BR 격파⟫Выше по БР⟫Höherer BR⟫BR supérieur⟫BR superior⟫BR superior
+One-shot⟫一撃撃破⟫일격 격파⟫С одного выстрела⟫Mit einem Schuss⟫D'un seul coup⟫De un disparo⟫De um tiro
+Research · at round end⟫研究ポイント · ラウンド終了時に付与⟫연구 포인트 · 라운드 종료 시 지급⟫Очки исследования · в конце раунда⟫Forschung · am Rundenende⟫Recherche · en fin de manche⟫Investigación · al final de la ronda⟫Pesquisa · no fim da rodada
+SHOT DOWN⟫撃墜⟫격추⟫СБИТ⟫ABGESCHOSSEN⟫ABATTU⟫DERRIBADO⟫ABATIDO
+ (empty)⟫（空）⟫ (비어 있음)⟫ (пусто)⟫ (leer)⟫ (vide)⟫ (vacío)⟫ (vazio)
+%d hardpoints⟫ハードポイント %d 箇所⟫하드포인트 %d개⟫Точек подвески: %d⟫%d Aufhängungen⟫%d points d'emport⟫%d puntos de anclaje⟫%d pontos de fixação
+Air targets⟫空中目標⟫공중 목표⟫Воздушные цели⟫Luftziele⟫Cibles aériennes⟫Objetivos aéreos⟫Alvos aéreos
+Clean (no stores)⟫クリーン（搭載なし）⟫클린(장착 없음)⟫Без подвесок⟫Ohne Außenlasten⟫Lisse (sans emport)⟫Limpio (sin cargas)⟫Limpo (sem cargas)
+Click to save the current loadout here⟫クリックで現在の兵装をここに保存⟫클릭하면 현재 무장을 여기에 저장⟫Нажмите, чтобы сохранить сюда текущий вариант⟫Klicken, um die aktuelle Bewaffnung hier zu speichern⟫Cliquez pour enregistrer l'armement actuel ici⟫Haz clic para guardar aquí el armamento actual⟫Clique para salvar aqui o armamento atual
+Create / fine-tune⟫作成 / 微調整⟫생성 / 미세 조정⟫Создать / настроить⟫Erstellen / feinjustieren⟫Créer / affiner⟫Crear / ajustar⟫Criar / ajustar
+Current (customised)⟫現在（カスタム）⟫현재(사용자 정의)⟫Текущий (свой)⟫Aktuell (angepasst)⟫Actuel (personnalisé)⟫Actual (personalizado)⟫Atual (personalizado)
+Custom #%d⟫カスタム #%d⟫사용자 #%d⟫Свой №%d⟫Eigene #%d⟫Perso #%d⟫Personalizado #%d⟫Personalizado #%d
+Drag to rotate⟫ドラッグで回転⟫드래그로 회전⟫Тяните для поворота⟫Ziehen zum Drehen⟫Glissez pour tourner⟫Arrastra para girar⟫Arraste para girar
+Edited per pylon in the workshop⟫整備でステーションごとに編集⟫정비에서 스테이션별로 편집⟫Настроено по точкам в мастерской⟫In der Werkstatt pro Station bearbeitet⟫Modifié point par point à l'atelier⟫Editado por anclaje en el taller⟫Editado por ponto na oficina
+Fixed-wing⟫固定翼機⟫고정익기⟫Самолёт⟫Starrflügler⟫Voilure fixe⟫Ala fija⟫Asa fixa
+Ground targets⟫地上目標⟫지상 목표⟫Наземные цели⟫Bodenziele⟫Cibles au sol⟫Objetivos terrestres⟫Alvos terrestres
+Gun  ⟫機関砲  ⟫기관포  ⟫Пушка  ⟫Kanone  ⟫Canon  ⟫Cañón  ⟫Canhão
+Gun pod⟫ガンポッド⟫건 포드⟫Пушечный контейнер⟫Kanonenbehälter⟫Nacelle canon⟫Contenedor de cañón⟫Casulo de canhão
+Helicopter⟫ヘリコプター⟫헬리콥터⟫Вертолёт⟫Hubschrauber⟫Hélicoptère⟫Helicóptero⟫Helicóptero
+Hover to preview, click to equip (saved right away)⟫ホバーでプレビュー、クリックで装着（即保存）⟫마우스를 올려 미리보기, 클릭하면 장착(즉시 저장)⟫Наведите для просмотра, нажмите для установки (сохраняется сразу)⟫Hover für Vorschau, Klick zum Ausrüsten (sofort gespeichert)⟫Survolez pour prévisualiser, cliquez pour équiper (enregistré aussitôt)⟫Pasa el cursor para previsualizar, haz clic para equipar (se guarda al momento)⟫Passe o mouse para ver, clique para equipar (salvo na hora)
+Live, full internal fuel⟫リアルタイム、機内燃料満タン⟫실시간, 내부 연료 가득⟫В реальном времени, полное внутреннее топливо⟫Live, voller interner Kraftstoff⟫En direct, plein de carburant interne⟫En vivo, combustible interno lleno⟫Ao vivo, combustível interno cheio
+Loadout - ⟫兵装 - ⟫무장 - ⟫Вооружение - ⟫Bewaffnung - ⟫Armement - ⟫Armamento - ⟫Armamento -
+No flight data for this type⟫この機種には飛行データがない⟫이 기종에는 비행 데이터가 없음⟫Нет лётных данных для этого типа⟫Keine Flugdaten für diesen Typ⟫Pas de données de vol pour ce type⟫Sin datos de vuelo para este tipo⟫Sem dados de voo para este tipo
+No hardpoints on this aircraft⟫この機体にはハードポイントがない⟫이 기체에는 하드포인트가 없음⟫У этого самолёта нет точек подвески⟫Dieses Flugzeug hat keine Aufhängungen⟫Cet appareil n'a pas de point d'emport⟫Esta aeronave no tiene puntos de anclaje⟫Esta aeronave não tem pontos de fixação
+Not saved yet⟫未保存⟫아직 저장 안 함⟫Ещё не сохранено⟫Noch nicht gespeichert⟫Pas encore enregistré⟫Aún sin guardar⟫Ainda não salvo
+PREVIEW⟫プレビュー⟫미리보기⟫ПРОСМОТР⟫VORSCHAU⟫APERÇU⟫VISTA PREVIA⟫PRÉVIA
+VS CLEAN⟫クリーン比⟫클린 대비⟫ПРОТИВ ЧИСТОГО⟫GGÜ. OHNE LASTEN⟫VS LISSE⟫VS. LIMPIO⟫VS. LIMPO
+climb rate⟫上昇率⟫상승률⟫скороподъёмность⟫Steigrate⟫taux de montée⟫régimen de ascenso⟫razão de subida
+drag⟫抗力⟫항력⟫сопротивление⟫Widerstand⟫traînée⟫resistencia⟫arrasto
+gross %d kg⟫総重量 %d kg⟫총중량 %d kg⟫масса %d кг⟫Gesamtgewicht %d kg⟫masse totale %d kg⟫peso total %d kg⟫peso total %d kg
+kg⟫kg⟫kg⟫кг⟫⟫⟫⟫
+stores weight⟫搭載重量⟫장착 중량⟫масса подвесок⟫Lastengewicht⟫masse des emports⟫peso de cargas⟫peso das cargas
+top speed⟫最高速度⟫최고 속도⟫макс. скорость⟫Höchstgeschwindigkeit⟫vitesse max.⟫velocidad máx.⟫velocidade máx.
+turn time⟫旋回時間⟫선회 시간⟫время виража⟫Kurvenzeit⟫temps de virage⟫tiempo de viraje⟫tempo de curva
+ ms⟫ ms⟫ ms⟫ мс⟫⟫⟫⟫
+F7 hides this panel⟫F7 でこのパネルを隠す⟫F7로 이 패널 숨기기⟫F7 — скрыть эту панель⟫F7 blendet dieses Panel aus⟫F7 masque ce panneau⟫F7 oculta este panel⟫F7 oculta este painel
+FPS %d · worst %d ms · quality %.2f⟫FPS %d · 最遅 %d ms · 画質 %.2f⟫FPS %d · 최저 %d ms · 화질 %.2f⟫FPS %d · худший %d мс · качество %.2f⟫FPS %d · schlechtestes %d ms · Qualität %.2f⟫FPS %d · pire %d ms · qualité %.2f⟫FPS %d · peor %d ms · calidad %.2f⟫FPS %d · pior %d ms · qualidade %.2f
+instances %d · parts %d · moving %d · contacts %d⟫インスタンス %d · パーツ %d · 可動 %d · 接触 %d⟫인스턴스 %d · 파트 %d · 움직임 %d · 접촉 %d⟫объекты %d · детали %d · подвижные %d · контакты %d⟫Instanzen %d · Teile %d · bewegt %d · Kontakte %d⟫instances %d · pièces %d · mobiles %d · contacts %d⟫instancias %d · piezas %d · móviles %d · contactos %d⟫instâncias %d · peças %d · móveis %d · contatos %d
+network in %s KB/s · out %s KB/s⟫ネットワーク 受信 %s KB/s · 送信 %s KB/s⟫네트워크 수신 %s KB/s · 송신 %s KB/s⟫сеть приём %s КБ/с · отдача %s КБ/с⟫Netzwerk ein %s KB/s · aus %s KB/s⟫réseau entrée %s Ko/s · sortie %s Ko/s⟫red entrada %s KB/s · salida %s KB/s⟫rede entrada %s KB/s · saída %s KB/s
+physics %s ms · heartbeat %s ms · memory %d MB⟫物理 %s ms · ハートビート %s ms · メモリ %d MB⟫물리 %s ms · 하트비트 %s ms · 메모리 %d MB⟫физика %s мс · такт %s мс · память %d МБ⟫Physik %s ms · Heartbeat %s ms · Speicher %d MB⟫physique %s ms · heartbeat %s ms · mémoire %d Mo⟫física %s ms · latido %s ms · memoria %d MB⟫física %s ms · heartbeat %s ms · memória %d MB
+render CPU %s ms · GPU %s ms⟫描画 CPU %s ms · GPU %s ms⟫렌더 CPU %s ms · GPU %s ms⟫рендер ЦП %s мс · ГП %s мс⟫Rendern CPU %s ms · GPU %s ms⟫rendu CPU %s ms · GPU %s ms⟫render CPU %s ms · GPU %s ms⟫render CPU %s ms · GPU %s ms
+scripts %s ms/frame:⟫スクリプト %s ms/フレーム：⟫스크립트 %s ms/프레임:⟫скрипты %s мс/кадр:⟫Skripte %s ms/Bild:⟫scripts %s ms/image :⟫scripts %s ms/fotograma:⟫scripts %s ms/quadro:
+spikes ⟫最大スパイク ⟫최대 스파이크 ⟫пики ⟫Spitzen ⟫pics ⟫picos ⟫picos
+vehicle parts moved %d/frame · glows %d/%d⟫車両パーツ移動 %d/フレーム · 発光 %d/%d⟫차량 파트 이동 %d/프레임 · 발광 %d/%d⟫детали техники %d/кадр · свечения %d/%d⟫Fahrzeugteile bewegt %d/Bild · Leuchten %d/%d⟫pièces de véhicule déplacées %d/image · halos %d/%d⟫piezas de vehículo movidas %d/fotograma · brillos %d/%d⟫peças de veículo movidas %d/quadro · brilhos %d/%d
+ studs⟫ スタッド⟫ 스터드⟫ стадов⟫ Studs⟫ studs⟫ studs⟫ studs
+Aim sensitivity⟫照準時の感度⟫조준 감도⟫Чувствительность прицеливания⟫Ziel-Empfindlichkeit⟫Sensibilité de visée⟫Sensibilidad al apuntar⟫Sensibilidade de mira
+Air battles⟫空戦⟫공중전⟫Воздушные бои⟫Luftgefechte⟫Batailles aériennes⟫Batallas aéreas⟫Batalhas aéreas
+Aircraft controls⟫航空機の操縦⟫항공기 조종⟫Управление самолётом⟫Flugzeugsteuerung⟫Commandes d'avion⟫Controles de avión⟫Controles de avião
+Aircraft mouse sensitivity⟫航空機のマウス感度⟫항공기 마우스 감도⟫Чувствительность мыши (самолёт)⟫Mausempfindlichkeit (Flugzeug)⟫Sensibilité souris (avion)⟫Sensibilidad del ratón (avión)⟫Sensibilidade do mouse (avião)
+Auto-retract landing gear after takeoff⟫離陸後に降着装置を自動格納⟫이륙 후 착륙장치 자동 수납⟫Автоуборка шасси после взлёта⟫Fahrwerk nach dem Start automatisch einfahren⟫Rentrer le train automatiquement après le décollage⟫Recoger el tren automáticamente tras despegar⟫Recolher o trem automaticamente após decolar
+Brightness⟫明るさ⟫밝기⟫Яркость⟫Helligkeit⟫Luminosité⟫Brillo⟫Brilho
+Camera roll (keyboard)⟫カメラのロール（キーボード）⟫카메라 롤(키보드)⟫Крен камеры (клавиатура)⟫Kamerarollen (Tastatur)⟫Roulis de caméra (clavier)⟫Alabeo de cámara (teclado)⟫Rolagem da câmera (teclado)
+Camera shake⟫カメラの揺れ⟫카메라 흔들림⟫Тряска камеры⟫Kamerawackeln⟫Tremblement de caméra⟫Vibración de cámara⟫Tremor da câmera
+Chase camera FOV (aircraft)⟫追従カメラ視野（航空機）⟫추적 카메라 시야(항공기)⟫Поле зрения камеры (авиация)⟫Sichtfeld Verfolgerkamera (Flugzeuge)⟫Champ de la caméra externe (aéronefs)⟫Campo de visión de la cámara (aeronaves)⟫Campo de visão da câmera (aeronaves)
+Chase camera FOV (vehicles)⟫追従カメラ視野（車両）⟫추적 카메라 시야(차량)⟫Поле зрения камеры (техника)⟫Sichtfeld Verfolgerkamera (Fahrzeuge)⟫Champ de la caméra externe (véhicules)⟫Campo de visión de la cámara (vehículos)⟫Campo de visão da câmera (veículos)
+Codes from events and updates (not case sensitive); rewards go straight to your profile.⟫イベントやアップデートのコード（大文字小文字は区別しない）。報酬はプロフィールに直接入る。⟫이벤트와 업데이트 코드(대소문자 구분 없음). 보상은 프로필로 바로 들어갑니다.⟫Коды из событий и обновлений (регистр не важен); награды сразу попадают в профиль.⟫Codes aus Events und Updates (ohne Groß-/Kleinschreibung); Belohnungen gehen direkt in dein Profil.⟫Codes d'événements et de mises à jour (insensibles à la casse) ; les récompenses vont directement sur votre profil.⟫Códigos de eventos y actualizaciones (no distingue mayúsculas); las recompensas van directas a tu perfil.⟫Códigos de eventos e atualizações (não diferencia maiúsculas); as recompensas vão direto para o seu perfil.
+Compact (85%)⟫コンパクト（85%）⟫작게(85%)⟫Компактный (85%)⟫Kompakt (85 %)⟫Compact (85 %)⟫Compacto (85%)⟫Compacto (85%)
+Controls⟫操作⟫조작⟫Управление⟫Steuerung⟫Commandes⟫Controles⟫Controles
+Crew voice⟫乗員の音声⟫승무원 음성⟫Голос экипажа⟫Besatzungsstimmen⟫Voix de l'équipage⟫Voz de la tripulación⟫Voz da tripulação
+Enter a code first⟫先にコードを入力⟫먼저 코드를 입력하세요⟫Сначала введите код⟫Gib zuerst einen Code ein⟫Saisissez d'abord un code⟫Introduce antes un código⟫Digite antes um código
+Enter code⟫コードを入力⟫코드 입력⟫Введите код⟫Code eingeben⟫Saisir un code⟫Introducir código⟫Digitar código
+Explosions, gunfire, rough ground⟫爆発、砲撃、荒れた路面⟫폭발, 포격, 거친 노면⟫Взрывы, стрельба, неровности⟫Explosionen, Schüsse, unebener Boden⟫Explosions, tirs, terrain accidenté⟫Explosiones, disparos, terreno irregular⟫Explosões, disparos, terreno irregular
+Extra factor in sights and pods⟫照準器・ポッド内での追加倍率⟫조준경·포드 안 추가 배율⟫Доп. множитель в прицелах и контейнерах⟫Zusatzfaktor in Visieren und Behältern⟫Facteur supplémentaire dans les viseurs et nacelles⟫Factor extra en miras y contenedores⟫Fator extra em miras e casulos
+Extra large (130%)⟫特大（130%）⟫매우 크게(130%)⟫Очень крупный (130%)⟫Extragroß (130 %)⟫Très grand (130 %)⟫Extragrande (130%)⟫Extra grande (130%)
+Full⟫完全に追従⟫완전히 따라감⟫Полностью⟫Voll⟫Complet⟫Completo⟫Completo
+Game settings⟫ゲーム設定⟫게임 설정⟫Настройки игры⟫Spieleinstellungen⟫Paramètres du jeu⟫Ajustes del juego⟫Configurações do jogo
+Ground battles⟫陸戦⟫지상전⟫Наземные бои⟫Bodengefechte⟫Batailles terrestres⟫Batallas terrestres⟫Batalhas terrestres
+How fast the mouse-aim reticle moves (times the overall setting)⟫マウスエイム時の照準の速さ（全体感度との積）⟫마우스 에임 시 조준점 속도(전체 감도와 곱)⟫Скорость марки при наведении мышью (умножается на общую)⟫Wie schnell sich das Mauszielkreuz bewegt (mal Gesamtwert)⟫Vitesse du réticule en visée souris (multipliée par le réglage global)⟫Velocidad de la retícula con ratón (por el ajuste general)⟫Velocidade do retículo na mira pelo mouse (vezes o ajuste geral)
+Interface scale⟫UI の大きさ⟫인터페이스 크기⟫Масштаб интерфейса⟫Oberflächenskalierung⟫Échelle de l'interface⟫Escala de la interfaz⟫Escala da interface
+Invert mouse Y⟫マウス上下反転⟫마우스 상하 반전⟫Инверсия мыши по Y⟫Maus-Y invertieren⟫Inverser l'axe Y de la souris⟫Invertir eje Y del ratón⟫Inverter eixo Y do mouse
+Keyboard⟫キーボード⟫키보드⟫Клавиатура⟫Tastatur⟫Clavier⟫Teclado⟫Teclado
+Language⟫言語（Language）⟫언어(Language)⟫Язык (Language)⟫Sprache (Language)⟫Langue (Language)⟫Idioma (Language)⟫Idioma (Language)
+Large (115%)⟫大（115%）⟫크게(115%)⟫Крупный (115%)⟫Groß (115 %)⟫Grand (115 %)⟫Grande (115%)⟫Grande (115%)
+Loaded, enemy spotted, hit…⟫装填完了、敵発見、被弾…⟫장전 완료, 적 발견, 피격…⟫Заряжено, враг замечен, попадание…⟫Geladen, Feind gesichtet, Treffer…⟫Chargé, ennemi repéré, touché…⟫Cargado, enemigo avistado, impacto…⟫Carregado, inimigo avistado, atingido…
+Main⟫主要⟫주요⟫Основное⟫Allgemein⟫Principal⟫Principal⟫Principal
+Master volume⟫マスター音量⟫마스터 볼륨⟫Общая громкость⟫Gesamtlautstärke⟫Volume principal⟫Volumen general⟫Volume geral
+Most screens switch after rejoining⟫多くの画面は再入場後に切り替わる⟫대부분의 화면은 다시 접속한 뒤 바뀝니다⟫Большинство экранов сменится после перезахода⟫Die meisten Bildschirme wechseln nach erneutem Beitritt⟫La plupart des écrans changent après reconnexion⟫La mayoría de pantallas cambian al volver a entrar⟫A maioria das telas muda ao entrar de novo
+Mouse aim⟫マウスエイム⟫마우스 에임⟫Наведение мышью⟫Mauszielen⟫Visée à la souris⟫Apuntado con ratón⟫Mira pelo mouse
+Mouse aim: the plane follows the mouse, WASD overrides; M switches in flight⟫マウスエイム：機体がマウスを追い、WASD で上書き。飛行中も M で切替⟫마우스 에임: 기체가 마우스를 따라가고 WASD로 덮어씀. 비행 중에도 M으로 전환⟫Наведение мышью: самолёт следует за мышью, WASD перехватывает; M переключает в полёте⟫Mauszielen: Das Flugzeug folgt der Maus, WASD übersteuert; M schaltet im Flug um⟫Visée souris : l'avion suit la souris, WASD reprend la main ; M bascule en vol⟫Apuntado con ratón: el avión sigue al ratón, WASD toma el control; M alterna en vuelo⟫Mira pelo mouse: o avião segue o mouse, WASD assume; M alterna em voo
+Mouse sensitivity⟫マウス感度⟫마우스 감도⟫Чувствительность мыши⟫Mausempfindlichkeit⟫Sensibilité de la souris⟫Sensibilidad del ratón⟫Sensibilidade do mouse
+Navigation⟫ナビゲーション⟫탐색⟫Навигация⟫Navigation⟫Navigation⟫Navegación⟫Navegação
+No matches⟫該当なし⟫결과 없음⟫Ничего не найдено⟫Keine Treffer⟫Aucun résultat⟫Sin resultados⟫Sem resultados
+None (level horizon)⟫なし（地平線水平）⟫없음(지평선 수평)⟫Нет (горизонт ровный)⟫Keine (Horizont waagerecht)⟫Aucun (horizon à plat)⟫Ninguno (horizonte nivelado)⟫Nenhum (horizonte nivelado)
+Off⟫オフ⟫끔⟫Выкл⟫Aus⟫Non⟫No⟫Não
+On⟫オン⟫켬⟫Вкл⟫An⟫Oui⟫Sí⟫Sim
+Redeem⟫交換⟫교환⟫Активировать⟫Einlösen⟫Utiliser⟫Canjear⟫Resgatar
+Redeem code⟫コード交換⟫코드 교환⟫Код⟫Code einlösen⟫Utiliser un code⟫Canjear código⟫Resgatar código
+Redeeming…⟫交換中…⟫교환 중…⟫Активация…⟫Wird eingelöst…⟫Utilisation…⟫Canjeando…⟫Resgatando…
+Reset to default⟫初期設定に戻す⟫기본값으로 재설정⟫Сбросить⟫Auf Standard zurücksetzen⟫Rétablir par défaut⟫Restablecer⟫Restaurar padrão
+Scales the hangar, tech tree and settings⟫格納庫・技術ツリー・設定の拡大縮小⟫격납고, 기술 트리, 설정 크기 조절⟫Масштаб ангара, дерева и настроек⟫Skaliert Hangar, Technologiebaum und Einstellungen⟫Agrandit le hangar, l'arbre et les paramètres⟫Escala el hangar, el árbol y los ajustes⟫Escala o hangar, a árvore e as configurações
+Search settings…⟫設定を検索…⟫설정 검색…⟫Поиск настроек…⟫Einstellungen suchen…⟫Rechercher un paramètre…⟫Buscar ajustes…⟫Buscar configurações…
+Sound⟫サウンド⟫사운드⟫Звук⟫Ton⟫Son⟫Sonido⟫Som
+Standard (100%)⟫標準（100%）⟫표준(100%)⟫Стандартный (100%)⟫Standard (100 %)⟫Standard (100 %)⟫Estándar (100%)⟫Padrão (100%)
+System⟫システム⟫시스템⟫Системный⟫System⟫Système⟫Sistema⟫Sistema
+Too fast — wait two seconds⟫速すぎ — 2 秒待って⟫너무 빠름 — 2초 기다리세요⟫Слишком часто — подождите две секунды⟫Zu schnell — warte zwei Sekunden⟫Trop rapide — attendez deux secondes⟫Demasiado rápido: espera dos segundos⟫Rápido demais: espere dois segundos
+Turret traverse and looking around (times the overall setting)⟫砲塔旋回と見回し（全体感度との積）⟫포탑 선회와 둘러보기(전체 감도와 곱)⟫Поворот башни и обзор (умножается на общую)⟫Turmschwenken und Umsehen (mal Gesamtwert)⟫Rotation de tourelle et regard (multipliée par le réglage global)⟫Giro de torreta y mirar alrededor (por el ajuste general)⟫Giro da torre e olhar em volta (vezes o ajuste geral)
+Vehicle mouse sensitivity⟫車両のマウス感度⟫차량 마우스 감도⟫Чувствительность мыши (техника)⟫Mausempfindlichkeit (Fahrzeuge)⟫Sensibilité souris (véhicules)⟫Sensibilidad del ratón (vehículos)⟫Sensibilidade do mouse (veículos)
+War Thunder leaves gear to you (G); flaps are automatic⟫War Thunder では降着装置は手動（G）、フラップは自動⟫워썬더에서는 착륙장치는 직접(G), 플랩은 자동⟫В War Thunder шасси убираете сами (G), закрылки — автоматически⟫In War Thunder fährst du das Fahrwerk selbst (G); Klappen sind automatisch⟫Dans War Thunder, le train est manuel (G) ; les volets sont automatiques⟫En War Thunder el tren es manual (G); los flaps son automáticos⟫No War Thunder o trem é manual (G); os flaps são automáticos
+With mouse aim the horizon always stays level⟫マウスエイムでは地平線は常に水平⟫마우스 에임에서는 지평선이 항상 수평⟫При наведении мышью горизонт всегда ровный⟫Beim Mauszielen bleibt der Horizont immer waagerecht⟫En visée souris, l'horizon reste toujours à plat⟫Con el ratón el horizonte siempre queda nivelado⟫Com a mira pelo mouse o horizonte fica sempre nivelado
+You already have everything from this code⟫このコードの内容はすべて所持済み⟫이 코드의 항목은 이미 모두 보유⟫У вас уже есть всё из этого кода⟫Du hast schon alles aus diesem Code⟫Vous avez déjà tout le contenu de ce code⟫Ya tienes todo lo de este código⟫Você já tem tudo deste código
+   ·   Researching: ⟫   ·   研究中：⟫   ·   연구 중: ⟫   ·   Исследуется: ⟫   ·   In Forschung: ⟫   ·   Recherche : ⟫   ·   Investigando: ⟫   ·   Pesquisando:
+  ·  Modifications⟫  ·  改修⟫  ·  개조⟫  ·  Модификации⟫  ·  Modifikationen⟫  ·  Modifications⟫  ·  Modificaciones⟫  ·  Modificações
+  ·  Stats⟫  ·  性能⟫  ·  성능⟫  ·  Характеристики⟫  ·  Daten⟫  ·  Caractéristiques⟫  ·  Datos⟫  ·  Dados
+  ·  bots fill in⟫  ·  ボットが補充⟫  ·  봇이 채움⟫  ·  боты добирают⟫  ·  Bots füllen auf⟫  ·  des bots complètent⟫  ·  los bots completan⟫  ·  bots completam
+  ·  current⟫  ·  このラウンド⟫  ·  이번 라운드⟫  ·  текущий⟫  ·  aktuell⟫  ·  actuel⟫  ·  actual⟫  ·  atual
+ (done: ⟫ (研究済み：⟫ (연구 완료: ⟫ (готово: ⟫ (erforscht: ⟫ (fait : ⟫ (hecho: ⟫ (feito:
+ (empty ⟫ (空虚 ⟫ (공허 ⟫ (пустой ⟫ (leer ⟫ (à vide ⟫ (vacío ⟫ (vazio
+ (mode ×⟫ (モード ×⟫ (모드 ×⟫ (режим ×⟫ (Modus ×⟫ (mode ×⟫ (modo ×⟫ (modo ×
+ (own stats)⟫ (本車の性能)⟫ (이 차량 성능)⟫ (свои данные)⟫ (eigene Werte)⟫ (données propres)⟫ (datos propios)⟫ (dados próprios)
+ (relaxed)⟫ (静安定緩和)⟫ (완화 안정)⟫ (ослабленная)⟫ (gelockert)⟫ (relâchée)⟫ (relajada)⟫ (relaxada)
+ (researched ones apply when you deploy)⟫ (研究済みのものは出撃時に適用)⟫ (연구된 것은 출격할 때 적용)⟫ (исследованные действуют при выходе в бой)⟫ (erforschte gelten beim Einsatz)⟫ (les recherchées s'appliquent au déploiement)⟫ (las investigadas se aplican al desplegar)⟫ (as pesquisadas valem ao implantar)
+ (up to ⟫ (最大 ⟫ (최대 ⟫ (до ⟫ (bis ⟫ (jusqu'à ⟫ (hasta ⟫ (até
+ XP⟫ 経験値⟫ 경험치⟫ опыта⟫ EP⟫⟫⟫
+ kN⟫ kN⟫ kN⟫ кН⟫⟫⟫⟫
+ kN (mil / AB)⟫ kN（ミリタリー / AB）⟫ kN(군용 / AB)⟫ кН (макс. / форсаж)⟫ kN (Militär / NB)⟫ kN (sec / PC)⟫ kN (militar / PC)⟫ kN (militar / PC)
+ km/h (mil / AB, 1000 m)⟫ km/h（ミリタリー / AB、1000 m）⟫ km/h(군용 / AB, 1000 m)⟫ км/ч (макс. / форсаж, 1000 м)⟫ km/h (Militär / NB, 1000 m)⟫ km/h (sec / PC, 1000 m)⟫ km/h (militar / PC, 1000 m)⟫ km/h (militar / PC, 1000 m)
+ mods +⟫ 改修 +⟫ 개조 +⟫ мод. +⟫ Mods +⟫ modifs +⟫ mods +⟫ mods +
+ more rank ⟫ 両、ランク ⟫대 더, 등급 ⟫ машин(ы) ранга ⟫ weitere Fahrzeuge von Rang ⟫ véhicule(s) de plus de rang ⟫ vehículo(s) más de rango ⟫ veículo(s) a mais da patente
+ short) · Top up⟫ 不足) · チャージ⟫ 부족) · 충전⟫ не хватает) · Пополнить⟫ fehlen) · Aufladen⟫ manquantes) · Recharger⟫ faltan) · Recargar⟫ faltam) · Recarregar
+ t·m² (roll/pitch/yaw)⟫ t·m²（ロール/ピッチ/ヨー）⟫ t·m²(롤/피치/요)⟫ т·м² (крен/тангаж/рыскание)⟫ t·m² (Rollen/Nicken/Gieren)⟫ t·m² (roulis/tangage/lacet)⟫ t·m² (alabeo/cabeceo/guiñada)⟫ t·m² (rolagem/arfagem/guinada)
+ · AR ⟫ · アスペクト比 ⟫ · 종횡비 ⟫ · удлинение ⟫ · Streckung ⟫ · allongement ⟫ · alargamiento ⟫ · alongamento
+ · AoA limit ⟫ · 迎角制限 ⟫ · 받음각 제한 ⟫ · огр. УА ⟫ · AoA-Grenze ⟫ · limite d'incidence ⟫ · límite de AoA ⟫ · limite de AoA
+ · Crew⟫ 番 · 乗員⟫ · 승무원⟫ · экипаж⟫ · Besatzung⟫ · équipage⟫ · tripulación⟫ · tripulação
+ · backup⟫ · 予備⟫ · 예비⟫ · запасной⟫ · Reserve⟫ · réserve⟫ · reserva⟫ · reserva
+ · controls ⟫ · 操縦 ⟫ · 조종 ⟫ · управление ⟫ · Steuerung ⟫ · commandes ⟫ · mandos ⟫ · comandos

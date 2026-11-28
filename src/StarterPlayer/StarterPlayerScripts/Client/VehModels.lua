@@ -44,6 +44,10 @@ local CF = CFrame.new
 local RGB = Color3.fromRGB
 local MAT = Enum.Material
 local CYL, BALL = Enum.PartType.Cylinder, Enum.PartType.Ball
+-- 「窗帘-1」红外干扰灯在各原模型上的位置（车坐标，炮塔转角 0；用户 11-28「t90我记得有一对红色的车灯 这个一定要还原的跟原车一样」）：
+--   gx 炮的横坐标、sx 灯离炮多远、y 灯的中心高、zf 灯盒正面（朝前 −Z）、w / h / d 灯盒宽高深——tools/models 的射线量的：
+--   坐在炮塔正面防护块的上沿、紧挨着炮盾两边（T-90A 借 T-90M 的模型）
+local SHTORA = { t90m = { gx = -0.094, sx = 1.5, y = 5.86, zf = -4.35, w = 0.85, h = 0.72, d = 0.75 } }
 local ALONG_Z = CFrame.Angles(0, math.pi / 2, 0)   -- 圆柱的轴（X）转到 Z（炮管、烟幕弹管）
 local UPRIGHT = CFrame.Angles(0, 0, math.pi / 2)  -- 圆柱的轴转到 Y（竖着的圆盘、舱盖）
 
@@ -560,9 +564,10 @@ function VehModels.build(d, team, mods, paint)
   end
 
   -- 排气（用户 11-20：载具照 UE5 的水平升级）：车尾两侧两个排气口——柴油机加油门、换挡那一下喷一股浓黑烟，怠速淡淡一缕；
-  --   燃气轮机（M1 系列）是淡灰的热气。浓淡在 View.lua 按油门 / 加速度调
+  --   燃气轮机（M1 系列、T-80 系列：VehDefs 的 turbine）是淡灰的热气。浓淡在 View.lua 按油门 / 加速度调
+  --   （原来写死 m1a1 / m1a2：拆出来的 M1、IPM1、M1A1 HC、M1A2 / SEP / SEPv3 照样是燃气轮机，同 Drive.lua 的发动机声）
   local exhaust = {}
-  local turbine = d.id == "m1a1" or d.id == "m1a2"
+  local turbine = d.turbine == true
   for _, s2 in ipairs({ -1, 1 }) do
     local p = hull(V(0.2, 0.2, 0.2), CF(s2 * W * 0.3, hh * 0.92, L * 0.44), C.base)
     p.Transparency = 1
@@ -752,8 +757,8 @@ function VehModels.build(d, team, mods, paint)
         tur(V(0.4, 0.3, 0.6), f * CF(0, -0.55, -0.05), dark)   -- 托架
       end
     end
-    -- 激光告警探头（四个角的侧墙上，不在车顶）；JD-3 多一个激光干扰头（炮塔左前侧墙）
-    if mm and (mm.ew == "lws" or mm.ew == "jd3") and L.aps then
+    -- 激光告警探头（四个角的侧墙上，不在车顶）；JD-3 多一个激光干扰头（炮塔左前侧墙）；「窗帘-1」也带激光告警
+    if mm and (mm.ew == "lws" or mm.ew == "jd3" or mm.ew == "shtora") and L.aps then
       for _, a in ipairs(L.aps.r or {}) do
         local f = CF(-tp) * frameAt(V(a[1], a[2] - 0.85, a[3]), V(a[4], a[5], a[6]).Unit)
         tur(V(0.42, 0.34, 0.3), f * CF(0, 0, 0.15), dark)
@@ -764,6 +769,49 @@ function VehModels.build(d, team, mods, paint)
         local f = CF(-tp) * frameAt(V(a[1], a[2] - 0.2, a[3] + 0.9), V(a[4], 0, a[6]).Unit)
         tur(V(0.6, 0.6, 0.55), f * CF(0, 0, 0.3), dark, MAT.Metal, CYL)
         tur(V(0.04, 0.42, 0.42), f * CF(0, 0, 0.6) * CFrame.Angles(0, math.pi / 2, 0), RGB(90, 20, 18), MAT.Glass, CYL)
+      end
+    end
+    -- 「窗帘-1」（T-90A）：炮两边各一个 OTShU-1-7 红外干扰灯——车身色的方盒、上沿一道遮光檐、正面黑圈里一个大圆灯。
+    --   开着的样子（用户 11-28 给的图「它开起来是这个效果」）：中心白热、往外金黄 → 橙 → 红的一圈，外面一团光晕把灯框都映红了，
+    --   往前照出一片橙红的光；车活着就开着（残骸上灭掉：View.lua），被打的时候干扰（服务器 dazzle）闪一下更亮
+    local SH = mm and mm.ew == "shtora" and SHTORA[extra.imported or ""] or nil
+    if SH then
+      local R90 = CFrame.Angles(0, math.pi / 2, 0)   -- 圆柱的轴（X）转到朝前
+      for sx = -1, 1, 2 do
+        local box = CF(-tp) * CF(SH.gx + sx * SH.sx, SH.y, SH.zf + SH.d / 2)
+        local hb = tur(V(SH.w, SH.h, SH.d), box, olive)
+        hb.Name = "ShtoraBox"
+        tur(V(SH.w * 0.98, 0.06, 0.26), box * CF(0, SH.h / 2 - 0.03, -SH.d / 2 - 0.12), olive)   -- 遮光檐
+        tur(V(0.06, 0.64, 0.64), box * CF(0, -0.02, -SH.d / 2 - 0.03) * R90, RGB(14, 14, 14), MAT.Metal, CYL)   -- 黑圈
+        local rim = tur(V(0.05, 0.56, 0.56), box * CF(0, -0.02, -SH.d / 2 - 0.07) * R90, RGB(255, 78, 28), MAT.Neon, CYL)   -- 橙红的一圈
+        rim.Name = "ShtoraLens"
+        local mid = tur(V(0.05, 0.42, 0.42), box * CF(0, -0.02, -SH.d / 2 - 0.09) * R90, RGB(255, 168, 70), MAT.Neon, CYL)   -- 金黄
+        mid.Name = "ShtoraMid"
+        local core = tur(V(0.05, 0.24, 0.24), box * CF(0, -0.02, -SH.d / 2 - 0.11) * R90, RGB(255, 244, 222), MAT.Neon, CYL)   -- 白热的芯
+        core.Name = "ShtoraCore"
+        -- 光晕：贴在灯上的一团柔光（粒子锁在零件上、几颗叠着淡进淡出，看上去一直亮着）
+        local at = Instance.new("Attachment")
+        at.Name = "ShtoraGlow"
+        at.Parent = core
+        local pe = Instance.new("ParticleEmitter")
+        pe.Name = "ShtoraHalo"
+        pe.Texture = "rbxasset://textures/particles/explosion01_implosion_main.dds"
+        pe.LightEmission, pe.LightInfluence = 1, 0
+        pcall(function() pe.Brightness = 2.2 end)
+        pe.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 196, 120)), ColorSequenceKeypoint.new(1, RGB(255, 110, 50)) })
+        pe.Size = NumberSequence.new(1.9)
+        pe.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.25, 0.55), NumberSequenceKeypoint.new(0.75, 0.55), NumberSequenceKeypoint.new(1, 1) })
+        pe.Lifetime = NumberRange.new(1.1, 1.3)
+        pe.Rate = 4
+        pe.Speed = NumberRange.new(0)
+        pe.LockedToPart = true
+        pe.ZOffset = 0.6
+        pe.Parent = at
+        -- 往前照的光（照亮车前一片地；不投影子）
+        local sl = Instance.new("SpotLight")
+        sl.Name = "ShtoraLight"
+        sl.Face, sl.Angle, sl.Range, sl.Brightness, sl.Color, sl.Shadows = Enum.NormalId.Front, 70, 18, 1.6, RGB(255, 120, 56), false
+        sl.Parent = hb
       end
     end
     -- 栅栏装甲：扁钢条竖着排（间距约 0.9 格 ≈ 32 厘米），上下两道横框、几根撑杆；离车身 1.4 格（半米）

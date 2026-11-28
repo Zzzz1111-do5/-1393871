@@ -14,10 +14,10 @@ Config.Tick = 0.1                     -- 推演步长（秒）：占领、AI、�
 --   Config.Map 是现在这张；跟着地图变的数（阶段表）由 Config.useMap(id) 换（服务器、客户端换地图时都调）
 -- 用户 11-26「做一个两边带机场的城市地图吧」：默认换成钢城（MapCity.lua）；沙海还在（Map.extra），测试台、Studio 设 MapName 能开
 Config.Map = "city"
-Config.MapDefault = "city"
+Config.MapDefault = "snow"   -- 11-28 晚：钢城先收起来（用户「城市地图暂时先不弄 先不显示这张图」），默认雪山
 -- 选地图投票（用户 11-23：「三张地图改成投票制，进去投票选地图」）：进服在选地图界面投票（能改票）——第一票投出后 time 秒按票数最多的开（平票随机挑），
 --   在场的人都投了就再等 grace 秒（还能改）提前开；没人投：空服几秒、有人不投 MapWaitMax 秒后按 MapDefault 开
-Config.MapVote = { time = 25, grace = 3 }
+Config.MapVote = { time = 25, grace = 3 }   -- 有人在却没人投：等他选（11-28 晚起不再进来二十秒就替人定，见 init.server.lua waitMap）
 -- 匹配（用户 11-26：「点开战先匹配，匹配一分钟后人不够就补人机，两边的人机的车辆要符合我匹配时带的最高权重的载具，跟战雷一样」，WtMatch.lua）：
 --   战雷式对局每一局先是「匹配中」（Round.lua 的 queue 阶段）——有人点「开战」起算 wait 秒，到点或者真人凑满两队（2 × Wt.teamSize）就开打；
 --   人不够一队 Wt.teamSize 的电脑开车补满（AIVeh.lua），电脑的车按匹配进来的人阵容里最高的战斗等级挑（Tech.lua treePickAi）；已经在打的一局点开战直接加入
@@ -88,7 +88,9 @@ Config.Tickets = { start = 240, perReal = 10, perStage = 100, flank = 50, extraC
 --   （D 11-25 同时做过一版 period 的，合并时用 B 的 DayClock；D 的 Night.lua 天黑提示开夜视、天亮收起、白天关地图上的灯照样用 G.isNight / G.dayK）
 --   用户 11-26：「所有地图开局默认白天吧，然后一天 48 分钟这样」——一圈 28 + 4 + 12 + 4 = 48 分钟（白天 10 个钟头走 28 分钟），
 --   perRound：每局开局都拨回 start 点（早上 8 点，打满 30 分钟的一局到黄昏才天黑）；PvE 关卡照旧按关卡自己的钟点（Pve.lua 在开局之后改）
-Config.DayNight = { lockNight = false, clock = 2.3, day = 28, dusk = 4, night = 12, dawn = 4, start = 8.0, perRound = true }
+--   用户 11-28 夜：「然后训练场改成持续百天吧」（持续白天）——rangeClock：训练场一直停在这个钟点（上午 11 点，太阳高、影子不长不短）：
+--   训练场服务器整个钉住（DayClock）；别的服务器上试驾（雪山图上、老训练场区块）客户端 DayNight 也换成这个钟点
+Config.DayNight = { lockNight = false, clock = 2.3, day = 28, dusk = 4, night = 12, dawn = 4, start = 8.0, perRound = true, rangeClock = 11 }
 Config.RallyBack = 200   -- 守方集结点：据点后面多远（格，150～250），守方在这里出生（用户：出生点跟着战线走）
 Config.StageOff = 260    -- 攻方攻击出发阵地：据点往攻方来的方向多远（格，200～300），第一波以后攻方在这里出生（Round.lua）
 
@@ -171,6 +173,17 @@ Config.GunMods = { killXp = 100, botXp = 60, unlockAll = false, studioAll = fals
 Config.Passes = {
   tablet = { id = 0, price = 99, item = "tablet" },   -- 战术平板（副武器）：召唤步战车、空投补给、呼叫火力
   b2 = { id = 0, price = 199, item = "b2" },          -- B-2 隐身轰炸机（守方）
+}
+-- 金币充值（R 币买金币：开发者产品 Developer Product；用户 11-28「你做个金币充值界面好了收robux」，服务器 Shop.lua、客户端 CoinShop.lua）：
+--   在创作者后台（Creator Dashboard → 这个体验 → 盈利 / Monetization → 开发者产品 / Developer Products）给每一档建一个产品，
+--   价格照 robux 填，把产品编号填进 id。id 还是 0 的那一档：充值页上写「未上架」、点不了
+--   coins 到账多少金币；bonus 比基础档（99 R 币 = 1 万）多送的那一截（只用来显示「赠送」）。充值页优先显示 Roblox 查到的真价钱
+Config.CoinPacks = {
+  { key = "c1", id = 0, robux = 99, coins = 10000 },
+  { key = "c2", id = 0, robux = 199, coins = 22000, bonus = 2000 },
+  { key = "c3", id = 0, robux = 499, coins = 60000, bonus = 10000 },
+  { key = "c4", id = 0, robux = 999, coins = 130000, bonus = 30000 },
+  { key = "c5", id = 0, robux = 1999, coins = 280000, bonus = 80000 },
 }
 Config.PassFor = {}   -- 物品 / 机型 → 通行证名
 for k, v in pairs(Config.Passes) do Config.PassFor[v.item] = k end
@@ -299,7 +312,7 @@ end
 Config.Economy = {
   unlockAll = false,
   infinite = false,
-  startCoins = 20000,
+  startCoins = 0,   -- 用户 11-28「不要送那个2w金币了」：新账号不送金币（靠打仗攒；老档里的照存的数字）
   treeK = 0.5,
   perScore = 0.1, win = 200, lose = 60,
   veh = {
@@ -375,14 +388,16 @@ function Config.VehPrice(id) return Config.Economy.veh[id] end   -- nil：不用
 --   off = true 关掉；voiceId 文字转语音的嗓音；键：pen 击穿、ric 跳弹、np 未击穿、kill 击毁、killAmmo 殉爆、hurtPen 我们被击穿、fire 着火、
 --   gnr / drv / ldr / cmd 谁阵亡、loaded 装填完毕、engine / track / barrel / breech 模块坏了、swap 换位、fireOut 灭火、fixed 修好、resupply 补给
 Config.WtVoice = { off = false, voiceId = "1", volume = 1.4 }
--- 第一人称（坐进车里、飞机座舱：Interior.lua 的 C / T / F2～F5 / V、全真模式自动坐进去）只有这几型有
+-- 第一人称（坐进车里、飞机座舱：Interior.lua 的 C / T / F2～F5 / V）只有这几型有
 --   （用户 11-25：「除了m1a1和a2 其他载具不要做第一人称模式」）；only = nil 就全开（测试内饰的老测试用）
+--   11-27：同族变型（VehDefs 的 like：M1、IPM1、科技树的 M1A1、M1A1 HC 退到 m1a1，M1A2、SEP、SEPv3 退到 m1a2——同一个模型、同一套车内）
+--   查不到自己的就看 like 那一型（Interior.lua 的 fpAllowed）；原来拆开以后这 7 项的车内整个没了
 Config.FirstPerson = { only = { m1a1 = true, m1a2 = true } }
 Config.Wt = { on = true, noInfantry = true, sp0 = 0, spMax = 3000, perScore = 0.5, lineup = 5, lineupAir = 2, backup = 1, rise = 0.25,   -- lineupAir：阵容里飞行单位最多几个（用户 11-25）
   br0 = 4.0, brUp = 1.0, teamSize = 8, aiMax = 8,   -- aiMax 原来 5：用户 11-26「人不够就补人机」——每队补满 teamSize（AIVeh.lua）
   -- 三种模式（机库里投票，准备阶段按票数，开战定住；Tech.lua）：ab 街机（敌人都标、飞机空中出生）、rb 历史（只标近处看得见的）、
-  --   sb 全真（不标、只能第一人称）；研究点、乘员经验按 modeK 乘
-  mode0 = "rb", modeK = { ab = 1, rb = 1.3, sb = 1.6 }, airSpawnH = 1200,
+  --   （全真 sb 用户 11-27「把全真模式去掉」删了）；研究点、乘员经验按 modeK 乘
+  mode0 = "rb", modeK = { rb = 1.3 }, airSpawnH = 1200,
   -- 击毁奖励（用户 11-26「你自己设计一个击杀效果和音效以及奖励」）：每打掉一辆当场发金币 coin0 + 对方等级 × coinRank，按模式 modeK 乘；
   --   研究点照旧结算时发（一局按击毁数 × rpKill 算，Tech.lua roundRp）——击毁那一下先报这一辆算多少；
   --   加成：弹药殉爆、一发击毁（这一辆只挨了我一发）、越级击毁（对方战斗等级比我高 brUp 以上）各乘一下
@@ -462,6 +477,9 @@ Config.Score = { kill = 100, botKill = 60, assist = 40, capture = 300, captureAs
 Config.QuickSpot = { range = 620, cone = 3, spotTime = 7, cd = 1.5 }
 -- 车里激光测距后报告敌情（M1A2 SEPv2 的 CITV、布雷德利的 CIV：Weapons.lua 的 ACT.vspot）：4 公里、锥 1.2°、标 20 秒
 Config.VehSpot = { range = 11200, cone = 1.2, spotTime = 20, cd = 2 }
+-- 载具里按中键标记（Weapons.lua G.ACT.vmark，同战雷）：地面车 / 船 2 公里、飞机 6 公里，标 15 / 20 秒
+Config.VehMark = { range = 5600, cone = 3, spotTime = 15, cd = 2 }
+Config.VehMarkAir = { range = 16800, cone = 3, spotTime = 20, cd = 2 }
 -- 小队（Squads.lua）：每队自动分成几个小队，能在队友身边出生
 Config.Squad = { size = 4, safe = 6 }   -- 一个小队几个人；队友几秒内没挨打才能往他身边出生
 Config.Revive = {

@@ -81,6 +81,19 @@ B.AMMO = {
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
   m409 = { cls = "heat", name = "M409 HEAT-MP", sym = "HEAT", v0 = 683, k = 1.4e-4, bs = 700, tr = true, ce = true,   -- M551：152 毫米多用途破甲弹，初速低、弹道弯
     vs = { inf = 1.1, light = 1.3, armor = 0.9, fort = 1.4 }, splash = 1.3 },
+  -- KPz 70 的 152 毫米 XM150（11-28）：
+  xm578 = { cls = "ap", name = "XM578 APFSDS", sym = "穿甲", v0 = 1480, k = 5.0e-5, bs = 1200, tr = true,        -- 钨芯尾翼稳定脱壳穿甲弹（六十年代）
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  -- T-34-85 的 85 毫米 ZiS-S-53（11-28）：
+  br365 = { cls = "ap", name = "BR-365 APHE", sym = "穿甲", v0 = 792, k = 1.2e-4, bs = 1000, tr = true,             -- 钝头被帽穿甲弹，带一点装药
+    vs = { inf = 0.7, light = 1.1, armor = 1.0, fort = 0.9 }, splash = 0.9 },
+  br365p = { cls = "ap", name = "BR-365P APCR", sym = "次口径", v0 = 1050, k = 1.6e-4, bs = 1000, tr = true,        -- 次口径（钨芯）：近处穿得深，掉速快
+    vs = { inf = 0.5, light = 1.0, armor = 1.1, fort = 0.7 }, splash = 0.5 },
+  o365 = { cls = "he", name = "O-365K HE-FRAG", sym = "榴弹", v0 = 793, k = 1.1e-4, bs = 800, tr = false,            -- 85 毫米杀爆榴弹
+    vs = { inf = 1.3, light = 1.0, armor = 0.5, fort = 1.5 }, splash = 1.4 },
+  -- SU-100 的 100 毫米 D-10S（11-28）：五十年代随车带来的 BR-412 尖头穿甲榴弹
+  br412 = { cls = "ap", name = "BR-412 APHE", sym = "穿甲", v0 = 895, k = 1.15e-4, bs = 1000, tr = true,             -- 尖头穿甲榴弹，带一点装药
+    vs = { inf = 0.7, light = 1.1, armor = 1.0, fort = 0.9 }, splash = 1.0 },
   -- 59 式 / 69-II 式的 100 毫米线膛炮（11-26）：
   br412d = { cls = "ap", name = "BR-412D APBC", sym = "穿甲", v0 = 887, k = 1.1e-4, bs = 1000, tr = true,            -- 59 式：钝头被帽穿甲弹（全口径，掉速快）
     vs = { inf = 0.6, light = 1.1, armor = 1.0, fort = 0.9 }, splash = 0.8 },
@@ -89,6 +102,28 @@ B.AMMO = {
   of412 = { cls = "he", name = "OF-412 HE-FRAG", sym = "榴弹", v0 = 900, k = 1.0e-4, bs = 800, tr = false,             -- 100 毫米杀爆榴弹
     vs = { inf = 1.4, light = 1.0, armor = 0.5, fort = 1.6 }, splash = 1.5 },
   apfsds69 = { cls = "ap", name = "100mm APFSDS", sym = "穿甲", v0 = 1415, k = 4.4e-5, bs = 1200, tr = true,           -- 69-II 式：尾翼稳定脱壳穿甲弹
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」「各维度还原一致」）：M1 一族按年代各打各的弹
+  --   初速：M829 1670、M829A1 1575、M829A2 1680 米 / 秒（公开的弹药手册）；M774、M735、M829A4 没有公开的准数，按同类估；阻力系数照同类长杆
+  m774 = { cls = "ap", name = "M774", sym = "SABOT", v0 = 1508, k = 4.2e-5, bs = 1200, tr = true,          -- M1（1980）：105 毫米贫铀尾翼稳定脱壳穿甲弹（初速估）
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  m735 = { cls = "ap", name = "M735", sym = "SABOT", v0 = 1501, k = 4.2e-5, bs = 1200, tr = true,          -- 105 毫米钨合金尾翼稳定脱壳穿甲弹（1978：M1、M60A1 RISE；初速估）
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  m829 = { cls = "ap", name = "M829", sym = "SABOT", v0 = 1670, k = 3.8e-5, bs = 1200, tr = true,          -- 120 毫米第一代贫铀长杆（1985）
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  m829a1 = { cls = "ap", name = "M829A1", sym = "SABOT", v0 = 1575, k = 3.6e-5, bs = 1200, tr = true,      -- 「银弹」（1988 定型，海湾战争）
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  m829a2 = { cls = "ap", name = "M829A2", sym = "SABOT", v0 = 1680, k = 3.6e-5, bs = 1200, tr = true,      -- 1994 年起（复合材料弹托，杆更长）
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  m829a4 = { cls = "ap", name = "M829A4", sym = "SABOT", v0 = 1555, k = 3.5e-5, bs = 1200, tr = true,      -- 2015 年起，要弹药数据链（ADL：SEPv3）；初速没公开，估
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  -- 豹 2A0（1979）：120 毫米第一代尾翼稳定脱壳穿甲弹 DM13（钨合金；键名带 l44，105 毫米的 dm13 已经占了；初速估）
+  dm13l44 = { cls = "ap", name = "DM13 (120)", sym = "KE", v0 = 1650, k = 3.8e-5, bs = 1200, tr = true,
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  -- 96 式（1997）、96A / 99 式（2001～）的 125 毫米尾翼稳定脱壳穿甲弹（DTC10 是 99A / 96B 才有的）：公开资料只有个大概，初速、阻力都是估的
+  dtw125 = { cls = "ap", name = "DTW-125 I", sym = "穿甲", v0 = 1730, k = 3.8e-5, bs = 1200, tr = true,
+    vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
+  dtw125b = { cls = "ap", name = "DTW-125 II", sym = "穿甲", v0 = 1760, k = 3.6e-5, bs = 1200, tr = true,
     vs = { inf = 0.55, light = 1.0, armor = 1.1, fort = 0.8 }, splash = 0.6 },
 }
 -- 每门炮能打的弹（第一个是默认），以及车里炮长控制面板上的弹种键（InteriorScreens 的 gcdp 页）对到哪种弹
@@ -107,18 +142,48 @@ B.GUN = {
   gun105m68 = { "m833", "m456", "jet105" },           -- M60A3
   gun105m60 = { "m392", "m456", "jet105" },           -- M60A1
   gun152 = { "m409" },                                 -- M551（MGM-51 导弹游戏里没有）
+  gun152k70 = { "xm578", "m409" },                   -- KPz 70：XM578 尾翼稳定脱壳穿甲弹、M409 多用途破甲弹
+  gun85 = { "br365", "o365", "br365p" },             -- T-34-85（引进）：穿甲、榴弹，第三种次口径（研究得到）
   gun100d = { "br412d", "bk5m", "of412" },            -- 59 式
+  gun100s = { "br412", "of412", "br412d" },            -- SU-100（引进）：尖头穿甲榴弹、榴弹，第三种钝头被帽穿甲弹（研究得到）
   gun100d69 = { "apfsds69", "bk5m", "of412" },        -- 69-II 式
+  -- 11-27 拆开重叠的版本：M1 一族照年代。弹种顺序照全工程的约定（审查第 3 条）：{ 原厂穿甲, 破甲 / 多用途, 榴弹 / MPAT / 霰弹, 旧穿甲…, 射流 }——
+  --   科技树改装只研究得到第二、第三种（WtMods 的 ammo2 / ammo3），所以第二种放破甲弹，同族更老的穿甲弹放在后面（研究不到也不亏）
+  gun105m1 = { "m774", "m456", "m735", "jet105" },             -- M1（1980，M68A1）：M833 是 IPM1 那年才有
+  gun105ip = { "m833", "m456", "m774", "jet105" },             -- IPM1（1984）：M833 贫铀
+  gun120a1 = { "m829", "m830", "m829a1", "jet120" },           -- 科技树的 M1A1（1985，M256）：M829、M830，第三种 M829A1（1988 年起）
+  gun120hc = { "m829a1", "m830", "m829", "jet120" },           -- M1A1 HC（1988，M256）：M830A1 MPAT 1993 年起才有
+  gun120a2 = { "m829a1", "m830", "m830a1", "jet120" },         -- M1A2（1992）：M829A2 1994 年起
+  gun120sep = { "m829a2", "m830", "m830a1", "jet120" },        -- M1A2 SEP（2000）：M829A3 2003 年起
+  gun120sep3 = { "m829a4", "m830a1", "m1028", "m829a3", "jet120" },   -- M1A2 SEPv3：弹药数据链（ADL）打 M829A4（AMP XM1147 游戏里没有）；M829A3 研究不到（第四种）
+  -- M60A1 RISE（1977，M68）：M735 钨合金尾翼稳定脱壳穿甲弹（M833 是 M60A3 的）。同 M60 / M60A1 / M60A3 那两门炮三种弹、射流排第三（研究得到）——
+  --   11-27 二审：原来第三种放 M392、射流排第四，研究满以后 RISE 是 M60 一族唯一拿不到射流的（M60 / M60A1 / M60A3 760、RISE 只有 M456 的 430：
+  --   拆之前它借 M60A1 的 gun105m60，射流研究得到）；M392 是 M60A1 原厂的老弹，比 M735 弱，第四种本来就研究不到，去掉
+  gun105m60r = { "m735", "m456", "jet105" },
+  gun120l44a0 = { "dm13l44", "dm12", "jet120" },               -- 豹 2A0（Rh-120 L/44）：DM13、DM12（DM33 1987 年起）
+  gun125c96 = { "dtw125", "heat125", "he125", "jet125" },      -- 96 式（ZPT-98）：DTW-125 I 型
+  gun125c99 = { "dtw125b", "heat125", "he125", "jet125" },     -- 96A、99 式（ZPT-98）：DTW-125 II 型
+  gun125m2 = { "bm42", "bk31", "of26", "refleks", "jet125" },  -- T-90A（2A46M-2）：3BM42「芒果」、3BK31、3OF26、9M119M「反射」（3BM60 是 T-90M 的）
 }
--- 面板上的键 → 弹种（这门炮没有这一种就挑它同一类 cls 的：T-90M 借 99A 的面板，「穿甲」键打 3BM60）
-function B.panelAmmo(kind, wid)
+-- 面板上的键 → 弹种：在这门炮现在能打的弹里挑跟面板上那一发同一类（cls）的——T-90M 借 99A 的面板，「穿甲」键打 3BM60；
+--   M1 一族拆开以后各型的炮跟面板写死的 SEPv2 那几发不一样（M1 打 105 毫米 M774 / M456，SEPv3 是 M829A4 / M830A1 / M1028）
+--   list：能打的弹（Drive.lua 按研究过的 ModAmmo、出车带了的截短的那份，G.driveAmmoList）；没给就是这门炮的整张表
+--   cur：现在装定的弹——已经是这一类、这一类还有别的（科技树 M1A1 的 M829 / 第三种 M829A1）就换下一种
+--   这一类一种都没有返回 nil：按了不换（11-27 二审：原来退回面板写死的那发、Drive 不认就轮到下一种——SEPv3 研究了第二种弹，
+--   在 M829A4 上按 SABOT 换成了 M830A1；M1 的 MPAT / CAN 键、SEPv3 的 HEAT 键也是乱轮）
+function B.panelAmmo(kind, wid, list, cur)
   local key = B.PANEL[kind]
-  local list = wid and B.GUN[wid]
-  if key and list and not table.find(list, key) then
-    local cls = B.AMMO[key] and B.AMMO[key].cls
-    for _, k in ipairs(list) do if B.AMMO[k] and B.AMMO[k].cls == cls then return k end end
+  local a0 = key and B.AMMO[key]
+  list = list or (wid and B.GUN[wid])
+  if not (a0 and list) then return nil end
+  local same = {}
+  for _, k in ipairs(list) do
+    local a = B.AMMO[k]
+    if a and a.cls == a0.cls then table.insert(same, k) end
   end
-  return key
+  if #same == 0 then return nil end
+  local i = cur and table.find(same, cur)
+  return i and same[i % #same + 1] or same[1]
 end
 B.PANEL = { SABOT = "m829a3", HEAT = "m830", MPAT = "m830a1", CAN = "m1028",
   ap = "dtc10", heat = "heat125", he = "he125", gl = "heat125" }
@@ -152,6 +217,60 @@ function B.superElev(a, xm, los)
 end
 
 -- 游戏里用的：初速（格 / 秒）、阻力系数（每格）、重力倍数（Ents / Fx 的 GRAV = workspace.Gravity × 0.55 乘 gscale）
+-- 脱壳弹（打出去炮口外面弹托几瓣飞开；用户 11-28「钢针打出去的效果跟尾烟要有区别」：钢针 = 尾翼稳定脱壳穿甲弹的长杆）：
+--   fs 尾翼稳定脱壳穿甲弹（长杆，初速一千三百米以上）/ ds 旋转稳定的脱壳穿甲弹（APDS：豹 1 的 DM13、M60A1 的 M392）；全口径、次口径的没有
+function B.sabotOf(a)
+  if type(a) ~= "table" or a.cls ~= "ap" then return nil end
+  if a.sub == "fs" or a.sub == "ds" then return a.sub end
+  if string.find(a.name or "", "APDS", 1, true) then return "ds" end
+  if (a.v0 or 0) >= 1300 then return "fs" end
+  return nil
+end
+
+-- 弹种（界面上写的类型：Lang 的 ammo.t.<种> 全称、ammo.s.<种> 短名，按语言翻——用户 11-28「目前局内我分辨不出来弹种 这些还是根据语言改变吧
+--   比如我选了中文 穿甲弹就要写上」）：
+--   apfsds 尾翼稳定脱壳穿甲弹、apds 脱壳穿甲弹、apcr 硬芯穿甲弹、aphe 穿甲爆破弹、apbc 风帽穿甲弹、ap 穿甲弹、
+--   heatfs 尾翼稳定破甲弹、heat 破甲弹、heatmp 多用途破甲弹、mpat 多用途反坦克弹、hefrag 高爆弹、hesh 碎甲弹、can 霰弹、atgm 反坦克导弹、jet 串联破甲弹（游戏自己的金属射流弹）
+local HEAT_FS = { heat125 = true, bk31 = true, bk18m = true, bk5m = true }   -- 滑膛炮 / 尾翼稳定的破甲弹（名字里没写）
+function B.kindOf(k)
+  local a = (type(k) == "table") and k or B.AMMO[k]
+  if type(a) ~= "table" then return nil end
+  local c, n = a.cls, a.name or ""
+  if c == "jet" or c == "atgm" or c == "can" or c == "mpat" or c == "hesh" then return c end
+  if c == "he" then return "hefrag" end
+  if c == "heat" then
+    if a.sym == "MZ" or string.find(n, "HEAT-MP", 1, true) then return "heatmp" end
+    if (type(k) == "string" and HEAT_FS[k]) or string.find(n, "HEAT-FS", 1, true) or string.find(n, "HEATFS", 1, true) then return "heatfs" end
+    return "heat"
+  end
+  if c == "ap" then
+    local sb = B.sabotOf(a)
+    if sb == "fs" then return "apfsds" end
+    if sb == "ds" then return "apds" end
+    if string.find(n, "APCR", 1, true) or a.sym == "次口径" then return "apcr" end
+    if string.find(n, "APHE", 1, true) then return "aphe" end
+    if string.find(n, "APBC", 1, true) then return "apbc" end
+    return "ap"
+  end
+  return nil
+end
+-- 弹的型号去掉名字后面写的类型（「BR-365 APHE」→「BR-365」：类型另外按语言写）；只剩口径的（「125 HEAT」→「125」）补上「mm」
+local TYPE_WORDS = { "HEAT%-MP%-T", "HEAT%-MP", "HEAT%-FS", "HEAT%-T", "HE%-FRAG", "APFSDS%-T", "APFSDS", "APDS%-T", "APDS", "APCR", "APHE", "APBC%-T", "APBC",
+  "MPAT", "HEAT", "CAN" }
+function B.desig(k)
+  local a = (type(k) == "table") and k or B.AMMO[k]
+  local n = (type(a) == "table" and a.name) or (type(k) == "string" and k) or ""
+  local out = n
+  for _, w in ipairs(TYPE_WORDS) do
+    local s2 = string.gsub(out, "%s+" .. w .. "$", "")
+    if s2 ~= out then out = s2 break end
+  end
+  if string.match(out, "^%d+$") then out = out .. " mm" end
+  local mm = string.match(out, "^(%d+)mm$")
+  if mm then out = mm .. " mm" end
+  return out
+end
+
 function B.launchArgs(a)
   return a.v0 * S, a.k / S, B.G / (workspace.Gravity * 0.55)
 end

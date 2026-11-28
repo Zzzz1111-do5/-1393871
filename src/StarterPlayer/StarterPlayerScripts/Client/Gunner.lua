@@ -36,20 +36,20 @@ function Gunner.init(G)
 
   local panel = ui.frame(gui, UDim2.fromOffset(420, 70), UDim2.new(0.5, 0, 1, -24), RGB(12, 16, 20), 0.3, Vector2.new(0.5, 1))   -- 操作说明在屏幕最下面一行（UI.lua，gs.help）
   panel.Visible = false
-  local fName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local fName = ui.label(panel, "", UDim2.new(1, -20, 0, 20), UDim2.fromOffset(10, 6), 16, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   local hpBg = ui.frame(panel, UDim2.new(1, -20, 0, 6), UDim2.fromOffset(10, 29), RGB(0, 0, 0), 0.4)
   local hpBar = ui.frame(hpBg, UDim2.fromScale(1, 1), nil, RGB(90, 210, 110), 0)
-  local fInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 38), 14, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local fInfo = ui.label(panel, "", UDim2.new(1, -20, 0, 18), UDim2.fromOffset(10, 38), 14, Color3.new(1, 1, 1), Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
   local relBg = ui.frame(panel, UDim2.new(1, -20, 0, 4), UDim2.fromOffset(10, 58), RGB(0, 0, 0), 0.5)
   local relBar = ui.frame(relBg, UDim2.fromScale(1, 1), nil, RGB(240, 200, 80), 0)
   ui.flatPanel(panel, { hp = hpBg, rel = relBg, name = fName })   -- 跟新界面一个样子（UI.lua）
-  local cross = ui.label(gui, "+", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 26, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
+  local cross = ui.label(gui, "+", UDim2.fromOffset(30, 30), UDim2.fromScale(0.5, 0.5), 26, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0.5))
   cross.TextStrokeTransparency = 0.4
   cross.Visible = false
-  local gunMark = ui.label(gui, "◯", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 20, RGB(255, 210, 80), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
+  local gunMark = ui.label(gui, "◯", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 20, RGB(255, 210, 80), Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0.5))
   gunMark.TextStrokeTransparency = 0.3
   gunMark.Visible = false
-  local leadMark = ui.label(gui, "◇", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 24, RGB(255, 90, 70), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
+  local leadMark = ui.label(gui, "◇", UDim2.fromOffset(26, 26), UDim2.fromScale(0.5, 0.5), 24, RGB(255, 90, 70), Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0.5))
   leadMark.TextStrokeTransparency = 0.3
   leadMark.Visible = false
   local rangeText = ui.label(gui, "", UDim2.fromOffset(320, 24), UDim2.new(0.5, 0, 0.5, 34), 16, RGB(255, 236, 170), Enum.Font.RobotoMono, Vector2.new(0.5, 0))
@@ -150,7 +150,7 @@ function Gunner.init(G)
       if t < gs.nextAt then return end
       gs.nextAt = t + gs.w.rate
       G.R.Drive:FireServer({ op = "fire", aim = gs.aimPt })
-      if G.shake then G.shake(0.25) end
+      if G.shake and (gs.w.rate or 1) >= 0.5 then G.shake(0.25) end   -- 连发的（机枪、机炮）不晃镜头（11-27）
       if G.vehRecoil then G.vehRecoil(gs.id) end
     end
   end
@@ -231,7 +231,7 @@ function Gunner.init(G)
   end
 
   -- 高炮：准星附近（20° 以内）最近的敌机，按它的速度和炮弹速度算提前量
-  local track = {}
+  local track = setmetatable({}, { __mode = "k" })   -- [敌机模型] = 速度记录（模型没了跟着回收）
   local function leadFor(o)
     local ents = workspace:FindFirstChild("Ents")
     if not ents then return nil end
@@ -245,11 +245,13 @@ function Gunner.init(G)
         if r then
           local p = r.Position
           local tr = track[m]
-          if tr and t > tr.t then
-            local v = (p - tr.p) / (t - tr.t)
-            tr.v = tr.v and tr.v:Lerp(v, 0.25) or v
+          if not tr then
+            tr = {}
+            track[m] = tr
           end
-          track[m] = { p = p, t = t, v = tr and tr.v or V() }
+          -- 速度：只在服务器真挪了它时按两次挪之间的时间算、按时间平滑（View.lua G.velTrack；原来每帧差分 × 0.25、每帧新建一张表）
+          if G.velTrack then G.velTrack(tr, p, t, 2000)
+          else tr.p, tr.t, tr.v = p, t, tr.v or V() end
           local to = p - o
           local d = to.Magnitude
           if d < gs.w.range * 1.1 and to.Unit:Dot(look) > math.cos(math.rad(20)) and d < bd then best, bd = m, d end

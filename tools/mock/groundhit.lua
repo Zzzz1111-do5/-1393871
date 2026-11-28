@@ -32,29 +32,26 @@ end
 cam.CFrame = R.CFrame.lookAt(base + V3(0, 30, 120), base)
 
 -- 机库的镜头每帧把镜头挪走：画之前把镜头放回旁边（特效离镜头太远不画）
+--   11-27 起特效全走 VfxLib 的发射器池（不再每次新建零件）：按池的记录（C.vfx.log，每喷一次一条）看这一下喷了哪几层
 local function fresh(f)
   cam.CFrame = R.CFrame.lookAt(base + V3(0, 30, 120), base)
-  local before = {}
-  for _, c in ipairs(FXF:GetChildren()) do before[c] = true end
+  C.vfx.logOn = true
+  C.vfx.log = {}
   f()
-  local out = {}
-  for _, c in ipairs(FXF:GetChildren()) do if not before[c] then out[#out + 1] = c end end
+  local out = C.vfx.log
+  C.vfx.log = {}
   return out
 end
--- 粒子：组数、用了哪些贴图、第一组烟的颜色、火星（白热贴图）几组、土块几组（模拟器的 Emit 不记数，按组比）
+-- 粒子：层数、用了哪些贴图、第一层烟的颜色、自己发光的白点几层（火星、白闪）、土块几层（白点染色、不发光）
 local function stats(list)
-  local o = { n = 0, tex = {}, col = nil, glow = 0, chunk = 0, pl = 0 }
-  for _, h in ipairs(list) do
-    for _, x in ipairs(h:GetDescendants()) do
-      if x.ClassName == "ParticleEmitter" then
-        o.n = o.n + 1
-        local nm = x.Texture:match("([%w_]+)%.%w+$") or x.Texture
-        o.tex[nm] = true
-        if nm == "explosion01_implosion_main" then o.glow = o.glow + 1 end
-        if nm == "SquareParticle" then o.chunk = o.chunk + 1 end
-        if nm == "smoke_main" and not o.col and x.Color and x.Color.Keypoints then o.col = x.Color.Keypoints[1].Value end
-      elseif x.ClassName == "PointLight" then o.pl = o.pl + 1 end
-    end
+  local o = { n = 0, tex = {}, col = nil, glow = 0, chunk = 0, pl = 0, names = {} }
+  for _, x in ipairs(list) do
+    o.n = o.n + 1
+    o.tex[x.tex] = true
+    o.names[x.name] = true
+    if x.tex == "explosion01_implosion_main" and x.le > 0.5 then o.glow = o.glow + 1 end
+    if (x.tex == "explosion01_implosion_main" and x.le <= 0.5 and x.vp) or x.tex == "SquareParticle" then o.chunk = o.chunk + 1 end
+    if x.tex == "smoke_main" and not o.col then o.col = x.col end
   end
   return o
 end
@@ -117,11 +114,12 @@ local steep = kin("d", -3, -100)
 print(string.format("    沙 %d 组 %s、土 %d 组 %s、石 %d 组 %s（火星 %d）、土垂直 %d 组", sand.n, rgb(sand.col), dirt.n, rgb(dirt.col), rock.n, rgb(rock.col), rock.glow, steep.n))
 check(sand.col and dirt.col and sand.col.R > dirt.col.R + 0.25, "沙地的土是浅黄的、土地是深褐的")
 check(rock.col and math.abs(warm(rock.col)) < 0.06, "石头是灰的 " .. rgb(rock.col))
-check(rock.tex.explosion01_implosion_main and not dirt.tex.explosion01_implosion_main, "石头上迸火星，土地上没有")
+check(rock.glow > 0 and dirt.glow == 0, string.format("石头上迸火星（发光的白点 %d 层），土地上没有（%d）", rock.glow, dirt.glow))
+check(dirt.chunk > 0 and not dirt.tex.SquareParticle, "土块是白点染色拉成短线，不是白方块")
 check(not sand.tex.explosion01_core_main, "穿甲弹没有火球")
 check(dirt.n > steep.n, string.format("擦着地打犁出一道沟（%d 组 > 垂直打 %d 组）", dirt.n, steep.n))
 local wat = kin("w", -0.5, -120)
-check(wat.tex.smoke_main and not wat.tex.SquareParticle, "水面：一柱水，没有土块")
+check(wat.tex.smoke_main and wat.chunk == 0, "水面：一柱水，没有土块")
 
 print("③ 爆炸按材质、弹种")
 local function bm(hs, am, dv, dz)
@@ -141,6 +139,26 @@ R.as("client", function()
   ok, err = pcall(C.impact, ground(0, -310), V3(0, -1, 0), "r", 1, V3(0, 1, 0))
   check(ok, "垂直打石头不报错 " .. tostring(err or ""))
 end)
+R.run(1)
+print("⑤ 雪地（11-28 晚用户「炮弹和炸弹炸到地面没有战雷那种效果 包括机枪打到地面也没有」：雪山图上原来全是白的，白雪地上看不出来）")
+-- 每一层的头一个颜色：深（亮度 < 0.45：翻出来的冻土、黑烟）几层、白（> 0.8：雪）几层。打在镜头前几十格（远了只画一颗尘、不画土块）
+local function darkWhite(list)
+  local nd, nw = 0, 0
+  for _, x in ipairs(list) do
+    local c = x.col
+    if c then
+      local l = (c.R + c.G + c.B) / 3
+      if l < 0.45 then nd = nd + 1 elseif l > 0.8 then nw = nw + 1 end
+    end
+  end
+  return nd, nw
+end
+local kd, kw = darkWhite(fresh(function() R.as("client", function() C.kineticHit(ground(0, 30), V3(0, 1, 0), V3(0, -0.3, -1).Unit, "i", 2.1) end) end))
+check(kd >= 2 and kw >= 1, string.format("穿甲弹打雪地：白雪 %d 层 + 深色冻土 %d 层", kw, kd))
+local bd, bw = darkWhite(fresh(function() R.as("client", function() C.boom(ground(0, 55), 0.5, "shell", "i", V3(0, -0.3, -1), "he") end) end))
+check(bd >= 3 and bw >= 1, string.format("榴弹打雪地：白雪 %d 层 + 深色冻土、黑烟 %d 层", bw, bd))
+local id, iw = darkWhite(fresh(function() R.as("client", function() C.impact(ground(0, 80), V3(0, -0.4, -1).Unit, "i", 1.7, V3(0, 1, 0)) end) end))
+check(id >= 1 and iw >= 1, string.format("机枪打雪地：白粉雪 %d 层 + 深色冻土屑 %d 层", iw, id))
 R.run(1)
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "))
 T.summary()

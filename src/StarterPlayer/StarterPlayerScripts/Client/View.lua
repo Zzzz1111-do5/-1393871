@@ -94,6 +94,46 @@ function View.init(G)
   KINDS.c4 = function(m) return { b = { p(m, V(1.1, 0.5, 0.7), CF(), RGB(176, 156, 112)), CF() }, l = { p(m, V(0.2, 0.2, 0.2), CF(), RGB(255, 40, 40), Enum.Material.Neon), CF(0, 0.3, 0) } } end
   KINDS.mine = function(m) return { b = { p(m, V(0.4, 1.4, 1.4), CF(), RGB(86, 96, 64), Enum.Material.Metal, Enum.PartType.Cylinder), CFrame.Angles(0, 0, math.pi / 2) } } end
 
+  -- 别人的东西（飞机、车）的速度（锁定圈、提前量、接近率用；服务器不发速度）：服务器一秒只挪 Root 十来次，
+  --   原来各处每帧算两帧的位置差，算出来是「0、0、一大截、0……」，平滑系数又是按帧给的——锁定圈、提前量跟着一跳一跳，帧率不同手感也不同。
+  --   现在只在位置真的变了才算（这次变和上次变之间挪了多少 / 隔了多久），再按时间常数 0.15 秒平滑（1 − e^(−Δt/0.15)）；
+  --   0.6 秒没挪过就当停了（同 G.follow）。rec：调用方自己留的一张表（第一次给空表）；maxV：一次挪得比这还快当成传送、不算。返回平滑后的速度
+  --   传送 / 服务器纠正位置（11-27 审查）：按「两次挪之间」的平均速度判 maxV 比原来按帧判松（15 Hz 时一拍挪 maxV / 15 以内都算真的）——
+  --   · 隔了 0.6 秒以上才又挪（停了很久、刚出现）：这一下只记位置、不算速度（原来停 5 秒后一下挪 300 格，速度估成 60、0.6 秒才归零）
+  --   · 估计已经稳了（连着量了 2 个时间常数以上），一拍算出来的速度跟它差得离谱（差 1.5 倍且超过 150 格 / 秒）：当成一跳、这一拍不算
+  --     （行进中一拍挪 80 格原来速度跳到 430）；连着两拍都这样才认（真的换了速度：直接用新的）。服务器拍子的抖动（±三成）在这个门槛里面
+  local VEL_TAU = 0.15
+  function G.velTrack(rec, p, now, maxV)
+    local lp = rec.p
+    if not lp then
+      rec.p, rec.t, rec.v, rec.age, rec.odd = p, now, Vector3.zero, 0, 0
+      return rec.v
+    end
+    if p ~= lp then
+      local g = now - rec.t
+      if g > 0.6 then
+        rec.v, rec.age, rec.odd = Vector3.zero, 0, 0
+      elseif g > 1e-3 then
+        local raw = (p - lp) / g
+        local v = rec.v
+        if raw.Magnitude < (maxV or 2000) then
+          local dv = (raw - v).Magnitude
+          if (rec.age or 0) >= 2 * VEL_TAU and dv > 150 and dv > 1.5 * v.Magnitude then
+            rec.odd = (rec.odd or 0) + 1
+            if rec.odd >= 2 then rec.v, rec.odd = raw, 0 end
+          else
+            rec.v = v:Lerp(raw, 1 - math.exp(-g / VEL_TAU))
+            rec.age, rec.odd = (rec.age or 0) + g, 0
+          end
+        end
+      end
+      rec.p, rec.t = p, now
+    elseif now - rec.t > 0.6 then
+      rec.v, rec.age = Vector3.zero, 0
+    end
+    return rec.v
+  end
+
   local views = {}   -- [entModel] = { model, parts, cf, kind, t, … }
   G.views = views
   local byId = {}    -- [实体编号] = view（开炮后坐要按编号找）
@@ -188,6 +228,19 @@ function View.init(G)
       local cm = (type(camo) == "string") and SK.CAMO[camo] or nil
       if cm and not cm.base then cm = nil end
       local M = VM.build(d, team, em:GetAttribute("Mods"), cm or (tit and TT.paint(tit)) or nil)   -- 坦克改装：发射器、雷达板、加特林、补贴的爆反块（TankMods）
+      -- 影子（11-27 M3 丝滑）：三边都不到 2 格的小零件（螺栓、灯座、把手、工具、天线座……）远处的车不投影子——在阴影图里只有几个像素看不出来，
+      --   车多的时候阴影那一遍少画几百个小物体（太阳一挪整张阴影图重画时也少画）；机库、车库里的车（Garage、TechUI 自己 build）不动。
+      --   自己开的车、离镜头 120 格以内的车照旧投（第三人称自己的车就在镜头前 15～25 格：车顶机枪、舱盖、潜望镜的影子看得见），
+      --   超过 160 格才关（回差）：这里只记下是哪几块，stepVeh 按距离成批开关
+      local small = {}
+      for _, it in ipairs(M.parts) do
+        local bp = it[1]
+        if bp:IsA("BasePart") and bp.CastShadow then
+          local sz = bp.Size
+          if sz.X < 2 and sz.Y < 2 and sz.Z < 2 then small[#small + 1] = bp end
+        end
+      end
+      v.smallSh, v.smallShOn = (#small > 0) and small or nil, true
       M.model.Parent = VF
       v.modsAttr = em:GetAttribute("Mods")
       v.treeKey = tk
@@ -212,7 +265,7 @@ function View.init(G)
         local l = Instance.new("TextLabel")
         l.BackgroundTransparency = 1
         l.Size = UDim2.fromScale(1, 1)
-        l.Text, l.TextScaled, l.Font = txt, true, Enum.Font.BuilderSansExtraBold
+        l.Text, l.TextScaled, l.Font = txt, true, Enum.Font.BuilderSansBold
         l.TextColor3, l.TextTransparency = col, 0.08
         l.Parent = sg
         table.insert(M.parts, { p, grp, off })
@@ -352,61 +405,21 @@ function View.init(G)
   local TOSS_G = 9.81 * 2.8 * 1.25   -- 重力（格/秒²，略重一点，落得干脆）
   local trackMark   -- 履带印（下面定义）
   local function tossFx(p, big)
-    if not G.fxPart then return end
-    local part = G.fxPart
-    -- 一柱火：从座圈直冲上去
-    local h = part(nil, V(0.4, 0.4, 0.4), CFrame.lookAt(p, p + V(0, 1, 0)), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
-    local fire = Instance.new("ParticleEmitter")
-    fire.Texture = "rbxasset://textures/particles/fire_main.dds"
-    fire.Rate = 0
-    fire.Lifetime = NumberRange.new(0.35, 0.8)
-    fire.Speed = NumberRange.new(28, 60)
-    fire.SpreadAngle = Vector2.new(14, 14)
-    fire.Drag = 1.5
-    fire.LightEmission = 1
-    fire.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3.5), NumberSequenceKeypoint.new(0.5, 7), NumberSequenceKeypoint.new(1, 2) })
-    fire.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.05), NumberSequenceKeypoint.new(1, 1) })
-    fire.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 246, 200)), ColorSequenceKeypoint.new(0.4, RGB(255, 160, 60)), ColorSequenceKeypoint.new(1, RGB(120, 40, 20)) })
-    fire.EmissionDirection = Enum.NormalId.Front
-    fire.Parent = h
-    fire:Emit(big and 70 or 40)
-    -- 火星：往四周上方撒，带重力落下来
-    local sp = Instance.new("ParticleEmitter")
-    sp.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-    sp.Rate = 0
-    sp.Lifetime = NumberRange.new(0.8, 1.8)
-    sp.Speed = NumberRange.new(30, 70)
-    sp.SpreadAngle = Vector2.new(60, 60)
-    sp.Acceleration = V(0, -60, 0)
-    sp.LightEmission = 1
-    sp.Size = NumberSequence.new(0.35)
-    sp.Color = ColorSequence.new(RGB(255, 210, 120))
-    sp.EmissionDirection = Enum.NormalId.Front
-    sp.Parent = h
-    sp:Emit(big and 90 or 50)
-    -- 黑烟蘑菇云
-    local sm = Instance.new("ParticleEmitter")
-    sm.Texture = "rbxasset://textures/particles/smoke_main.dds"
-    sm.Rate = 0
-    sm.Lifetime = NumberRange.new(2.5, 4.5)
-    sm.Speed = NumberRange.new(14, 30)
-    sm.SpreadAngle = Vector2.new(30, 30)
-    sm.Drag = 1.2
-    sm.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 5), NumberSequenceKeypoint.new(1, 20) })
-    sm.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.2), NumberSequenceKeypoint.new(1, 1) })
-    sm.Color = ColorSequence.new(RGB(34, 30, 28))
-    sm.EmissionDirection = Enum.NormalId.Front
-    sm.Parent = h
-    sm:Emit(big and 26 or 14)
-    Debris:AddItem(h, 6)
-    if G.flash then G.flash(p + V(0, 6, 0), RGB(255, 170, 80), 70, 14, 0.9) end
+    -- 一柱火（从座圈直冲上去）、往四周上方撒的火星、一团黑烟：11-27 审查 5 改走 VfxLib 的池（WreckFx.lua 的 G.wreckTossFx；
+    --   原来每次新建 3 个发射器、一下喷 186 颗，跟 WreckFx 同一刻的大火球叠在一起，殉爆第一秒六七百颗）
+    if G.wreckTossFx then G.try_(G.wreckTossFx, p, big) end
+    -- 灯：这里不点大灯（审查 6：两盏大灯叠在一起，白天过曝）——坦克（big）的殉爆 WreckFx 同一刻点了一盏；别的车掀炮塔只在老式扣血判毁时有
+    --   （下面 add 里 whyW == nil 那一支），服务器那一下总会发 c = "wreck" 的爆炸（Ents.lua / Armor.lua），Fx.lua 的 boom 画它、点它那盏大灯
+    --   （11-27 复核：原来这里还给别的车点一盏 Range 70 的，跟 boom 那盏 Range 120 的同时亮）。接着几下闷响、小灯只给别的车（坦克 WreckFx 画了一发发殉爆）
     if G.playSound then
       G.playSound("boom", p, 0.5)
-      for i = 1, 4 do   -- 车里的炮弹接着一发发殉爆：闷闷的几声
-        task.delay(0.5 + i * 0.45 + math.random() * 0.3, function()
-          G.playSound("mortar", p, 0.7 + math.random() * 0.3)
-          if G.flash then G.flash(p + V(0, 2, 0), RGB(255, 150, 70), 30, 5, 0.25) end
-        end)
+      if not big then
+        for i = 1, 4 do   -- 车里的炮弹接着一发发殉爆：闷闷的几声
+          task.delay(0.5 + i * 0.45 + math.random() * 0.3, function()
+            G.playSound("mortar", p, 0.7 + math.random() * 0.3)
+            if G.flash then G.flash(p + V(0, 2, 0), RGB(255, 150, 70), 30, 5, 0.25, { day = 1.5 }) end
+          end)
+        end
       end
     end
     if G.shake then
@@ -416,40 +429,8 @@ function View.init(G)
     end
   end
   local function landFx(p)
-    if not G.fxPart then return end
-    local part, tween = G.fxPart, G.tween
-    local ring = part(Enum.PartType.Cylinder, V(0.5, 6, 6), CFrame.new(p) * CFrame.Angles(0, 0, math.pi / 2), RGB(120, 106, 84), Enum.Material.SmoothPlastic, 0.35)
-    tween(ring, 0.6, { Size = V(0.5, 26, 26), Transparency = 1 })
-    Debris:AddItem(ring, 0.65)
-    local h = part(nil, V(0.4, 0.4, 0.4), CFrame.lookAt(p, p + V(0, 1, 0)), RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
-    local du = Instance.new("ParticleEmitter")
-    du.Texture = "rbxasset://textures/particles/smoke_main.dds"
-    du.Rate = 0
-    du.Lifetime = NumberRange.new(1, 2.2)
-    du.Speed = NumberRange.new(8, 22)
-    du.SpreadAngle = Vector2.new(75, 75)
-    du.Drag = 2.5
-    du.Acceleration = V(0, -4, 0)
-    du.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 3), NumberSequenceKeypoint.new(1, 11) })
-    du.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.3), NumberSequenceKeypoint.new(1, 1) })
-    du.Color = ColorSequence.new(RGB(140, 124, 98))
-    du.EmissionDirection = Enum.NormalId.Front
-    du.Parent = h
-    du:Emit(22)
-    local sp = Instance.new("ParticleEmitter")
-    sp.Texture = "rbxasset://textures/particles/sparkles_main.dds"
-    sp.Rate = 0
-    sp.Lifetime = NumberRange.new(0.3, 0.7)
-    sp.Speed = NumberRange.new(20, 40)
-    sp.SpreadAngle = Vector2.new(80, 80)
-    sp.Acceleration = V(0, -70, 0)
-    sp.LightEmission = 1
-    sp.Size = NumberSequence.new(0.3)
-    sp.Color = ColorSequence.new(RGB(255, 200, 120))
-    sp.EmissionDirection = Enum.NormalId.Front
-    sp.Parent = h
-    sp:Emit(24)
-    Debris:AddItem(h, 3)
+    -- 贴地一圈冲击波、一圈土、一把火星（审查 5：走池，WreckFx.lua 的 G.wreckLandFx；原来每次新建 3 个发射器）
+    if G.wreckLandFx then G.try_(G.wreckLandFx, p) end
     if G.playSound then G.playSound("splash", p, 0.35) G.playSound("boom", p, 1.6) end
   end
   G.tossCount = 0   -- 测试用
@@ -466,14 +447,55 @@ function View.init(G)
     -- 11-25「载具爆炸效果不够猛」：冲得更猛一点（往上 27～35 格 / 秒，顶起五六米）、往旁边甩得远一点、翻得快一点——重力照旧偏重，落得干脆不飘
     local hv = side * (4 + rng:NextNumber() * 5)
     local axis = V(-side.Z, (rng:NextNumber() - 0.5) * 0.4, side.X).Unit   -- 横轴：往哪边飞就朝哪边翻下去
+    -- 11-27（照战雷、真车 jack-in-the-box：转盘弹药的车炮塔能被顶到两层楼高）：往上的速度按编号分三档——
+    --   六成 27～35 格 / 秒（顶起四到六米）、三成 35～42、一成 42～50（九到十三米）；大家看到的一样
+    local tier = rng:NextNumber()
+    local vy = (tier < 0.6 and (27 + rng:NextNumber() * 8)) or (tier < 0.9 and (35 + rng:NextNumber() * 7)) or (42 + rng:NextNumber() * 8)
     v.toss = {
-      cf = tF, vel = V(hv.X, 27 + rng:NextNumber() * 8, hv.Z),
+      cf = tF, vel = V(hv.X, vy, hv.Z),
       w = axis * (1.5 + rng:NextNumber() * 1.0),   -- 角速度（弧度/秒，世界坐标）
       bounce = 0, rest = false,
       restTilt = CFrame.Angles((rng:NextNumber() - 0.5) * 0.5, 0, (rng:NextNumber() - 0.5) * 0.6),
     }
     G.tossCount += 1
+    G.tossVy = vy   -- 测试用
     tossFx(tF.Position, v.def.cat == "tank")
+    -- 炮塔身上挂着火和黑烟一起飞（2.5 秒；落地 1 秒后关）：审查 5——火 30 → 12、烟 10 → 4 颗 / 秒，记进 VfxLib 的全局预算（粒子太多时再少喷）
+    if G.fxPart then
+      local th = G.fxPart(nil, V(0.4, 0.4, 0.4), tF, RGB(0, 0, 0), Enum.Material.SmoothPlastic, 1)
+      local kb = (G.vfx and G.vfx.rateK) and G.vfx.rateK(16, 3, 3, 2) or 1
+      local tf = Instance.new("ParticleEmitter")
+      tf.Texture = "rbxasset://textures/particles/fire_main.dds"
+      tf.Rate = 12 * kb
+      tf.Lifetime = NumberRange.new(0.35, 0.7)
+      tf.Speed = NumberRange.new(1, 4)
+      tf.SpreadAngle = Vector2.new(40, 40)
+      tf.Acceleration = V(0, 8, 0)
+      tf.LightEmission, tf.LightInfluence, tf.Brightness = 0.9, 0, 3
+      tf.Rotation, tf.RotSpeed = NumberRange.new(0, 360), NumberRange.new(-60, 60)
+      tf.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2.4), NumberSequenceKeypoint.new(0.4, 3.6), NumberSequenceKeypoint.new(1, 0.8) })
+      tf.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
+      tf.Color = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 226, 170)), ColorSequenceKeypoint.new(0.4, RGB(255, 150, 60)), ColorSequenceKeypoint.new(1, RGB(140, 50, 22)) })
+      tf.Parent = th
+      local ts = Instance.new("ParticleEmitter")
+      ts.Texture = "rbxasset://textures/particles/explosion01_smoke_main.dds"
+      ts.Rate = 4 * kb
+      ts.Lifetime = NumberRange.new(1.8, 3)
+      ts.Speed = NumberRange.new(1, 3)
+      ts.SpreadAngle = Vector2.new(30, 30)
+      ts.Drag = 0.8
+      ts.Acceleration = V(0, 4, 0)
+      ts.LightInfluence = 1
+      pcall(function() ts.WindAffectsDrag = true end)
+      ts.Rotation, ts.RotSpeed = NumberRange.new(0, 360), NumberRange.new(-20, 20)
+      ts.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 2.5), NumberSequenceKeypoint.new(1, 11) })
+      ts.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.1), NumberSequenceKeypoint.new(1, 1) })
+      ts.Color = ColorSequence.new(RGB(255, 255, 255))
+      ts.Parent = th
+      v.toss.fxH = th
+      task.delay(2.5, function() tf.Enabled, ts.Enabled = false, false end)
+      Debris:AddItem(th, 7)
+    end
   end
   local function stepToss(v, dt)
     local T = v.toss
@@ -490,6 +512,8 @@ function View.init(G)
       landFx(p)
       if T.bounce >= 2 or math.abs(T.vel.Y) < 14 then   -- 砸下来顶多再颠一下就停住（原来弹三下）
         T.rest = true
+        local fh = T.fxH
+        if fh then task.delay(1, function() for _, pe in ipairs(fh:GetChildren()) do if pe:IsA("ParticleEmitter") then pe.Enabled = false end end end) end
         -- 停住：保留水平朝向，歪一点躺着（随机的倾角）
         local look = T.cf.LookVector
         local flat = V(look.X, 0, look.Z)
@@ -501,8 +525,66 @@ function View.init(G)
       T.w = T.w * 0.5
     end
     T.cf = CFrame.new(p) * rot * (T.cf - T.cf.Position)
+    if T.fxH and T.fxH.Parent then T.fxH.CFrame = T.cf end
   end
   G.stepToss = stepToss
+  -- 炮管崩飞（用户 11-28 晚「坦克被穿透关键部位要直接爆 炮塔炮管子都要崩飞」）：殉爆那一下炮（防盾 + 炮管）从炮塔上断开，自己飞——
+  --   顺着炮口方向甩出去 10～18 格 / 秒、往上 18～30，绕横轴打着转（每秒 4～8 弧度，长杆子那样一头一头翻），落地平躺着、朝向随机；
+  --   按编号定，大家看到的一样。炮塔照 startToss 往上顶，两样一前一后分开落地
+  local function startGunToss(v)
+    local gF = v.gF
+    if not gF or v.gtoss then return end
+    local seed = tonumber(v.id) or 0
+    if seed == 0 then for c in tostring(v.id):gmatch(".") do seed += string.byte(c) end end
+    local rng = Random.new(seed * 104729 + 33)
+    local fwd = gF.LookVector
+    local flat = V(fwd.X, 0, fwd.Z)
+    flat = (flat.Magnitude > 0.05) and flat.Unit or V(0, 0, -1)
+    local side = V(-flat.Z, 0, flat.X) * ((rng:NextNumber() - 0.5) * 6)
+    local vel = flat * (10 + rng:NextNumber() * 8) + side + V(0, 18 + rng:NextNumber() * 12, 0)
+    if v.toss then vel += V(v.toss.vel.X, 0, v.toss.vel.Z) * 0.5 end
+    local axis = V(-flat.Z, 0, flat.X)   -- 横轴（跟炮管垂直）：炮口往下一头一头翻
+    v.gtoss = {
+      cf = gF, vel = vel,
+      w = axis * (((rng:NextNumber() < 0.5) and 1 or -1) * (4 + rng:NextNumber() * 4)) + V(0, (rng:NextNumber() - 0.5) * 2, 0),
+      bounce = 0, rest = false,
+      restYaw = rng:NextNumber() * 2 * math.pi,
+    }
+    G.gunTossCount = (G.gunTossCount or 0) + 1   -- 测试用
+  end
+  local function stepGunToss(v, dt)
+    local T = v.gtoss
+    if not T or T.rest then return end
+    dt = math.min(dt, 1 / 20)
+    T.vel += V(0, -TOSS_G, 0) * dt
+    local p = T.cf.Position + T.vel * dt
+    local wm = T.w.Magnitude
+    local rot = (wm > 1e-4) and CFrame.fromAxisAngle(T.w.Unit, wm * dt) or CFrame.new()
+    local gy = math.max(Map.height(p.X, p.Z), -0.5)
+    if p.Y < gy + 0.35 and T.vel.Y < 0 then   -- 砸到地上：弹一下、再一下就躺平
+      p = V(p.X, gy + 0.35, p.Z)
+      T.bounce += 1
+      landFx(p)
+      if T.bounce >= 2 or math.abs(T.vel.Y) < 10 then
+        T.rest = true
+        -- 躺平：炮管水平、朝向随机（防盾那头稍微翘一点）
+        T.cf = CFrame.new(p) * CFrame.Angles(0, T.restYaw, 0) * CFrame.Angles(math.rad(4), 0, 0)
+        return
+      end
+      T.vel = V(T.vel.X * 0.5, -T.vel.Y * 0.3, T.vel.Z * 0.5)
+      T.w = T.w * 0.45
+    end
+    T.cf = CFrame.new(p) * rot * (T.cf - T.cf.Position)
+  end
+  -- 残骸烧的三段（用户 11-28「然后有浓烈的烟雾我持续冒」，见 stepVeh 里那段）：车身火、黑烟每秒几颗；超过 WRECK_THICK 处的烟柱细一档
+  --   11-28 晚（用户「现在感觉有点卡」）：浓烟柱是一颗颗几十格大的半透明烟团，几处叠在一起每个像素要画几十层——同时冒浓烟的从 10 处减到 6 处
+  --   （机器跟不上、自动画质降下来时 3 处），每秒的颗数、细一档的烟都少一点；烟团的大小 WreckFx heavyBurn 也收了一成多
+  local WRECK_FIRE, WRECK_BLACK, WRECK_THIN, WRECK_THICK = { 26, 12, 5 }, { 7, 6, 5 }, 2, 6
+  G.wreckBurnRates = { fire = WRECK_FIRE, black = WRECK_BLACK, thin = WRECK_THIN, thick = WRECK_THICK }   -- 测试用
+  -- 残骸车身黑烟的 Rate：远近两个发射器（WreckFx.lua 的 G.wreckBlackRate：镜头近的喷小一号那根，另一根 0）
+  local function setBlack(M, r)
+    if G.wreckBlackRate then G.wreckBlackRate(M, r) elseif M.black then M.black.Rate = r end
+  end
 
   -- 履带印：薄薄一片深色的方块贴在地上，淡出后回收（对象池，最多 MAX_MARK 段）
   local MAX_MARK = 360
@@ -560,6 +642,8 @@ function View.init(G)
     return x, vel
   end
 
+  -- 镜头这一帧朝哪、放大了多少（stepView 每帧先填）：远处的车三帧一摆按「看上去多远」判（见 stepVeh 里的 farPut）
+  local viewLook, viewK, viewCos = nil, 1, -1
   local function stepVeh(v, dt, camPos)
     local em, d, M = v.em, v.def, v.M
     -- 车灯：有人开、没被打爆才亮
@@ -628,7 +712,22 @@ function View.init(G)
         v.mp = (v.mp or 0) + (mp - (v.mp or 0)) * math.min(1, dt * 10)
       end
     end
-    local far = (pos - camPos).Magnitude > 420
+    local camD = (pos - camPos).Magnitude
+    local far = camD > 420
+    -- 摆零件、负重轮按「看上去多远」（11-27 审查：8 倍镜看 1 公里外时速 30 公里的车，三帧才摆一次，60 帧时每 50 毫秒跳 2～3 个点，
+    --   准星是顺的、目标一顿一顿）：在视野里、开着镜放大了的车按 距离 × min(1, 视场 / 70) 算（同特效 VfxLib.lod 的口径），
+    --   开镜时只多摆镜子里那几辆；视野外、没放大的照旧按距离。扬尘、排气、真地形照旧按距离（far）
+    local farPut = far
+    if far and viewK < 1 and viewLook and (pos - camPos):Dot(viewLook) > camD * viewCos then farPut = camD * viewK > 420 end
+    v.farPut = farPut   -- 测试看
+    -- 小零件的影子（见 add）：自己的车、120 格以内投，160 格外不投；变了才成批改
+    if v.smallSh then
+      local want = own and true or camD < (v.smallShOn and 160 or 120)
+      if want ~= v.smallShOn then
+        v.smallShOn = want
+        for _, bp in ipairs(v.smallSh) do bp.CastShadow = want end
+      end
+    end
     -- 轮子：每个一个弹簧阻尼；远了不算（省事）
     local W = M.wheels
     local rough = 1
@@ -649,7 +748,7 @@ function View.init(G)
       if math.abs(lift) > 1e-3 then base = base + V(0, lift, 0) end
     end
     local sF, nF, sB, nB, sL, nL, sR, nR, sum = 0, 0, 0, 0, 0, 0, 0, 0, 0
-    if not far then
+    if not farPut then
       for _, w in ipairs(W) do
         local wp = (base * CF(w.x, 0, w.z)).Position
         local gy = Map.height(wp.X, wp.Z) + lift
@@ -687,6 +786,10 @@ function View.init(G)
       tF = v.toss.cf
     end
     local gF = tF * CF(M.gpiv or d.gun.pivot) * CFrame.Angles(math.rad(v.gp), 0, 0) * CF(0, 0, v.recoil)
+    if v.gtoss then   -- 炮管崩飞了：自己飞（startGunToss）
+      stepGunToss(v, dt)
+      gF = v.gtoss.cf
+    end
     local rF = M.rpiv and (tF * CF(M.rpiv) * CFrame.Angles(0, -math.rad(v.my or 0), 0)) or nil
     local rgF = (rF and M.rgpiv) and (rF * CF(M.rgpiv) * CFrame.Angles(math.rad(v.mp or 0), 0, 0)) or nil
     v.hullF, v.tF, v.gF, v.rF, v.rgF = hullF, tF, gF, rF, rgF
@@ -725,16 +828,30 @@ function View.init(G)
       end
       v.plowA = cur
     end
-    local still = not plowMoving and not v.hasRadar and not (v.toss and not v.toss.rest) and v.recoil <= 0 and math.abs(v.speed) < 0.01
+    local still = not plowMoving and not v.hasRadar and not (v.toss and not v.toss.rest) and not (v.gtoss and not v.gtoss.rest) and v.recoil <= 0 and math.abs(v.speed) < 0.01
       and math.abs(v.steer - (v.putSteer or 1e9)) < 1e-4
       and sameCF(hullF, v.putH) and sameCF(tF, v.putT) and sameCF(gF, v.putG) and sameCF(rF, v.putR) and sameCF(rgF, v.putRG)
     if still then
       for _, w in ipairs(W) do if math.abs(w.vy) > 0.003 then still = false break end end
     end
     v.farN = (v.farN or 0) + 1
-    if not still and (not far or own or v.farN % 3 == 0) then
+    -- 远处的车摆零件按「看上去多远」再分一档（用户 11-28 夜「然后卡顿问题你给他想办法解决」）：420 格外三帧一摆，1500 格外（五百多米，
+    --   没开镜看只有指甲盖大）六帧一摆；开镜放大了的照样按放大后的远近算（同上面 farPut）
+    local farEvery = 3
+    if farPut and not own then
+      local de = camD * ((viewLook and (pos - camPos):Dot(viewLook) > camD * viewCos) and viewK or 1)
+      if de > 1500 then farEvery = 6 end
+    end
+    if not still and (not farPut or own or v.farN % farEvery == 0) then
       v.putH, v.putT, v.putG, v.putR, v.putRG, v.putSteer = hullF, tF, gF, rF, rgF, v.steer
       local plist, clist = v.plist, v.clist
+      -- 一个轮子（履带段）由好几块零件拼成：轮子的变换这一帧只算一次，同一个轮子的零件共用（原来每块零件各算一遍，
+      --   stepView 里最热的就是这几行；乘法的先后和原来一样，摆出来的位置一模一样）
+      local wcs, scs = v.wcC, v.scC
+      if not wcs then wcs, scs = {}, {} v.wcC, v.scC = wcs, scs end
+      table.clear(wcs)
+      table.clear(scs)
+      local kitF, plowF = nil, nil
       for i, it in ipairs(M.parts) do
         local grp, off = it[2], it[3]
         local cf
@@ -745,16 +862,31 @@ function View.init(G)
         elseif grp == "gun" then cf = gF * off
         elseif grp == "rws" then cf = (rF or tF) * off
         elseif grp == "rwg" then cf = (rgF or rF or tF) * off
-        elseif grp == "kit" then cf = (M.kpiv and (tF * CF(M.kpiv) * CFrame.Angles(math.rad(v.gp), 0, 0)) or tF) * off   -- 车顶加特林：跟着炮俯仰
-        elseif grp == "plow" then cf = hullF * CF(M.plowPiv) * CFrame.Angles(v.plowA or 0, 0, 0) * off   -- 扫雷犁：绕车头下沿的转轴抬起 / 放下
+        elseif grp == "kit" then   -- 车顶加特林：跟着炮俯仰
+          if not kitF then kitF = M.kpiv and (tF * CF(M.kpiv) * CFrame.Angles(math.rad(v.gp), 0, 0)) or tF end
+          cf = kitF * off
+        elseif grp == "plow" then   -- 扫雷犁：绕车头下沿的转轴抬起 / 放下
+          if not plowF then plowF = hullF * CF(M.plowPiv) * CFrame.Angles(v.plowA or 0, 0, 0) end
+          cf = plowF * off
         elseif grp == "wheel" then
-          local w = W[it[4]]
-          local wcf = base * CF(w.x, w.r + w.dy, w.z)
-          if w.steer then wcf = wcf * CFrame.Angles(0, -steerA, 0) end
-          cf = wcf * CFrame.Angles(w.spin, 0, 0) * off
+          local j = it[4]
+          local wcf = wcs[j]
+          if not wcf then
+            local w = W[j]
+            wcf = base * CF(w.x, w.r + w.dy, w.z)
+            if w.steer then wcf = wcf * CFrame.Angles(0, -steerA, 0) end
+            wcf = wcf * CFrame.Angles(w.spin, 0, 0)
+            wcs[j] = wcf
+          end
+          cf = wcf * off
         elseif grp == "seg" then
-          local w = W[it[4]]
-          cf = base * CF(0, w.dy, 0) * off
+          local j = it[4]
+          local scf = scs[j]
+          if not scf then
+            scf = base * CF(0, W[j].dy, 0)
+            scs[j] = scf
+          end
+          cf = scf * off
         else cf = hullF * off end
         clist[i] = cf
       end
@@ -764,7 +896,13 @@ function View.init(G)
     end
     -- 扬尘：在陆地上开得快才有
     local land = not onWater
-    if v.fireLight then v.fireLight.Brightness = 2.2 + math.random() * 1.8 end
+    if v.fireLight and v.fireLight.Enabled then   -- 残骸的火光一闪一闪：每秒改 10 次（11-27：原来每帧都改）
+      v.flT = (v.flT or 0) + dt
+      if v.flT >= 0.1 then
+        v.flT = 0
+        v.fireLight.Brightness = 2.2 + math.random() * 1.6
+      end
+    end
     -- 扬尘按脚下的地面：土路、沙地最浓，草地淡一半，石头上更淡（每 0.3 秒看一次地面）
     v.dustT = (v.dustT or 0) - dt
     if v.dustT <= 0 then
@@ -781,7 +919,12 @@ function View.init(G)
         for _, pe in ipairs(M.dust) do pe.Color = ColorSequence.new(col) end
       end
     end
-    local rate = land and math.clamp((math.abs(v.speed) - 5) * 1.6, 0, 60) * (v.dustK or 0.5) or 0
+    -- 粒子上限（11-27 M3 丝滑）：大团半透明的尘一层叠一层是显卡最贵的「填充」——一直开着跑的最多每秒 40 团（原来 60），
+    --   按「看上去多远」（距离 × min(1, 视场 / 70)，同 VfxLib.lod 的口径；11-27 复核：原来按裸距离 420 格就砍到三成，开 8～12 倍镜看交战距离上的车只剩三成尘带）：
+    --   1100 格外六成、2500 格外三成
+    local rate = land and math.min(math.clamp((math.abs(v.speed) - 5) * 1.6, 0, 60) * (v.dustK or 0.5), 40) or 0
+    local de = camD * viewK
+    rate *= (de > 2500 and 0.35) or (de > 1100 and 0.6) or 1
     -- 侧滑、刚落地：扬尘更浓（自己开的车 Drive 给 slipA）
     if own and own.slipA then rate *= 1 + math.clamp(math.abs(math.sin(own.slipA)) * 4, 0, 2) end
     for _, pe in ipairs(M.dust) do if math.abs(pe.Rate - rate) > 0.5 then pe.Rate = rate end end
@@ -865,25 +1008,38 @@ function View.init(G)
         -- 战雷式伤害（服务器 Wt.lua）：只有弹放在车体底下（转盘式自动装弹机，WtDamage.CAROUSEL）的车殉爆才掀炮塔——
         --   用户 11-26「要先着火再飞」：先烧 WtCook 秒（舱口喷火、火星噼啪、黑烟往上冒），烧完一下炸开、炮塔飞起来；
         --   乘员打光、烧毁、弹在尾舱的车炮塔留着
+        --   用户 11-28 晚「坦克被穿透关键部位要直接爆 炮塔炮管子都要崩飞」：哪种坦克殉爆（WtWhy == "ammo"）都是打中就炸——炮塔顶上天、
+        --   炮管从炮塔上断开单独甩出去（原来只有转盘车掀炮塔、还要先烧两三秒；炮跟着炮塔一起飞）；服务器还在写 WtCook（老服务器）的照旧先烧
         if whyW ~= nil then
-          if whyW == "ammo" and WD.CAROUSEL[d.id] then
-            local cook = em:GetAttribute("WtCook") or WD.cookSecs(v.id)
+          local cook = (whyW == "ammo") and (em:GetAttribute("WtCook") or 0) or 0
+          if whyW == "ammo" and cook > 0 then
             v.cookT = os.clock() + cook
             if G.wreckCook then G.try_(G.wreckCook, v, base0, cook) end
             task.delay(cook, function()
               if v.toss or not (v.M and v.M.model and v.M.model.Parent) then return end
               startToss(v)
+              startGunToss(v)
               if G.wreckFx then G.try_(G.wreckFx, v, "ammo", base0) end
             end)
+          elseif whyW == "ammo" then
+            startToss(v)
+            startGunToss(v)
           end
-        elseif d.cat == "tank" or Random.new(seed * 31 + 7):NextNumber() < 0.4 then startToss(v) end
+        elseif d.cat == "tank" or Random.new(seed * 31 + 7):NextNumber() < 0.4 then startToss(v) startGunToss(v) end
       end
-      M.fire.Rate, M.black.Rate = 30, 12
+      if G.wreckPrepBurn then G.try_(G.wreckPrepBurn, M) end   -- 火推亮、黑烟换深灰的贴图、近处那根小一号的黑烟（WreckFx.lua）
+      -- 先烧再炸的（转盘车）：wreckCook 真接手了（v.cookJets）才由它定烧的那几秒（火 14、烟 6），炸开以后 heavyBurn 接着。
+      --   11-27 复核：原来判的是 v.cookT——wreckCook 离镜头 4000 格外直接不管（不建舱口火柱），这里也不设，残骸 40 秒不冒黑烟、6000 格外连火也没有
+      --   （沙海一两公里外开镜看自己打掉的 T-72、开飞机在高处都看不到烟柱）；远处的照别的残骸一样马上烧起来
+      if not v.cookJets then
+        M.fire.Rate = WRECK_FIRE[1]
+        setBlack(M, WRECK_BLACK[1])
+      end
       -- 殉爆的大火球、钢板碎块、接连殉爆、舱口窜火、浓黑烟柱、地面烧焦（WreckFx.lua，用户 11-25「载具爆炸效果不够猛画风不够战雷」）
       if G.wreckFx and not v.cookT then G.try_(G.wreckFx, v, whyW, base0) end   -- 先烧再炸的（转盘车殉爆）：大火球等烧完那一下再画
       if M.fire.Parent then   -- 夜里残骸的火光照亮周围（每帧闪一闪）
         local pl = Instance.new("PointLight")
-        pl.Color, pl.Range, pl.Brightness, pl.Shadows = Color3.fromRGB(255, 140, 60), 28, 3, false   -- 投影子的只留最近的一处（stepFireShadows）
+        pl.Color, pl.Range, pl.Brightness, pl.Shadows = Color3.fromRGB(255, 140, 60), 40, 3, false   -- 投影子的只留最近的一处、只点最近的 3 辆（stepFireShadows）
         pl.Parent = M.fire.Parent
         v.fireLight = pl
       end
@@ -897,6 +1053,18 @@ function View.init(G)
       end
       for _, pe in ipairs(M.dust) do pe.Enabled = false end
       for _, pe in ipairs(M.exhaust or {}) do pe.Enabled = false end
+      -- 「窗帘-1」的红外干扰灯（T-90A，VehModels）：车没了，灯灭——灯罩剩一块暗红的玻璃
+      if M.model then
+        for _, x in ipairs(M.model:GetDescendants()) do
+          local nm = x.Name
+          if nm == "ShtoraLens" or nm == "ShtoraMid" or nm == "ShtoraCore" then
+            x.Material = Enum.Material.Glass
+            x.Color = Color3.fromRGB(60, 16, 12)
+          elseif nm == "ShtoraHalo" or nm == "ShtoraLight" then
+            x.Enabled = false
+          end
+        end
+      end
     end
     -- 烧痕（⑨）：着火（服务器属性 WtF）超过 5 秒，车身熏黑一层（只改没贴图的零件；一辆车最多熏两次）
     if em:GetAttribute("WtF") == true and not v.wrecked then
@@ -914,18 +1082,38 @@ function View.init(G)
     else
       v.fireT0 = nil
     end
-    -- 残骸整局留着（服务器 Armor.lua keepWreck）：烧四十秒火小下去，七十秒只剩一缕黑烟、火光灭——几十辆车壳一直大火客户端吃不消
-    if v.wreckT and not v.burnt2 then
+    -- 残骸整局留着（服务器 Armor.lua keepWreck）。用户 11-28（战雷截图）「然后有浓烈的烟雾我持续冒」：打爆的车一直冒浓黑的烟柱——
+    --   原来烧四十秒火小下去、七十秒只剩一缕烟；改成：前 60 秒大火 + 浓烟柱（WreckFx heavyBurn 定的），60 秒火小一半、烟照样浓，
+    --   150 秒以后小火苗 + 烟柱一直冒到残骸没了（火光这时灭），不再只剩一缕。
+    --   几十辆车壳一起冒浓烟客户端吃不消：同时最多 WRECK_THICK 处按上面冒，再多的（最早打掉的先）细一档——还是一根看得见的烟柱（stepFireShadows 每半秒排）
+    if v.wreckT then
       local age = os.clock() - v.wreckT
-      if age > 40 and not v.burnt1 then
-        v.burnt1 = true
-        if M.fire then M.fire.Rate = 6 end
-        if M.black then M.black.Rate = 5 end
-      elseif age > 70 then
-        v.burnt2 = true
-        if M.fire then M.fire.Rate = 0 end
-        if M.black then M.black.Rate = 1.2 end
-        if v.fireLight then v.fireLight:Destroy() v.fireLight = nil end
+      local stage = (age > 150 and 2) or (age > 60 and 1) or 0
+      local thin = v.smokeThin == true
+      local key = stage * 2 + (thin and 1 or 0)
+      if key ~= (v.burnKey or 0) then
+        v.burnKey = key
+        v.burnt1 = (stage >= 1) or nil
+        v.burnt2 = (stage >= 2) or nil
+        local fireR, blackR = WRECK_FIRE[stage + 1], WRECK_BLACK[stage + 1]
+        if thin then fireR, blackR = math.min(fireR, 5), WRECK_THIN end
+        if M.fire then M.fire.Rate = fireR end
+        if M.black then setBlack(M, blackR) end
+        if stage >= 2 and v.fireLight then v.fireLight:Destroy() v.fireLight = nil end
+      end
+      -- 镜头 60 格内黑烟小一号（贴脸的大烟团最费：半透明叠太多层）；半秒看一次，进 55 / 出 70 才换。
+      --   11-27 审查 7：两个发射器换着喷（M.black 远、M.blackN 小一号的；WreckFx.lua 的 G.wreckBlackRate），不改 Size——
+      --   Size 是整条曲线，一改连已经在飘的四十来颗一起缩放，走过那条线整根烟柱一下变小
+      v.nearT = (v.nearT or 0) + dt
+      if M.black and M.blackN and G.wreckBlackRate and v.nearT > 0.5 then
+        v.nearT = 0
+        local dd = (M.black.Parent.Position - camPos).Magnitude
+        local want = v.blackNear
+        if dd < 55 then want = true elseif dd > 70 then want = false end
+        if want ~= v.blackNear then
+          v.blackNear = want
+          G.wreckBlackRate(M, nil, want == true)
+        end
       end
     end
   end
@@ -1035,22 +1223,28 @@ function View.init(G)
     fireT += dt
     if fireT < 0.5 then return end
     fireT = 0
-    local best, bd = nil, 220 * 220
+    -- 11-27（M3 上要丝滑）：残骸的火光只点离镜头最近的 3 处（几十辆残骸一起亮着点光源吃不消），投影子的只给最近、200 格内那一处
+    local list = {}
     for _, v in pairs(views) do
       local pl = v.fireLight
       if pl and pl.Parent then
         local dv = pl.Parent.Position - camPos
-        local dd = dv:Dot(dv)
-        if dd < bd then best, bd = pl, dd end
+        list[#list + 1] = { pl = pl, d = dv:Dot(dv) }
       end
     end
-    for _, v in pairs(views) do
-      local pl = v.fireLight
-      if pl then
-        local want = pl == best and (G.perfK or 1) >= 0.8
-        if pl.Shadows ~= want then pl.Shadows = want end
-      end
+    table.sort(list, function(a, b) return a.d < b.d end)
+    for i, it in ipairs(list) do
+      local on = i <= 3
+      if it.pl.Enabled ~= on then it.pl.Enabled = on end
+      local want = i == 1 and it.d < 200 * 200 and (G.perfK or 1) >= 0.8
+      if it.pl.Shadows ~= want then it.pl.Shadows = want end
     end
+    -- 冒浓烟的残骸最多 WRECK_THICK 处（最近打掉的优先），再早的细一档（stepVeh 按 v.smokeThin 换 Rate）
+    local wr = {}
+    for _, v in pairs(views) do if v.wreckT then wr[#wr + 1] = v end end
+    local nThick = ((G.perfK or 1) < 0.8) and math.min(3, WRECK_THICK) or WRECK_THICK
+    if #wr > nThick then table.sort(wr, function(a, b) return a.wreckT > b.wreckT end) end
+    for i, v in ipairs(wr) do v.smokeThin = (i > nThick) or nil end
   end
 
   function G.stepView(dt)
@@ -1060,6 +1254,18 @@ function View.init(G)
     G.try_(checkImports, dt)
     local myTeam = me:GetAttribute("Side")
     local camPos = cam.CFrame.Position
+    do   -- 视野（stepVeh 的 farPut）：放大倍数 min(1, 视场 / 70)；视野的锥按画面对角线的一半再放宽 15%（快进画面的也算）
+      local fov = cam.FieldOfView
+      viewK = math.min(1, fov / 70)
+      if viewK < 1 then
+        local vp = cam.ViewportSize
+        local asp = (vp.Y > 0) and vp.X / vp.Y or 16 / 9
+        viewLook = cam.CFrame.LookVector
+        viewCos = math.cos(math.min(math.pi / 2, math.atan(math.tan(math.rad(fov) / 2) * math.sqrt(1 + asp * asp)) * 1.15))
+      else
+        viewLook = nil
+      end
+    end
     local ch = me.Character
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
     local here = hrp and hrp.Position or nil

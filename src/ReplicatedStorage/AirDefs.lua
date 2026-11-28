@@ -47,8 +47,10 @@ AirDefs.W = {
   m134 ={ kind = "gun", rate = 0.025, dmg = 9, speed = 1700, range = 1100, splash = 0, cal = 0.08, door = true,          -- 舱门机枪
     vs = { inf = 1, light = 0.3, armor = 0.01, air = 0.5, ship = 0.02, fort = 0.05 } },
 
+  -- 红外弹的截获圈（小圈，Fly.lua seekR；用户 11-28 夜「战雷有的导弹锁定圈是非常大的」）：默认 3.4°（屏幕高的 8.5%）；视场宽的导引头
+  --   单独放大（seekR，半角°）：R-60 5.5°（战雷里 R-60 的圈明显大）、直升机挂的便携式防空弹 4.5°；旧式不能离轴的（caged）5°、只有这一个圈
   -- 霹雳-2（K-13 / AIM-9B 那一代）：只能从后面咬尾、导引头视场窄、过载小，发动机烧两秒多、尾烟浓；歼-6 后期型翼下挂两枚
-  pl2 = { kind = "aam", seeker = "ir", dmg = 380, splash = 11, speed = 520, range = 1100, lockTime = 1.5, cone = 20, turn = 30, burn = 2.2, life = 5, vs = VS_AAM,
+  pl2 = { kind = "aam", seeker = "ir", caged = true, dmg = 380, splash = 11, speed = 520, range = 1100, lockTime = 1.5, cone = 20, turn = 30, burn = 2.2, life = 5, vs = VS_AAM,
     shape = { L = 7.9, d = 0.36, fin = 1.0 } },
   pl10 = { kind = "aam", seeker = "ir", dmg = 520, splash = 14, speed = 640, range = 1900, lockTime = 1.0, cone = 45, turn = 75, burn = 3.5, life = 6.5, vs = VS_AAM,
     shape = { L = 8.2, d = 0.45, fin = 1.0 } },
@@ -58,9 +60,9 @@ AirDefs.W = {
     shape = { L = 8.4, d = 0.36, fin = 0.8 } },
   aim120 = { kind = "aam", seeker = "radar", dmg = 560, splash = 16, speed = 760, range = 3800, lockTime = 2.0, cone = 22, turn = 55, burn = 5, life = 8.5, vs = VS_AAM,
     shape = { L = 10.2, d = 0.5, fin = 1.0 } },
-  ty90 = { kind = "aam", eject = "tube", seeker = "ir", dmg = 340, splash = 10, speed = 480, range = 1300, lockTime = 0.9, cone = 30, turn = 60, burn = 3, life = 5.5, vs = VS_AAM,
+  ty90 = { kind = "aam", eject = "tube", seeker = "ir", seekR = 4.5, dmg = 340, splash = 10, speed = 480, range = 1300, lockTime = 0.9, cone = 30, turn = 60, burn = 3, life = 5.5, vs = VS_AAM,
     shape = { L = 5.3, d = 0.25, fin = 0.6 } },
-  aim92 = { kind = "aam", eject = "tube", seeker = "ir", dmg = 340, splash = 10, speed = 480, range = 1300, lockTime = 0.9, cone = 30, turn = 60, burn = 3, life = 5.5, vs = VS_AAM,
+  aim92 = { kind = "aam", eject = "tube", seeker = "ir", seekR = 4.5, dmg = 340, splash = 10, speed = 480, range = 1300, lockTime = 0.9, cone = 30, turn = 60, burn = 3, life = 5.5, vs = VS_AAM,
     shape = { L = 4.5, d = 0.2, fin = 0.5 } },
   -- AIM-54 不死鸟（F-14 专用，用户 11-23 加 F-14）：4 米长、454 公斤的远程雷达弹——射程最远、飞得快，但又重又笨（转得慢、导引头视场窄、锁得慢）
   aim54 = { kind = "aam", eject = { t = 0.6, f = 0, d = 18 }, seeker = "radar", dmg = 620, splash = 18, speed = 820, range = 4600, lockTime = 2.6, cone = 18, turn = 38, burn = 6, life = 10, vs = VS_AAM,
@@ -87,7 +89,7 @@ AirDefs.W = {
   r77 = { kind = "aam", seeker = "radar", dmg = 540, splash = 15, speed = 760, range = 3500, lockTime = 1.9, cone = 24, turn = 55, burn = 5, life = 9, vs = VS_AAM,
     shape = { L = 10.4, d = 0.56, fin = 1.0 } },
   --   R-60M：老式红外近距弹，2.14 米、0.12 米、44 公斤，射程约 8 公里（苏-25 最外侧挂两枚自卫）
-  r60 = { kind = "aam", seeker = "ir", dmg = 380, splash = 11, speed = 560, range = 1100, lockTime = 1.0, cone = 25, turn = 70, burn = 2.5, life = 5, vs = VS_AAM,
+  r60 = { kind = "aam", seeker = "ir", seekR = 5.5, dmg = 380, splash = 11, speed = 560, range = 1100, lockTime = 1.0, cone = 25, turn = 70, burn = 2.5, life = 5, vs = VS_AAM,
     shape = { L = 6.0, d = 0.34, fin = 0.8 } },
   --   Kh-29L：激光半主动空地导弹，3.9 米、0.38 米、657 公斤（战斗部 320 公斤），射程约 10 公里
   kh29 = { kind = "agm", dmg = 1400, splash = 26, speed = 330, range = 2200, lockTime = 1.5, cone = 20, turn = 18, burn = 6, life = 10, vs = VS_AGM,
@@ -102,6 +104,10 @@ AirDefs.W = {
   --   发动机、过载、掉速直接写在这里（不进下面的 MOTOR 表）
   s9m31 = { kind = "sam", seeker = "ir", dmg = 380, splash = 11, speed = 350, range = 2000, turn = 35, burn = 3, g = 14, bleed = 0.2, smoke = "med",
     life = 7, vs = VS_AAM, shape = { L = 5.0, d = 0.34, fin = 0.7 } },
+  -- Type 625 的短程防空导弹（出口型 FB-10A：外界说法射程 10 公里上下、红外导引头带抗干扰；车上四枚，VehDefs.W.sfb10）：
+  --   比 9M31 快、远、转得灵；双色红外（热诱弹不好骗：Air.lua flare 按 band）
+  sfb10 = { kind = "sam", seeker = "ir", band = "2", dmg = 360, splash = 11, speed = 520, range = 2600, turn = 55, burn = 3, g = 28, bleed = 0.16, smoke = "low",
+    mt = "bs", dv = 0.95, out = 0.3, life = 8, vs = VS_AAM, shape = { L = 5.6, d = 0.3, fin = 0.6 } },
 
   akd10 = { kind = "agm", dmg = 900, splash = 10, speed = 380, range = 2400, lockTime = 1.2, cone = 25, turn = 40, burn = 6, life = 9, vs = VS_AGM,
     shape = { L = 5.0, d = 0.5, fin = 0.7 } },
@@ -158,16 +164,16 @@ AirDefs.W = {
     shape = { L = 6.1, d = 0.45, fin = 0.7 } },
   shturm = { kind = "agm", eject = "tube", dmg = 800, splash = 9, speed = 350, range = 2000, lockTime = 1.4, cone = 22, turn = 30, burn = 5, life = 9, vs = VS_AGM,   -- 9M114 突击（米-24V）
     shape = { L = 6.0, d = 0.45, fin = 0.7 } },
-  vikhr = { kind = "agm", dmg = 950, splash = 10, speed = 520, range = 2800, lockTime = 1.4, cone = 25, turn = 35, burn = 6, life = 9, vs = VS_AGM,   -- 9K121 旋风（卡-52）：激光驾束、超音速
+  vikhr = { kind = "agm", beam = true, dmg = 950, splash = 10, speed = 520, range = 2800, lockTime = 1.4, cone = 25, turn = 35, burn = 6, life = 9, vs = VS_AGM,   -- 9K121 旋风（卡-52）：激光驾束、超音速
     shape = { L = 8.0, d = 0.4, fin = 0.7 } },
   hot3 = { kind = "agm", dmg = 850, splash = 9, speed = 280, range = 1900, lockTime = 1.3, cone = 25, turn = 35, burn = 5, life = 10, vs = VS_AGM,    -- HOT 3（虎式 UHT）：有线指令
     shape = { L = 3.6, d = 0.5, fin = 0.8 } },
   tow = { kind = "agm", eject = { t = 0.18, f = 188, d = 0 }, dmg = 800, splash = 9, speed = 290, range = 1700, lockTime = 1.3, cone = 22, turn = 30, burn = 5, life = 9, vs = VS_AGM,      -- BGM-71 陶式（AH-1S）：有线指令
     shape = { L = 3.3, d = 0.45, fin = 0.8 } },
   s8 = { kind = "rkt", dmg = 250, splash = 13, speed = 700, range = 1700, rate = 0.1, tubes = 20, vs = VS_RKT, shape = { L = 4.4, d = 1.2 } },        -- S-8 80 毫米（B-8V20 火箭巢）
-  igla = { kind = "aam", eject = "tube", seeker = "ir", dmg = 320, splash = 10, speed = 470, range = 1200, lockTime = 1.0, cone = 28, turn = 55, burn = 3, life = 5.5, vs = VS_AAM,   -- 9K38 针-V
+  igla = { kind = "aam", eject = "tube", seeker = "ir", seekR = 4.5, dmg = 320, splash = 10, speed = 470, range = 1200, lockTime = 1.0, cone = 28, turn = 55, burn = 3, life = 5.5, vs = VS_AAM,   -- 9K38 针-V
     shape = { L = 4.4, d = 0.2, fin = 0.5 } },
-  type91 = { kind = "aam", eject = "tube", seeker = "ir", dmg = 320, splash = 10, speed = 470, range = 1200, lockTime = 1.0, cone = 28, turn = 55, burn = 3, life = 5.5, vs = VS_AAM, -- 91 式便携防空导弹（OH-1）
+  type91 = { kind = "aam", eject = "tube", seeker = "ir", seekR = 4.5, dmg = 320, splash = 10, speed = 470, range = 1200, lockTime = 1.0, cone = 28, turn = 55, burn = 3, life = 5.5, vs = VS_AAM, -- 91 式便携防空导弹（OH-1）
     shape = { L = 4.0, d = 0.2, fin = 0.5 } },
 }
 -- 导引方式：ir 红外、radar 主动雷达、laser 激光、gps 卫星 / 惯性、tv 电视 / 红外成像、arm 被动雷达（反辐射）、none 无制导
@@ -192,23 +198,30 @@ end
 --   cruise 涡喷一直开（巡航弹，匀速飞），boost 它起飞那一下助推几秒（浓烟）；speed 最快（格 / 秒，不写照上面）；
 --   g 满速时最大过载（慢了按速度² 少：后段的弹转不动）；bleed 烧完以后掉速快慢（满速时每秒掉几成，越大的弹越小）；
 --   smoke 尾烟：low 低烟发动机（细、淡）/ med / heavy（老式发动机、助推器：又粗又浓）
+--   能量（用户 11-28「导弹能量都搞一下」「不同导弹的数据要不一样别忘了」，服务器 Air.lua guideMissile 按它算）：
+--     mt 发动机：bs 助推 + 续航（前 35% 燃烧时间猛推、后面续航顶住阻力，默认）/ single 单推力（整段燃烧时间匀着推，烧完那一刻最快）；
+--     dv 整段（助推段）一共加几倍额定速度；pulse.dv 双脉冲第二次点火再加几倍（霹雳-15、K-77M：远距离还有能量）；
+--     out 掉到几成额定速度以下算没能量（导引头放弃、一秒后自毁，默认 0.3：大弹翼面大、低速还能飞，小一点）
+--   红外导引头 band（用户 11-28「双波段的 可以单独搞一下」，服务器 Air.lua flare 按它算被热诱弹骗走的几率）：
+--     1 老式单色非制冷（霹雳-2、R-60：最好骗）/ 1c 单色制冷（R-73）/ 2 双色（红外 + 紫外或两个红外波段：毒刺、针、天燕-90、R-74M）/
+--     img 红外成像（AIM-9X、霹雳-10、91 式改：看得出诱饵的形状，几乎不上当）
 local MOTOR = {
-  pl2 = { burn = 2.2, g = 11, bleed = 0.24, smoke = "heavy" },
-  pl10 = { burn = 3.0, g = 55, bleed = 0.17, smoke = "low" },
-  aim9x = { burn = 3.4, g = 55, bleed = 0.16, smoke = "low" },
-  ty90 = { burn = 2.2, g = 25, bleed = 0.22, smoke = "med" },
-  aim92 = { burn = 2.4, g = 25, bleed = 0.2, smoke = "low" },
-  pl12 = { burn = 5.5, g = 32, bleed = 0.11, smoke = "med" },
-  aim120 = { burn = 6.5, g = 32, bleed = 0.095, smoke = "low" },
-  pl15 = { burn = 5.0, pulse = { at = 9, t = 4.5 }, speed = 820, g = 30, bleed = 0.08, smoke = "low" },
-  aim54 = { burn = 9, g = 18, bleed = 0.07, smoke = "heavy" },
-  r73 = { burn = 3.0, g = 50, bleed = 0.17, smoke = "med" },
-  r74 = { burn = 3.2, g = 55, bleed = 0.16, smoke = "low" },
-  r27r = { burn = 6, g = 25, bleed = 0.1, smoke = "med" },
-  k77m = { burn = 5.5, pulse = { at = 10, t = 4 }, speed = 840, g = 32, bleed = 0.08, smoke = "low" },   -- 双脉冲（同霹雳-15）
-  r27er = { burn = 7, g = 25, bleed = 0.09, smoke = "med" },
-  r77 = { burn = 6, g = 32, bleed = 0.1, smoke = "low" },
-  r60 = { burn = 2.4, g = 40, bleed = 0.2, smoke = "med" },
+  pl2 = { burn = 2.2, g = 11, bleed = 0.24, smoke = "heavy", mt = "single", dv = 0.85, out = 0.35, band = "1" },
+  pl10 = { burn = 3.0, g = 55, bleed = 0.17, smoke = "low", mt = "single", dv = 1.0, out = 0.3, band = "img" },
+  aim9x = { burn = 3.4, g = 55, bleed = 0.16, smoke = "low", mt = "single", dv = 1.0, out = 0.3, band = "img" },
+  ty90 = { burn = 2.2, g = 25, bleed = 0.22, smoke = "med", mt = "bs", dv = 0.85, out = 0.35, band = "2" },
+  aim92 = { burn = 2.4, g = 25, bleed = 0.2, smoke = "low", mt = "bs", dv = 0.85, out = 0.35, band = "2" },
+  pl12 = { burn = 5.5, g = 32, bleed = 0.11, smoke = "med", mt = "bs", dv = 0.9, out = 0.28 },
+  aim120 = { burn = 6.5, g = 32, bleed = 0.095, smoke = "low", mt = "bs", dv = 0.95, out = 0.27 },
+  pl15 = { burn = 5.0, pulse = { at = 9, t = 4.5, dv = 0.45 }, speed = 820, g = 30, bleed = 0.08, smoke = "low", mt = "bs", dv = 0.95, out = 0.25 },
+  aim54 = { burn = 9, g = 18, bleed = 0.07, smoke = "heavy", mt = "single", dv = 0.95, out = 0.22 },
+  r73 = { burn = 3.0, g = 50, bleed = 0.17, smoke = "med", mt = "single", dv = 0.95, out = 0.32, band = "1c" },
+  r74 = { burn = 3.2, g = 55, bleed = 0.16, smoke = "low", mt = "single", dv = 1.0, out = 0.3, band = "2" },
+  r27r = { burn = 6, g = 25, bleed = 0.1, smoke = "med", mt = "bs", dv = 0.85, out = 0.28 },
+  k77m = { burn = 5.5, pulse = { at = 10, t = 4, dv = 0.4 }, speed = 840, g = 32, bleed = 0.08, smoke = "low", mt = "bs", dv = 0.95, out = 0.25 },   -- 双脉冲（同霹雳-15）
+  r27er = { burn = 7, g = 25, bleed = 0.09, smoke = "med", mt = "bs", dv = 1.0, out = 0.25 },
+  r77 = { burn = 6, g = 32, bleed = 0.1, smoke = "low", mt = "single", dv = 0.95, out = 0.28 },
+  r60 = { burn = 2.4, g = 40, bleed = 0.2, smoke = "med", mt = "single", dv = 0.85, out = 0.35, band = "1" },
   kh29 = { burn = 6, g = 10, bleed = 0.05, smoke = "heavy" },
   s57e6 = { burn = 2.0, speed = 1100, g = 32, bleed = 0.045, smoke = "heavy" },   -- 两级：助推器烧完扔掉，弹体（没有发动机）高速滑翔、阻力小
   akd10 = { burn = 3.5, g = 15, bleed = 0.06, smoke = "med" },
@@ -218,8 +231,8 @@ local MOTOR = {
   vikhr = { burn = 3.5, g = 16, bleed = 0.05, smoke = "med" },
   hot3 = { burn = 2.5, g = 12, bleed = 0.08, smoke = "heavy" },
   tow = { burn = 2.0, g = 12, bleed = 0.08, smoke = "heavy" },
-  igla = { burn = 2.2, g = 22, bleed = 0.22, smoke = "med" },
-  type91 = { burn = 2.2, g = 24, bleed = 0.21, smoke = "low" },
+  igla = { burn = 2.2, g = 22, bleed = 0.22, smoke = "med", mt = "bs", dv = 0.85, out = 0.35, band = "2" },
+  type91 = { burn = 2.2, g = 24, bleed = 0.21, smoke = "low", mt = "bs", dv = 0.85, out = 0.35, band = "img" },
   agm65 = { burn = 4.5, g = 12, bleed = 0.06, smoke = "med" },
   kd88 = { cruise = true, boost = 1.5, g = 6, smoke = "low" },
   yj83k = { cruise = true, boost = 2.0, g = 6, smoke = "low" },
@@ -806,7 +819,7 @@ D.b2 = { kind = "jet", cat = "jet", L = 59, W = 147, H = 14.5, gearH = 9.0, hp =
 -- 苏-57（量产型，2020 年起交付）：长 20.1 米、翼展 14.1 米、高 4.6 米、翼面积 78.8 平方米；空重 18 吨、正常起飞 25 吨、最大 35 吨；
 --   两台 AL-41F1（117 发动机）：军推 88.3 千牛、加力 142.2 千牛（正常起飞重量下推重比约 1.16），三元推力矢量（每个喷口 ±15°，左右喷口的偏转面斜着装：俯仰、偏航、滚转都管）；
 --   最大速度 2 马赫（高空约 2135 公里 / 时）、不开加力超音速巡航约 1.3 马赫，升限 2 万米，过载 +9；GSh-30-1（9A1-4071K）30 毫米炮 150 发（右边前缘根部）；
---   两个前后排的主弹舱（各 2 枚 K-77M）、两个三角形侧弹舱（各 1 枚 R-74M2），翼下 6 个外挂点；雷达 N036（见 RADAR），光电 101KS-V
+--   两个前后排的主弹舱（各 2 枚 K-77M）、两个三角形侧弹舱（各 1 枚 R-74M2），翼下 6 个外挂点；雷达 N036（见 Radars.lua），光电 101KS-V
 D.su57 = { kind = "jet", cat = "jet", L = 56, W = 39.5, H = 12.9, gearH = 6.9, hp = 760, stall = 92, vMil = 375, vAB = 475, accel = 54, abAccel = 40,
   pitch = 52, roll = 230, yaw = 26, g = 9, aoaMax = 28, flares = 64, gun = "gsh30", gunAmmo = 150, gunPos = V(2.8, 0.4, -11.2), ab = true, stealth = true, tvc = true,
   fus = { len = 53, w = 6.6, h = 4.4, y = 0 }, nose = 10, canopy = { z = -17.4, len = 6.7, w = 3.0, h = 2.4, y = 2.4 },
@@ -826,7 +839,7 @@ D.su57 = { kind = "jet", cat = "jet", L = 56, W = 39.5, H = 12.9, gearH = 6.9, h
   }),
   presets = { preset("aa", { bayF = "k77m", bayR = "k77m", bayS = "r74" }), preset("beast", { bayF = "k77m", bayR = "k77m", bayS = "r74", wing = "k77m" }) } }
 -- T-50（苏-57 的原型机，2010 年首飞；用户给的「Su-57 Felon (P)」是 054 号，即 T-50-4，2012 年）：机体、发动机同量产型（AL-41F1），
---   雷达是试验阶段的 N036（见 RADAR.t50）；机头多一根长空速管
+--   雷达是试验阶段的 N036（见 Radars.lua 的 n036t）；机头多一根长空速管
 do
   local function cp(t)
     if type(t) ~= "table" or getmetatable(t) ~= nil then return t end
@@ -840,7 +853,7 @@ end
 -- 米格-29（9.12，1983 年服役）：长 17.32 米（含空速管）、翼展 11.36 米、高 4.73 米、翼面积 38 平方米；空重 11 吨、正常起飞 15.3 吨、最大 18 吨；
 --   两台 RD-33：军推 49.4 千牛、加力 81.4 千牛（正常起飞重量下推重比约 1.08）；最大速度 2.25 马赫（高空约 2400 公里 / 时）、海平面约 1500 公里 / 时，
 --   升限 1.8 万米、爬升率约 330 米 / 秒，过载 +9（超音速 +7）；GSh-30-1 30 毫米炮 150 发（左边边条根部）；翼下 6 个挂点：内侧 R-27R、中间和外侧 R-73（或 R-60M）；
---   雷达 N019（见 RADAR）、光电 KOLS（激光测距 + 红外搜索跟踪）、头盔瞄准具「窄缝」（R-73 离轴发射）
+--   雷达 N019（见 Radars.lua）、光电 KOLS（激光测距 + 红外搜索跟踪）、头盔瞄准具「窄缝」（R-73 离轴发射）
 D.mig29 = { kind = "jet", cat = "jet", L = 48.5, W = 31.8, H = 13.2, gearH = 6.3, hp = 640, stall = 95, vMil = 330, vAB = 480, accel = 46, abAccel = 40,
   pitch = 46, roll = 210, yaw = 18, g = 9, aoaMax = 26, flares = 60, gun = "gsh30", gunAmmo = 150, gunPos = V(-2.8, 0.1, -2.8), ab = true,
   fus = { len = 46, w = 5.4, h = 4.0, y = 0 }, nose = 9, canopy = { z = -9.6, len = 6.5, w = 2.3, h = 1.6, y = 2.0 },
@@ -862,7 +875,7 @@ D.mig29 = { kind = "jet", cat = "jet", L = 48.5, W = 31.8, H = 13.2, gearH = 6.3
 -- 苏-35S（2014 年服役；用户 11-26 给的 bohmerang「Sukhoi Su-35 - Fighter Jet - Free」，原来借歼-11 的模型和性能）：长 21.9 米、翼展 15.3 米（带翼尖吊舱）、高 5.9 米、
 --   翼面积 62 平方米；空重 19 吨、正常起飞 25.3 吨、最大 34.5 吨；两台 AL-41F1S（117S）：军推 86.3 千牛、加力 142 千牛（推重比约 1.15），推力矢量 ±15°（两个喷口的偏转面斜着装）；
 --   最大速度 2.25 马赫（高空约 2400 公里 / 时）、海平面约 1400 公里 / 时，升限 1.8 万米，过载 +9；GSh-30-1 150 发；12 个挂点（翼尖是「希比内」电子战吊舱）；
---   雷达 N035（见 RADAR）、光电 OLS-35
+--   雷达 N035（见 Radars.lua）、光电 OLS-35
 D.su35 = { kind = "jet", cat = "jet", L = 61.3, W = 42.8, H = 16.5, gearH = 7.6, hp = 780, stall = 92, vMil = 345, vAB = 480, accel = 52, abAccel = 40,
   pitch = 50, roll = 220, yaw = 24, g = 9, aoaMax = 28, flares = 64, gun = "gsh30", gunAmmo = 150, gunPos = V(2.6, 0.6, -9), ab = true, tvc = true,
   fus = { len = 58, w = 5.0, h = 4.4, y = 0 }, nose = 11, canopy = { z = -16.6, len = 8.3, w = 2.3, h = 2.0, y = 2.0 },
@@ -920,41 +933,23 @@ D.su27 = hv(D.j11, { like = "su35", flares = 96,
 
 ---------------------------------------------------------------- 补默认值
 
--- 对空雷达（用户 11-24 夜：「战雷……不同带有雷达的载具会根据雷达型号有雷达扫描图的，为雷达锁定式导弹提供引导，所以也有 39 机动的这种说法」）：
---   kind pd 脉冲多普勒（有源相控阵也是）：能下视，但会滤掉相对地面的径向速度太小的目标——目标把你放在 3 点 / 9 点方向侧着飞（置零、3/9 机动），
---     径向速度掉到 notch（格 / 秒）以下就从雷达屏上消失、锁不住，已经锁着的丢锁；
---   kind pulse 脉冲（老雷达）：不怕置零，但往下看（目标比自己低、背景是地面）有地杂波，低空的目标看不见；
---   range 搜索距离、lock 能锁定（单目标跟踪 STT）的距离（格）；az / el 方位、俯仰扫描 ±度。没写的飞机没有对空雷达（A-10、轰炸机、无人机、直升机）
---   客户端 Radar.lua 画雷达屏（B 显：横轴方位、竖轴距离）、Fly.lua 雷达弹只能锁雷达看得见的；服务器 Air.lua 的雷达弹按发射机的雷达跟踪（数据链）飞、
---   近了自己开导引头（act），也会被置零、箔条骗
-local function radar(name, kind, range, lock, az, el, notch)
-  return { name = name, kind = kind, range = range, lock = lock, az = az, el = el, notch = notch }
+-- 对空雷达（用户 11-24 夜：「战雷……不同带有雷达的载具会根据雷达型号有雷达扫描图的，为雷达锁定式导弹提供引导，所以也有 39 机动的这种说法」；
+--   11-27「飞机雷达按型号照战雷做」）：每型、每个科技树版本的雷达在 **ReplicatedStorage/Radars.lua**（27 部真机雷达：型号、脉冲 / 脉冲多普勒、
+--   机械扫描 / 无源 / 有源相控阵、发现 / 锁定距离（按 √公里 压缩）、万向架、扫描方式和速度、边扫边跟、近战模式、置零门限、告警器代号）。
+--   下面 d.radar 是这一型的默认雷达（Radars.OF）；科技树里借型号的版本（F-16A、苏-30SM……）要按 AirDefs.radarOf(型号, 科技树键) 取。
+--   kind pd 脉冲多普勒（有源 / 无源相控阵也是）：能下视，但会滤掉相对地面的径向速度太小的目标（置零、3/9 机动）；pulse 脉冲（老雷达）：不怕置零、怕地杂波。
+--   客户端 Radar.lua 画雷达屏（B 显）、Fly.lua 雷达弹只能锁雷达看得见的；服务器 Air.lua 的雷达弹按发射机的雷达跟踪（数据链）飞、近了自己开导引头（act）
+local RDm = nil
+do
+  local okR, R = pcall(function() return require(script.Parent:WaitForChild("Radars", 5)) end)
+  if okR and type(R) == "table" and R.of then
+    RDm = R
+    RDm.M = AirDefs.M
+  else
+    warn("[AirDefs] 没有 Radars 模块：飞机都没有雷达（发包前要 lune run tools/build.luau 重新生成游戏文件）")
+  end
 end
-local RADAR = {
-  j20 = radar("KLJ-5 有源相控阵", "pd", 16000, 13000, 60, 45, 45),
-  j35 = radar("有源相控阵", "pd", 14000, 11500, 60, 45, 45),
-  j15t = radar("有源相控阵", "pd", 14000, 11500, 60, 45, 45),
-  j16 = radar("有源相控阵", "pd", 15000, 12000, 60, 45, 45),
-  j11 = radar("1474 型脉冲多普勒", "pd", 11000, 9000, 60, 40, 60),
-  j10 = radar("KLJ-10 有源相控阵", "pd", 13000, 10500, 60, 45, 45),
-  j36 = radar("有源相控阵", "pd", 17000, 14000, 60, 45, 40),
-  j8 = radar("SL-8A 脉冲", "pulse", 8000, 6000, 45, 30, 0),
-  f35 = radar("AN/APG-81 有源相控阵", "pd", 15000, 12000, 60, 45, 45),
-  f22 = radar("AN/APG-77 有源相控阵", "pd", 17000, 14000, 60, 45, 40),
-  f16 = radar("AN/APG-68 脉冲多普勒", "pd", 11000, 9000, 60, 40, 60),
-  f15 = radar("AN/APG-63 脉冲多普勒", "pd", 13000, 10500, 60, 40, 60),
-  f14 = radar("AN/AWG-9 脉冲多普勒", "pd", 18000, 14000, 65, 40, 60),
-  -- 苏-57 的 Sh121 雷达组：N036「松鼠」有源相控阵——机头 N036-1-01（X 波段，1514 个收发组件）+ 两侧的 N036B-1-01 侧视阵（方位往两边多看一截：az 75）
-  --   + 前缘涡流控制板里的 L 波段阵；公开说法对大目标约 400 公里、战斗机大小的目标约 160 公里，跟踪 60 个、同时攻击 16 个（和 APG-77 一档）
-  su57 = radar("N036 松鼠 有源相控阵", "pd", 16500, 13500, 75, 45, 40),
-  t50 = radar("N036 有源相控阵（试验型）", "pd", 15500, 12500, 75, 45, 42),   -- 原型机（T-50-3 起才装上雷达）：软件、功率还没到量产型
-  -- 米格-29（9.12）的 N019「宝石」脉冲多普勒（RLPK-29）：对战斗机迎头约 70 公里、尾追约 35 公里，跟踪 10 个、攻击 1 个；方位 ±67°；下视、抗干扰都弱
-  mig29 = radar("N019 宝石 脉冲多普勒", "pd", 9500, 7500, 67, 40, 70),
-  -- 苏-35S 的 N035「雪豹-E」无源相控阵：对 3 平方米的目标迎头约 350～400 公里，跟踪 30 个、攻击 8 个；电扫 ±60°，再加液压转台整个天线转到 ±120°（az 90 折中）
-  su35 = radar("N035 雪豹-E 无源相控阵", "pd", 17500, 14000, 90, 60, 55),
-  -- 苏-27S 的 N001「剑」脉冲多普勒（卡塞格伦天线）：对战斗机迎头约 80～100 公里、跟踪一个打一个；视场 ±60°
-  su27 = radar("N001 剑 脉冲多普勒", "pd", 10000, 8000, 60, 40, 70),
-}
+AirDefs.Radars = RDm
 -- 雷达弹（主动雷达）：act 离目标多近自己开导引头（之前按发射机雷达的跟踪走数据链）、notch 导引头的置零门限（格 / 秒）
 local ARH = { pl15 = { act = 2800, notch = 50 }, aim120 = { act = 2600, notch = 50 }, aim54 = { act = 3200, notch = 60 }, pl12 = { act = 2200, notch = 55 },
   k77m = { act = 3000, notch = 45 }, r77 = { act = 2600, notch = 55 } }   -- K-77M 有源相控阵导引头：开机远、不怕置零；R-27R 是半主动，不在这里
@@ -966,7 +961,8 @@ end
 -- 照真实的速度、射程（用户 11-25「全部都做」⑩，B 挑刺 9：原来照 MWT 的尺度——歼-20 开加力最快约 600 公里 / 时、霹雳-15 约 270 米 / 秒、
 --   射程一公里多）：上面的数是原来手调的（各型之间的比例照旧），这里统一放大——喷气机军推 / 加力速度 ×2.25（低空 1300 公里 / 时上下）、失速 ×1.7、
 --   直升机最大平飞 ×2.4（约 290 公里 / 时）；空空、空地导弹速度 ×3.5（雷达弹约 3 马赫）、射程 ×6、能飞多久 ×1.8、发动机烧的时间 ×1.3
---   （转弯按过载 w.g 限，快了转弯半径自然变大）；火箭弹速度、射程 ×2.5；机载雷达搜索 / 锁定距离、雷达弹开导引头的距离 ×2.5。
+--   （转弯按过载 w.g 限，快了转弯半径自然变大）；火箭弹速度、射程 ×2.5；雷达弹开导引头的距离 ×2.5
+--   （机载雷达的搜索 / 锁定距离 11-27 起在 Radars.lua 里按 √真实公里 算好，这里不再乘）。
 --   作战区 ±Map.PLAY（沙海 3.7 万格，约 ±13 公里）够喷气机按真速度飞；推重比（accel）不变（A 的飞行手感）
 AirDefs.REAL = { jet = 2.25, stall = 1.7, heli = 2.4, mslSpeed = 3.5, mslRange = 6, mslLife = 1.8, mslBurn = 1.3, rkt = 2.5, radar = 2.5 }
 do
@@ -991,14 +987,15 @@ do
       w.range = w.range * K.rkt
     end
   end
-  for _, r in pairs(RADAR) do r.range, r.lock = r.range * K.radar, r.lock * K.radar end
 end
 
 -- 飞行物理（FlightModel，用户 11-26 晚「每个飞机要有不同的参数」）：喷气机的平飞最大速度（军推 / 加力）、失速速度改按每型的真实物理量算
 --   （1000 米、一半内油 + 两枚中距弹）——AI、平显、服务器限速、起降速度都跟玩家开的那套物理一致；FlightModel 没登记的型号照旧用上面的数
+local FMod = nil   -- 下面 AirDefs.takeoffRun 也用
 do
   local okFM, FM = pcall(function() return require(script.Parent:WaitForChild("FlightModel", 5)) end)
   if okFM and type(FM) == "table" and FM.get then
+    FMod = FM
     for id, d in pairs(D) do
       if d.kind == "jet" then
         local P = FM.get(id) or (d.like and FM.get(d.like))
@@ -1017,7 +1014,7 @@ end
 for id, d in pairs(D) do
   d.id = id
   d.air = true
-  d.radar = d.radar or RADAR[id]
+  d.radar = d.radar or (RDm and RDm.of(id))   -- 默认雷达（科技树版本自己的：AirDefs.radarOf）
   if d.kind == "jet" then
     d.vMax = d.vAB or d.vMil
     -- 抬头的速度（原来 1.08 倍失速速度，四五十米就飞起来了；用户：跑道非常短）：飞行物理（FlightModel）的型号到 1.2 倍净形失速速度开始抬头，
@@ -1128,6 +1125,8 @@ function AirDefs.onDeck(Map, x, z)
 end
 
 function AirDefs.get(id) return D[id] end
+-- 这一型（科技树的版本优先）的对空雷达（Radars.lua），没有返回 nil：F-16A 是 APG-66、苏-30SM 是 N011M；不退回 like（苏-27 借苏-35S 的模型，雷达照旧是 N001）
+function AirDefs.radarOf(id, treeKey) return RDm and RDm.of(id, treeKey) or nil end
 function AirDefs.isAir(id) return D[id] ~= nil end
 
 -- 一个挂点挂某种武器能挂几枚
@@ -1220,6 +1219,70 @@ function AirDefs.tankFuel(d, load)
     end
   end
   return f, drag, n
+end
+
+---------------------------------------------------------------- 起飞滑跑（静态估算）
+
+-- 推满油门在平跑道上要滑多远才离地（格）。用户 11-27「飞机试驾不了」：满油满弹的轰-6K、B-2、MQ-9 在训练场 3600 格的跑道上滑不起来，
+--   试驾（Tech.lua）按这个挑在跑道上还是空中出生。照客户端 Fly.lua 地上那段一帧一帧推（改那边的滑跑、抬头、质量，这里要跟着改）：
+--   · 油门每秒推 55（有加力推到 130），发动机转速有惯性（FlightModel.engine）；
+--   · 推力减气动阻力（零升、外挂、起落架、襟翼）、再减机轮滚动阻力（重量的 3%）；低速时襟翼放着，两秒放到底；
+--   · 到抬头速度 vRot 拉杆，机头每秒抬 6°（轰炸机、运输机 3°），最多 12°（9°）；升力（带襟翼）托得住 1.02 倍重量就离地。
+--   质量同 Fly.lua fmMass：空重 + 内油 + 副油箱里的油 + 挂的弹（火箭巢一个挂点算一个满巢），外挂阻力（弹舱里的不算）。
+--   o 可以给：treeKey 科技树的版本、load 挂载（默认第一套预设）、fuel 内油几成（默认满）、thrK 推力倍率（改装 ModThr）、h 跑道多高（格）。
+--   返回：滑了多少格、离没离地（两分钟还没离地是 false）、用了几秒、质量（kg）；直升机、没有飞行物理的返回 nil
+function AirDefs.takeoffRun(d, o)
+  o = o or {}
+  local FM = FMod
+  if not (FM and d and d.kind == "jet" and d.vRot) then return nil end
+  local Dm = FM.get(d.id, o.treeKey) or FM.get(d.like or "") or FM.get(d.prop and "mq9" or ((d.g or 9) < 4 and "h6k" or "f16"))   -- 同 Fly.lua begin
+  if not Dm then return nil end
+  local M = AirDefs.M
+  local load = o.load or AirDefs.presetLoad(d)
+  local m = Dm.m0 + Dm.fi * math.clamp(o.fuel or 1, 0, 1) + Dm.fi * (AirDefs.tankFuel(d, load))
+  local dS = 0
+  for i, s in ipairs(d.st or {}) do
+    local wid = load[i]
+    local w = wid and AirDefs.W[wid]
+    if w then
+      local n = (w.kind == "rkt") and 1 or AirDefs.count(s, wid)   -- 火箭巢：一个满巢
+      m += FM.storeMass(w, M) * n
+      if not s.bay then dS += FM.storeDrag(w, M) * n end
+    end
+  end
+  local cd = Dm.CD0 + dS / Dm.S + Dm.gearCD
+  local rho = FM.atmo((o.h or 0) / M)
+  local F = FM.new(Dm, { 1, 0, 0, 0, 1, 0, 0, 0, 1 }, 0, 0, 0, 0)
+  local thrMax = d.ab and 130 or 100
+  local thrK = o.thrK or 1
+  local big = (d.g or 9) < 4
+  local rotMax, rotRate = math.rad(big and 9 or 12), math.rad(big and 3 or 6)
+  local Wt = m * FM.G
+  local dt = 1 / 60
+  local thr, spd, dist, t, flapK, rotP = 0, 0, 0, 0, 0, 0
+  while t < 120 do
+    thr = math.min(thrMax, thr + 55 * dt)
+    FM.engine(F, Dm, dt, thr, false)
+    local tgt = (thr <= 100) and d.vMil * thr / 100 or d.vMax
+    if tgt > spd then
+      local V0 = spd / M
+      local T = FM.thrust(Dm, F.N, F.abf, V0 / 340, rho, V0) * thrK
+      local Dr = 0.5 * rho * V0 * V0 * Dm.S * (cd + 0.03 * flapK)
+      local a = (T - Dr - 0.03 * Wt) / m * M
+      spd += math.clamp(a, 0, (tgt - spd) / dt) * dt
+    end
+    spd = math.min(spd, d.vMax)
+    dist += spd * dt
+    t += dt
+    if spd >= d.vRot then rotP = math.min(rotP + rotRate * dt, rotMax) end
+    if rotP > math.rad(2) then
+      local Vm = spd / M
+      if 0.5 * rho * Vm * Vm * Dm.S * FM.CL(Dm, rotP, flapK) >= Wt * 1.02 then return dist, true, t, m end
+    end
+    local fw = (spd < d.stall * 1.6) and 1 or 0
+    flapK = (flapK < fw) and math.min(fw, flapK + dt / 2) or math.max(fw, flapK - dt / 2)
+  end
+  return dist, false, t, m
 end
 
 return AirDefs

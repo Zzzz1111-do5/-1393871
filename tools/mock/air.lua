@@ -389,7 +389,8 @@ if fst and e then
   R.run(0.6)
   T.key(Enum.KeyCode.W, false)
   check(fst.cf.LookVector.Y < -0.02, string.format("按住 W 低头（俯仰 %.1f°）", math.deg(math.asin(fst.cf.LookVector.Y))))
-  -- 鼠标转视角（用户 11-21：飞机要允许用鼠标转视角）：不用按 Alt，拨鼠标镜头转开、停在那里；鼠标 2.5 秒不动慢慢回到身后；C 立刻回正
+  -- 鼠标转视角（用户 11-21：飞机要允许用鼠标转视角）：不用按 Alt，拨鼠标镜头转开、停在那里；
+  --   11-28 起不再自己回到身后（用户「飞机驾驶不要强制让镜头跟着机头」），C 回正
   level()
   R.run(0.3)
   local function awayDeg() return math.deg(math.acos(math.max(-1, math.min(1, cam.CFrame.LookVector:Dot(fst.cf.LookVector))))) end
@@ -403,7 +404,7 @@ if fst and e then
   R.run(1.5)
   check(awayDeg() > 15, string.format("鼠标停 1.5 秒：镜头还停在拨到的地方（%.0f°）", awayDeg()))
   R.run(4)
-  check(markOff() <= 3, string.format("鼠标停 2.5 秒以上：镜头慢慢回到身后（标记偏 %.1f 像素）", markOff()))
+  check(awayDeg() > 15, string.format("鼠标停 5 秒：镜头还停在拨到的地方，不被拽回机头（%.0f°）", awayDeg()))
   for _ = 1, 10 do
     R.mouseDelta = V2(30, 0)
     R.run(1 / 30)

@@ -139,6 +139,7 @@ function SnowLook.init(G)
   ---------------------------------------------------------------- 下雪
 
   local board, emitter = nil, nil
+  local rateMax = 400   -- 每秒几片：引擎每个发射器最多 400（手机 100）；画质低的少下（见下面）
   local function snowOn(on)
     if on and not board then
       board = Instance.new("Part")
@@ -147,13 +148,14 @@ function SnowLook.init(G)
       board.Transparency = 1
       board.Size = Vector3.new(260, 1, 260)
       emitter = Instance.new("ParticleEmitter")
-      emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+      -- 雪花是柔边的白色圆点（Roblox 自带的 explosion01_implosion_main）：原来的 sparkles_main 是八角星，近看像卡通星星（用户 11-27 照战雷做）
+      emitter.Texture = "rbxasset://textures/particles/explosion01_implosion_main.dds"
       emitter.Color = ColorSequence.new(Color3.fromRGB(246, 248, 255))
       emitter.LightEmission = 0
-      emitter.LightInfluence = 1
-      emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.32, 0.12), NumberSequenceKeypoint.new(1, 0.26, 0.1) })
+      emitter.LightInfluence = 1   -- 受光：夜里是月光照着的灰蓝，不自己发亮
+      emitter.Size = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.22, 0.06), NumberSequenceKeypoint.new(1, 0.2, 0.05) })   -- 0.16～0.28 格
       emitter.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(0.08, 0.15), NumberSequenceKeypoint.new(0.85, 0.2), NumberSequenceKeypoint.new(1, 1) })
-      emitter.Lifetime = NumberRange.new(9, 13)
+      emitter.Lifetime = NumberRange.new(8, 11)   -- 11-28 夜（「卡顿问题你给他想办法解决」）：原来 9～13 秒、每秒 400 片，同时飘着四千多片
       -- 画质低（手机、画质档 4 以下）雪下得稀一些
       local low = G.mobile == true
       pcall(function()
@@ -161,11 +163,19 @@ function SnowLook.init(G)
         local n = tonumber(string.match(tostring(lv), "(%d+)$"))
         if n and n <= 3 then low = true end
       end)
-      emitter.Rate = low and 150 or 420
+      rateMax = math.floor((low and 120 or 260) * math.clamp(G.gfxK or 1, 0.4, 1.2))   -- 同时飘着的两千片上下；设置里画质调低再少
+      emitter.Rate = rateMax
       emitter.Speed = NumberRange.new(5, 9)
       emitter.SpreadAngle = Vector2.new(18, 18)
       emitter.EmissionDirection = Enum.NormalId.Bottom
-      emitter.Acceleration = Vector3.new(2.5, -1.2, 1.2)   -- 一点风
+      -- 一点风：顺着雪山的全局风（LightLooks.WIND.snow，烟、尘也往这边飘）斜着飘，大小同原来（水平 2.8 格/秒²）
+      local wdir = Vector3.new(2.5, 0, 1.2)
+      pcall(function()
+        local w = require(RS:WaitForChild("LightLooks", 5)).WIND.snow
+        if w and w.Magnitude > 0.1 then wdir = w end
+      end)
+      wdir = wdir.Unit * 2.77
+      emitter.Acceleration = Vector3.new(wdir.X, -1.2, wdir.Z)
       emitter.RotSpeed = NumberRange.new(-60, 60)
       emitter.Rotation = NumberRange.new(0, 360)
       emitter.Drag = 0.4
@@ -192,7 +202,11 @@ function SnowLook.init(G)
     board.CFrame = CFrame.new(cp.X, cp.Y + 70, cp.Z)
     if acc > 0.5 then
       acc = 0
-      emitter.Enabled = cp.Y < (Map.PLAIN or 12) + 1500
+      local want = cp.Y < (Map.PLAIN or 12) + 1500
+      if emitter.Enabled ~= want then emitter.Enabled = want end
+      -- 机器跟不上（自动画质 G.perfK 降下来）雪跟着稀一点；差一成以上才改（粒子发射器的属性少改：改一次就要重排）
+      local rate = math.floor(rateMax * math.clamp(G.perfK or 1, 0.5, 1) + 0.5)
+      if math.abs(emitter.Rate - rate) > rateMax * 0.1 then emitter.Rate = rate end
     end
   end)
 

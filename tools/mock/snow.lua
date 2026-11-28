@@ -74,6 +74,13 @@ do
   check(steep / n > 0.06 and steep / n < 0.3 and wall / n < 0.06, string.format("坡：陡过 17° 的 %.0f%%，陡过 40°（上不去）的 %.1f%%", steep / n * 100, wall / n * 100))
 end
 check(Map.ground(Map.POINTS[2].x, Map.POINTS[2].z) > Map.ground(0, 0) + 40, string.format("雷达站（B）在台地上（%.0f 格，山村 %.0f 格）", Map.ground(Map.POINTS[2].x, Map.POINTS[2].z), Map.ground(0, 0)))
+do   -- 据点都有高度（11-27：原来没写 p.y，占领数人、客户端判断在不在点里一减就报错）
+  local bad = {}
+  for _, p in ipairs(Map.POINTS) do
+    if type(p.y) ~= "number" or math.abs(p.y - Map.ground(p.x, p.z)) > 0.01 then bad[#bad + 1] = p.id .. "=" .. tostring(p.y) end
+  end
+  check(#bad == 0, "据点都有高度 p.y（= 地面）" .. ((#bad > 0) and ("：不对的 " .. table.concat(bad, " ")) or ""))
+end
 do
   local L = Map.LAKE
   check(Map.inLake(L.x, L.z) and math.abs(Map.ground(L.x, L.z) - L.y) < 0.01 and L.y > Map.PLAIN + 20, string.format("湖在高台上（湖面 %.0f 格）", L.y))
@@ -256,6 +263,47 @@ for _ = 1, 8 do if C.snowCloudTick then C.snowCloudTick(V3(0, 900, 2000)) end en
 local cs = C.snowCloudStats and C.snowCloudStats()
 check(cs and cs.imported and cs.puffs > 400 and cs.live > 20, string.format("天上的云：%s 朵，镜头附近摆了 %s 朵（建了 %s 次、%s 拍、摆过 %s 朵，镜头 %s）", tostring(cs and cs.puffs), tostring(cs and cs.live),
   tostring(cs and cs.builds), tostring(cs and cs.ticks), tostring(cs and cs.spawned), tostring(cs and cs.cam)))
+-- 11-27 审查：最远摆到 14000 格（M3 丝滑那次改成 12000「公里」，其实是格、约 4.3 公里，开飞机看得见「云泡」的边）；
+--   机器跟不上（G.perfK 降档）摆的范围慢慢收（一拍 5%），不一拍一跳；拍子之间近处的每帧按距离调透明度（穿云不一顿一顿）
+check(cs and cs.viewMax == 14000 and math.abs((cs.view or 0) - 14000) < 1, string.format("体积云最远摆到 14000 格（现在 %s）", tostring(cs and cs.view)))
+do
+  local k0 = C.perfK
+  C.perfK = 0.6
+  C.snowCloudTick(V3(0, 900, 2000))
+  local v1 = C.snowCloudStats().view
+  for _ = 1, 80 do C.snowCloudTick(V3(0, 900, 2000)) end
+  local v2 = C.snowCloudStats().view
+  check(v1 > 13600 and v1 < 13800 and math.abs(v2 - 8400) < 200, string.format("降档到 0.6：一拍收到 %.0f（不是一下到 8400），80 拍以后 %.0f", v1, v2))
+  C.perfK = k0
+  for _ = 1, 120 do C.snowCloudTick(V3(0, 900, 2000)) end
+  check(math.abs(C.snowCloudStats().view - 14000) < 50, string.format("画质回来：又慢慢放回 14000（%.0f）", C.snowCloudStats().view))
+end
+do
+  local s0 = C.snowCloudStats()
+  local P = nil
+  for _, q in ipairs(s0.nearList or {}) do if q.parts and q.rel then P = q break end end
+  check(P ~= nil, "镜头附近有每帧照看的云（" .. tostring(s0.near) .. " 朵）")
+  if P then
+    C.snowCloudFrame(V3(0, 900, 2000))   -- 先挪到这一刻的风里
+    local center = (P.parts[1].CFrame * P.rel[1]:Inverse()).Position
+    local f0 = C.snowCloudStats().frameTr
+    C.snowCloudFrame(center + V3(P.r * 1.6, 0, 0))
+    local tr1 = P.parts[1].Transparency
+    C.snowCloudFrame(center + V3(P.r * 1.2, 0, 0))
+    local tr2 = P.parts[1].Transparency
+    local want1, want2 = 1 - (0.7 / 1.3), 1 - (0.3 / 1.3)
+    check(math.abs(tr1 - want1) < 0.02 and math.abs(tr2 - want2) < 0.02 and C.snowCloudStats().frameTr >= f0 + 2,
+      string.format("拍子之间往云里飞：每帧淡（离中心 1.6 倍半径透明 %.2f、1.2 倍 %.2f；算的 %.2f、%.2f）", tr1, tr2, want1, want2))
+    C.snowCloudFrame(center)
+    check(P.parts[1].Transparency == 1, "钻进去：全透明")
+    C.snowCloudTick(V3(0, 900, 2000))
+  end
+end
+-- 有了体积云就不再摆 Warfx 那几百个半透明球拼的积云（11-27 M3 丝滑：两套云叠着，透明的一层层排序最贵）
+--   已经摆了一会儿的（clouds.glb 晚到）1 秒淡掉再删（tools/mock/smooth.lua ⑤ 测）
+local banks = C.cloudBanks
+check(cs and cs.imported and C.snowCloudsOn == true and banks ~= nil and #banks:GetChildren() == 0,
+  "体积云开着：球拼的积云收掉了（还剩 " .. tostring(banks and #banks:GetChildren()) .. " 块）")
 -- 树：冬季树包的树、灌木，谷里也有（交战区里撞得倒的）
 local inValley, shrubs = 0, 0
 for _, t in ipairs(Map.TREES) do
@@ -264,6 +312,103 @@ for _, t in ipairs(Map.TREES) do
 end
 check(#Map.TREES > 8000 and inValley > 1500 and shrubs > 1000, string.format("树 %d 棵（谷里 %d，灌木 %d）", #Map.TREES, inValley, shrubs))
 check(C.snowWrecks and C.snowWrecks() > 30, "车辆残骸摆出来了（" .. tostring(C.snowWrecks and C.snowWrecks()) .. " 个零件）")
+print("⑥ 11-28 丰富起来（用户「多搞一些房子 废弃的各种车……对抗的时候地形不能是平的要多有不大不小的崎岖……参考战雷地图冰风谷」）")
+-- 交战区的崎岖：谷底随机找点（不在路、河、湖、基地、房子边上），看 40 格见方里的高低差（原来噪声只有几格的缓坡，坦克视角一片平）
+do
+  local seed = 1
+  local function rr() seed = (seed * 48271) % 2147483647 return seed / 2147483647 end
+  local rel, roughs = {}, {}
+  local tries = 0
+  while #rel < 300 and tries < 6000 do
+    tries = tries + 1
+    local x, z = -2700 + rr() * 5400, -5200 + rr() * 10400
+    if Map.valleyD(x, z) < 0.88 and not Map.inBase(x, z, 400) and Map.roadDist(x, z) > 120 and Map.riverDist(x, z) > 260
+      and Map.lakeD(x, z) > 1.9 and not Map.bldAt(x, z, 60) then
+      local lo, hi = 1e9, -1e9
+      for i = -2, 2 do
+        for k = -2, 2 do
+          local h = Map.height(x + i * 10, z + k * 10)
+          if h < lo then lo = h end
+          if h > hi then hi = h end
+        end
+      end
+      table.insert(rel, hi - lo)
+      table.insert(roughs, math.abs(Map.roughH(x, z)))
+    end
+  end
+  table.sort(rel)
+  local med = rel[math.floor(#rel / 2) + 1] or 0
+  local big = 0
+  for _, v in ipairs(rel) do if v > 5.6 then big = big + 1 end end   -- 两米以上的起伏
+  check(#rel >= 200 and med >= 4.5 and big / #rel > 0.3, string.format("交战区崎岖：40 格见方里高低差中位数 %.1f 格（%.1f 米），三成以上的地方超过两米（%.0f%%，取了 %d 处）",
+    med, med / 2.8, big / math.max(1, #rel) * 100, #rel))
+  local onRoadRough = 0
+  for _, s2 in ipairs(Map.SEGS) do
+    local x, z = (s2[1] + s2[3]) / 2, (s2[2] + s2[4]) / 2
+    if math.abs(Map.roughH(x, z)) > 0.01 then onRoadRough = onRoadRough + 1 end
+  end
+  check(onRoadRough == 0, "路、铁路路面上不加起伏（" .. onRoadRough .. " 段的中点有起伏）")
+end
+-- 铁路（照冰封山口：一条穿山的铁路）：南北一条单线 + 站场，防雪棚两三座，过河一座铁路桥，和路平交
+do
+  local nRail, nYard = 0, 0
+  for _, P in ipairs(Map.POLYS) do
+    if P.k == "rail" then nRail = nRail + 1 elseif P.k == "yard" then nYard = nYard + 1 end
+  end
+  local railBridge = 0
+  for _, B in ipairs(Map.BRIDGES) do if B.k == "rail" or B.k == "yard" then railBridge = railBridge + 1 end end
+  check(nRail == 2 and nYard == 1, "铁路两段 + 站场（" .. nRail .. " / " .. nYard .. "）")
+  check(#Map.GALLERIES >= 2, "挖得深的地方盖了防雪棚 " .. #Map.GALLERIES .. " 座")
+  check(railBridge >= 1, "铁路过河有桥（" .. railBridge .. " 座）")
+  local rf = sf and sf:FindFirstChild("Railway")
+  local nParts = 0
+  if rf then for _, d in ipairs(rf:GetDescendants()) do if d:IsA("BasePart") then nParts = nParts + 1 end end end
+  check(nParts > 600, "钢轨、枕木、道口、防雪棚、车站都建了（" .. nParts .. " 个零件）")
+  local gal = rf and rf:FindFirstChild("Gallery_1")
+  check(gal ~= nil and #gal:GetChildren() > 20, "防雪棚 1：棚顶、靠山的墙、外侧的柱子")
+  -- 轨面坡度不超过 3.5%（每 16 格一点）
+  local worst = 0
+  for _, P in ipairs(Map.POLYS) do
+    if P.k == "rail" and P.h then
+      for q = 2, #P.h - 1 do worst = math.max(worst, math.abs(P.h[q] - P.h[q - 1]) / 16) end
+    end
+  end
+  check(worst <= 0.0351, string.format("轨面最陡 %.1f%%（不超过 3.5%%）", worst * 100))
+  check(Map.STATION ~= nil, "车站的站房盖了")
+  -- 铁路路基的材质是碎石（Slate）
+  local P1 = nil
+  for _, P in ipairs(Map.POLYS) do if P.k == "rail" then P1 = P break end end
+  local px, pz = Map.polyPoint(P1, P1.L * 0.3)
+  check(Map.material(px, pz, Map.height(px, pz), 0) == T.Enum.Material.Slate, "路基是碎石道砟（Slate）")
+end
+-- 废弃的车：民用车、卡车、客车、拖拉机、铁路车皮、机车、飞机残骸
+do
+  local by = {}
+  for _, c in ipairs(Map.CIV) do by[c.k] = (by[c.k] or 0) + 1 end
+  local cars = (by.wk_bmw or 0) + (by.wk_fiat or 0) + (by.wk_hatch or 0) + (by.wk_suv or 0) + (by.wk_uaz or 0)
+  local trucks = (by.wk_ural or 0) + (by.wk_kamaz or 0) + (by.wk_gaz66 or 0)
+  local rail = (by.wk_boxcar or 0) + (by.wk_hopper or 0) + (by.wk_loco or 0)
+  check(#Map.CIV >= 80, "废弃的车 " .. #Map.CIV .. " 辆")
+  check(cars >= 25 and trucks >= 12 and (by.wk_bus or 0) >= 2 and (by.wk_tractor or 0) >= 6, string.format("小车 %d、卡车 %d、客车 %d、拖拉机 %d",
+    cars, trucks, by.wk_bus or 0, by.wk_tractor or 0))
+  check(rail >= 10 and (by.wk_loco or 0) == 1, string.format("铁路车皮 %d（机车 %d）", rail, by.wk_loco or 0))
+  check((by.wk_plane or 0) == 1, "坠毁的飞机 1 架")
+  local st = G.snowCiv and G.snowCiv()
+  local wf = sf and sf:FindFirstChild("Wrecks")
+  check(st ~= nil and st.n == #Map.CIV and wf ~= nil and #wf:GetChildren() == #Map.CIV, "服务器都摆了（" .. tostring(st and st.n) .. " 辆，没导入的用零件拼）")
+  -- 车不压房子、不压路面
+  local bad = 0
+  for _, c in ipairs(Map.CIV) do
+    if Map.bldAt(c.x, c.z, 0) then bad = bad + 1 end
+    local d, _, w, k = Map.roadNear(c.x, c.z)
+    if d and d < w * 0.5 and k ~= "rail" and k ~= "yard" then bad = bad + 1 end
+  end
+  check(bad == 0, "车不压房子、不停在路中间（" .. bad .. " 处）")
+  check(Map.navBlocked(Map.CIV[1].x, Map.CIV[1].z), "寻路绕开废弃的车")
+  check(#Map.PROPS.wreck >= 45, "军车残骸 " .. #Map.PROPS.wreck .. " 辆（一簇簇：坦克坟场、车队、防空阵地）")
+end
+check(#Map.BLD >= 200, "房子 " .. #Map.BLD .. " 座（山村更密、多七个小村落、主路边的人家、多八处农庄）")
+
 print("⑤ 没有报错")
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "))
 T.summary()

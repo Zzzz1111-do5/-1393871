@@ -35,8 +35,8 @@ O.RET = {
 
 -- 每辆车真车的夜视（科技树的键；查的公开资料）：没写的按年份、东西方推（O.nvByYear）
 O.TREE_NV = {
-  cn_59 = "ir", cn_69 = "ir", cn_86 = "ir", cn_96 = "ii", cn_96a = "th2", cn_96b = "th3", cn_99 = "th1", cn_99a = "th2", cn_pgl625 = "th3",
-  de_leo1 = "ir", de_leo1a1a1 = "ii", de_leo1a5 = "th1", de_leo2a0 = "ii", de_leo2a4 = "th1", de_leo2a5 = "th1", de_leo2a6 = "th2", de_leo2a7v = "th3",
+  cn_59 = "ir", cn_t3485 = "none", cn_su100 = "none", cn_69 = "ir", cn_86 = "ir", cn_96 = "ii", cn_96a = "th2", cn_96b = "th3", cn_99 = "th1", cn_99a = "th2", cn_pgl625 = "th3",
+  de_leo1 = "ir", de_marder1a3 = "th1", de_kpz70 = "ir", de_leo1a1a1 = "ir", de_leo1a5 = "th1", de_leo2a0 = "ii", de_leo2a4 = "th1", de_leo2a5 = "th1", de_leo2a6 = "th2", de_leo2a7v = "th3",
   de_gepard = "none", de_gepard1a2 = "none",
   us_m60 = "ir", us_m60a1 = "ir", us_m60a1rise = "ii", us_m60a3 = "th1", us_m1 = "th1", us_m1ip = "th1", us_m1a1 = "th1", us_m1a1hc = "th1",
   us_m1a2 = "th1", us_m1a2sep = "th2", us_m1a2sep2 = "th2", us_m1a2sep3 = "th3", us_m551 = "ir", us_m2 = "th1", us_m2a2 = "th1", us_m2a3 = "th2",
@@ -49,11 +49,15 @@ O.TREE_NV = {
 }
 -- 没走科技树的车（沙盒、电脑车）按型号
 O.VEH_NV = {
-  type59 = "ir", type69 = "ir", m60a1 = "ir", m551 = "ir", leo1 = "ir", type74 = "ir", t64a = "ir", t72ural = "ir", bmp1 = "ir", bmp2 = "ir",
+  type59 = "ir", t3485 = "none", su100 = "none", marder1a3 = "th1", kpz70 = "ir", type69 = "ir", m60a1 = "ir", m551 = "ir", leo1 = "ir", type74 = "ir", t64a = "ir", t72ural = "ir", bmp1 = "ir", bmp2 = "ir",
   t72a = "ii", t64b = "ii", t80b = "ii", t72b = "ii", t80u = "ii", ztz96 = "ii", type74g = "ii",
   m60a3 = "th1", leo1a5 = "th1", leo2a4 = "th1", m1a1 = "th1", ztz99a = "th2", m1a2 = "th2", leo2a6 = "th2", t72b3 = "th2", bmp2m = "th2",
   t80bvm = "th2", m2a3 = "th2", leo2a7v = "th3", type10 = "th3", t90m = "th3", leclerc = "th2",
   brdm2 = "none", strela1 = "none", type87rcv = "ii",
+  -- 11-27 拆开重叠的版本：同族的老 / 新型号各自的夜视（同 TREE_NV）
+  m1 = "th1", m1ip = "th1", m1a1base = "th1", m1a1hc = "th1", m1a2base = "th1", m1a2sep = "th2", m1a2sep3 = "th3",
+  m60 = "ir", m60a1rise = "ii", leo1a1a1 = "ir", leo2a0 = "ii", leo2a5 = "th1",
+  ztz96base = "ii", ztz96a = "th2", ztz99base = "th1", type86 = "ir", t90a = "th2", m2a0 = "th1", m2a2 = "th1",
 }
 local EAST = { cn = true, ru = true }
 function O.nvByYear(year, nat)
@@ -75,6 +79,9 @@ end
 --   返回 { nv = 夜视, ret = 分划, modes = { 能切的光电通道编号… }（1 昼光、2 微光、3 白热、4 黑热、5 主动红外）, east = 东方 }
 function O.kit(treeKey, vid, fcsGen, year, nat)
   local nv = (treeKey and O.TREE_NV[treeKey]) or (vid and O.VEH_NV[vid]) or O.nvByYear(year, nat)
+  -- 老坦克不给夜视（用户 11-28「老坦克别给夜视和光电系统了」，同战雷：早期的车只有昼光瞄准镜）：真车的主动红外（红外探照灯 + 变像管）不再给，
+  --   当没有夜视——开镜只有昼光，第三人称按 N 也没有夜视 / 热成像（Night.lua 看 G.driveNv）
+  if nv == "ir" then nv = "none" end
   local east = EAST[nat or ""] == true
   if nat == nil and treeKey then east = (string.sub(treeKey, 1, 3) == "cn_") or (string.sub(treeKey, 1, 3) == "ru_") end
   local g = fcsGen

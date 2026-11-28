@@ -6,6 +6,10 @@
 --   打：每 0.3 秒找射程内、看得见（地形、烟幕不挡）的敌人——车、工事用主炮，步兵、机器人用并列机枪（没有机枪就主炮）；
 --     炮塔按真实回转速度转过去、按距离抬高炮口（炮弹有落差），对准了才打；新目标先瞄 1～2 秒；有目标时放慢开
 --   撤：血掉到三成五以下、或者主炮打光了，往出发的地方撤，撤到了就收走（不算被毁）；卡住了往旁边倒一下
+--   11-28 晚（用户「然后目前人机坦克太假」）照真人车组开、打：车速有惯性（按型号加速、刹车，倒车最快 rev），不再一下子满速、一下子停住；
+--     主炮打车、工事是「短停射击」——炮快装好了就刹停，停稳、瞄准了才开炮，开完接着走（行进间只有有稳定器的近距离才打，还更散）；
+--     在据点守着的：车头对着敌人（正面装甲），打一炮倒回去二三十格躲着装弹、装好了再开出来打（打了就躲）；
+--     新目标先瞄一两秒到三秒，第一发更散、第二发好一点、第三发起才准（修正），开着的时候更散
 --   车是 Armor 的实体（客户端照样画、炮塔按 Ty / Gp 转、车轮按 Sp 转），Driver 属性 −1：没有「E 上车」、不算「可驾驶」，也不占玩家的名额
 local RS = game:GetService("ReplicatedStorage")
 
@@ -114,6 +118,7 @@ function AIVeh.init(G)
     local d = VD.get(id)
     return d and not d.needsAir and d.weapons and #d.weapons > 0 and (d.cat == "tank" or d.cat == "apc")
   end
+  G.aiVehUsable = usable   -- 测试用（wtreal.lua：电脑车按科技树挑得到拆出来的型号——G.treePickAi 就是拿它筛的）
   local pickTree = nil   -- 这次挑中的科技树那一项（setup 记到车上）
   local function pickModel(team)
     local a = levelAi(team)
@@ -205,7 +210,7 @@ function AIVeh.init(G)
     crew.e = e
     e.counts = 1   -- 占点算数（Ents.countAt；跟机器人一样按 botW 折算）
     e.ai = { state = state, goal = goal.id, land = goal.land, home = home, hold = nil, tgt = nil, seekT = 0, aimT = 0, stuckT = 0, lastP = e.root.CFrame.Position,
-      sideT = 0, holdT = 0, crew = crew }
+      sideT = 0, holdT = 0, crew = crew, v = 0, shotN = 0, lastShot = -9, scootT = 0, scootTo = nil, goAfter = 0 }
     e.model:SetAttribute("Crew", crew.name)   -- 名牌写开车的人（客户端按这个显示，没有就照旧写车名）
     local _ = nm
     e.emptyAt, e.resP = nil, nil
@@ -313,23 +318,44 @@ function AIVeh.init(G)
   ---------------------------------------------------------------- 开
 
   -- 车底朝 face 往前挪一步（转向有上限、急转弯慢下来）；返回挪了多远
-  local function drive(e, goalPos, dt, speedK)
+  -- 开：车速有惯性（用户 11-28 晚「然后目前人机坦克太假」：原来一下子满速、一下子停住）——e.ai.v 往要的速度靠，加速按型号的 accel、
+  --   刹车快两倍半（快到了按 v² / 2a 提前刹），倒车最快 rev。goalPos = nil：刹停；back：倒着开（车头不转过去，屁股朝着 goalPos）
+  local function drive(e, goalPos, dt, speedK, back)
     local d = e.def
+    local A0 = e.ai
     local base = G.vehBaseOf(e)
     local p = base.Position
     local look = flat(base.LookVector)
     look = (look.Magnitude > 0.01) and look.Unit or V(0, 0, -1)
-    local to = flat(goalPos - p)
-    local dist = to.Magnitude
-    if dist < 4 then e.model:SetAttribute("Sp", 0) return 0 end
-    if e.wt and e.wt.mob == false then e.model:SetAttribute("Sp", 0) return 0 end   -- 战雷式伤害：开不动了（Wt.lua）
-    local want = to.Unit
-    local ang = math.atan2(look:Cross(want).Y, look:Dot(want))
-    local maxT = math.rad(d.turn or 36) * dt
-    local nl = CFrame.Angles(0, math.clamp(ang, -maxT, maxT), 0) * look
-    local sp = (d.speed or 30) * speedK * math.clamp(1 - math.abs(ang) / math.rad(100), 0.25, 1)
-    local step = math.min(sp * dt, dist)
-    local np = p + nl * step
+    local acc = d.accel or 6
+    local mob = not (e.wt and e.wt.mob == false)   -- 战雷式伤害：开不动了（Wt.lua）
+    local want, nl = 0, look
+    if mob and goalPos then
+      local to = flat(goalPos - p)
+      local dist = to.Magnitude
+      if dist >= 4 then
+        local hdg = back and -to.Unit or to.Unit
+        local ang = math.atan2(look:Cross(hdg).Y, look:Dot(hdg))
+        local maxT = math.rad(d.turn or 36) * dt
+        nl = CFrame.Angles(0, math.clamp(ang, -maxT, maxT), 0) * look
+        local vmax = back and (d.rev or (d.speed or 30) * 0.35) or (d.speed or 30)
+        want = vmax * speedK * math.clamp(1 - math.abs(ang) / math.rad(100), 0.25, 1)
+        local brakeD = ((A0.v or 0) ^ 2) / (2 * acc * 2.5) + 3
+        if dist < brakeD then want *= math.clamp(dist / brakeD, 0.15, 1) end
+        if back then want = -want end
+      end
+    end
+    local v = A0.v or 0
+    local braking = want == 0 or v * want < 0 or math.abs(want) < math.abs(v)
+    v = approach(v, want, (braking and acc * 2.5 or acc) * dt)
+    if not mob then v = 0 end
+    A0.v = v
+    if math.abs(v) < 0.05 then
+      A0.v = 0
+      e.model:SetAttribute("Sp", 0)
+      return 0
+    end
+    local np = p + nl * (v * dt)
     local nb
     if e.lcac then   -- 气垫艇上：车底在艇的甲板高度；冲上沙滩放下车
       local LC = G.LCAC
@@ -343,18 +369,48 @@ function AIVeh.init(G)
         if e.lcac and e.lcac.alive then G.moveEnt(e.lcac, G.lcacUnder(nb)) end
       end
     else
-      if Map.height(np.X, np.Z) < -2 and not d.amphib then e.model:SetAttribute("Sp", 0) return 0 end   -- 前面是海：不往下开
-      -- 钢城：前面是楼（Map.bldAt，车身半宽）就停住（卡住了 think 里会往旁边倒一下）；已经卡在楼边上的让它开出来
+      if Map.height(np.X, np.Z) < -2 and not d.amphib then A0.v = 0 e.model:SetAttribute("Sp", 0) return 0 end   -- 前面是海：不往下开
+      -- 前面是楼（Map.bldAt，车身半宽）就停住（卡住了 think 里会往旁边倒一下）；已经卡在楼边上的让它开出来
       if Map.bldAt then
         local hw = (d.W or 10) * 0.5
-        if Map.bldAt(np.X, np.Z, hw) and not Map.bldAt(p.X, p.Z, hw) then e.model:SetAttribute("Sp", 0) return 0 end
+        if Map.bldAt(np.X, np.Z, hw) and not Map.bldAt(p.X, p.Z, hw) then A0.v = 0 e.model:SetAttribute("Sp", 0) return 0 end
       end
       nb = G.vehBaseAt(d, np.X, np.Z, nl)
     end
     G.moveEnt(e, nb * CF(0, d.H / 2, 0))
-    if G.treeTouch then G.treeTouch(np, d, nl) end   -- 钢城：开过去撞倒树（Trees.lua）
-    e.model:SetAttribute("Sp", math.floor(sp * 3.6 / 2.8 + 0.5))
-    return step
+    if G.treeTouch then G.treeTouch(np, d, nl) end   -- 开过去撞倒树（Trees.lua）
+    e.model:SetAttribute("Sp", math.floor(v * 3.6 / 2.8 + 0.5))
+    return math.abs(v * dt)
+  end
+  -- 停着把车头转向 pos（正面装甲对着敌人）：差 25° 以上才转，原地转（按型号的转向速度的七成）
+  local function faceTo(e, pos, dt)
+    local d = e.def
+    if e.wt and e.wt.mob == false then return end
+    local base = G.vehBaseOf(e)
+    local look = flat(base.LookVector)
+    look = (look.Magnitude > 0.01) and look.Unit or V(0, 0, -1)
+    local to = flat(pos - base.Position)
+    if to.Magnitude < 1 then return end
+    local ang = math.atan2(look:Cross(to.Unit).Y, look:Dot(to.Unit))
+    if math.abs(ang) < math.rad(25) then return end
+    local maxT = math.rad((d.turn or 36) * 0.7) * dt
+    local nl = CFrame.Angles(0, math.clamp(ang, -maxT, maxT), 0) * look
+    local p = base.Position
+    G.moveEnt(e, G.vehBaseAt(d, p.X, p.Z, nl) * CF(0, d.H / 2, 0))
+  end
+
+  -- 没有炮塔的车（VehDefs turret.arc：SU-100 这类）：目标在炮的射界外面——停下来原地转车头（over 度，往右为正），转到射界里再打
+  local function pivot(e, over, dt)
+    local d = e.def
+    if e.wt and e.wt.mob == false then return end
+    local base = G.vehBaseOf(e)
+    local look = flat(base.LookVector)
+    look = (look.Magnitude > 0.01) and look.Unit or V(0, 0, -1)
+    local maxT = math.rad(d.turn or 30) * dt
+    local nl = CFrame.Angles(0, -math.clamp(math.rad(over), -maxT, maxT), 0) * look   -- 同 drive：绕 Y 转负角是往右
+    local p = base.Position
+    G.moveEnt(e, G.vehBaseAt(d, p.X, p.Z, nl) * CF(0, d.H / 2, 0))
+    e.model:SetAttribute("Sp", 0)
   end
 
   -- 朝 key（据点）的下一个路点：流场（Nav）有就跟着走，没有（不在一块陆地上、还没算好）直接朝目标
@@ -445,18 +501,24 @@ function AIVeh.init(G)
     local S = { team = e.team, name = e.ai.crew.name, bot = e.ai.crew }
     local optK = G.wtOptK and G.wtOptK(e) or 1   -- 观瞄受损 / 打坏（Wt.lua，11-26）：打得不准
     if w.kind == "shell" then
-      local dir = spread(mz.LookVector, 0.25 * optK)
+      -- 准头（11-28 晚）：第一发更散（2.2 倍）、第二发 1.4 倍、第三发起照常（修正）；开着打更散（满速 3.5 倍：只有有稳定器的近距离才会行进间开炮）
+      local A0 = e.ai
+      local mv = math.clamp(math.abs(A0.v or 0) / math.max(d.speed or 30, 1), 0, 1)
+      local nk = ((A0.shotN or 0) == 0 and 2.2) or ((A0.shotN or 0) == 1 and 1.4) or 1
+      local dir = spread(mz.LookVector, 0.25 * optK * nk * (1 + 2.5 * mv))
+      A0.shotN = (A0.shotN or 0) + 1
+      A0.lastShot = t
       local ww, a = w, nil
       if G.tankWeaponOf then ww, a = G.tankWeaponOf(wid, w, e.ai.ammo) end
       if a then   -- 坦克炮：真实初速、重力、空气阻力（Ballistics.lua），带曳光
         local v0, drag, gs = BAL.launchArgs(a)
         G.launch({ kind = "shell", pos = mz.Position, vel = dir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, cls = a.cls, w = ww, src = S, ignore = { e.model },
-          life = 60 })   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
+          life = 60, sab = BAL.sabotOf and BAL.sabotOf(a) or nil })   -- sab：脱壳弹（客户端画弹托飞开、细的弹芯）   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },
           life = math.max(w.range / w.speed + 0.5, 4000 * BAL.S / w.speed) })   -- 没有弹道表的炮（机关炮、73 毫米）：也飞 4 公里（原来射程 ÷ 初速，一公里多就没了）
       end
-      G.fx({ k = "vfire", p = mz.Position, d = dir, f = w.fx, id = e.id })
+      G.fx({ k = "vfire", p = mz.Position, d = dir, f = w.fx, id = e.id, r = (w.rate < 0.5) and w.rate or nil, c = w.cal })   -- r、c：机关炮的射速、口径（客户端声音按它）
     else
       G.botShot(mz.Position, mz.Position + spread(mz.LookVector, (w.spread or 0.5) * 1.6 * optK) * (w.range or 600), w, S, { e.model }, 0)
     end
@@ -504,12 +566,25 @@ function AIVeh.init(G)
     end
     local el = d.turret.elev or { -6, 18 }
     local wantPitch = math.clamp(math.deg(math.atan2(l.Y + drop, math.max(horiz, 1)) + se), el[1], el[2])
-    e.ty = (approach(0, angDiff(wantYaw, e.ty), (d.turret.trav or 40) * dt) + e.ty) % 360
-    e.gp = approach(e.gp, wantPitch, 22 * dt)
+    -- 方向机打坏（Wt.lua trav = 0，用户 11-28「方向机也要能被打坏」）：炮塔不转了，同没有炮塔的车一样原地转车头去瞄；高低机打坏：炮管俯仰定住
+    local travK = (e.wt and e.wt.trav) or 1
+    e.ty = VD.arcYaw(d, (approach(0, angDiff(wantYaw, e.ty), (d.turret.trav or 40) * travK * dt) + e.ty) % 360)
+    if d.turret.arc then
+      e.ai.arcOver = VD.arcOver(d, wantYaw)   -- 没有炮塔的车：目标在射界外面，think 里先原地转车头（pivot）
+    elseif travK <= 0 then
+      local o = angDiff(wantYaw, e.ty)
+      e.ai.arcOver = (math.abs(o) > 0.8) and o or 0
+    else
+      e.ai.arcOver = nil
+    end
+    if not (e.wt and e.wt.elev == false) then e.gp = approach(e.gp, wantPitch, 22 * dt) end
     e.model:SetAttribute("Ty", math.floor(e.ty * 2 + 0.5) / 2)
     e.model:SetAttribute("Gp", math.floor(e.gp * 2 + 0.5) / 2)
     local tol = (w.kind == "shell") and 1.2 or 4
-    if now() >= e.ai.aimT and math.abs(angDiff(wantYaw, e.ty)) < tol and math.abs(wantPitch - e.gp) < tol then fire(e, wid) end
+    -- 主炮：停稳了才打（短停射击）；有稳定器的、四百格（一百四十米）以内的可以行进间打
+    local still = math.abs(e.ai.v or 0) < math.max(1.5, (d.speed or 30) * 0.08)
+    local moveOk = w.kind ~= "shell" or still or (not d.noStab and horiz < 400)
+    if moveOk and now() >= e.ai.aimT and math.abs(angDiff(wantYaw, e.ty)) < tol and math.abs(wantPitch - e.gp) < tol then fire(e, wid) end
     return wid
   end
 
@@ -518,6 +593,22 @@ function AIVeh.init(G)
   local function think(e, dt)
     local A0 = e.ai
     local t = now()
+    -- 准备阶段：原地待命（同真人：WtBattle 倒计时），不找目标、不开火——派在出车位上的先往前开四五十格让出车位
+    --   （真人匹配到了也是在出车位上出来：原来电脑车停在车位上，真人的车生不出来），开到了就刹停等着
+    if G.round and G.round.phase == "prep" then
+      A0.tgt = nil
+      if not A0.stage then
+        local base = G.vehBaseOf(e)
+        local fwd = flat(base.LookVector)
+        fwd = (fwd.Magnitude > 0.01) and fwd.Unit or V(0, 0, -1)
+        local p = base.Position + fwd * (45 + math.random() * 15) + V(-fwd.Z, 0, fwd.X) * ((math.random() - 0.5) * 30)
+        local x, z = landSpot(p.X, p.Z, 30)
+        A0.stage = x and V(x, 0, z) or base.Position
+      end
+      local far = (flat(A0.stage - e.root.CFrame.Position)).Magnitude > 6
+      drive(e, far and A0.stage or nil, dt, 0.35)
+      return
+    end
     local main = weaponsOf(e.def)
     -- 撤：血少了、主炮打光了
     if A0.state ~= "retreat" and A0.state ~= "boat" then
@@ -528,7 +619,10 @@ function AIVeh.init(G)
     if t >= A0.seekT then
       A0.seekT = t + 0.3
       local nt = (A0.state ~= "boat") and findTarget(e) or nil
-      if nt and (not A0.tgt or A0.tgt.ref ~= nt.ref) then A0.aimT = t + 1 + math.random() end   -- 新目标：先瞄一会儿
+      if nt and (not A0.tgt or A0.tgt.ref ~= nt.ref) then   -- 新目标：车长发现、报给炮长、炮塔转过去，先瞄一会儿（1.5～3 秒），从第一发重新修正
+        A0.aimT = t + 1.5 + math.random() * 1.5
+        A0.shotN = 0
+      end
       A0.tgt = nt
     end
     if A0.tgt then
@@ -538,7 +632,14 @@ function AIVeh.init(G)
     -- 开
     local moved = 0
     local slow = A0.tgt and 0.45 or 0.85
-    if A0.state == "boat" then
+    -- 交战（主炮对车、工事）：炮快装好了（1.5 秒以内）就刹停等着开炮（短停射击），开完看一眼（0.8 秒）再走
+    local stMain = main and e.wst[main]
+    local engage = A0.tgt ~= nil and A0.tgt.kind ~= "inf" and stMain ~= nil and A0.state ~= "boat" and A0.state ~= "retreat"
+    local halt = engage and (stMain.next - t < 1.5 or t < (A0.lastShot or -9) + 0.8) and stMain.mag + stMain.reserve > 0
+    if A0.tgt and A0.arcOver and A0.arcOver ~= 0 and A0.state ~= "boat" and A0.state ~= "retreat" then
+      pivot(e, A0.arcOver, dt)   -- 没有炮塔的车：先把车头转向目标
+      A0.stuckAt = t
+    elseif A0.state == "boat" then
       moved = drive(e, A0.beach, dt, 1)
       if not e.lcac then   -- 上岸了：撤的时候撤回这里（登陆平台在海上，车开不回去）
         A0.state, A0.home = "go", e.root.CFrame.Position
@@ -552,6 +653,7 @@ function AIVeh.init(G)
       local gp = nil
       for _, p in ipairs(Map.POINTS) do if p.id == A0.goal then gp = p end end
       local cur = gp and eligible(e.team, gp, A0.land) or 0
+      if A0.pin then gp, cur = gp or {}, 1 end   -- 测试用（tools/mock/aitank.lua）：钉在 A0.hold 守着，不换目标
       if cur <= 0 or t >= A0.holdT + 30 then
         A0.holdT = t
         local g = pickGoal(e.team, A0.land)
@@ -562,13 +664,30 @@ function AIVeh.init(G)
       end
       if gp then
         A0.hold = A0.hold or holdSpot(gp, e.root.CFrame.Position)
-        if (flat(A0.hold - e.root.CFrame.Position)).Magnitude < 25 then
+        local here = e.root.CFrame.Position
+        if A0.state == "hold" and engage and t < (A0.scootT or 0) and A0.scootTo then
+          -- 打了就躲：倒回去二三十格（车头还对着敌人）、装好弹再开出来
+          moved = drive(e, A0.scootTo, dt, 0.8, true)
+        elseif (flat(A0.hold - here)).Magnitude < 25 then
           A0.state = "hold"
-          e.model:SetAttribute("Sp", 0)
+          if engage then
+            local tp = targetPos(A0.tgt) or A0.tgt.pos
+            if math.abs(A0.v or 0) < 0.5 then faceTo(e, tp, dt) end   -- 正面装甲对着敌人
+            -- 刚开完一炮、装弹要好几秒：倒回去躲着（后面是楼、是陡坡就不倒）
+            if t - (A0.lastShot or -9) < 0.3 and stMain.next - t > 3 and t >= (A0.scootT or 0) + 1 then
+              local back = flat(here - tp)
+              if back.Magnitude > 1 then
+                local to = here + back.Unit * (22 + math.random() * 12)
+                local blocked = (Map.bldAt and Map.bldAt(to.X, to.Z, (e.def.W or 10) * 0.5)) or (Map.slope and Map.slope(to.X, to.Z) > 0.35)
+                if not blocked then A0.scootTo, A0.scootT = to, t + 2.2 + math.random() * 1.4 end
+              end
+            end
+          end
+          moved = drive(e, (not halt and (flat(A0.hold - here)).Magnitude > 6) and A0.hold or nil, dt, 0.5)   -- 躲完开回守的地方；在那儿就刹停
         else
           A0.state = "go"
           local wp = (t < A0.sideT and A0.side) or waypoint(e, A0.hold)
-          moved = drive(e, wp, dt, slow)
+          moved = drive(e, (not halt) and wp or nil, dt, slow)   -- 短停射击：刹停等开炮
         end
       end
     end
@@ -587,6 +706,8 @@ function AIVeh.init(G)
     local _ = moved
   end
 
+  G.aiVehThink = think   -- 测试用（tools/mock/newveh2.lua：没有炮塔的车，目标在射界外面原地转车头）
+
   ---------------------------------------------------------------- 每帧（10 次 / 秒）
 
   local acc, spawnT = 0, 0
@@ -596,7 +717,9 @@ function AIVeh.init(G)
     local step = acc
     acc = 0
     local R = G.round
-    if not R or R.phase ~= "battle" or G.aiVehOff then
+    -- 准备阶段也派（用户 11-28 晚「点加入战斗就进入地图里面等着吧 等倒计时结束就开战」：真人在基地等倒计时，电脑车原来开战那一刻才冒出来）——
+    --   准备阶段派出来的原地待命（think 里刹停、不找目标、不开火），倒计时完一起出发
+    if not R or (R.phase ~= "battle" and R.phase ~= "prep") or G.aiVehOff then
       for i = #list, 1, -1 do
         if list[i].alive then remove(list[i]) end
         table.remove(list, i)
@@ -614,15 +737,17 @@ function AIVeh.init(G)
       end
     end
     spawnT -= step
+    -- 准备阶段：前 4 秒先让匹配进来的真人在出车位上坐进车（WtMatch matchFound），再派电脑车
+    if R.phase == "prep" and now() - (R.t0 or 0) < 4 then spawnT = math.max(spawnT, 0.5) end
     if spawnT <= 0 then
-      spawnT = (R.battleAt and (now() - R.battleAt) < 40) and 1 or 3
+      spawnT = (R.phase == "prep" or (R.battleAt and (now() - R.battleAt) < 40)) and 1 or 3
       for _, team in ipairs({ "atk", "def" }) do
         local n = 0
         for _, e in ipairs(list) do if e.team == team then n += 1 end end
         if n < maxFor(team) and now() >= nextAt[team] then
           local ok, e = G.try("派 AI 车", spawn, team)
           -- 一辆一辆来；没派成（车位满、没地方）过一会儿再试。开战头 40 秒（匹配补的人机一起出发，同战雷）两秒一辆，车位空出来就派
-          local early = R.battleAt and (now() - R.battleAt) < 40
+          local early = R.phase == "prep" or (R.battleAt and (now() - R.battleAt) < 40)
           nextAt[team] = now() + ((ok and e) and (early and 1 or 8) or (early and 2 or 15))
         end
       end

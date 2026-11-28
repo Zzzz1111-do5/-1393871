@@ -97,7 +97,7 @@ function Coach.init(G)
     jet = { { "W/S", "coach.pitch" }, { "A/D", "coach.roll" }, { "Shift/Ctrl", "coach.throttle" }, { "LMB", "coach.gun" }, { "F", "coach.missile" } },
     jetLand = { { "G", "coach.gearDown" }, { "Ctrl", "coach.throttleDown" } },
     heliSpool = { { nil, "coach.spool" } },
-    heli = { { "Mouse", "coach.nose" }, { "E/Q", "coach.updown" }, { "W/S", "coach.cyclic" }, { "A/D", "coach.strafe" }, { "LMB", "coach.gun" } },
+    heli = { { "Mouse", "coach.nose" }, { "W/S", "coach.updown" }, { "A/D", "coach.strafe" }, { "Q/E", "coach.yawNose" }, { "LMB", "coach.gun" } },   -- 同战雷（11-28）
     uav = { { "Mouse", "coach.aimSteer" }, { "W/S", "coach.speed" }, { "A/D", "coach.roll" }, { "LMB", "coach.gun" }, { "F", "coach.missile" }, { "Space", "coach.stowPad" } },
     ship = { { "W/S", "coach.telegraph" }, { "A/D", "coach.rudder" }, { "LMB", "coach.fire" }, { "2", "coach.asm" }, { "Space", "coach.leaveShip" } },
     fort = { { "Mouse", "coach.aim" }, { "LMB", "coach.fire" }, { "RMB", "coach.sight" }, { "Space", "coach.leave" } },
@@ -158,7 +158,7 @@ function Coach.init(G)
     k.Name = "Cap"
     ui.round(k, 4)
     ui.stroke(k, WHITE, 1, dim and 0.85 or 0.7)
-    local kl = ui.label(k, key, UDim2.fromScale(1, 1), nil, 12, WHITE, Enum.Font.BuilderSansBold)
+    local kl = ui.label(k, key, UDim2.fromScale(1, 1), nil, 12, WHITE, Enum.Font.BuilderSansMedium)
     kl.Name = "Key"
     kl.TextWrapped = false
     kl.TextTransparency = dim and 0.35 or 0
@@ -181,7 +181,7 @@ function Coach.init(G)
       local w = 0
       if h[1] then w = keyCap(c, h[1], 0, 1, dim) + 6 end
       local tw = textW(h[2], 13)
-      local tl = ui.label(c, h[2], UDim2.fromOffset(tw + 4, 22), UDim2.fromOffset(w, 0), 13, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+      local tl = ui.label(c, h[2], UDim2.fromOffset(tw + 4, 22), UDim2.fromOffset(w, 0), 13, TEXT, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
       tl.Name = "Text"
       tl.TextWrapped = false
       tl.TextStrokeTransparency = 0.6
@@ -200,10 +200,10 @@ function Coach.init(G)
   panel.ZIndex = 35
   panel.Visible = false
   ui.stroke(panel, WHITE, 1, 0.85)
-  local pTitle = ui.label(panel, "", UDim2.new(1, -150, 0, 24), UDim2.fromOffset(24, 16), 18, WHITE, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local pTitle = ui.label(panel, "", UDim2.new(1, -150, 0, 24), UDim2.fromOffset(24, 16), 18, WHITE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   pTitle.Name = "Title"
   pTitle.TextWrapped = false
-  local pClose = ui.label(panel, "", UDim2.fromOffset(120, 18), UDim2.new(1, -24, 0, 20), 12, MUTE, Enum.Font.BuilderSansMedium, V2(1, 0), Enum.TextXAlignment.Right)
+  local pClose = ui.label(panel, "", UDim2.fromOffset(120, 18), UDim2.new(1, -24, 0, 20), 12, MUTE, Enum.Font.BuilderSans, V2(1, 0), Enum.TextXAlignment.Right)
   pClose.TextWrapped = false
   local pBody = Instance.new("Frame")
   pBody.Name = "Body"
@@ -236,7 +236,7 @@ function Coach.init(G)
         local x, yy = col * 300, y0 + row * 28
         local kx = 0
         if key ~= "" then kx = keyCap(parent, key, x, yy + 2, false) + 8 end
-        local l = ui.label(parent, act, UDim2.fromOffset(290 - kx, 24), UDim2.fromOffset(x + kx, yy), 13, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+        local l = ui.label(parent, act, UDim2.fromOffset(290 - kx, 24), UDim2.fromOffset(x + kx, yy), 13, TEXT, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
         l.Name = "Entry"
         l.TextWrapped = false
         l.TextTruncate = Enum.TextTruncate.AtEnd
@@ -258,7 +258,7 @@ function Coach.init(G)
     local y = entries(pBody, T(hk), 0)
     local div = ui.frame(pBody, UDim2.new(1, 0, 0, 1), UDim2.fromOffset(0, y + 6), WHITE, 0.88)
     div.Name = "Div"
-    local ct = ui.label(pBody, T("coach.commonTitle"), UDim2.fromOffset(200, 16), UDim2.fromOffset(0, y + 14), 11, MUTE, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+    local ct = ui.label(pBody, T("coach.commonTitle"), UDim2.fromOffset(200, 16), UDim2.fromOffset(0, y + 14), 11, MUTE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
     ct.TextWrapped = false
     y = entries(pBody, T("coach.common"), y + 36)
     panel.Size = UDim2.fromOffset(640, y + 76)
@@ -280,18 +280,18 @@ function Coach.init(G)
   card.Visible = false
   ui.stroke(card, WHITE, 1, 0.85)
   local accent = ui.frame(card, UDim2.new(0, 3, 1, 0), nil, WHITE, 0)
-  local cTitle = ui.label(card, "", UDim2.new(1, -40, 0, 22), UDim2.fromOffset(22, 14), 17, WHITE, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local cTitle = ui.label(card, "", UDim2.new(1, -40, 0, 22), UDim2.fromOffset(22, 14), 17, WHITE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   cTitle.Name = "Title"
   cTitle.TextWrapped = false
-  local cSub = ui.label(card, "", UDim2.new(1, -40, 0, 14), UDim2.fromOffset(22, 38), 11, MUTE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local cSub = ui.label(card, "", UDim2.new(1, -40, 0, 14), UDim2.fromOffset(22, 38), 11, MUTE, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
   cSub.TextWrapped = false
   local cRows = {}
   for i = 1, 3 do
     local y = 62 + (i - 1) * 44
     local badge = ui.frame(card, UDim2.fromOffset(20, 20), UDim2.fromOffset(22, y + 1), WHITE, 0.82)
     ui.round(badge, 10)
-    ui.label(badge, tostring(i), UDim2.fromScale(1, 1), nil, 11, WHITE, Enum.Font.BuilderSansBold)
-    local l = ui.label(card, "", UDim2.new(1, -76, 0, 40), UDim2.fromOffset(52, y), 13, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+    ui.label(badge, tostring(i), UDim2.fromScale(1, 1), nil, 11, WHITE, Enum.Font.BuilderSansMedium)
+    local l = ui.label(card, "", UDim2.new(1, -76, 0, 40), UDim2.fromOffset(52, y), 13, TEXT, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
     l.Name = "Step" .. i
     l.TextYAlignment = Enum.TextYAlignment.Top
     cRows[i] = l
@@ -306,11 +306,11 @@ function Coach.init(G)
   gotIt.Parent = card
   local gotKey = ui.frame(gotIt, UDim2.fromOffset(46, 20), UDim2.new(0, 0, 0.5, 0), RGB(40, 44, 48), 0.2, V2(0, 0.5))
   ui.round(gotKey, 4)
-  local gotKeyL = ui.label(gotKey, "", UDim2.fromScale(1, 1), nil, 10, TEXT, Enum.Font.BuilderSansBold)
+  local gotKeyL = ui.label(gotKey, "", UDim2.fromScale(1, 1), nil, 10, TEXT, Enum.Font.BuilderSansMedium)
   gotKeyL.TextWrapped = false
-  local gotL = ui.label(gotIt, "", UDim2.fromOffset(96, 20), UDim2.new(0, 54, 0.5, 0), 12, TEXT, Enum.Font.BuilderSansMedium, V2(0, 0.5), Enum.TextXAlignment.Left)
+  local gotL = ui.label(gotIt, "", UDim2.fromOffset(96, 20), UDim2.new(0, 54, 0.5, 0), 12, TEXT, Enum.Font.BuilderSans, V2(0, 0.5), Enum.TextXAlignment.Left)
   gotL.TextWrapped = false
-  local cMore = ui.label(card, "", UDim2.fromOffset(180, 20), UDim2.new(1, -20, 1, -15), 11, MUTE, Enum.Font.BuilderSansMedium, V2(1, 1), Enum.TextXAlignment.Right)
+  local cMore = ui.label(card, "", UDim2.fromOffset(180, 20), UDim2.new(1, -20, 1, -15), 11, MUTE, Enum.Font.BuilderSans, V2(1, 1), Enum.TextXAlignment.Right)
   cMore.TextWrapped = false
   local cardMode, cardT0 = nil, 0
   local function closeCard(byUser)
@@ -357,10 +357,10 @@ function Coach.init(G)
   arrow.Size = UDim2.fromOffset(64, 64)
   arrow.Visible = false
   arrow.Parent = hud
-  local aGlyph = ui.label(arrow, "▲", UDim2.fromOffset(28, 28), UDim2.fromScale(0.5, 0.5), 22, WHITE, Enum.Font.BuilderSansBold, V2(0.5, 0.5))
+  local aGlyph = ui.label(arrow, "▲", UDim2.fromOffset(28, 28), UDim2.fromScale(0.5, 0.5), 22, WHITE, Enum.Font.BuilderSansMedium, V2(0.5, 0.5))
   aGlyph.Name = "Glyph"
   aGlyph.TextStrokeTransparency = 0.4
-  local aText = ui.label(arrow, "", UDim2.fromOffset(100, 16), UDim2.new(0.5, 0, 0.5, 20), 12, WHITE, Enum.Font.BuilderSansBold, V2(0.5, 0))
+  local aText = ui.label(arrow, "", UDim2.fromOffset(100, 16), UDim2.new(0.5, 0, 0.5, 20), 12, WHITE, Enum.Font.BuilderSansMedium, V2(0.5, 0))
   aText.Name = "Label"
   aText.TextWrapped = false
   aText.TextStrokeTransparency = 0.4
@@ -437,7 +437,7 @@ function Coach.init(G)
     if m then return m end
     local bb = billboard("MateMark", 16, 14)
     bb.StudsOffsetWorldSpace = V3(0, 4.4, 0)
-    local l = ui.label(bb, "▼", UDim2.fromScale(1, 1), nil, 13, WHITE, Enum.Font.BuilderSansBold)
+    local l = ui.label(bb, "▼", UDim2.fromScale(1, 1), nil, 13, WHITE, Enum.Font.BuilderSansMedium)
     l.TextWrapped = false
     l.TextStrokeTransparency = 0.5
     m = { bb = bb, l = l }
@@ -448,10 +448,10 @@ function Coach.init(G)
     local m = freeMarks[i]
     if m then return m end
     local bb = billboard("FreeVeh", 150, 34)
-    local d = ui.label(bb, "◆", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 0), 12, WHITE, Enum.Font.BuilderSansBold, V2(0.5, 0))
+    local d = ui.label(bb, "◆", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 0), 12, WHITE, Enum.Font.BuilderSansMedium, V2(0.5, 0))
     d.TextWrapped = false
     d.TextStrokeTransparency = 0.5
-    local l = ui.label(bb, "", UDim2.new(1, 0, 0, 16), UDim2.new(0.5, 0, 0, 15), 11, TEXT, Enum.Font.BuilderSansBold, V2(0.5, 0))
+    local l = ui.label(bb, "", UDim2.new(1, 0, 0, 16), UDim2.new(0.5, 0, 0, 15), 11, TEXT, Enum.Font.BuilderSansMedium, V2(0.5, 0))
     l.TextWrapped = false
     l.TextStrokeTransparency = 0.45
     m = { bb = bb, d = d, l = l }

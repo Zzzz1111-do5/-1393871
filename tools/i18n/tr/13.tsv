@@ -1,0 +1,138 @@
+This battle: score {1}  ·  XP +{2}  ·  {3} SP earned  ·  ground kills {4}  ·  air kills {5}⟫この戦闘：スコア {1}  ·  経験値 +{2}  ·  SP {3} 獲得  ·  地上撃破 {4}  ·  航空撃墜 {5}⟫이번 전투: 점수 {1}  ·  경험치 +{2}  ·  SP {3} 획득  ·  지상 격파 {4}  ·  공중 격추 {5}⟫Этот бой: очки {1}  ·  опыт +{2}  ·  получено ОВ {3}  ·  наземных {4}  ·  воздушных {5}⟫Dieses Gefecht: Punkte {1}  ·  EP +{2}  ·  {3} SP verdient  ·  Bodenabschüsse {4}  ·  Luftabschüsse {5}⟫Cette bataille : score {1}  ·  XP +{2}  ·  {3} PA gagnés  ·  victimes au sol {4}  ·  victoires aériennes {5}⟫Esta batalla: puntos {1}  ·  XP +{2}  ·  {3} SP ganados  ·  bajas terrestres {4}  ·  derribos {5}⟫Esta batalha: pontos {1}  ·  XP +{2}  ·  {3} SP ganhos  ·  abates terrestres {4}  ·  abates aéreos {5}
+Only light vehicles (IFVs, APCs, SPAA) can scout⟫偵察できるのは軽車両（歩兵戦闘車・装甲車・自走対空砲）のみ⟫정찰은 경차량(보병전투차·장갑차·대공 자주포)만 가능⟫Разведывать могут только лёгкие машины (БМП, БТР, ЗСУ)⟫Nur leichte Fahrzeuge (SPz, Transportpanzer, Flakpanzer) können aufklären⟫Seuls les véhicules légers (VCI, VTT, AA automoteurs) peuvent repérer⟫Solo los vehículos ligeros (VCI, blindados, antiaéreos) pueden explorar⟫Só veículos leves (VCI, blindados, antiaéreos) podem reconhecer
+No visible enemy vehicle near your crosshair⟫照準の近くに見える敵車両がいない⟫조준점 근처에 보이는 적 차량 없음⟫Рядом с прицелом нет видимой вражеской техники⟫Kein sichtbares Feindfahrzeug nahe dem Fadenkreuz⟫Aucun véhicule ennemi visible près du réticule⟫No hay vehículos enemigos visibles cerca de la mira⟫Nenhum veículo inimigo visível perto da mira
+That vehicle was just scouted (again in {1}s)⟫その車両は偵察済み（{1} 秒後に再偵察可能）⟫그 차량은 방금 정찰됨({1}초 후 재정찰 가능)⟫Эта машина только что разведана (снова через {1} с)⟫Dieses Fahrzeug wurde gerade aufgeklärt (wieder in {1} s)⟫Ce véhicule vient d'être repéré (à nouveau dans {1} s)⟫Ese vehículo acaba de ser explorado (de nuevo en {1} s)⟫Esse veículo acabou de ser reconhecido (de novo em {1} s)
+{1} scouted a {2}⟫{1} が {2} を偵察⟫{1}이(가) {2} 정찰⟫{1} разведал {2}⟫{1} hat einen {2} aufgeklärt⟫{1} a repéré un {2}⟫{1} exploró un {2}⟫{1} reconheceu um {2}
+Scout assist: the {1} you scouted was destroyed (+1 artillery strike)⟫偵察アシスト：偵察した {1} が撃破された（砲撃支援 +1）⟫정찰 어시스트: 정찰한 {1} 격파(포격 지원 +1)⟫Помощь разведкой: разведанный {1} уничтожен (+1 артудар)⟫Aufklärungsassist: der aufgeklärte {1} wurde zerstört (+1 Artillerieschlag)⟫Assistance de repérage : le {1} repéré a été détruit (+1 frappe d'artillerie)⟫Asistencia de exploración: el {1} explorado fue destruido (+1 ataque de artillería)⟫Assistência de reconhecimento: o {1} reconhecido foi destruído (+1 ataque de artilharia)
+SPAA cannot call artillery⟫自走対空砲は砲撃支援を要請できない⟫대공 자주포는 포격 지원 요청 불가⟫ЗСУ не может вызывать артиллерию⟫Flakpanzer können keine Artillerie anfordern⟫Les AA automoteurs ne peuvent pas appeler l'artillerie⟫Los antiaéreos no pueden pedir artillería⟫Antiaéreos não podem pedir artilharia
+Too far (max {1} m)⟫遠すぎる（最大 {1} m）⟫너무 멂(최대 {1} m)⟫Слишком далеко (максимум {1} м)⟫Zu weit (max. {1} m)⟫Trop loin (max. {1} m)⟫Demasiado lejos (máx. {1} m)⟫Longe demais (máx. {1} m)
+{1} called in artillery⟫{1} が砲撃支援を要請⟫{1}이(가) 포격 지원 요청⟫{1} вызвал артиллерию⟫{1} hat Artillerie angefordert⟫{1} a appelé l'artillerie⟫{1} pidió artillería⟫{1} pediu artilharia
+Destroyed by {1}'s {2}⟫{1} の {2} に撃破された⟫{1}의 {2}에게 격파됨⟫Уничтожен: {1}, {2}⟫Zerstört von {1} ({2})⟫Détruit par {1} ({2})⟫Destruido por {1} ({2})⟫Destruído por {1} ({2})
+Destroyed by {1}⟫{1} に撃破された⟫{1}에게 격파됨⟫Уничтожен: {1}⟫Zerstört von {1}⟫Détruit par {1}⟫Destruido por {1}⟫Destruído por {1}
+AI⟫AI⟫AI⟫ИИ⟫KI⟫IA⟫IA⟫IA
+destroyed⟫撃破⟫격파⟫уничтожил⟫zerstört⟫a détruit⟫destruyó⟫destruiu
+shot down⟫撃墜⟫격추⟫сбил⟫abgeschossen⟫a abattu⟫derribó⟫abateu
+ammo-racked⟫弾薬庫撃破⟫탄약고 격파⟫подорвал БК⟫Munition gesprengt⟫a fait sauter les munitions⟫voló la munición⟫explodiu a munição
+burned⟫炎上撃破⟫전소⟫сжёг⟫ausgebrannt⟫a incendié⟫incendió⟫incendiou
++{1} pts⟫+{1} pt⟫+{1}점⟫+{1} очк.⟫+{1} Pkt.⟫+{1} pts⟫+{1} pts⟫+{1} pts
+To battle: pick a vehicle to spawn in it⟫出撃：車両を選ぶとその中で出現⟫출격: 차량을 고르면 그 안에서 생성⟫В бой: выберите машину, чтобы появиться в ней⟫Ins Gefecht: Wähle ein Fahrzeug, um darin zu spawnen⟫Au combat : choisissez un véhicule pour y apparaître⟫A la batalla: elige un vehículo para aparecer en él⟫Para a batalha: escolha um veículo para surgir nele
+No spawn pad for this vehicle at your base⟫基地にこの車両用の出現パッドがない⟫기지에 이 차량용 생성 패드가 없음⟫На вашей базе нет площадки для этой машины⟫Kein Spawnfeld für dieses Fahrzeug an deiner Basis⟫Aucune plateforme pour ce véhicule à votre base⟫No hay plataforma para este vehículo en tu base⟫Sem plataforma para este veículo na sua base
+All spawn pads are busy, wait a moment⟫出現パッドがすべて使用中。少し待って⟫생성 패드가 모두 사용 중. 잠시 기다리세요⟫Все площадки заняты, подождите⟫Alle Spawnfelder belegt, kurz warten⟫Toutes les plateformes sont occupées, patientez⟫Todas las plataformas están ocupadas, espera un momento⟫Todas as plataformas estão ocupadas, aguarde
+First Strike⟫ファーストストライク⟫첫 격파⟫Первый удар⟫Erstschlag⟫Premier coup⟫Primer golpe⟫Primeiro golpe
+Double Strike⟫ダブルストライク⟫더블 격파⟫Двойной удар⟫Doppelschlag⟫Double coup⟫Doble golpe⟫Golpe duplo
+Multi Strike⟫マルチストライク⟫멀티 격파⟫Множественный удар⟫Mehrfachschlag⟫Coup multiple⟫Golpe múltiple⟫Golpe múltiplo
+Tank Rampage⟫戦車の暴走⟫전차 광란⟫Танковый разгром⟫Panzerrausch⟫Carnage blindé⟫Furia acorazada⟫Fúria blindada
+Avenger⟫アベンジャー⟫복수자⟫Мститель⟫Rächer⟫Vengeur⟫Vengador⟫Vingador
+CRITICAL HIT⟫致命打⟫치명타⟫КРИТИЧЕСКОЕ ПОПАДАНИЕ⟫KRITISCHER TREFFER⟫COUP CRITIQUE⟫IMPACTO CRÍTICO⟫ACERTO CRÍTICO
+You were hit⟫被弾した⟫피격됨⟫В вас попали⟫Du wurdest getroffen⟫Vous êtes touché⟫Te han dado⟫Você foi atingido
+PILOT UNCONSCIOUS⟫パイロット気絶⟫조종사 기절⟫ПИЛОТ БЕЗ СОЗНАНИЯ⟫PILOT BEWUSSTLOS⟫PILOTE INCONSCIENT⟫PILOTO INCONSCIENTE⟫PILOTO INCONSCIENTE
+left wing⟫左翼⟫좌익⟫левое крыло⟫linke Tragfläche⟫aile gauche⟫ala izquierda⟫asa esquerda
+right wing⟫右翼⟫우익⟫правое крыло⟫rechte Tragfläche⟫aile droite⟫ala derecha⟫asa direita
+tail⟫尾翼⟫꼬리날개⟫хвост⟫Leitwerk⟫empennage⟫cola⟫cauda
+engine⟫エンジン⟫엔진⟫двигатель⟫Triebwerk⟫moteur⟫motor⟫motor
+fuel tank⟫燃料タンク⟫연료탱크⟫топливный бак⟫Tank⟫réservoir⟫depósito⟫tanque
+pilot⟫パイロット⟫조종사⟫пилот⟫Pilot⟫pilote⟫piloto⟫piloto
+control surfaces⟫操縦翼面⟫조종면⟫рули⟫Steuerflächen⟫gouvernes⟫superficies de mando⟫superfícies de controle
+main rotor⟫メインローター⟫메인 로터⟫несущий винт⟫Hauptrotor⟫rotor principal⟫rotor principal⟫rotor principal
+left wing off⟫左翼が脱落⟫좌익 이탈⟫левое крыло оторвано⟫linke Tragfläche ab⟫aile gauche arrachée⟫ala izquierda arrancada⟫asa esquerda arrancada
+overspeed: wing torn off⟫速度超過：翼がもげた⟫과속: 날개가 찢어짐⟫превышение скорости: крыло сорвано⟫Überdrehzahl: Tragfläche abgerissen⟫survitesse : aile arrachée⟫exceso de velocidad: ala arrancada⟫excesso de velocidade: asa arrancada
+over-G: wing broke⟫過大 G：翼が折れた⟫과도한 G: 날개 부러짐⟫перегрузка: крыло сломалось⟫Überlastung: Tragfläche gebrochen⟫facteur de charge excessif : aile brisée⟫exceso de g: ala rota⟫excesso de g: asa quebrou
+gear overspeed: broken⟫降着装置の速度超過：破損⟫착륙장치 과속: 파손⟫шасси на скорости: сломано⟫Fahrwerk überzogen: kaputt⟫train en survitesse : cassé⟫tren con exceso de velocidad: roto⟫trem em excesso de velocidade: quebrado
+OVERSPEED. throttle back⟫速度超過、スロットルを戻せ⟫과속, 스로틀을 줄여라⟫ПРЕВЫШЕНИЕ СКОРОСТИ. сбросьте газ⟫ÜBERDREHZAHL. Gas zurücknehmen⟫SURVITESSE. réduisez les gaz⟫EXCESO DE VELOCIDAD. reduce gases⟫EXCESSO DE VELOCIDADE. reduza a potência
+OVER-G. ease off⟫過大 G、操縦桿を緩めろ⟫과도한 G, 조종간을 풀어라⟫ПЕРЕГРУЗКА. ослабьте ручку⟫ÜBERLASTUNG. nachlassen⟫FACTEUR DE CHARGE. relâchez⟫EXCESO DE G. suelta⟫EXCESSO DE G. alivie
+right wing off⟫右翼が脱落⟫우익 이탈⟫правое крыло оторвано⟫rechte Tragfläche ab⟫aile droite arrachée⟫ala derecha arrancada⟫asa direita arrancada
+tail destroyed⟫尾翼破壊⟫꼬리날개 파괴⟫хвост уничтожен⟫Leitwerk zerstört⟫empennage détruit⟫cola destruida⟫cauda destruída
+engine destroyed⟫エンジン破壊⟫엔진 파괴⟫двигатель уничтожен⟫Triebwerk zerstört⟫moteur détruit⟫motor destruido⟫motor destruído
+fuel tank destroyed⟫燃料タンク破壊⟫연료탱크 파괴⟫топливный бак пробит⟫Tank zerstört⟫réservoir détruit⟫depósito destruido⟫tanque destruído
+pilot knocked out⟫パイロット気絶⟫조종사 기절⟫пилот без сознания⟫Pilot ausgeschaltet⟫pilote assommé⟫piloto noqueado⟫piloto nocauteado
+controls destroyed⟫操縦系統破壊⟫조종 계통 파괴⟫управление уничтожено⟫Steuerung zerstört⟫commandes détruites⟫mandos destruidos⟫comandos destruídos
+rotor destroyed⟫ローター破壊⟫로터 파괴⟫винт уничтожен⟫Rotor zerstört⟫rotor détruit⟫rotor destruido⟫rotor destruído
+fuel leak⟫燃料漏れ⟫연료 누출⟫утечка топлива⟫Kraftstoffleck⟫fuite de carburant⟫fuga de combustible⟫vazamento de combustível
+fire is out⟫鎮火した⟫불이 꺼짐⟫пожар потушен⟫Feuer aus⟫feu éteint⟫fuego apagado⟫fogo apagado
+Fuel leak⟫燃料漏れ⟫연료 누출⟫Утечка топлива⟫Kraftstoffleck⟫Fuite de carburant⟫Fuga de combustible⟫Vazamento de combustível
+Wing lost — going down⟫翼を失った — 墜落する⟫날개 상실 — 추락 중⟫Крыло потеряно — падаем⟫Tragfläche verloren — Absturz⟫Aile perdue — on tombe⟫Ala perdida: caemos⟫Asa perdida: caindo
+Rotor lost⟫ローター喪失⟫로터 상실⟫Винт потерян⟫Rotor verloren⟫Rotor perdu⟫Rotor perdido⟫Rotor perdido
+Engine dead: gliding⟫エンジン停止：滑空のみ⟫엔진 정지: 활공만 가능⟫Двигатель отказал: планирование⟫Triebwerk tot: Gleitflug⟫Moteur mort : vol plané⟫Motor muerto: planeando⟫Motor morto: planando
+Engine damaged: less thrust⟫エンジン損傷：推力低下⟫엔진 손상: 추력 저하⟫Двигатель повреждён: тяга меньше⟫Triebwerk beschädigt: weniger Schub⟫Moteur endommagé : moins de poussée⟫Motor dañado: menos empuje⟫Motor danificado: menos empuxo
+Tail lost: no pitch control⟫尾翼喪失：ピッチ制御不能⟫꼬리날개 상실: 피치 제어 불가⟫Хвост потерян: нет управления по тангажу⟫Leitwerk verloren: keine Nickkontrolle⟫Empennage perdu : plus de tangage⟫Cola perdida: sin control de cabeceo⟫Cauda perdida: sem controle de arfagem
+Tail rotor lost: spinning⟫テールローター喪失：機体が回転⟫꼬리 로터 상실: 기체 회전⟫Рулевой винт потерян: вращение⟫Heckrotor verloren: Drehung⟫Rotor anticouple perdu : rotation⟫Rotor de cola perdido: girando⟫Rotor de cauda perdido: girando
+Controls damaged: sluggish⟫操縦系統損傷：反応が鈍い⟫조종 계통 손상: 반응이 둔함⟫Управление повреждено: вяло⟫Steuerung beschädigt: träge⟫Commandes endommagées : molles⟫Mandos dañados: lentos⟫Comandos danificados: lentos
+Rotor⟫ローター回転⟫로터 회전⟫Винт⟫Rotor⟫Rotor⟫Rotor⟫Rotor
+WEP⟫WEP⟫WEP⟫ФОРСАЖ⟫WEP⟫WEP⟫WEP⟫WEP
+IAS⟫指示速度⟫지시 속도⟫ПР⟫IAS⟫VI⟫IAS⟫IAS
+TAS⟫真対気速度⟫진대기 속도⟫ИС⟫TAS⟫VV⟫TAS⟫TAS
+Mach⟫マッハ⟫마하⟫Мах⟫Mach⟫Mach⟫Mach⟫Mach
+Altitude⟫高度⟫고도⟫Высота⟫Höhe⟫Altitude⟫Altitud⟫Altitude
+Radar alt⟫電波高度⟫전파 고도⟫Радиовысота⟫Radarhöhe⟫Radioaltitude⟫Radioaltímetro⟫Radioaltímetro
+AAM⟫空対空⟫공대공⟫В-В⟫LL⟫AA⟫AA⟫AA
+AGM⟫空対地⟫공대지⟫В-П⟫LB⟫AS⟫AT⟫AT
+Bombs⟫爆弾⟫폭탄⟫Бомбы⟫Bomben⟫Bombes⟫Bombas⟫Bombas
+Rockets⟫ロケット弾⟫로켓⟫НАР⟫Raketen⟫Roquettes⟫Cohetes⟫Foguetes
+Tracking⟫追尾⟫추적⟫Сопровождение⟫Verfolgung⟫Poursuite⟫Seguimiento⟫Rastreio
+Chaff⟫チャフ⟫채프⟫Диполи⟫Düppel⟫Paillettes⟫Chaff⟫Chaff
+Cannon auto⟫機関砲 自動⟫기관포 자동⟫Пушка авто⟫Kanone auto⟫Canon auto⟫Cañón auto⟫Canhão auto
+Oil⟫油温⟫유온⟫Масло⟫Öl⟫Huile⟫Aceite⟫Óleo
+Selected weapon: {1} {2}⟫選択武装：{1} {2}⟫선택 무장: {1} {2}⟫Выбрано: {1} {2}⟫Gewählte Waffe: {1} {2}⟫Arme choisie : {1} {2}⟫Arma elegida: {1} {2}⟫Arma escolhida: {1} {2}
+Seeker: {1}⟫シーカー：{1}⟫탐색기: {1}⟫ГСН: {1}⟫Suchkopf: {1}⟫Autodirecteur : {1}⟫Buscador: {1}⟫Buscador: {1}
+on⟫オン⟫켬⟫вкл⟫an⟫actif⟫activo⟫ligado
+tracking⟫追尾中⟫추적 중⟫сопровождение⟫verfolgt⟫poursuite⟫siguiendo⟫rastreando
+locked⟫ロック済み⟫락온⟫захват⟫aufgeschaltet⟫verrouillé⟫fijado⟫travado
+RADAR OFF⟫レーダー オフ⟫레이더 끔⟫РЛС ВЫКЛ⟫RADAR AUS⟫RADAR ARRÊT⟫RADAR APAGADO⟫RADAR DESLIGADO
+RADAR ON⟫レーダー オン⟫레이더 켬⟫РЛС ВКЛ⟫RADAR AN⟫RADAR MARCHE⟫RADAR ENCENDIDO⟫RADAR LIGADO
+Radar range {1} km⟫レーダー距離 {1} km⟫레이더 거리 {1} km⟫Шкала РЛС {1} км⟫Radarreichweite {1} km⟫Échelle radar {1} km⟫Alcance del radar {1} km⟫Alcance do radar {1} km
+Missile seeker active⟫ミサイルのシーカー作動⟫미사일 탐색기 작동⟫ГСН ракеты включена⟫Raketensuchkopf aktiv⟫Autodirecteur du missile actif⟫Buscador del misil activo⟫Buscador do míssil ativo
+Datalink lost⟫データリンク喪失⟫데이터 링크 상실⟫Потеря канала связи⟫Datenverbindung verloren⟫Liaison de données perdue⟫Enlace de datos perdido⟫Link de dados perdido
+Alt + R on/off · Q range · E mode · Z scan⟫Alt + R オン/オフ · Q 距離 · E モード · Z 走査⟫Alt + R 켜기/끄기 · Q 거리 · E 모드 · Z 스캔⟫Alt + R вкл/выкл · Q шкала · E режим · Z обзор⟫Alt + R an/aus · Q Reichweite · E Modus · Z Suche⟫Alt + R marche/arrêt · Q échelle · E mode · Z balayage⟫Alt + R sí/no · Q alcance · E modo · Z barrido⟫Alt + R liga/desliga · Q alcance · E modo · Z varredura
+←→ slew · Alt + T target · F lock · ↑↓/wheel elev · C center⟫←→ 左右偏向 · Alt + T 目標 · F ロック · ↑↓ / ホイール 俯仰 · C 中央⟫←→ 좌우 편향 · Alt + T 목표 · F 락온 · ↑↓ / 휠 고각 · C 중앙⟫←→ поворот · Alt + T цель · F захват · ↑↓ / колесо угол · C центр⟫←→ schwenken · Alt + T Ziel · F aufschalten · ↑↓ / Rad Neigung · C Mitte⟫←→ orienter · Alt + T cible · F verrouiller · ↑↓ / molette site · C centrer⟫←→ girar · Alt + T objetivo · F fijar · ↑↓ / rueda elevación · C centro⟫←→ girar · Alt + T alvo · F travar · ↑↓ / roda elevação · C centro
+Scan ±{1}° · {2} bar (frame {3} s)⟫走査 ±{1}° · {2} バー（1 フレーム {3} 秒）⟫스캔 ±{1}° · {2}바(1프레임 {3}초)⟫Обзор ±{1}° · {2} строк (кадр {3} с)⟫Suche ±{1}° · {2} Zeilen (Bild {3} s)⟫Balayage ±{1}° · {2} barres (trame {3} s)⟫Barrido ±{1}° · {2} barras (cuadro {3} s)⟫Varredura ±{1}° · {2} barras (quadro {3} s)
+range-while-search⟫捜索中測距⟫탐색 중 측거⟫обзор с измерением дальности⟫Suche mit Entfernungsmessung⟫recherche avec télémétrie⟫búsqueda con telemetría⟫busca com telemetria
+track-while-scan (fire Fox-3 at the selected track without a lock)⟫走査中追尾（選択した航跡には Fox-3 をロックなしで発射可能）⟫스캔 중 추적(선택한 항적에 Fox-3를 락온 없이 발사 가능)⟫сопровождение на проходе (Fox-3 по выбранной трассе без захвата)⟫Verfolgen beim Suchen (Fox-3 ohne Aufschaltung auf die gewählte Spur)⟫poursuite pendant balayage (Fox-3 sur la piste choisie sans verrouillage)⟫seguimiento durante barrido (Fox-3 a la traza elegida sin fijar)⟫rastreio durante varredura (Fox-3 na trilha escolhida sem travar)
+air combat (auto-locks the first close contact)⟫空中戦（近くで最初に捉えた目標を自動ロック）⟫공중전(가까이에서 처음 잡힌 목표 자동 락온)⟫ближний бой (автозахват первой близкой цели)⟫Luftkampf (schaltet automatisch den ersten nahen Kontakt auf)⟫combat aérien (verrouille auto le premier contact proche)⟫combate aéreo (fija sola el primer contacto cercano)⟫combate aéreo (trava sozinho o primeiro contato próximo)
+Radar antenna centered⟫レーダーアンテナを中央へ⟫레이더 안테나 중앙⟫Антенна РЛС по центру⟫Radarantenne zentriert⟫Antenne radar centrée⟫Antena de radar centrada⟫Antena do radar centralizada
+hi {1} / lo {2} km⟫上 {1} / 下 {2} km⟫상 {1} / 하 {2} km⟫верх {1} / низ {2} км⟫oben {1} / unten {2} km⟫haut {1} / bas {2} km⟫alto {1} / bajo {2} km⟫alto {1} / baixo {2} km
+No radar contacts⟫レーダー目標なし⟫레이더 목표 없음⟫Нет радарных целей⟫Keine Radarkontakte⟫Aucun contact radar⟫Sin contactos de radar⟫Sem contatos de radar
+Radar is off (Alt+R)⟫レーダーがオフ（Alt+R）⟫레이더 꺼짐(Alt+R)⟫РЛС выключена (Alt+R)⟫Radar ist aus (Alt+R)⟫Le radar est éteint (Alt+R)⟫El radar está apagado (Alt+R)⟫O radar está desligado (Alt+R)
+The radar can't see that target⟫レーダーがその目標を捉えられない⟫레이더가 그 목표를 볼 수 없음⟫РЛС не видит эту цель⟫Das Radar sieht dieses Ziel nicht⟫Le radar ne voit pas cette cible⟫El radar no ve ese objetivo⟫O radar não vê esse alvo
+Too far to lock (within {1} km)⟫遠すぎてロック不可（{1} km 以内）⟫너무 멀어 락온 불가({1} km 이내)⟫Слишком далеко для захвата (в пределах {1} км)⟫Zu weit zum Aufschalten (innerhalb {1} km)⟫Trop loin pour verrouiller (à moins de {1} km)⟫Demasiado lejos para fijar (a menos de {1} km)⟫Longe demais para travar (até {1} km)
+Target too far off the nose — turn toward it⟫目標が機首から外れすぎ — そちらへ旋回⟫목표가 기수에서 너무 벗어남 — 그쪽으로 선회⟫Цель слишком в стороне — развернитесь к ней⟫Ziel zu weit seitlich — dreh darauf ein⟫Cible trop décalée — tournez vers elle⟫Objetivo demasiado desviado: gira hacia él⟫Alvo muito fora do eixo: vire para ele
+Radar lock released⟫レーダーロック解除⟫레이더 락온 해제⟫Захват РЛС сброшен⟫Radaraufschaltung gelöst⟫Verrouillage radar relâché⟫Fijación de radar liberada⟫Travamento de radar liberado
+mechanically scanned⟫機械走査⟫기계식 주사⟫механическое сканирование⟫mechanisch geschwenkt⟫à balayage mécanique⟫de barrido mecánico⟫de varredura mecânica
+passive phased array (PESA)⟫パッシブフェーズドアレイ（PESA）⟫수동 위상배열(PESA)⟫пассивная ФАР (PESA)⟫passives Phased-Array (PESA)⟫antenne à balayage électronique passive (PESA)⟫antena en fase pasiva (PESA)⟫antena de fase passiva (PESA)
+active phased array (AESA)⟫アクティブフェーズドアレイ（AESA）⟫능동 위상배열(AESA)⟫активная ФАР (AESA)⟫aktives Phased-Array (AESA)⟫antenne à balayage électronique active (AESA)⟫antena en fase activa (AESA)⟫antena de fase ativa (AESA)
+pulse-Doppler⟫パルスドップラー⟫펄스 도플러⟫импульсно-доплеровская⟫Puls-Doppler⟫Doppler à impulsions⟫Doppler de pulsos⟫Doppler de pulsos
+pulse⟫パルス⟫펄스⟫импульсная⟫Puls⟫à impulsions⟫de pulsos⟫de pulsos
+pulse-Doppler + pulse⟫パルスドップラー + パルス⟫펄스 도플러 + 펄스⟫импульсно-доплеровская + импульсная⟫Puls-Doppler + Puls⟫Doppler à impulsions + impulsions⟫Doppler de pulsos + pulsos⟫Doppler de pulsos + pulsos
+HUD field⟫HUD 視野⟫HUD 시야⟫поле ИЛС⟫HUD-Feld⟫champ du HUD⟫campo del HUD⟫campo do HUD
+vertical scan⟫垂直走査⟫수직 스캔⟫вертикальный обзор⟫vertikale Suche⟫balayage vertical⟫barrido vertical⟫varredura vertical
+low vertical scan⟫低垂直走査⟫저 수직 스캔⟫нижний вертикальный обзор⟫tiefe vertikale Suche⟫balayage vertical bas⟫barrido vertical bajo⟫varredura vertical baixa
+boresight⟫ボアサイト⟫조준선⟫по оси⟫Boresight⟫axe⟫eje⟫eixo
+slewable scan⟫可動走査⟫이동식 스캔⟫смещаемый обзор⟫schwenkbare Suche⟫balayage orientable⟫barrido orientable⟫varredura orientável
+helmet sight⟫ヘルメット照準⟫헬멧 조준⟫нашлемный прицел⟫Helmvisier⟫viseur de casque⟫mira de casco⟫mira de capacete
+auto acquisition⟫自動捕捉⟫자동 포착⟫автозахват⟫automatische Erfassung⟫acquisition automatique⟫adquisición automática⟫aquisição automática
+Radar⟫レーダー⟫레이더⟫РЛС⟫Radar⟫Radar⟫Radar⟫Radar
+No air-to-air radar⟫対空レーダーなし⟫대공 레이더 없음⟫Нет РЛС «воздух-воздух»⟫Kein Luft-Luft-Radar⟫Pas de radar air-air⟫Sin radar aire-aire⟫Sem radar ar-ar
+Detection {1} km (real, fighter head-on) · in game: search {2} / lock {3} km⟫探知距離 {1} km（実機、戦闘機の正面）· ゲーム内：捜索 {2} / ロック {3} km⟫탐지 거리 {1} km(실기, 전투기 정면) · 게임 내: 탐색 {2} / 락온 {3} km⟫Обнаружение {1} км (реально, истребитель в лоб) · в игре: поиск {2} / захват {3} км⟫Erfassung {1} km (real, Jäger frontal) · im Spiel: Suche {2} / Aufschaltung {3} km⟫Détection {1} km (réel, chasseur de face) · en jeu : recherche {2} / verrouillage {3} km⟫Detección {1} km (real, caza de frente) · en el juego: búsqueda {2} / fijación {3} km⟫Detecção {1} km (real, caça de frente) · no jogo: busca {2} / travamento {3} km
+ (est.)⟫（推定）⟫ (추정)⟫ (оценка)⟫ (geschätzt)⟫ (estim.)⟫ (est.)⟫ (est.)
+Azimuth ±{1}° · elevation +{2}° / −{3}°⟫方位 ±{1}° · 仰俯 +{2}° / −{3}°⟫방위 ±{1}° · 고각 +{2}° / −{3}°⟫Азимут ±{1}° · угол места +{2}° / −{3}°⟫Azimut ±{1}° · Elevation +{2}° / −{3}°⟫Azimut ±{1}° · site +{2}° / −{3}°⟫Acimut ±{1}° · elevación +{2}° / −{3}°⟫Azimute ±{1}° · elevação +{2}° / −{3}°
+±{1}° × {2} bar⟫±{1}° × {2} バー⟫±{1}° × {2}바⟫±{1}° × {2} строк⟫±{1}° × {2} Zeilen⟫±{1}° × {2} barres⟫±{1}° × {2} barras⟫±{1}° × {2} barras
+ (range ×{1})⟫（距離 ×{1}）⟫ (거리 ×{1})⟫ (дальность ×{1})⟫ (Reichweite ×{1})⟫ (portée ×{1})⟫ (alcance ×{1})⟫ (alcance ×{1})
+Scans {1} ({2}°/s, default frame {3} s)⟫走査 {1}（{2}°/秒、既定 1 フレーム {3} 秒）⟫스캔 {1}({2}°/초, 기본 1프레임 {3}초)⟫Обзор {1} ({2}°/с, кадр по умолчанию {3} с)⟫Suche {1} ({2}°/s, Standardbild {3} s)⟫Balayage {1} ({2}°/s, trame par défaut {3} s)⟫Barrido {1} ({2}°/s, cuadro por defecto {3} s)⟫Varredura {1} ({2}°/s, quadro padrão {3} s)
+Track-while-scan {1} targets · engage {2}⟫走査中追尾 {1} 目標 · 同時交戦 {2}⟫스캔 중 추적 {1}개 · 동시 교전 {2}⟫Сопровождение на проходе: {1} целей · одновременно {2}⟫Verfolgen beim Suchen: {1} Ziele · bekämpft {2}⟫Poursuite pendant balayage : {1} cibles · engage {2}⟫Seguimiento en barrido: {1} objetivos · ataca {2}⟫Rastreio na varredura: {1} alvos · engaja {2}
+Single-target track only (no TWS)⟫単一目標追尾のみ（TWS なし）⟫단일 목표 추적만(TWS 없음)⟫Только одиночное сопровождение (без TWS)⟫Nur Einzelzielverfolgung (kein TWS)⟫Poursuite d'une seule cible (pas de TWS)⟫Solo seguimiento de un objetivo (sin TWS)⟫Só rastreio de alvo único (sem TWS)
+IFF: friendlies are marked on the scope and can't be locked⟫IFF：味方機はスコープ上に表示され、ロック不可⟫IFF: 아군기는 화면에 표시되고 락온 불가⟫Есть опознавание: свои помечены и не захватываются⟫IFF: Verbündete sind markiert und nicht aufschaltbar⟫IFF : les alliés sont marqués et ne peuvent pas être verrouillés⟫IFF: los aliados se marcan y no se pueden fijar⟫IFF: aliados ficam marcados e não podem ser travados
+No IFF: friendlies look the same as enemies⟫IFF なし：味方機と敵機が同じに見える⟫IFF 없음: 아군기와 적기가 똑같이 보임⟫Нет опознавания: свои выглядят как враги⟫Kein IFF: Verbündete sehen aus wie Feinde⟫Pas d'IFF : les alliés ressemblent aux ennemis⟫Sin IFF: los aliados se ven igual que los enemigos⟫Sem IFF: aliados parecem inimigos
+RCS (frontal, clean) ~{1} m² · detected at ~{2}% of a 4th-gen fighter's range⟫RCS（正面、クリーン）約 {1} m² · 第 4 世代戦闘機の約 {2}% の距離で探知される⟫RCS(정면, 클린) 약 {1} m² · 4세대 전투기 거리의 약 {2}%에서 탐지됨⟫ЭПР (в лоб, без подвесок) ~{1} м² · обнаруживается на ~{2}% дальности для истребителя 4-го поколения⟫RCS (frontal, ohne Lasten) ~{1} m² · erfasst auf ~{2} % der Entfernung eines Jägers der 4. Generation⟫SER (de face, lisse) ~{1} m² · détecté à ~{2} % de la distance d'un chasseur de 4e génération⟫RCS (frontal, limpio) ~{1} m² · detectado a ~{2}% de la distancia de un caza de 4.ª generación⟫RCS (frontal, limpo) ~{1} m² · detectado a ~{2}% da distância de um caça de 4ª geração
+IFF: friendly, can't lock⟫IFF：味方、ロック不可⟫IFF: 아군, 락온 불가⟫Опознавание: свой, захват невозможен⟫IFF: verbündet, keine Aufschaltung⟫IFF : allié, verrouillage impossible⟫IFF: aliado, no se puede fijar⟫IFF: aliado, não pode travar
+ACM modes: {1}⟫空中戦モード：{1}⟫공중전 모드: {1}⟫Режимы ближнего боя: {1}⟫ACM-Modi: {1}⟫Modes ACM : {1}⟫Modos ACM: {1}⟫Modos ACM: {1}
+M1 Abrams⟫M1 エイブラムス⟫M1 에이브럼스⟫M1 «Абрамс»⟫⟫⟫⟫
+IPM1 Abrams⟫IPM1 エイブラムス⟫IPM1 에이브럼스⟫IPM1 «Абрамс»⟫⟫⟫⟫
+M1A1 HC Abrams⟫M1A1 HC エイブラムス⟫M1A1 HC 에이브럼스⟫M1A1 HC «Абрамс»⟫⟫⟫⟫
+M1A2 Abrams⟫M1A2 エイブラムス⟫M1A2 에이브럼스⟫M1A2 «Абрамс»⟫⟫⟫⟫
+105 mm M68A1⟫105 mm 砲 M68A1⟫105 mm M68A1 포⟫105-мм M68A1⟫⟫Canon de 105 mm M68A1⟫Cañón de 105 mm M68A1⟫Canhão de 105 mm M68A1
+120 mm M256⟫120 mm 砲 M256⟫120 mm M256 포⟫120-мм M256⟫⟫Canon de 120 mm M256⟫Cañón de 120 mm M256⟫Canhão de 120 mm M256
+120 mm M256 (ADL)⟫120 mm 砲 M256（弾薬データリンク）⟫120 mm M256 포(탄약 데이터 링크)⟫120-мм M256 (канал данных боеприпаса)⟫120 mm M256 (Munitionsdatenlink)⟫Canon de 120 mm M256 (liaison munitions)⟫Cañón de 120 mm M256 (enlace de munición)⟫Canhão de 120 mm M256 (link de munição)
+M60 MBT⟫M60 主力戦車⟫M60 주력 전차⟫ОБТ M60⟫Kampfpanzer M60⟫Char M60⟫Carro M60⟫Carro M60
+M60A1 RISE MBT⟫M60A1 RISE 主力戦車⟫M60A1 RISE 주력 전차⟫ОБТ M60A1 RISE⟫Kampfpanzer M60A1 RISE⟫Char M60A1 RISE⟫Carro M60A1 RISE⟫Carro M60A1 RISE
+Leopard 1A1A1 MBT⟫レオパルト 1A1A1 主力戦車⟫레오파르트 1A1A1 주력 전차⟫ОБТ «Леопард» 1A1A1⟫Kampfpanzer Leopard 1A1A1⟫Char Leopard 1A1A1⟫Carro Leopard 1A1A1⟫Carro Leopard 1A1A1
+Leopard 2A0 MBT⟫レオパルト 2A0 主力戦車⟫레오파르트 2A0 주력 전차⟫ОБТ «Леопард» 2A0⟫Kampfpanzer Leopard 2A0⟫Char Leopard 2A0⟫Carro Leopard 2A0⟫Carro Leopard 2A0
+Leopard 2A5 MBT⟫レオパルト 2A5 主力戦車⟫레오파르트 2A5 주력 전차⟫ОБТ «Леопард» 2A5⟫Kampfpanzer Leopard 2A5⟫Char Leopard 2A5⟫Carro Leopard 2A5⟫Carro Leopard 2A5

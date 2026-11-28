@@ -28,7 +28,7 @@ function Ride.init(G)
   hint.BackgroundTransparency = 0.35
   hint.BorderSizePixel = 0
   hint.TextColor3 = Color3.fromRGB(220, 236, 220)
-  hint.Font = Enum.Font.BuilderSansMedium
+  hint.Font = Enum.Font.BuilderSans
   hint.TextSize = 15
   hint.Parent = gui
   local corner = Instance.new("UICorner")
@@ -41,7 +41,7 @@ function Ride.init(G)
   btn.BackgroundColor3 = Color3.fromRGB(20, 26, 20)
   btn.BackgroundTransparency = 0.25
   btn.TextColor3 = Color3.fromRGB(230, 240, 230)
-  btn.Font = Enum.Font.BuilderSansBold
+  btn.Font = Enum.Font.BuilderSansMedium
   btn.TextSize = 18
   btn.Visible = false
   btn.Parent = gui

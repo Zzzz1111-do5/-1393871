@@ -17,7 +17,7 @@ function WtAmmo.init(G)
   local me = Players.LocalPlayer
   local RGB, UD2, V2 = Color3.fromRGB, UDim2.new, Vector2.new
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local BOLD, MED = Enum.Font.BuilderSansBold, Enum.Font.BuilderSansMedium
+  local BOLD, MED = Enum.Font.BuilderSansMedium, Enum.Font.BuilderSans
   local TH = G.Theme   -- 统一外观（docs/style.md）
   local WHITE, DIM, GOLD, BAD = TH.C.TEXT, TH.C.MUTE, TH.C.WARN, TH.C.BAD
   local SPLIT = { 5, 3, 2, 1, 1 }   -- 默认配弹（同服务器 Wt.lua）
@@ -130,7 +130,10 @@ function WtAmmo.init(G)
       local okType = i <= n
       local row = frame(panel, UD2(1, -24, 0, 34), UD2(0, 12, 0, y), RGB(22, 25, 29), 0.1)
       row.Name = "Ammo_" .. k
-      text(row, (a.sym and ("[" .. a.sym .. "] ") or "") .. (a.name or k), UD2(0.6, 0, 1, 0), UD2(0, 8, 0, 0), 13, okType and WHITE or DIM)
+      -- 型号 + 弹种（按现在的语言：用户 11-28「弹种这些还是根据语言改变吧」；原来写 [SABOT] / [穿甲] 这种火控上的字，中英混着）
+      local kd = BAL.kindOf and BAL.kindOf(k)
+      local nm = (G.ammoInfo and select(1, G.ammoInfo(k))) or (BAL.desig and BAL.desig(k)) or a.name or k
+      text(row, nm .. (kd and ("  ·  " .. T("ammo.t." .. kd)) or ""), UD2(0.6, 0, 1, 0), UD2(0, 8, 0, 0), 13, okType and WHITE or DIM)
       local pen = wa and wa.p0 and (math.floor(wa.p0) .. " mm") or ""
       text(row, okType and pen or T("wta2.locked"), UD2(0, 90, 1, 0), UD2(0.6, -40, 0, 0), 12, okType and GOLD or BAD, MED)
       local minus = button(row, "−", UDim2.fromOffset(30, 26), UD2(1, -112, 0, 4), okType)

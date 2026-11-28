@@ -285,7 +285,7 @@ function Armor.init(G)
           D.vehicle = nil
           if D.char then
             hideChar(D.char, false)
-            G.hurtChar(D.char, 1e5, src)
+            G.killCrew(D.char, src)
           end
           G.msg(D.pl, "bad", "ui.vehLost")
         end
@@ -293,7 +293,7 @@ function Armor.init(G)
           Q.vehicle = nil
           if Q.char then
             hideChar(Q.char, false)
-            G.hurtChar(Q.char, 1e5, src)
+            G.killCrew(Q.char, src)
           end
           G.msg(Q.pl, "bad", "ui.vehLost")
         end
@@ -431,6 +431,33 @@ function Armor.init(G)
     return (dir + V((math.random() - 0.5) * 2 * s, (math.random() - 0.5) * 2 * s, (math.random() - 0.5) * 2 * s)).Unit
   end
 
+  -- 开出战场区域：读秒，读完判毁（用户 11-27「超出战场区域开始读秒吧 读完了自动炸」，同战雷）——界在地形边上往里 OOB_IN 格
+  --   （三张战场图的基地都在 ±6656～16000，离界很远；训练场靶道在中间），出界读 OOB_T 秒，开回来就停；读完判毁（之前打过它的人照旧记功）。
+  --   剩几秒写在屏幕正中（G.msg center，每秒一条）
+  local OOB_T, OOB_IN = 10, 1200
+  local function oobStep(e, P, out)
+    if not e.alive then return end
+    if out then
+      local t = now()
+      e.oobUntil = e.oobUntil or (t + OOB_T)
+      local left = math.ceil(e.oobUntil - t)
+      if left <= 0 then
+        e.oobUntil, e.oobShown = nil, nil
+        G.wtRaw = true   -- 战雷式伤害：整车直接判毁（不按零件算）
+        local ok, err = pcall(G.damageEnt, e, 1e9, e.lastHitBy or { team = "none", name = "bounds" })
+        G.wtRaw = false
+        if not ok and G.reportError then G.reportError("出界判毁", err) end
+        return
+      end
+      if e.oobShown ~= left and P and P.pl then
+        e.oobShown = left
+        G.msg(P.pl, "center", "ui.oobT", left)
+      end
+    elseif e.oobUntil then
+      e.oobUntil, e.oobShown = nil, nil
+      if P and P.pl then G.msg(P.pl, "center", "ui.oobOk") end
+    end
+  end
   local function sync(P, e, d)
     if e.locked then return end
     local cf = d.cf
@@ -449,11 +476,14 @@ function Armor.init(G)
     local h = Map.height(p1.X, p1.Z)
     local bad = flat > maxD or p1.Y ~= p1.Y or math.abs(p1.Y - math.max(h, -e.def.H) - e.def.H / 2) > e.def.H * 1.5 + 6
     if not e.def.amphib and h < -3 and not e.lcac then bad = true end
+    local oobOut = false
     do   -- 开出地图：按所在的区块算（训练场 Zones.RANGE 在十万格外）
       local rx, rz, zn = p1.X, p1.Z, "battle"
       if Map.Zones then rx, rz, zn = Map.Zones.rel(p1.X, p1.Z) end
       local lim = Map.Zones and Map.Zones.land(zn, Map) or Map.R
       if math.abs(rx) > lim or math.abs(rz) > lim then bad = true end
+      -- 战场区域的界：地形边上往里 OOB_IN 格（出了界读秒，下面 oobStep；地形边上照旧拉回）
+      oobOut = math.abs(rx) > lim - OOB_IN or math.abs(rz) > lim - OOB_IN
     end
     e.lastSync = t
     if bad then
@@ -463,12 +493,14 @@ function Armor.init(G)
     end
     e.syncBudget = math.max(0, e.syncBudget - flat)
     G.moveEnt(e, cf)
+    oobStep(e, P, oobOut)
+    if not e.alive then return end
     if e.lcac then   -- 站在气垫艇上：艇跟着车走；开上岸了把车放下
       if e.lcac.alive then G.moveEnt(e.lcac, lcacUnder(cf * CF(0, -e.def.H / 2, 0))) end
       if h > 0.8 then dropOff(e) end
     end
     local d0 = e.def
-    if type(d.ty) == "number" and d.ty == d.ty then e.ty = d.ty % 360 end
+    if type(d.ty) == "number" and d.ty == d.ty then e.ty = VD.arcYaw(d0, d.ty % 360) end   -- 没有炮塔的车：炮夹在射界里（VehDefs turret.arc）
     if type(d.gp) == "number" and d.gp == d.gp then e.gp = math.clamp(d.gp, d0.turret.elev[1], d0.turret.elev[2]) end
     e.model:SetAttribute("Ty", math.floor(e.ty * 2 + 0.5) / 2)
     e.model:SetAttribute("Gp", math.floor(e.gp * 2 + 0.5) / 2)
@@ -489,7 +521,7 @@ function Armor.init(G)
     if type(m) ~= "table" then return end
     local d0 = e.def
     local function num(x) return type(x) == "number" and x == x end
-    if num(m.ty) and math.abs(angDiff(m.ty, e.ty)) < 25 then e.ty = m.ty % 360 end
+    if num(m.ty) and math.abs(angDiff(m.ty, e.ty)) < 25 then e.ty = VD.arcYaw(d0, m.ty % 360) end
     if num(m.gp) and math.abs(m.gp - e.gp) < 15 then e.gp = math.clamp(m.gp, d0.turret.elev[1], d0.turret.elev[2]) end
     if d0.rws then
       if num(m.my) and math.abs(angDiff(m.my, e.my or 0)) < 40 then e.my = (m.my + 180) % 360 - 180 end
@@ -530,7 +562,8 @@ function Armor.init(G)
   end
 
   local function fire(P, e, wid, dir, aim, msg)
-    if G.round.phase ~= "battle" or e.locked then return end
+    -- 没开战不能打；试驾（训练场，Tech.lua e.testDrive）除外：真游戏开着匹配，机库里试驾时这一局还在「匹配中」，原来打不了靶车
+    if (G.round.phase ~= "battle" and not e.testDrive) or e.locked then return end
     local d = e.def
     if type(wid) ~= "string" or not table.find(d.weapons, wid) then return end
     if G.wtCanFire and not G.wtCanFire(e, wid) then return end   -- 战雷式伤害（Wt.lua）：炮长没了、炮闩 / 炮管坏了、正在修车
@@ -582,13 +615,14 @@ function Armor.init(G)
       elseif a then
         local v0, drag, gs = BAL.launchArgs(a)
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, cls = a.cls, w = ww, src = S, ignore = { e.model, P.char },
-          life = 60 })   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
+          life = 60, sab = BAL.sabotOf and BAL.sabotOf(a) or nil })   -- sab：脱壳弹（客户端画弹托飞开、细的弹芯）   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
           life = 60 })   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
       end
-      G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id })
+      G.fx({ k = "vfire", p = mz.Position, d = gdir, f = w.fx, id = e.id, r = (w.rate < 0.5) and w.rate or nil, c = w.cal })   -- r、c：机关炮的射速、口径（客户端声音按它）
     elseif w.kind == "gun" then
+      S.own = true   -- 他自己的客户端已经本地画了、响了（Weapons.lua botShot 给这一发带上 by）
       G.botShot(mz.Position, mz.Position + spreadDir(gdir, w.spread) * w.range, w, S, { e.model, P.char }, 0)
     elseif w.kind == "sam" then
       -- 地空导弹（铠甲-S1 的 57E6）：要客户端用防空火控雷达锁住的那架飞机（msg.tgt，AaFcs 的 Q 锁定）——服务器看一眼（敌方、飞机、射程里），
@@ -608,6 +642,8 @@ function Armor.init(G)
       --   炮长的十字线一直压着目标，导弹自己往瞄准线上靠（G.atgmStep）；速度、射程照真弹（VehDefs.W.tow2 / malyutka）
       e.atgmSide = -(e.atgmSide or 1)
       local lp = (mz * CF(e.atgmSide * 1.2, 0.6, 1.0)).Position
+      -- 只有一具发射架、不在炮旁边的（黄鼠狼 1A3 炮塔右边的「米兰」）：VehDefs atgmAt（炮塔系）就是发射口
+      if d.atgmAt then lp = (VD.turretCF(d, base, e.ty) * CF(d.atgmAt)).Position end
       G.launch({ kind = "missile", pos = lp, vel = gdir * w.speed * 0.5, w = w, src = S, ignore = { e.model, P.char }, life = w.range / w.speed + 3,
         step = G.atgmStep, byEnt = e.id, vmax = w.speed, turn = w.turn or 2.4, age = 0 })
       G.fx({ k = "vfire", p = lp, d = gdir, f = "msl", id = e.id })
@@ -767,13 +803,17 @@ function Armor.init(G)
   G.on("roundStart", function()
     for _, e in ipairs(wrecks) do G.removeEnt(e) end   -- 上一局留下的残骸
     table.clear(wrecks)
-    for _, e in ipairs(vehicles) do G.removeEnt(e) end
+    -- 训练场里试驾的车、靶车不动（11-28：训练场开服就建，主界面就能试驾——投票定图、开局时人还在训练场里开着车）
+    local keep = {}
+    for _, e in ipairs(vehicles) do
+      if e.alive and (e.testDrive or e.testDummy) then keep[#keep + 1] = e else G.removeEnt(e) end
+    end
     for _, b in ipairs(lcacs) do G.removeEnt(b) end
-    vehicles, lcacs = {}, {}
+    vehicles, lcacs = keep, {}
     G.vehicles = vehicles
     pending = { atk = {}, def = {} }
     table.clear(smokes)
-    for _, P in pairs(G.P) do P.vehicle = nil end
+    for _, P in pairs(G.P) do if not P.inTest then P.vehicle = nil end end
   end)
 end
 

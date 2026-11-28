@@ -1,0 +1,58 @@
+# 弹种（Lang.lua 的 ammo.t 全称、ammo.s 短名、ammo.w 别的武器那几格，用户 11-28「弹种这些还是根据语言改变吧」）：按键给（英文缩写「AP」「HE」和别处一个字的小牌子撞了）
+# 列：@键⟫日⟫韩⟫俄⟫德⟫法⟫西⟫葡
+@ammo.t.apfsds⟫装弾筒付翼安定徹甲弾⟫날개안정분리철갑탄⟫БОПС⟫Pfeilgeschoss (APFSDS)⟫Obus-flèche (APFSDS)⟫Flecha subcalibrada (APFSDS)⟫Flecha subcalibrada (APFSDS)
+@ammo.t.apds⟫装弾筒付徹甲弾⟫분리철갑탄⟫БПС⟫Treibspiegelgeschoss (APDS)⟫Obus sous-calibré (APDS)⟫Subcalibre con casquillo (APDS)⟫Subcalibre com sabot (APDS)
+@ammo.t.apcr⟫硬芯徹甲弾⟫경심철갑탄⟫Подкалиберный⟫Hartkerngeschoss (APCR)⟫Obus à noyau dur (APCR)⟫Núcleo duro (APCR)⟫Núcleo duro (APCR)
+@ammo.t.aphe⟫徹甲榴弾⟫철갑유탄⟫Бронебойный каморный⟫Panzersprenggranate (APHE)⟫Perforant explosif (APHE)⟫Perforante explosivo (APHE)⟫Perfurante explosivo (APHE)
+@ammo.t.apbc⟫風帽付徹甲弾⟫풍모철갑탄⟫Бронебойный с бал. наконечником⟫Panzergranate mit Haube (APBC)⟫Perforant à coiffe (APBC)⟫Perforante con cofia (APBC)⟫Perfurante com coifa (APBC)
+@ammo.t.ap⟫徹甲弾⟫철갑탄⟫Бронебойный⟫Panzergranate (AP)⟫Perforant (AP)⟫Perforante (AP)⟫Perfurante (AP)
+@ammo.t.heatfs⟫翼安定対戦車榴弾⟫날개안정 대전차고폭탄⟫Кумулятивный оперённый⟫Flügelstabilisierte Hohlladung (HEAT-FS)⟫Charge creuse empennée (HEAT-FS)⟫Carga hueca con aletas (HEAT-FS)⟫Carga oca com aletas (HEAT-FS)
+@ammo.t.heat⟫対戦車榴弾⟫대전차고폭탄⟫Кумулятивный⟫Hohlladung (HEAT)⟫Charge creuse (HEAT)⟫Carga hueca (HEAT)⟫Carga oca (HEAT)
+@ammo.t.heatmp⟫多目的対戦車榴弾⟫다목적 대전차고폭탄⟫Многоцелевой кумулятивный⟫Mehrzweck-Hohlladung (HEAT-MP)⟫Charge creuse polyvalente (HEAT-MP)⟫Carga hueca multipropósito (HEAT-MP)⟫Carga oca multiuso (HEAT-MP)
+@ammo.t.mpat⟫多目的対戦車弾⟫다목적 대전차탄⟫Многоцелевой противотанковый⟫Mehrzweck-Panzerabwehr (MPAT)⟫Antichar polyvalent (MPAT)⟫Antitanque multipropósito (MPAT)⟫Antitanque multiuso (MPAT)
+@ammo.t.hefrag⟫榴弾⟫고폭탄⟫Осколочно-фугасный⟫Sprenggranate (HE)⟫Obus explosif (HE)⟫Alto explosivo (HE)⟫Alto explosivo (HE)
+@ammo.t.hesh⟫粘着榴弾⟫점착유탄⟫Фугасный бронебойный⟫Quetschkopfgeschoss (HESH)⟫Obus à tête écrasable (HESH)⟫Cabeza aplastable (HESH)⟫Cabeça esmagável (HESH)
+@ammo.t.can⟫キャニスター弾⟫산탄⟫Картечь⟫Kartätsche⟫Mitraille⟫Metralla⟫Metralha
+@ammo.t.atgm⟫対戦車ミサイル⟫대전차 미사일⟫ПТУР⟫Panzerabwehrlenkrakete⟫Missile antichar⟫Misil antitanque⟫Míssil antitanque
+@ammo.t.jet⟫タンデム翼安定対戦車榴弾⟫탠덤 날개안정 대전차고폭탄⟫Тандемный кумулятивный⟫Tandem-Hohlladung (HEAT-FS)⟫Charge creuse en tandem (HEAT-FS)⟫Carga hueca en tándem (HEAT-FS)⟫Carga oca em tandem (HEAT-FS)
+@ammo.s.apfsds⟫APFSDS⟫APFSDS⟫БОПС⟫APFSDS⟫APFSDS⟫APFSDS⟫APFSDS
+@ammo.s.apds⟫APDS⟫APDS⟫БПС⟫APDS⟫APDS⟫APDS⟫APDS
+@ammo.s.apcr⟫APCR⟫APCR⟫Подкал.⟫APCR⟫APCR⟫APCR⟫APCR
+@ammo.s.aphe⟫APHE⟫APHE⟫Каморный⟫APHE⟫APHE⟫APHE⟫APHE
+@ammo.s.apbc⟫APBC⟫APBC⟫ББ⟫APBC⟫APBC⟫APBC⟫APBC
+@ammo.s.ap⟫AP⟫AP⟫ББ⟫AP⟫AP⟫AP⟫AP
+@ammo.s.heatfs⟫HEAT-FS⟫HEAT-FS⟫БК⟫HEAT-FS⟫HEAT-FS⟫HEAT-FS⟫HEAT-FS
+@ammo.s.heat⟫HEAT⟫HEAT⟫БК⟫HEAT⟫HEAT⟫HEAT⟫HEAT
+@ammo.s.heatmp⟫HEAT-MP⟫HEAT-MP⟫БК-МЦ⟫HEAT-MP⟫HEAT-MP⟫HEAT-MP⟫HEAT-MP
+@ammo.s.mpat⟫MPAT⟫MPAT⟫Многоцел.⟫MPAT⟫MPAT⟫MPAT⟫MPAT
+@ammo.s.hefrag⟫HE⟫HE⟫ОФ⟫HE⟫HE⟫HE⟫HE
+@ammo.s.hesh⟫HESH⟫HESH⟫ФБ⟫HESH⟫HESH⟫HESH⟫HESH
+@ammo.s.can⟫キャニスター⟫산탄⟫Картечь⟫Kartätsche⟫Mitraille⟫Metralla⟫Metralha
+@ammo.s.atgm⟫ATGM⟫ATGM⟫ПТУР⟫PALR⟫Missile⟫Misil⟫Míssil
+@ammo.s.jet⟫HEAT-FS⟫HEAT-FS⟫БК⟫HEAT-FS⟫HEAT-FS⟫HEAT-FS⟫HEAT-FS
+@ammo.w.mg⟫機銃⟫기관총⟫Пулемёт⟫MG⟫Mitrailleuse⟫Ametralladora⟫Metralhadora
+@ammo.w.ac⟫機関砲⟫기관포⟫Автопушка⟫MK⟫Canon auto⟫Cañón auto⟫Canhão auto
+@ammo.w.sam⟫SAM⟫대공미사일⟫ЗУР⟫FlaRak⟫SAM⟫SAM⟫SAM
+@ammo.w.he⟫榴弾⟫고폭탄⟫ОФ⟫Spreng⟫Explosif⟫Explosivo⟫Explosivo
+# 设置里的「画质」（Settings.lua，用户 11-28「设置里增加一个画质调整」）：按英文原文对
+Graphics quality⟫画質⟫그래픽 품질⟫Качество графики⟫Grafikqualität⟫Qualité graphique⟫Calidad gráfica⟫Qualidade gráfica
+Auto (follows frame rate)⟫自動（フレームレートに合わせる）⟫자동 (프레임 속도에 맞춤)⟫Авто (по частоте кадров)⟫Automatisch (nach Bildrate)⟫Auto (selon la fréquence d'images)⟫Automático (según los FPS)⟫Automático (pela taxa de quadros)
+Low⟫低⟫낮음⟫Низкое⟫Niedrig⟫Faible⟫Baja⟫Baixa
+Medium⟫中⟫중간⟫Среднее⟫Mittel⟫Moyenne⟫Media⟫Média
+High⟫高⟫높음⟫Высокое⟫Hoch⟫Élevée⟫Alta⟫Alta
+Ultra⟫最高⟫최상⟫Ультра⟫Ultra⟫Ultra⟫Ultra⟫Ultra
+Low: no shadows, depth of field or sun rays, half the particles, shorter scenery range; Ultra: draws farther and finer⟫低：影・被写界深度・光芒なし、パーティクル半分、景観の描画距離が短い／最高：より遠く、より細かく描画⟫낮음: 그림자·피사계 심도·햇살 없음, 파티클 절반, 풍경 거리 짧음 / 최상: 더 멀리, 더 세밀하게⟫Низкое: без теней, глубины резкости и солнечных лучей, вдвое меньше частиц, меньше дальность пейзажа; Ультра: дальше и детальнее⟫Niedrig: keine Schatten, Tiefenunschärfe oder Sonnenstrahlen, halb so viele Partikel, kürzere Sichtweite; Ultra: weiter und feiner⟫Faible : sans ombres, profondeur de champ ni rayons de soleil, moitié moins de particules, décor moins lointain ; Ultra : plus loin et plus fin⟫Baja: sin sombras, profundidad de campo ni rayos de sol, la mitad de partículas, menos alcance del paisaje; Ultra: más lejos y con más detalle⟫Baixa: sem sombras, profundidade de campo ou raios de sol, metade das partículas, cenário mais curto; Ultra: mais longe e mais detalhado
+# 一张图一个服务器（Places.lua、MapPick.lua）、车上 X 透视按住 Alt 才放开鼠标（XrayOwn.lua）
+Heading to the {1} server…⟫{1}サーバーへ移動中…⟫{1} 서버로 이동 중…⟫Переход на сервер «{1}»…⟫Wechsel zum Server {1} …⟫Direction le serveur {1}…⟫Yendo al servidor {1}…⟫Indo para o servidor {1}…
+Teleport failed — staying on this server⟫移動に失敗しました。このサーバーに残ります⟫이동 실패 — 이 서버에 남습니다⟫Не удалось перейти — остаёмся на этом сервере⟫Teleport fehlgeschlagen – du bleibst auf diesem Server⟫Échec de la téléportation — vous restez sur ce serveur⟫Teletransporte fallido: te quedas en este servidor⟫Falha no teletransporte — você continua neste servidor
+Test driving on this server's range⟫このサーバーの訓練場で試乗します⟫이 서버의 훈련장에서 시승합니다⟫Тест-драйв на полигоне этого сервера⟫Probefahrt auf dem Übungsplatz dieses Servers⟫Essai sur le champ de tir de ce serveur⟫Prueba en el campo de tiro de este servidor⟫Teste no campo de treino deste servidor
+No battle server to go to from the test range⟫訓練場から行ける戦闘サーバーがありません⟫훈련장에서 갈 수 있는 전투 서버가 없습니다⟫С полигона некуда отправиться в бой⟫Vom Übungsplatz aus gibt es keinen Kampfserver⟫Aucun serveur de bataille accessible depuis le champ de tir⟫No hay servidor de batalla al que ir desde el campo de tiro⟫Não há servidor de batalha para ir a partir do campo de treino
+test range⟫訓練場⟫훈련장⟫полигон⟫Übungsplatz⟫champ de tir⟫campo de tiro⟫campo de treino
+lobby⟫ロビー⟫로비⟫лобби⟫Lobby⟫salon⟫vestíbulo⟫saguão
+Steel City⟫スチールシティ⟫강철 도시⟫Стальной город⟫Stahlstadt⟫Cité d'acier⟫Ciudad de Acero⟫Cidade de Aço
+Snow Peaks⟫スノーピークス⟫설산⟫Снежные пики⟫Schneegipfel⟫Pics enneigés⟫Picos Nevados⟫Picos Nevados
+Sea of Sand⟫砂の海⟫모래의 바다⟫Море песка⟫Sandmeer⟫Mer de sable⟫Mar de Arena⟫Mar de Areia
+Test range server · Snow Peaks⟫訓練場サーバー · スノーピークス⟫훈련장 서버 · 설산⟫Сервер полигона · Снежные пики⟫Übungsplatz-Server · Schneegipfel⟫Serveur du champ de tir · Pics enneigés⟫Servidor del campo de tiro · Picos Nevados⟫Servidor do campo de treino · Picos Nevados
+Go to⟫移動⟫이동⟫Перейти⟫Gehe zu⟫Aller à⟫Ir a⟫Ir para
+This map has its own server — you'll be teleported⟫このマップには専用サーバーがあります。移動します⟫이 맵에는 전용 서버가 있습니다 — 이동합니다⟫У этой карты свой сервер — вас перенесут⟫Diese Karte hat einen eigenen Server – du wirst teleportiert⟫Cette carte a son propre serveur — vous serez téléporté⟫Este mapa tiene su propio servidor: te teletransportaremos⟫Este mapa tem servidor próprio — você será teletransportado
+Hold Alt: point at parts to see names and status⟫Alt を押したまま：マウスで部品を指して名前と状態を表示⟫Alt 누른 채: 마우스로 부품을 가리켜 이름과 상태 보기⟫Удерживайте Alt: наведите на узел, чтобы увидеть название и состояние⟫Alt halten: auf Teile zeigen, um Name und Zustand zu sehen⟫Maintenez Alt : pointez une pièce pour voir son nom et son état⟫Mantén Alt: señala piezas para ver nombre y estado⟫Segure Alt: aponte para peças para ver nome e estado

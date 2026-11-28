@@ -21,7 +21,7 @@ function TankHud.init(G)
   local function T(k, ...) return G.T and G.T(k, ...) or k end
   local TH = G.Theme   -- 统一外观（docs/style.md）
   local CYAN, RED = TH.C.HUD, TH.C.BAD   -- CYAN 现在是全息绿（用户 11-21：蓝色全部改成绿色，名字没改）
-  local MONO, BOLD = Enum.Font.RobotoMono, Enum.Font.BuilderSansBold
+  local MONO, BOLD = Enum.Font.RobotoMono, Enum.Font.BuilderSansMedium
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
 
   local gui = Instance.new("ScreenGui")
@@ -374,9 +374,9 @@ function TankHud.init(G)
     -- 三种模式（服务器 Tech.lua 写 workspace 属性 WtMode）：街机 ab 看得见的都标（地面 2500 格内）；历史 rb 只标近处（500 格内）；
     --   全真 sb 一个都不标
     --   用户 11-25「全部都做」①：历史 rb 也不标了（战雷历史模式屏幕上没有敌人名牌，只有侦察标记的红菱形——Fx.lua 的 spots）
-    local wtMode = workspace:GetAttribute("WtMode")
-    local gR = (wtMode == "ab") and 2500 or 1100
-    local tagsOn = wtMode ~= "sb" and wtMode ~= "rb"
+    -- 只有历史（11-27 删了街机、全真）：不画敌人名牌，只有侦察 / 标记的红菱形
+    local gR = 1100
+    local tagsOn = false
     if t - lastScan > 0.25 then
       lastScan = t
       cands = {}

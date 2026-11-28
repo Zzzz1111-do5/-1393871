@@ -18,6 +18,11 @@ function T.boot()
   R.verbose = TEST_ARGS:match("%f[%w]v%f[%W]") ~= nil
   -- 地图（11-26 起游戏默认是钢城）：老测试的坐标都是按沙海写的，照旧开沙海；测钢城的测试在 boot 前设 T.mapName = "city"
   R.workspace:SetAttribute("MapName", T.mapName or "sands")
+  if T.mapIds then R.workspace:SetAttribute("MapIds", T.mapIds) end   -- 选地图那一列（11-28 晚钢城收起来以后只剩雪山：测投票、换图的设「city,snow」）
+  -- 训练场开服就建（11-28，init.server.lua）：不测训练场地形的测试在跑服务器脚本以前就关掉它的地形（不然开服先写十几秒训练场的体素）
+  R.workspace:SetAttribute("RangeTerrainOff", not T.rangeTerrain)
+  -- 一张图一个服务器（Places.lua，11-28）：测某一种服务器（训练场 range、某张图）的测试在 boot 前设 T.placeRole
+  if T.placeRole then R.workspace:SetAttribute("PlaceRole", T.placeRole) end
   for _, s in ipairs(T.scripts.server) do R.runScript(s, "server") end
   R.run(0.5)
   T.G = R.Gs.server

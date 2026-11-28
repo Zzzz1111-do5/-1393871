@@ -219,7 +219,13 @@ function Battle.init(G)
     local burn, fall = IL.burn or 32, IL.fall or 2.6
     local okW, wind = pcall(function() return workspace.GlobalWind end)
     if not okW or typeof(wind) ~= "Vector3" or wind.Magnitude < 0.1 then wind = V(2.2, 0, 1.1) end
-    G.fx({ k = "illum", o = o, p = p, t = workspace:GetServerTimeNow(), fl = fl, burn = burn, fall = fall, w = V(wind.X, 0, wind.Z) * 0.6, by = by })
+    -- 挂着伞顺风飘：原来按风 ×0.6、烧 32 秒——11-27 每张图设了全局风（LightLooks.WIND：雪山 12 格/秒、钢城 5.4）以后，
+    --   雪山上要飘出两百三十格、钢城一百格，飘离要照的据点（据点半径 80）。改成风 ×0.15（再乘原来的四分之一），整段烧完最多飘 60 格：
+    --   雪山 58 格、沙海 45、钢城 26，看得出在飘，落点还在据点边上
+    local drift = V(wind.X, 0, wind.Z) * 0.15
+    local dmax = 60 / math.max(burn, 1)
+    if drift.Magnitude > dmax then drift = drift.Unit * dmax end
+    G.fx({ k = "illum", o = o, p = p, t = workspace:GetServerTimeNow(), fl = fl, burn = burn, fall = fall, w = drift, by = by })
     table.insert(alive, { die = now() + fl + burn })
     fired += 1
     return true
@@ -473,8 +479,10 @@ function Battle.init(G)
     local ch = P.char or P.pl.Character
     local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
     local from = hrp and (hrp.CFrame.Position + Vector3.new(0, 1.6, 0)) or nil   -- 眼睛的高度
+    -- kid：凶手坐的那辆 / 那架（实体号）——阵亡镜头（DeathFx.lua）跟完自己的残骸转去看它；飞机被击落原来没有这个，转不过去（用户 11-27「5秒后 再自动切换到敌视角」）
+    local kid = (K and K.vehicle and K.vehicle.alive and K.vehicle.id) or (killer.bot and killer.bot.e and killer.bot.e.id) or nil
     G.msg(P.pl, "killcam", { p = pos, from = from, name = killer.name, d = from and (pos - from).Magnitude or nil,
-      uid = K and K.pl and K.pl.UserId or nil })
+      uid = K and K.pl and K.pl.UserId or nil, kid = kid })
   end
 
   G.onFrame(function(dt)

@@ -19,11 +19,184 @@
 | C | `claude/affectionate-pasteur-vj1oop` | 飞机：歼-20 弹舱、战雷式锁定界面；**11-24 夜起：整个游戏做成战雷（见「正在做」C 那条）** |
 | D | `claude/darksword-air-map` | 飞机原模型座舱（F-16C 坐进原模型座舱、歼-8II、F-15C / F-14A 进行中）、无限金币、开镜色斑；11-24 晚读过这个文件、快进到 E 的 d4f0f6e 再开工 |
 | E | `claude/keen-heisenberg-6zzaoc` | 合并别人的分支、挑刺（用户 11-24 对 E 说：「你看其他几个ai做的最新提交」）；坦克陷地的加固（MapRoads）、构建标记；以前做过航母福建舰、界面换绿、细节截图 |
+| F | `claude/optimistic-planck-40pmv9` | 11-27 接 E 的最新提交（a88e2cb）：坦克开镜照战雷重做（GunSight.lua）、车长望远镜、第三人称真落点 / 炮口被挡；X 透视细化；机库频闪、飞机试驾；雷达、拆重叠版本、科技树补车排着 |
 
 飞机「锁定、投弹、操作细节和手感跟战雷一模一样」：用户 11-24 也交给了 A（排在俄系、关卡后面）。C 已经开了头（锁定界面），
 **C 在做就 C 接着做，A 负责对照战雷挑刺**；C 一段时间没动静，A 再接手——接手前在这里写一笔。
 
 ## 正在做
+
+- F（11-27，用户的待办「飞机雷达按型号照战雷做、能用键控制雷达方向」：本地分支 radar-1 做了调研方案的第 1～3 步、radar-2 做了第 4～5 步；没 push）——**雷达的规矩（别互相覆盖）**：
+  · **ReplicatedStorage/Radars.lua 是唯一的雷达数据源**（27 部真机雷达：型号、脉冲 / 脉冲多普勒、机械扫描 / 无源 / 有源相控阵、发现距离（游戏量程 = 3220·√真实公里）、
+    锁定距离、万向架 ±az / +elU / −elD、扫描方式和速度（机械约 60°/秒、相控阵快）、边扫边跟批数、近战模式、置零门限、告警器代号；拿不准的标「估」、est = true）。
+    **按科技树版本取**：`AirDefs.radarOf(型号, TreeKey)`（F-16A 是 APG-66、苏-30SM 是 N011M、F-15E 是 APG-70……）；d.radar 只是型号的默认那部。
+    **不退回 like**（苏-27 借苏-35S 的模型，雷达照旧是 N001）。以后加有雷达的飞机：RD.OF 加一行；借型号的科技树版本雷达不一样的：RD.VAR 加一行
+    （给借型号的版本建了自己的 AirDefs 型号以后，RD.OF 补上、RD.VAR 删掉）。客户端开飞时取到 `st.rd`（Fly.lua，同 FM.get），Radar.lua、告警器（WtFlight）、
+    资料卡（TechUI 的「雷达」一节：Radars.card）都按它；AirDefs 的 RADAR 表和 ×2.5 删了。常数也在这里：RD.BAR 一行 3.5°、RD.BEAM 波束半宽 2°、
+    RD.ACQ 近战自动截获 13850 格、RD.MEM 记忆外推 2 秒、RD.SLEW 挪天线的速度；RD.modes / scanOk / acmGeo / fade / frame。
+  · **锁定照战雷改手动（用户定的）**：雷达弹不再自动锁——雷达屏上的目标 R / Alt+T 选中（st.rdSel，屏上「|—|」），**Alt+F 锁定**进单目标跟踪、
+    再按解锁（战雷的默认键：Alt+R 开关、Alt+T 选目标、Alt+F 锁定）；锁着时 R / Alt+T 换成屏上的下一个；丢了锁不自己再锁。红外弹、空地弹、炸弹照旧自动挑。
+    手机还没有锁定键：R 选中就锁（第 7 步换成点亮点选 + 按钮锁）。**别再加回「选了雷达弹就自动锁」**；测试里要锁雷达弹的照 tools/mock/radar.lua ② 按键。
+  · **雷达的单目标跟踪（STT）是 `st.rdLock`，归 Radar.lua 管、跟所选武器脱钩**（radar-2）：选什么弹都能 Alt+F 锁；Fly.lua 的 `st.lock` 是弹的锁——
+    雷达弹锁 st.rdLock 那架（或者 TWS 里指定的航迹：`st.lock.tws = true`，不用 STT）、红外弹的导引头先咬 st.rdLock 那架（`st.lock.slaved`）、机炮提前量先算它（gunStick 的 best.radar）。
+    STT 看不见了先**记忆外推 2 秒**（屏上 STT MEM，弹的锁还在但进度不涨、不能发射），还没找回来 Radar.lua 丢锁、提示置零 / 丢失，回到原来的扫描
+    （原来 Fly.lua 里「看不见超过 1 秒丢锁」那段删了）。**lockOn 现在由 Radar.lua 报**：STT 跟踪着半秒一次（full = 锁了 1 秒以上）；TWS 指定的航迹每扫到一次报一次，
+    带 `tws = 一帧几秒`——服务器（Air.lua lockOn(e, tid, full, tws)）记 e.radarTws、数据链多等这么久（arhStep 1.3 + radarTws）、**不发 rwrLock**；
+    对 TWS 航迹打主动雷达弹发射时不发 rwr，导引头开机（shotAct 那一刻）才发给目标（s.rwrLate）。换模式、关雷达断开 STT。
+  · **扫描**（radar-2，用户定的：扫描速度按真机）：各型自己的扫描方式（rd.scans：半宽 × 行数，Alt+Z 换），波束按 rd.rate 一行一行扫（APG-68 ±60°×2 一帧 4 秒），
+    **地平稳定**（方位按航向的水平投影、俯仰按地平线），**波束扫过才算发现**（离这一行半行 + 0.5° 以内、波束半宽 2°），再过 sees()（只看万向架、量程、置零、
+    脉冲多普勒下视 ×ldK、脉冲雷达贴地的地杂波）；扫描中心 Alt+←→ / Alt+↑↓ / Alt+滚轮挪、Alt+C 或双击雷达屏回中。模式 Alt+E：RWS → TWS（rd.tws > 0）→ ACM（近战子模式
+    Alt+Z 换；13850 格内第一个扫到的自动 STT）→ RWS。屏上的字是真机缩写（RWS / TWS / STT / STT MEM / ACM VS…，中英一样）、扫描区「±60° · 2 行」。
+    G.radarState()（模式、扫描区、波束、一帧几秒）给第 6 步同步服务器、第 8 步座舱雷达页用；G.radarAcmZone() 给 WtFlight 在平显上画近战扫描区（WtAcmZone）。
+    **别在别处另算一套扫描**；测试里等雷达发现目标要按一帧的时间 runUntil（机械扫描 4～8 秒），别写死 R.run(2.5)。
+  · **按住 Alt 的这些键只给雷达**（有雷达的固定翼；Fly.lua 的 RADAR_ALT：R T F Q E Z C 和四个方向键，Alt+滚轮交给 G.radarWheel）：
+    原来 Alt+T 同时切迎角限制、Alt+R 同时换目标、按住 Alt+Q 打左舵、Alt+↑↓ / Alt+滚轮 动油门。W / S / A / D 不拦（座舱里按住 Alt 转头时还得能拉杆），
+    直升机（没有 st.rd）按住 Alt 照旧自由看。**开飞机时别再给这几个键加别的 Alt 组合**。
+  · 名字：空中雷达的接触是 `G.airRadarContacts()`、ScreenGui 叫 **AirRadar**；`G.radarContacts()` 是 Hud.lua 小地图那份（原来被 Radar.lua 覆盖，
+    Coach.lua 的队友标记一直拿不到数据，现在有了）、UI.lua 的小地图框叫 Radar（ia_ui_layout.luau 只认界面元素）。雷达状态每架次重置（G.radarReset：开着、量程最大、RWS、天线回中）。
+  · 告警器（WtFlight）还按对方默认扫描方式的方位宽度（Radars.half）算「扫没扫到我」：对方的雷达开关 / 扫描中心还没同步（第 6 步）。
+  · **新模块 Radars.lua 必须进地点**：发包前 `lune run tools/build.luau` 重新生成游戏文件（这两个分支都没重出 rbxlx，免得跟别的分支在 26 MB 的文件上冲突）；
+    少了它 AirDefs 输出一行警告、所有飞机都没雷达。ia_*.luau 是读游戏文件跑的：ia_air.luau 改成新脚本按 R / Alt+F 锁、老游戏文件照旧自动锁。
+  · 还没做（方案 scope/radar.json 第 6～8 步）：服务器同步雷达状态、校验 lockOn、半主动弹要照射、告警器按对方真实扫描区；手机雷达按钮、拖屏；座舱雷达页用同一份数据。
+  · 测试：tools/test/radar.luau（纯数据：版本对雷达、字段、资料卡、Lang、④ 模式 / 扫描）、tools/mock/radar.lua（① 不自动锁；② 手动锁、STT 记忆外推 2 秒再丢；
+    ③ 远的那枚 9500 格；⑤ Alt 不串键；⑥ 换架次重置 + 各版本的雷达；⑦ APG-68 一帧 4 秒、波束扫过才出亮点、Alt 键挪天线、扫描区外锁不上；
+    ⑧ TWS 两批航迹、对指定航迹打弹不报锁定、数据链等一帧、导引头开机才报导弹；⑨ ACM 竖扫自动锁、红外弹跟着雷达指）、
+    wtflight.lua（② RWS / 扫描区字样、Alt+E 到 TWS / ACM、平显上的近战扫描区；④ 告警器按版本；⑤ 手动锁）；
+    hud.lua ⑤、hudshot.lua 改成手动锁（没跑；雷达按真机速度扫，等的时间可能要放长）。radar.lua ④「开了导引头的被箔条骗走了」11-24 起就不过（见「B 看 A」），没动。
+
+- F（11-27，特效、光影照战雷——合到本地分支 vfxlight-final：wip/vfxlight 的 a3a3ea7 特效 + 4c70454 光影、两边审查后的修 fix-vfx / fix-light、
+  复核后的修；没 push）。用户要的：像战雷（Eagle's Shadow 那一版）、写实、在 M3 的 Mac 上非常丝滑。**特效的规矩（别互相覆盖）**：
+  · **Client/VfxLib.lua 是特效共用的底子**（Fx.lua 建它放在 G.vfx，WreckFx、View 都用它）：粒子发射器池——每一「层」用 VL.def(名字, 配置函数, 不分档) 登记，
+    用的时候 VL.emit(名字, 大小, CFrame, 几颗, 变体)：按「层 + 大小档（1.2 倍一档）+ 变体（地面代号、贴脸……）」常驻发射器，**别每发都 Instance.new 发射器、零件**；
+    颜色 / 大小 / 透明度曲线一改连在飞的粒子一起变——要不一样的样子就另起一个变体，别在用的时候改（只有速度、散开角可以按次改：VL.emitK）。
+  · **一处一个零件**（「处」= 一个小零件 + 一个发射器）：同一帧在两处喷用两处；寿命 ≥ 3 秒的烟尘每处爆炸借一处、没灭完不挪走。一层最多 6 处（长寿命 8 处），
+    再多会借最早到期的那处（降级：VfxLib 文件头写了）。引擎行为三条（SpreadAngle 的 X 是不是水平、同帧挪零件多次 Emit、零件挪走烟会不会被剔除）
+    模拟器验证不了，要在 Studio 里看（VfxLib 文件头 (a)(b)(c)；SPREAD_XH 反了改一行）。
+  · **不走池的常喷发射器**（碎块拖的火和烟、舱口火柱、炮塔身上的火……）Rate 要乘 VL.rateK(每秒几颗, 喷几秒, 寿命, 优先级) 的返回值——记进同一个
+    全局预算（同时活着的粒子：1800 起砍碎屑火星、2800 只留要紧的），按喷稳了以后同时活着的量记。闪光灯只用 VL.flash / G.flash（8 盏轮着用、投影子的只 1 盏；
+    大的白天最多 1.5 倍：o.day = VL.DAY_MUL_BIG）。
+  · **碎块碰撞组**：VfxChunk（殉爆的钢板碎块、负重轮）只碰 Default（地形、房子），不碰 VfxActor（所有玩家角色、EntView 里车的样子）、碎块之间也不碰；
+    客户端 WreckFx、服务器 Ents.lua 开头都注册（注册不了照旧碰所有东西、输出里一条提示）。别的模块新加会被碎块绊住的东西，放进 VfxActor。
+  · **曳光池**（Fx.lua streak）：按样子分组、一组最多 96 根（跳弹 16）、自己打的单独一组（_me），每帧 BulkMoveTo，飞到了藏回地底下；满了顶离镜头最远的。
+  · **预建**：常用的层进局时分几帧建好（VL.prewarmLater，一帧 4 个）；按地面分的层按这张图的地面代号排、换图（G.onMap）时补排。新加常用的层记得排进去
+    （Fx.lua 文件末尾、WreckFx.lua 文件末尾），vfxreal 查「第一炮新建 0 个发射器」。
+  · 殉爆去重：服务器发的 c = "wreck"，离它最近的那辆车是这一次殉爆（WreckFx 画火球）就只出声、震屏（Fx.lua ownCookOff）；同一处 0.6 秒内同一种的只算一次（wreckDup）。
+    转盘车（WtDamage.CAROUSEL）先烧再炸：wreckCook 离镜头 4000 格内才接手（v.cookJets），远处的照别的残骸马上烧。
+  · 殉爆第一秒所有发射器加起来 ≤ 350 颗（规格写的 300，复核时明确接受 350：见 WreckFx.lua 文件头）；测试 tools/mock/vfxreal.lua、wreckfx.lua、
+    groundhit.lua、boom.lua、impact.lua、wtvfx.lua。
+
+- F（11-27，光影照战雷审查后的修：分支 fix-light，在 wip/vfxlight 的 4c70454 上，只改光照这一侧；复核后的修在 vfxlight-final）——**光照的规矩（别互相覆盖）**：
+  · **ReplicatedStorage/LightLooks.lua 是唯一的光照数据源**（各图白天 / 黄昏 / 清晨 / 夜里 24 个字段、纬度 LAT、全局风 WIND）：服务器 World.lighting、
+    客户端 DayNight 都读它；要改光照的数就改这里，别在别的模块里另写一套（World.lua 里只留一份 LightLooks 读不到时的兜底）。
+  · **客户端只有 DayNight 写 Lighting 的亮度、环境光（Ambient / OutdoorAmbient）、曝光、ClockTime**（还有大气、NightBloom、NightGrade、SunShafts、FarBlur）。
+    夜视（Night.lua 的 G.nvLight）、照明弹（Warfx 的 G.illum）、暴风雨（G.weather）都是给 DayNight 一个量，由它叠上去；别的模块要变亮变暗就加自己的
+    PostEffect 或者给 DayNight 一个量——直接写这几项会被它下一次更新改回来（它只在值变了才写），两边来回写就一闪一闪。
+  · **新模块 LightLooks（光照）、VfxLib（特效）必须进地点**：发包前重新生成 RobloxTotalBattlefield.rbxlx 和 ScriptsUpdate.rbxmx（`lune run tools/build.luau`）。
+    少了 VfxLib，Fx 等 10 秒报错跳过（没有特效）；少了 LightLooks，DayNight 等 10 秒报错跳过（同 init.client.lua 等模块的规矩）、
+    开服用 World 里写死的兜底那套（不动的光照）。
+  · 全局风的基数在 G.windBase（DayNight 换图 / 换区块时设），暴风雨（Warfx）在它上面往大了插；要改风改 LightLooks.WIND。
+  · Lighting.LightingStyle、PrioritizeLightingQuality 游戏脚本写不了（API 写权限 PluginOrOpenCloud，同 Terrain.Decoration），只能写进地点文件
+    （build.luau / build_rbxlx.py 现在写 Realistic + false，不再写 Technology = Future）；用户已经导入过的地点要在 Studio 里改一次（import_guide「三」）。
+  · 用户要过的别悄悄推翻：地面上的远处景深 FarBlur 0.06（11-22「远处模糊这样」、11-25 压淡）照旧开；大气按 11-22「视野无限远」的量级
+    （白天 0.07～0.09、黄昏 0.1、夜里 0.085，lightreal 查着白天 ≤ 0.1）；**霾 Haze 也是**——11-22 那次一起减了半（白天 0.3、夜里 0.5）：
+    钢城白天 0.35、训练场 0.3、各图夜里 0.5、黄昏 / 清晨 0.6～0.8，沙海、雪山白天 0.8（用户 11-25 / 11-26 调过的 0.9 / 1.0 以内）；
+    lightreal 查着钢城、训练场白天 ≤ 0.4、夜里 ≤ 0.5、任何时候 ≤ 0.8。这次还改了：照明弹顺风飘 ×0.15、最多 60 格；纬度自检退到 23° 就停、打提示
+    （17 点、18 点各看一眼太阳）；夜视总曝光、月光亮度、天光反照补回改之前的数。
+    测试 tools/mock/lightreal.lua、battle.lua（照明弹漂移、暴风雨里换风的基数）、veh.lua（退出瞄准镜景深又开）。
+- F（11-27，用户「整个给载具配置武器的系统 做的很粗糙 我需要非常艺术经验的效果 参考战雷」）——**整备（Workshop）第一段：止血 + 地基**（分支 workshop-a）：
+  · 止血：科技树机库里飞机 / 直升机能配挂载了——顶栏弹药键对飞机打开老的 3D 挂载编辑器（Hangar.lua，加了上面一排预设、「（已改）」），不再淡掉；
+    Tech.lua 新动作 **treeLoad**（AD.cleanLoad / cleanFuel 校验），存档 tree 多了 **load / ammo / skin**（ammo、skin 先只存、读档校验）；
+    **出击、试驾都按存的挂载和内油**（Tech.lua → Depots padSpawnAt / Air spawnAircraft*）；机库里摆的飞机、资料卡「当前挂载」也按存的。
+  · 地基：Theme.T / EASE / tween / stagger / ease（docs/style.md「动效」一节）；HangarStage.focus / home / highlight（最多 4 个）/ toScreen / world / viewState，
+    停机坪俯仰 −0.15～1.2（从翼下往上看、露天升高往下看机翼上面；厂房照旧 0.03～0.8）；FlightModel.loadout（外挂重量、阻力增量，弹舱里的不算）+ perf、vTop / card 吃阻力增量（Fly.lua fmMass 改调它，结果一位不差）；
+    TechUI 交出 G.techRoot / G.hangarStage / G.hangarParts / G.hangarSel，点空白处转车的判断认 G.stageBlockers、挂载编辑器、配弹面板。
+  · **没碰** WtTank.lua（弹药栏写实炮弹图在改）、View.lua（特效在改）：剪影抽 ShellArt、上色抽 VehModels.skin 留到下一段。
+  · 下一段：新 Client/Workshop.lua（整备外壳）+ WsArms.lua（挂载页）+ WsKit.lua；测试 tools/mock/workshop.lua（第一段已有）。**改 TechUI 机库顶栏、HangarStage 镜头的先在这里看一眼**。
+  · **第二段（分支 workshop-b）：整备外壳 + 挂载页**——顶栏弹药键对飞机 / 直升机打开整备（G.openWorkshop），地面车照旧开配弹面板：
+    **Client/Workshop.lua**（外壳：抬头「‹ 机库」+ 车名 + BR、五个页签，挂载以外先开现有的面板；进出的动效；机库那几层收起 / 还原走 TechUI **G.hangarWsMode**；Esc 一层层退）、
+    **Client/WsArms.lua**（挂载页：底部挂点卡从左翼尖排到右翼尖、对称合卡；机身上 3D 挂点标签；左栏预设 + 三个「我的方案」+ 武器卡；悬停预览、装上的动效；
+    右栏外挂 / 阻力 / 性能对比全用 FlightModel.loadout / perf；内油四档；航炮、干扰弹固定卡）、**Client/WsKit.lua**（卡片、小块、分段键、拖动条、对比条、引线标签、武器剪影——后面几页共用）。
+    TechUI 多了 G.hangarAir / hangarAirLoad / hangarAirPose / onHangarAir（停机坪上那架换挂载预览、开弹舱）、G.treeSaveLoad / treeSaveSet；
+    Tech.lua：treeLoad 第 6 个参数 quiet（即时存不弹提示）、新动作 **treeLoadSet**（我的方案，存档 tree.sets[键]["1"～"3"]）；AirModels 记 M.stPos（每个挂点在模型里的位置）。
+    旧 Hangar.lua 留给步兵召唤台和 Lune 老测试。写实武器图这一轮是 WsKit 里照 WeaponModels 画的线条剪影（**没动 WtTank.lua**），下一轮换 Blender 渲的图。
+    截图 tools/mock/loadshots.lua（+ scene_render.py 画 3D 背景）；模拟器 rbx.lua 多了 R.viewSize / R.touch（手机截图），uidump / hud_render.py 跟着认画面大小。
+  · **第三段（分支 workshop-c）：照界面评审逐条返修**（评审：满屏白剪影、卡片和弹药栏不是一套、白底太多、面板太透、3D 编号乱、左栏只露 2 张半……）：
+    卡片照 WtTank 弹药栏的画法（不抬起、不画状态色条；选中 = 琥珀细描边 + 底边 2 像素；装着的 = 左边白竖条；键位框编号、右上数目、图后横向柔光）——
+    **docs/style.md 第 4、5、6 条和动效表跟着改了**（一屏白底只有页签 + 主按钮；次级选中用新的 **Theme.setPicked**；中文小字 K.text 自动粗一档）；
+    面板 0.06 + 两边压暗；3D 编号只写镜头这一边、引线只走横竖、镜头动着淡掉、落在面板底下的不画；全景按透视算准取景（翼尖不再钻到右栏底下）、不自己转；
+    挂点卡按全景画面从左到右排（和机身编号对得上）、整组放在两栏中间；左栏选了挂点时方案收成一行、武器卡整张整张放 +「还有 N 种」、卷到装着的那张；
+    右栏去掉条、悬停时「现在 → 换上」红绿；资料卡里是这枚弹的 3D 小视口（WeaponModels 拼的真模型，慢慢滚着转）；撤销（最近 10 步、Ctrl+Z）、
+    车名右边的保存状态（服务器回了才写「已保存」，4 秒没回「没存上 · 重试」）；右键 / Backspace / 3D 空白处点一下返回，Esc 让给 Roblox 系统菜单；
+    「我的方案」右键 / 长按：覆盖、清空；手机：能点的 ≥ 44、点一下预览再点装上。飞机不再放涂装页签。
+    **TechUI（C 的文件，先在这里打个招呼）**：G.hangarWsMode 整备开着时收起顶栏的扳手 / 弹药 / i（和页签重复）、剩下的往左并（H.icons）；
+    showVehicle 整备开着时把同一架搭过的几套模型收着（最多 6 套，G.hangarAirCached / hangarAirCacheClear）——悬停预览、装上、撤销来回换不重搭；
+    AM.build 外面包了 debug.profilebegin("hangarAirBuild")，真机上用 MicroProfiler 看卡不卡。**HangarStage 多了 Stage.take()**（拿下停着的模型、不销毁）。
+    **截图工具（大家都用的）**：uidump 多记了 Font / RichText / TextTruncate / 描边方式；**hud_render.py 照字体挑字了**（英文数字 Inter / JetBrains Mono、
+    窄体横向压 0.86、中文文泉驿、粗体中文描一圈；RichText 的颜色 / 字号 / 粗细；放不下截「…」；字没有黑描边就不画阴影）——合进去以后各位的截图字会和以前不一样；
+    scene_render.py 认 vp = true 的小场景（视口里的 3D，透明底），loadshots.lua 写 <名>.vp.json。模拟器：GuiService.MenuIsOpen、MenuOpened / MenuClosed，KeyCode 加了 LeftSuper / RightSuper。
+    下一轮：Blender 武器图（走 ammopics 那条管线）、弹药页、改装 / 乘员、涂装 / 资料。
+
+- F（11-27，用户：「坦克的开镜你直接去按照战雷的做」+ 一张战雷开镜截图「这个样子」、「然后再做一个望远镜」、「镜子里的线条和字太粗了而且不够清晰 光学渐变也有些生硬」；
+  11-26 的「照真镜子重画」）——**新：ReplicatedStorage/SightDefs.lua（数据、算法）+ Client/GunSight.lua（画）**，Drive.lua 建它、每帧调：
+  · 全屏开镜（圆形目镜、热像框、红色发光分划、镜下红字都收了；Interior 的 ScopeFx 车外开炮长镜只从黑淡入 0.2 秒、不留暗边，车里的观瞄设备暗边改成 16 圈细环）；
+    分划 1 像素细线（白天黑、白热亮色、天黑自动红色照明），数字 RobotoMono；尺寸全按密位（苏 / 中 6000 制、北约 / 日 6400 制），每密位像素按镜头视场算——换倍率整套缩放。
+  · 六家真分划（SightDefs.FAMILY）：tsh（TSh：59 式、BMP、BRDM）、tpd（TPD-2-49 / TPD-K1：T-64A、T-72 乌拉尔 / A / B、69-II）、sovmod（1G42 / 1G46 / 松树-U、96 / 99）、
+    nato1（M105D / TZF：M60、M60A1、豹 1、M551、M2 / M2A2、87 式）、natolrf（GPS / EMES-15：M1～M1A1HC、M60A3、豹 1A5、豹 2A0 / 2A4、74 式）、natodig（M1A2 系、豹 2A5 以后、10 式、M2A3）。
+    **按科技树键配（SightDefs.TREE）**，再按型号（VEH），都没有按 WtOptics.kit 推。WtMods.GEN_FIX：T-64B、74 式按年份推错了火控代，改成激光一代。
+  · 截图那样：横线每 4（北约 5）密位一格、8（10）写数；中心往下的竖线左边是**这一发弹的表尺**（Ballistics.superElev 真弹道，每 200 米一格、400 米写百米数），
+    画在「比装定距离多抬几密位」的地方；**PageUp / PageDown 装定距离 ±100 米（0～4000）**，装定 0 全在中心下面（截图），装定 1200「12」在中心；R 测距 / 估距自动装定。
+    苏式（tsh / tpd）上方各弹种表尺 + 一根指示线、左下 2.7 米测距曲线（400 米～3 公里）；数字火控镜下写距离 / BS / ----、弹种、待发、状态。
+    顶上方位刻度（比分条下面，度，跟视场缩放）；炮管实际指向的小十字（炮塔没转到位时偏着）；猎歼式跟踪框。
+  · 开镜 / 望远镜里照样画 WtTank 的弹药栏、左下损伤图（VehHud wtBarOnly）；VehHud 镜里那套装填圈、距离标尺、小罗盘、读数框收了（手机紧凑布局还留读数框）。
+  · **车长望远镜（C；车外的 C 原来是 Interior 进车内，让给望远镜了——进车内用 F2～F5 / T）**：VehDefs 的 cupola 往上 1.6 格、8 倍、两个圆的视场（单独一层 DisplayOrder 2，界面在上面）、
+    密位刻度（东 6000 / 西 6400）、2.7 米测距曲线；R 车长估距（两秒、±6%，估出来装定到炮上）；Shift / 右键直接进炮长镜。弹药栏多一格望远镜（C）；烟幕那格的键名改成 M（原来写 X）。
+  · 第三人称（「坦克准心对标战雷」）：Drive gunImpact——标记画在**这一发的真落点**（炮管方向减按落点距离算的超高角、射线每秒 15 次、位置每帧跟炮管）；
+    炮塔到位却打在近处的坡 / 墙上 = **炮口被挡**，WtTank 准星画叉（WtGunBlocked）；穿深指示扣爆反（同服务器 Era.lua 的系数）。
+  · 测试：**tools/mock/gunsight.lua（新）**、optics.lua / wttank.lua 跟着改。没做：老镜子（TSh、M105D）跟炮绑死的铰接瞄准线、俯仰速度按车、锁炮塔的自由视角（梳理里列了）。
+  · **弹药栏写实弹种图**（11-27 晚，用户「完全按照战雷的风格去做设计 而不是这种卡通风格……更拟真」）：每种弹一张 Blender 按真弹结构建模、照实物涂装渲的图
+    （**tools/models/ammopics_blender.py → ammopics.py → ReplicatedStorage/AmmoPics.lua**，57 张：33 种主炮弹、机枪弹链 / 机炮弹 / 导弹 / 火箭、六个工具格），
+    横放弹头朝右、同一口径一个比例尺；HudArt 加 G.ammoPic / G.ammoPicOn（同车图的解码），用不了 EditableImage 退回原来的单色剪影。
+    WtTank 弹药栏按新规范重排（96 × 60 / 60 × 60 平涂格子、三组细分隔线、琥珀选中、膛内白竖条、底边装填进度、打空去色、名牌全称），
+    左下损伤图挡着时整排往右让。预览：hud_render.py 认 AmmoPic 属性；wttank.lua 查每格有图、[noedit=1] 查退回剪影。
+  · **按 11-27 美术审查（17 条）细调**（分支 ammo-polish）：120 药筒不再是白雾（材质压暗、Base Contrast、左边「先压暗、后透明」、比例尺按 0.15 倍药筒）；
+    枪弹弹尖识别色贴着弹头外形涂（原来埋在弹头里）、弹链三发并排、窄链节、真实配比；金属不加细噪声、64 采样 + OIDN + 限亮点、影棚两条柔光条、金属不降饱和；
+    125 尾段 / 后环 / 可燃筒 / 色环照实物调哑；工具格统一机位、高 ≤ 24；去掉格子里的硬边柔光（渲染里加下后方轮廓光）；状态信号去重（白点代替白竖条、
+    底边线只在装填时、秒数只在名牌）；没选中不写类型；**AmmoPics 两套（pics 2 倍 / pics1 1 倍，按逻辑屏高 850 选）、透明边外扩、同色游程编码**；
+    HudArt 提前 require、每帧解一张、整排一起出 / 一起退剪影、只在 CreateEditableImage 出错时算用不了；弹药栏每帧只写变了的属性。
+    预览：hudshot [states=1]（打空 / 冷却、主炮损坏）、[vp=1920x1080]；hud_render.py 认 1 倍 / 2 倍、图上 UIGradient 的颜色。
+  · **按第二轮美术审查细调**（分支 ammo-polish-2）：去掉下后方轮廓光、环境下光条 0.55 → 0.12（每发弹下沿那道亮边读成描边），轮廓光压到主光六成、
+    黑漆 / 黑弹托 / 钢药筒糙一点（上沿 ≤ +70）；金属另有一盏只照金属的前下方补光（Light Linking，主光 15%：黄铜不再「黑金」）、铝药筒哑光、125 尾管缎面；
+    **125 穿甲弹（3BM42 / 3BM60 / 3BM22 / 3BM15 / DTC10）改画裸弹丸**（长杆 + 弹托 + 尾翼；原来的棕筒装填形态像注射器——留成 *_lf，extra 不打包）；
+    扳手转 −28°、话筒回到经典侧面、工具格曝光 +0.15；密封环再压暗；右边按画面最右一点对齐（M1028）；**1 倍那套不写模板字**（渲染多出 <名字>_nt.png）。
+    WtTank：主炮损坏只在名牌右边写一次（格子里发数照写、变暗）；车外准星写着装填秒数时名牌不再写；跨 850 换另一套图时旧图留着、新的解好再换。
+
+- F（11-27，用户要游戏在 M3 的 Mac 上「非常丝滑」、「各种动画效果做出丝滑感」——本地分支 wip/perf → perf-2，没 push）。**新加的公用东西，别再写一套**：
+  · UI.lua：`G.uiShow(界面, 开关, opt)` / `G.uiPop(界面, 从多大, 慢)`（自己挂一个 UIScale 叫 EaseScale：只动比例、不动位置透明度；
+    界面上有别人的 UIScale 就不弹、uiPop 返回 false——WtTank 的 barScale / diScale 这种每帧写的别拿它弹）、`G.reducedMotion()`、
+    `G.sceneFade(hold, fade, opt)`（镜头硬切盖黑：hold > 0 的等连着两帧顺、opt.ready 成立再淡，最多多等 0.8 秒；opt.from 半黑起淡；又来一次两边条件都要满足）。
+    时长、缓动照 docs/style.md「动效」（Theme.T / EASE 进了主分支就取它的；界面不用 In）。
+  · View.lua：`G.velTrack(rec, 位置, 时间, maxV)`——别人的飞机、车的速度（锁定圈、提前量、接近率）：只在服务器真挪了它时算、按时间平滑；
+    停了 0.6 秒以上又挪、一拍跳得离谱的不算。AaFcs、Gunner、Fly、Radar、WtFlight 都用它，**别再每帧差分**。
+    远处的车三帧一摆按「看上去多远」（距离 × min(1, 视场 / 70)，同 VfxLib.lod 的口径）；三边不到 2 格的小零件 120 格内、自己的车才投影子（v.smallSh）。
+  · 热成像的 Highlight（Night.lua 车辆热成像、Drive.lua 瞄准镜热像）：罩 G.viewFolder 的那个进热像建一次一直留着、白热 / 黑热只换颜色、玩家的换人才增删——
+    **别改回每半秒全拆全建**（镜里每半秒一顿）。viewFolder 来了新车最多 3 秒重建一次那一个（M3 上还没核实 Highlight 会不会自己罩上新零件）。
+  · 雪山：SnowClouds 开着（`G.snowCloudsOn`）时 Warfx 不摆球拼的积云（`G.cloudBanksRefresh()` 让它重摆 / 1 秒淡掉）；体积云 14000 格、近处每帧挪和调透明度。
+  · 测试：**tools/mock/smooth.lua（新，不出生，几分钟）**；gunsight / veh / snow 里加了几条。
+
+- F（11-27，审查 b7bfaae「X 透视画细」挑出来的，用户 11-27「x透视不够细节」）——Client/XrayOwn.lua、Drive.lua、Night.lua、UI.lua、init.client.lua：
+  · 鼠标指部件原来用不了（开车每帧 LockCenter，GetMouseLocation 永远是屏幕中心，只指得到炮管；测试是手动挪镜头、直接写鼠标位置的假阳性）：
+    按住 X 时 Drive 放开鼠标（Default、UI.lua 画指针，这段时间鼠标增量清零：镜头、炮塔不转），松手锁回；手机加「透视」键（按住），另一只手指点部件（TouchTap）；没有指针不显示提示框。
+    模拟器 GetMouseLocation 锁中间时返回屏幕中心（tools/mock/rbx.lua），测试改成真按住 X、挪 R.mouseAt。
+  · 车长坐到指挥塔正下方（左右夹在「炮塔半宽 − 肩宽」以内），头离指挥塔中心超过半径（0.625）就不抬（T-64、T-80 原来头从炮塔顶冒出去；10 式也是）；
+    指挥塔在另一边的（勒克莱尔、10 式）不挪。转盘车（WtDamage.CAROUSEL）炮塔乘员的地板 = 转盘弹层的顶（T-72 类弹药盒顶、T-64 / T-80 弹丸层顶，车体系换炮塔系）；
+    篮子式的竖药筒围在人脚外圈（最外到履带里面：比 WtDamage 的弹药盒子宽一点），脚伸得出去的人往转轴挪、车长上身往指挥塔歪（≤ 0.36）。
+  · Highlight 全客户端 31 个：Night.lua 的车辆热成像（1 + 24）按住 X 时让开（XrayOwn 建的那一帧先 G.vehIrHide）。透视改在 steps 里 view / interior / ride / hatch 之后（G.stepOwnXray），不晚一帧。
+  · X 键（Drive xrayDown / xrayUp）：瞄准镜、车长望远镜都先收起、松手回去（退镜不走 toggleSight：选着榴弹炮时那是进炮兵视角）；车内视角、全真模式不响应（提示一句）。
+    XrayOwn 每帧也查：镜里 / 望远镜里 / 车内先收起。arty.lua 的「瞄准镜里按住 X」原来用 Shift 开镜（M109 选着榴弹炮 Shift 是炮兵视角，那一项一直不对），改成直接开镜。
+  · 乘员状态按座位（同 WtTank：token 第 2 个字起是座位）；AmL / Rdy 变了按现在的弹重排弹名和弹头（XrayOwn.relayRack，零件数不变）；加特林画转膛机匣；
+    BMP-1 / 2 / 2M、M2A3 画反坦克导弹发射架（XrayOwn.ATGM，装着几发画几发）。测试 tools/mock/xrayown.lua 全改（真按 X、挪鼠标、转 75° 炮塔、OBB 相交）、arty.lua 的 LocalPlayer。
+  · 没做：WtDamage 布局里原来的重叠（悍马 / JLTV / 爱国者驾驶员在发动机盒子里、4 人自行火炮装填手在弹药盒里、西方坦克炮长的腿伸进车体弹架、勒克莱尔 / 10 式的弹在车底转盘位置）——
+    要改伤害判定的盒子，留着；T-64 / T-80 转盘 28 发（服务器按 22 算，改了是玩法）没动。
 
 - E（11-27 早，用户「德国目前没飞机 包括很多缺的载具全部做一下」）：补了三辆地面车（Sketchfab 真模型，tools/models/blveh.json）——
   · **BRDM-2**（俄「轻型 / 歼击车」1 级，KPVT 14.5 毫米 + 并列机枪，能浮渡）、**9K31 箭-1**（俄「自行防空」2 级，四联装 9M31 红外弹：发射前 Q 锁住、热诱弹骗得了——Air.lua flare 认 seeker = ir 的地空弹）、
@@ -32,6 +205,42 @@
   · 测试 tools/mock/newveh.lua（三型的数据都在、试驾开火、箭-1 锁定发射命中）。
   · 接下来（用户 11-27 新要求，排在填科技树空位前面）：车辆功能还原度、飞机雷达照战雷（每型自己的雷达、键位控制雷达方向）、坦克准心对标战雷、把重叠的版本拆开（M1A2 / SEP / SEPv3 等）；
     然后「把每个国家每个类型载具的 1 到 5 级填满」（先做 30 辆，各维度还原一致）。
+
+- F（11-27，用户「飞机试驾不了」）：
+  · **根因**：Client/TechUI.lua spState 的「这一局没出过地面车：飞机、直升机整张卡禁选」不分在不在局里——S.wt 一直有（WtMatch.lua wtPersonal 不在局里也发这一局的账，ground = false），
+    匹配中的机库阵容里飞机 / 直升机卡点不动，右边「试驾」只能开地面车（乘员、改装、挂载也选不到）。改成只在局内选车（S.pick）禁选；匹配中飞机卡淡淡写 SP，不拦「开战」。
+    **以后别再把这条禁选放到局外**（用户 11-26「直接禁止选飞机」说的是局内选车）。
+  · 试驾打靶：真游戏开着匹配，机库里试驾时这一局还在「匹配中」——Air.lua fireStore / stepGuns、Armor.lua fire、Fly.lua（尚未开战）都按没开战不让打；试驾的车（e.testDrive / TestDrive 属性）放开。
+  · 顺手查到：Fly.lua fmMass 火箭巢按「巢里几发 × 一整个装满的巢」算——苏-25（四个 B-8）43 吨推满油门滑出跑道几公里离不了地、A-10 冲出跑道；改成一个巢（空壳四成 + 剩的火箭按发数折）。
+  · 测试 tools/mock/wttestair.lua（a03a290）。
+  · **后续（审查 a03a290 挑的，分支 hp-followups）**：
+    ① 跑道上滑不起来的直接空中出生（试驾审查 2）：新 AirDefs.takeoffRun 照 Fly.lua 地上那段静态推一遍滑跑（满油、默认挂载、改装全装的推力；歼-6 估 1399 格、
+      同一个测试里实测 1390 格），比起飞位往西剩下的跑道（MapRange.runwayLeft，第 0 个起飞位 3440 格）的九成五长，Tech.lua testDrive 就在靶区上空出生（spawnAircraftAir，
+      不按型号列名单；提示换成 tree.testOnSky）——现在是轰-6K（3628 格）、B-2（6796 格）；MQ-9 改装全装 3026 格，照旧在跑道上。
+      **改 Fly.lua 地上滑跑、抬头、fmMass 的，同时改 AirDefs.takeoffRun**。战场跑道也是 3600 格：出击（deployVeh）没动。
+    ② 手机俯仰反了（试驾审查 8）：Fly.lua jetPhysics pitchIn = −mv.Z（MoveVector 往前推 Z = −1，同按 W：推杆低头；直升机 fwdIn = −mv.Z 本来就对）。
+    ③ 试驾车的待发弹架回补（试驾审查 3）：Wt.lua rackStep 开战以前也给 e.testDrive 的车跑；据点补给照旧只在开战以后。
+    ④ 局内选车页藏掉「试驾」（试驾审查 4，同战雷的出击页）：TechUI H.testBtn 在 S.pick 时藏、「只看车」挪到最右；局外、匹配中照旧。
+    测试：wttestair.lua 加 ⑤（轰-6K 空中出生、在飞）、① 手机摇杆往前推低头 / 往回拉抬头、④ 打空待发弹架会补回来；match.lua ② ⑤ 查「试驾」藏没藏。
+    没做：审查 5（局外开打以后飞机卡写红字 SP，算变化不算 bug）、6（匹配中选飞机点开战 → 进局后选中格回地面车，没测）、7（rbxlx 要重新生成：lune run tools/build.luau）。
+  · **再后续（审查 3c21ba7 挑的，分支 hp-followups-2）**：
+    ⑤ 空中出生的固定翼往南退到离靶区中心 18 秒航程（Tech.lua RUNIN，最多 12000 格）、朝北进场：原来在靶区中心正上方出来，1200 格高平飞投弹要提前 5000 多格，
+      一出来就飞过了靶子；现在轰-6K 出来九秒多才到投弹点。流式预加载跟着改成空中出生那一片（原来一直是跑道东头）。
+    ⑥ 试驾无人机的操作员站到起飞位旁边、跑道南边离跑道边 60 格的地上（MapRange.runwaySide；跑道上、空中出生都是）：原来站在起飞位上，挡着前面几个起飞位的滑跑线。
+    ⑦ 提示分开：估出来滑不起来 tree.testOnSky、摆不到跑道 / 直升机坪上的兜底 tree.testInAir（原来兜底也说「满油满弹滑不起来」）、直升机 tree.testOnPad（原来说「在跑道上推油门起飞」）。
+    ⑧ 局内（Round.lua G.inMatch：这一局算他的、准备 / 战斗阶段）服务器也不让试驾：原来只藏了按钮，客户端直接发 testDrive 照样能半路去训练场。
+    测试：wttestair.lua ①③ 比服务器估的滑跑和真滑的（差不到 5%）、③ 用手机摇杆往回拉抬头起飞、②⑤⑥ 查提示、⑤ 查进场方向 / 炸弹落点 / 预加载、新 ⑥（MQ-9 跑道上、
+    剩的跑道不够长空中出生、跑道上摆不下的兜底）；match.lua ② 局内直接发 testDrive 不理。
+
+- F（11-27，用户「开始游戏的那个仓库有些频闪」，3b8a024）：
+  · **根因**：大厅那圈远处平地（Scenery.lua 的 Ocean）顶面正好 900，和厂房水泥地、停机坪、主菜单地面的顶面重合，整片地面抢深度；沉到场景地面底下 15 格（顶面 885）。
+    HangarStage 地上贴的薄层改成固定几层、层与层差 0.06 格（大厅在 x = −100000，那里 32 位浮点只分得出 1/128 格）；墙、屋顶、杂物上贴面的错开；
+    停机坪用的 Enum.Material.CorrugatedSteel 是 Roblox 没有的材质，换成 Metal——选中飞机时的露天停机坪这才在真游戏里搭得起来。
+    **以后往大厅的场景（HangarStage / MenuStage）加零件**：同向的面别贴在 0.04 格以内、半透明的别叠，跑 tools/mock/hangarzfight.lua。
+  · **后续（审查 3b8a024 挑的，分支 hp-followups）**：远处平地取 Zones.HANGAR / HANGAR_AIR / MENU 三处 Y 的最小值再减 15.5（频闪审查 3）；
+    range.lua ⑥ 不再抄 15.5，改成查「顶面低于场景最低的零件」（频闪审查 4）；hangarzfight.lua 把厂房里停的车、停机坪上停的飞机（TechUI 摆的子 Model）
+    深度收进来，只打印「车模自己贴面多少对」（频闪审查 1）：零件拼的 59 式 91 对、歼-6 77 对——车模（VehModels / AirModels）和战场共用，有导入原模型的不走这套，要改另开。
+    没在 Studio 里亲眼看过（0.06 格层间距、贴地视角下细缝走样）。
 
 - E（11-27，用户「不同弹种击中的 X 光效果不一样」「不光不同动画还要不同效果」）：
   · **弹种**（服务器 Wt.lua xrSub：弹种表写了 sub 就用，没写按参数推）：fs 长杆尾翼稳定脱壳穿甲 / ds 脱壳穿甲 / ap 全口径穿甲 / aphe 穿甲爆破 / heat 破甲 / tandem 串联破甲 / he 杀爆 / hesh 碎甲 / ac 机炮机枪；以后加弹在表里写 sub。
@@ -362,9 +571,10 @@
     襟翼加升力、高速舵变沉（qHi）、失速掉翼（st.stallK / dropDir）、AGIL 滚转 0.75 / 过载 0.85、滚轮油门；**WT_GUNS**：固定机炮顺着机头打（gunStick(true)
     只给敌机算提前量 → st.lead，AirHud 的 LeadMark 画），MWT 黏住那套留着没删（WT_GUNS = false 就回去）。测试 tools/mock/wtfeel.lua；air.lua ⑤½ 改测提前量圈
   - **已做**：机载雷达（用户 11-24 夜「雷达扫描图……为雷达锁定式导弹提供引导……39 机动」）——AirDefs 每型的 radar（pd / pulse、range / lock / az / el / notch），
-    主动雷达弹 act / notch；客户端 Radar.lua（B 显雷达屏、G.radarSees：范围 / 视场 / 置零 / 地杂波），Fly.lua 雷达弹只锁看得见的、看不见超过 1 秒丢锁、
+    主动雷达弹 act / notch；客户端 Radar.lua（B 显雷达屏、G.radarSees：范围 / 视场 / 置零 / 地杂波），Fly.lua 雷达弹只锁看得见的、看不见超过 1 秒丢锁（11-27 radar-2 起：STT 归 Radar.lua，记忆外推 2 秒再丢，见「正在做」F 雷达那条）、
     雷达真跟踪着才报 lockOn；服务器 Air.lua 的 arhStep（数据链 → 惯导 → 开导引头、置零半秒丢）、flare 里箔条只骗开了导引头的雷达弹；Fx 画箔条云。
-    测试 tools/mock/radar.lua。**C 的 WtAir / 锁定框（AirHud LockMark）没动**；以后谁加有雷达的飞机，记得在 AirDefs 的 RADAR 表里给它配雷达
+    测试 tools/mock/radar.lua。**C 的 WtAir / 锁定框（AirHud LockMark）没动**；以后谁加有雷达的飞机，记得在 Radars.lua 的 RD.OF（型号）/
+    RD.VAR（借型号的科技树版本）里给它配雷达（11-27 起；原来的 AirDefs RADAR 表删了）
 - A（11-24）：俄系装备找模型（Sketchfab 上 CC-BY / CC0、不是游戏里扒的），按 blveh.py 转；PvE 关卡加多、做真。
   - 已做：T-90M（t90m，mansoorsajidp 带车内的那个；Ballistics 加了俄制 125 弹 gun125r：3BM60 / 3BK31 / 3OF26，弹种加了类别 cls，面板键按这门炮挑同一类——B 改面板时注意 `BAL.panelAmmo`）；BMP-3（bmp3，lampilamp；新武器 gun100：2A70 100 毫米低膛压炮）
   - 铠甲-S1（pantsir，SanderWolf_ 的原模型）：车辆新武器种类 **sam**（地面车的地空导弹）——客户端 Drive.lua 要 AaFcs 的 Q 锁定（lockId）才发、消息带 tgt；
@@ -497,9 +707,9 @@
      对开飞机的人收起来，乘客照旧）：左上参数表（节流阀 / 表速 / 速度 / 马赫数 / 海拔高 / 雷达高、每种弹一行、热焰弹、干扰箔、机炮、燃油量、每台发动机油温 /
      引擎温度）、机头 ⊕、导弹大圈（导引头离轴角 w.cone，按镜头视场真实投影，不再至少八成屏高）小圈（锁定前白、锁上红）、锁定框（距离、接近速度、
      高度差、目标飞向）、顶上航向罗盘、左边雷达告警圆盘（敌机雷达扫到你标型号、锁着你虚线、导弹打来 MSL 实线红闪；Fly.lua 收到 rwr / rwrLock 转给
-     `G.wtRwrEvent`）、底下「已选武器 / 导引头」。**A 注意：Radar.lua 的雷达屏改成了战雷式**（挪到右侧，SRC / TRK / TRK MEM + PD，方位 × 俯仰、
+     `G.wtRwrEvent`）、底下「已选武器 / 导引头」。**A 注意：Radar.lua 的雷达屏改成了战雷式**（挪到右侧，SRC / TRK / TRK MEM + PD——11-27 radar-2 换成真机缩写 RWS / TWS / STT / STT MEM / ACM…，方位 × 俯仰、
      量程、俯仰刻度、天线俯仰标记，搜索目标一短横 / 选中「|—|」/ 跟踪方框 + 速度线；Alt+R 开关雷达（关着 `G.radarSees` 返回 false, "off"）、Alt+Q 量程、
-     Alt+T 换目标；`G.radarContacts()` 给航向罗盘）；数据链：自己打出去的主动雷达弹在屏上一个点、到目标一条线（开机前虚线 + 预计命中点小圈，
+     Alt+T 换目标；`G.radarContacts()` 给航向罗盘——11-27 起改名 `G.airRadarContacts()`、ScreenGui 改名 AirRadar，锁定改成 R / Alt+T 选、Alt+F 锁，见「正在做」F 雷达那条）；数据链：自己打出去的主动雷达弹在屏上一个点、到目标一条线（开机前虚线 + 预计命中点小圈，
      开机后实线，断了只剩小圈）——服务器 Air.lua arhStep 第一次开导引头时发 fx `shotAct`，客户端 Fx.lua 记 `fs.act`；shotFix 带 lost 时记 `fs.lost`。
      **C 注意**：AirHud 里 C 的绿方框锁定（LockMark）在战雷式开着时收起来了（WtFlight 有自己的锁定框）；Fly.lua 那个绿大圈（HudRing）也收了。
      TankHud 的飞机模式：圆形小地图挪到右上、「被发现!」挪到左边雷达告警圆盘右边；SquadHud 的小队名单开飞机时收起来（左上是参数表）。
@@ -542,6 +752,29 @@
     · **X 光慢放动画**（2f9cca6）：破甲 / 射流打穿时（xr.jet；专门的射流弹 xr.big）WtHud 的 xaBuild / xaStep 按时间轴放：弹飞入 → 白闪冲击波 →
       射流一点点钻进去（熔化金属珠、杵体）→ 破片一根根长出 → 打到的乘员 / 模块红白闪 → 殉爆火球 / 起火；别的弹种还是原来那张静态图
     · 直接出击（c1c89df）：部署界面下面一条出击栏（WtBattle），点车 = G.ACT.wtDeployVeh（出生、出车、坐进去）
+
+## 同族变型（11-27 拆重叠版本 e94bb69…60a97e9 + 审查返修；加新型号前先看这里）
+
+- **VehDefs 的 variant 三个字段**（写在 over 里）：
+  · `like = <同族那一型>`（借谁的模型）：按型号登记的表查不到这一型时退到它——驾驶界面剪影（VehHud）、召唤卡片（Depot）、TankMods 的 FOR / ERADEF / PRESETS / SPEC（noEra 的不退）、
+    **第一人称白名单 Config.FirstPerson.only 和车内 Interior.lua 的 ALIAS**（`only[id] or only[d.like]`、`ALIAS[id] or ALIAS[d.like]`：M1 一族 7 项靠它进 M1A1 / M1A2 那套车内）。
+  · `noEra = true`：借来的模型上后来才有的爆反 / ARAT / TUSK 不起作用（TankMods.eraOf 一处挡：服务器、驾驶界面、改装页一起没有）；没导入原模型时也别画，再写 `era = false`。
+  · `noStab = true`：没有炮控稳定器（M60、59 式、豹 1 头一批）。**variant 是深拷**：从 noStab 的那一型拷出来、真车有稳定器的（69-II、豹 1A1A1、豹 1A5）要写 `noStab = false`。
+- **加 / 改 alias 要改两处**：源头（blveh.py 管的模型改 tools/models/blveh.json 那一项的 alias 数组，网页版 / Sketchfab 的改 tools/models/mdl2glb.py 的 ALIAS）
+  + 生成好的 src/ReplicatedStorage/ImportedMeta.lua 的 alias / old 两行（照 mdl2glb 的 lua() 写法：键排序、`old` 跟 blveh.json 的 old）。
+  另外按型号查的：Lang veh.* / vw.*、VehPics（vehicons.mjs 的 GLB 加一行，`vehpics.py <空目录> --merge`）、WtOptics.VEH_NV、WtDamage.PROF / CAROUSEL；科技树改 veh + model。
+- **飞机按科技树键覆写的表有两张**：飞行物理 FlightModel.VAR、雷达 Radars.VAR（F-16A、F-2A、F-15A / E、F-15J（M）、歼-10A、歼-11、苏-27SM、苏-30SM）；
+  借型号的飞机拆成自己的型号时两张都要改（雷达照 Radars.lua 文件头）。
+- 老型号被科技树换掉的（科技树 M1A1 11-27 起开 m1a1base，老的 m1a1 留给老模式、老 AI 名单）：TechTree 末尾把 TT.byVeh 指回原来那一项，沙盒的观瞄、火控不变。
+- 炮的弹种表照全工程的顺序：{ 原厂穿甲, 破甲 / 多用途, 榴弹 / MPAT / 霰弹, 旧穿甲…, 射流 }——WtMods 只研究得到第二、第三种（第四、五种研究不到，老问题）。
+  **射流弹研究不研究得到，看这门炮有几种弹**：三种弹的炮（M60 / M60A1 / M60A1 RISE / M60A3、豹 1、豹 2、74 式、10 式）第三种就是射流，研究满拿得到；
+  四种以上的（M1 一族、125 毫米各炮）拿不到。同一族要么都拿得到、要么都拿不到——variants.lua ④ 查「研究满（前三种里最强的）穿深」同一族、科技树同一列按年代不往回掉
+  （11-27 二审：RISE 原来第三种放 M392、射流排第四，研究满是 M60 一族唯一拿不到射流的）。**射流在科技树里该不该研究得到还没定（要问用户）**：
+  现在研究满的 M60A3（战斗等级 8.0）760 毫米，压过 M1～M1A2 SEP（9.3～11.3：430～700）。
+- 科技树写 `model` 只给借同族模型的；模型就是这一型自己的（科技树 M1A1 开 m1a1base，用的就是 M1A1 的原模型）不写——写了 TechUI 会标「同族模型」「模型暂用同族的…」。
+- 车里炮长面板的弹种键（SABOT / HEAT / MPAT / CAN；99A 的穿甲 / 破甲 / 榴弹 / 炮射导弹）写死的是 SEPv2 / 99A 那几发：按键走 Ballistics.panelAmmo，
+  在这门炮现在能打的弹（Drive 的 G.driveAmmoList：研究过的前 ModAmmo 种、带了的）里挑同一类（cls）的，一种都没有就不换（AMMO 键、弹种旋钮跳过）；
+  已经是这一类再按换这一类的下一发（科技树 M1A1 的 M829 / M829A1）。调整页的战斗瞄准距离改火控现在装定的那发，不按面板写死的。
 
 ## 工具链的先后（别互相覆盖）
 

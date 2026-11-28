@@ -198,13 +198,43 @@ function SnowBuild.build(World, root, G)
     m.Name = "Bridge_" .. i
     local ax, az, bx, bz = B.ax, B.az, B.bx, B.bz
     local dx, dz = bx - ax, bz - az
-    local L = math.sqrt(dx * dx + dz * dz) + 40   -- 两头各搭到岸上 20 格
-    local c = V((ax + bx) / 2, PL + 0.35, (az + bz) / 2)
-    local cf = CFrame.lookAt(c, c + V(dx, 0, dz))
+    local L0 = math.sqrt(dx * dx + dz * dz)
+    local L = L0 + 40   -- 两头各搭到岸上 20 格
+    -- 桥面高：公路桥落在河滩（PL）；铁路桥照轨面（高出河滩一截，顺着坡，11-28 晚）
+    local y0, y1 = B.y0 or PL, B.y1 or PL
+    local c = V((ax + bx) / 2, (y0 + y1) / 2 + 0.35, (az + bz) / 2)
+    local cf = CFrame.lookAt(c, c + V(dx, y1 - y0, dz))
+    local deckAt = function(t) return c.Y + (y1 - y0) * t / math.max(L0, 1) end   -- 离桥中间 t 格处的桥面高
     local stone = B.k == "main"
+    local railB = B.k == "rail" or B.k == "yard"
     local w = B.w
     slab(m, V(w, 2, L), cf * CF(0, -1, 0), stone and RGB(140, 134, 124) or RGB(70, 74, 78), stone and MAT.Cobblestone or MAT.DiamondPlate)
+    if railB then   -- 铁路桥：两侧钢桁架（上下弦、竖杆、斜杆），坦克从桁架中间过
+      local TH, bay = 15, 20
+      local nb = math.max(2, math.floor(L / bay))
+      local GREY = RGB(58, 64, 70)
+      for _, sx in ipairs({ -1, 1 }) do
+        local x0 = sx * (w / 2 + 0.6)
+        slab(m, V(1.4, 1.6, L), cf * CF(x0, 0.8, 0), GREY, MAT.Metal)            -- 下弦
+        slab(m, V(1.4, 1.6, L - bay), cf * CF(x0, TH, 0), GREY, MAT.Metal)        -- 上弦
+        for q = 0, nb do
+          local z0 = -L / 2 + q * L / nb
+          if q > 0 and q < nb then slab(m, V(1.1, TH, 1.1), cf * CF(x0, TH / 2, z0), GREY, MAT.Metal) end   -- 竖杆
+          if q < nb then   -- 斜杆（一格一根，往中间倾）
+            local z1 = z0 + L / nb
+            local up = (z0 + z1) / 2 < 0
+            local a2, b2 = V(x0, up and 0.8 or TH, z0), V(x0, up and TH or 0.8, z1)
+            local d = (b2 - a2).Magnitude
+            deco(m, V(0.9, 0.9, d), cf * CFrame.lookAt((a2 + b2) / 2, b2), GREY, MAT.Metal)
+          end
+        end
+      end
+      for q = 1, nb - 1 do   -- 上面的横撑
+        deco(m, V(w + 2.4, 0.9, 0.9), cf * CF(0, TH, -L / 2 + q * L / nb), GREY, MAT.Metal)
+      end
+    end
     for _, sx in ipairs({ -1, 1 }) do   -- 栏板 / 栏杆
+      if railB then break end
       if stone then
         slab(m, V(2, 3.2, L), cf * CF(sx * (w / 2 + 1), 1.6, 0), RGB(150, 144, 134), MAT.Limestone)
       else
@@ -218,7 +248,7 @@ function SnowBuild.build(World, root, G)
       local t = -L / 2 + q * L / n
       local p = (cf * CF(0, 0, t)).Position
       local bot = gy(p.X, p.Z) - 4
-      local hh = math.max(4, PL - 2 - bot)
+      local hh = math.max(4, deckAt(t) - 2.35 - bot)
       slab(m, V(w * 0.8, hh, stone and 7 or 4), cf * CF(0, -2 - hh / 2, t), stone and RGB(120, 116, 108) or RGB(90, 92, 94), stone and MAT.Cobblestone or MAT.Concrete)
     end
     -- 雪：桥面两边堆着一溜
@@ -579,6 +609,276 @@ function SnowBuild.build(World, root, G)
     print(string.format("[雪山] 打过仗的痕迹：沙袋墙 %d 段、铁丝网 %d 道、篱笆 %d 段、电线杆 %d 根、木料堆 %d、干草垛 %d、残骸 %d 辆（%d 个零件）；弹坑 %d 个、战壕 %d 条",
       #PR.sandbag, #PR.wire, #PR.fence, #PR.pole, #PR.logs, #PR.hay, #PR.wreck, n0, #(Map.CRATERS or {}), #(Map.TRENCH or {})))
     G.snowWar = function() return { parts = n0, wrecks = #PR.wreck, craters = #(Map.CRATERS or {}), trenches = #(Map.TRENCH or {}) } end   -- 测试用
+  end
+
+  ---------------------------------------------------------------- 铁路（MapSnow 的 rail / yard 折线，用户 11-28 照冰封山口加的）：钢轨、站场和防雪棚口的枕木、道口、
+  --   防雪棚（挖得深的两段盖混凝土棚：靠山一侧整面墙、另一侧一排柱子，棚顶积雪；坦克从棚里穿过去）、车站站台和雨棚、水塔
+  local rlf = folder("Railway", sf)
+  local nRail = 0
+  do
+    local RAIL, TIE = RGB(70, 66, 62), RGB(76, 62, 50)
+    local GAUGE = 2.15   -- 半轨距（1.52 米 → 4.3 格）
+    local function nearGallery(P, m)
+      for _, Gq in ipairs(Map.GALLERIES or {}) do
+        if Gq.P == P and m > Gq.m0 - 60 and m < Gq.m1 + 60 then return true end
+      end
+      return false
+    end
+    for _, P in ipairs(Map.POLYS or {}) do
+      if P.k == "rail" or P.k == "yard" then
+        local offs = (P.k == "yard") and (Map.RAIL_YARD and Map.RAIL_YARD.tracks or { 0 }) or { 0 }
+        local STEP = 40
+        local m = 0
+        while m < P.L - 0.5 do
+          local m1 = math.min(P.L, m + STEP)
+          local x0, z0, ux, uz = Map.polyPoint(P, m)
+          local x1, z1 = Map.polyPoint(P, m1)
+          local y0, y1 = Map.profAt(P, m) + 0.55, Map.profAt(P, m1) + 0.55
+          for _, off in ipairs(offs) do
+            for _, g in ipairs({ -GAUGE, GAUGE }) do
+              local o = off + g
+              local a2 = V(x0 - uz * o, y0, z0 + ux * o)
+              local b2 = V(x1 - uz * o, y1, z1 + ux * o)
+              local d = (b2 - a2).Magnitude
+              if d > 0.5 then
+                local p = deco(rlf, V(0.45, 0.55, d + 0.1), CFrame.lookAt((a2 + b2) / 2, b2), RAIL, MAT.Metal)
+                p.CastShadow = false
+                nRail += 1
+              end
+            end
+          end
+          -- 枕木：站场、防雪棚口内外、桥上每 8 格一根（别处是道砟上直接看轨，省零件）
+          if P.k == "yard" or nearGallery(P, m) then
+            for t = m, m1 - 1, 8 do
+              local x, z = Map.polyPoint(P, t)
+              local y = Map.profAt(P, t)
+              for _, off in ipairs(offs) do
+                local cfT = CFrame.lookAt(V(x - uz * off, y + 0.15, z + ux * off), V(x - uz * off + ux, y + 0.15, z + ux * off + uz))
+                local p = deco(rlf, V(7.2, 0.4, 1.0), cfT, TIE, MAT.Wood)
+                p.CastShadow = false
+                nRail += 1
+              end
+            end
+          end
+          m = m1
+        end
+        task.wait()
+      end
+    end
+    -- 道口：铁路和路交叉的地方，两边各一个白底红边的叉形道口标（一根被撞歪了）
+    local function segX(a1, a2, b1, b2)   -- 两段线段的交点
+      local r = { a2[1] - a1[1], a2[2] - a1[2] }
+      local q = { b2[1] - b1[1], b2[2] - b1[2] }
+      local den = r[1] * q[2] - r[2] * q[1]
+      if math.abs(den) < 1e-6 then return nil end
+      local t = ((b1[1] - a1[1]) * q[2] - (b1[2] - a1[2]) * q[1]) / den
+      local u = ((b1[1] - a1[1]) * r[2] - (b1[2] - a1[2]) * r[1]) / den
+      if t < 0 or t > 1 or u < 0 or u > 1 then return nil end
+      return a1[1] + r[1] * t, a1[2] + r[2] * t, r
+    end
+    local nCross = 0
+    for _, P in ipairs(Map.POLYS or {}) do
+      if P.k == "rail" then
+        for _, Q in ipairs(Map.POLYS or {}) do
+          if Q.k == "main" or Q.k == "side" then
+            for i = 1, #P.pts - 1 do
+              for j = 1, #Q.pts - 1 do
+                local x, z, r = segX(P.pts[i], P.pts[i + 1], Q.pts[j], Q.pts[j + 1])
+                if x then
+                  local L = math.sqrt(r[1] * r[1] + r[2] * r[2])
+                  local ux, uz = r[1] / L, r[2] / L
+                  for _, sd in ipairs({ -1, 1 }) do
+                    local px, pz = x + ux * sd * (Q.w * 0.5 + 8) - uz * sd * 14, z + uz * sd * (Q.w * 0.5 + 8) + ux * sd * 14
+                    local y = gy(px, pz)
+                    local tilt = (sd == 1 and nCross % 2 == 0) and 0.35 or 0
+                    local base = CF(px, y, pz) * CFrame.Angles(0, math.atan2(-ux, -uz), 0) * CFrame.Angles(0, 0, tilt)
+                    deco(rlf, V(0.6, 11, 0.6), base * CF(0, 5.5, 0), RGB(230, 230, 226), MAT.SmoothPlastic)
+                    for _, ang in ipairs({ 0.62, -0.62 }) do
+                      deco(rlf, V(7, 0.9, 0.2), base * CF(0, 10, 0) * CFrame.Angles(0, 0, ang), RGB(214, 40, 36), MAT.SmoothPlastic)
+                    end
+                    nRail += 3
+                  end
+                  nCross += 1
+                end
+              end
+            end
+          end
+        end
+      end
+    end
+    -- 防雪棚
+    local CONC2, ROOF = RGB(150, 148, 142), RGB(126, 124, 118)
+    for gi, Gq in ipairs(Map.GALLERIES or {}) do
+      local m = Instance.new("Model")
+      m.Name = "Gallery_" .. gi
+      local P = Gq.P
+      local SEG = 24
+      -- 靠山的那一侧：两边自然地面哪边高（取中间一点看）
+      local mx, mz, mux, muz = Map.polyPoint(P, (Gq.m0 + Gq.m1) / 2)
+      local left = Map.natH(mx - muz * 40, mz + mux * 40)
+      local right = Map.natH(mx + muz * 40, mz - mux * 40)
+      local wallSide = (left > right) and 1 or -1   -- +1：墙在左（−法向那边）
+      local t = Gq.m0
+      local k = 0
+      while t < Gq.m1 do
+        local t1 = math.min(Gq.m1, t + SEG)
+        local x0, z0, ux, uz = Map.polyPoint(P, (t + t1) / 2)
+        local y = Map.profAt(P, (t + t1) / 2)
+        local len = t1 - t + 0.4
+        local base = CFrame.lookAt(V(x0, y, z0), V(x0 + ux, y, z0 + uz))
+        slab(m, V(34, 2.6, len), base * CF(0, 23.3, 0), ROOF, MAT.Concrete)                                  -- 棚顶
+        deco(m, V(35, 1.4, len), base * CF(0, 25.2, 0), SNOW, MAT.Snow).CastShadow = false                    -- 顶上的雪
+        slab(m, V(2.6, 22, len), base * CF(wallSide * 15.7, 11, 0), CONC2, MAT.Concrete)                      -- 靠山一侧的墙
+        if k % 1 == 0 then slab(m, V(2.4, 22, 2.4), base * CF(-wallSide * 15.7, 11, len / 2 - 1.2), CONC2, MAT.Concrete) end   -- 外侧的柱子
+        slab(m, V(3, 3.2, len), base * CF(-wallSide * 15.7, 20.4, 0), CONC2, MAT.Concrete)                    -- 外侧的梁
+        nRail += 5
+        k += 1
+        t = t1
+      end
+      -- 两头的洞口：厚一点的门框
+      for _, tt in ipairs({ Gq.m0, Gq.m1 }) do
+        local x0, z0, ux, uz = Map.polyPoint(P, tt)
+        local y = Map.profAt(P, tt)
+        local base = CFrame.lookAt(V(x0, y, z0), V(x0 + ux, y, z0 + uz))
+        slab(m, V(38, 6, 3.5), base * CF(0, 24, 0), CONC2, MAT.Concrete)
+        for _, sd in ipairs({ -1, 1 }) do slab(m, V(3.6, 22, 3.5), base * CF(sd * 17.2, 11, 0), CONC2, MAT.Concrete) end
+        nRail += 3
+      end
+      atomic(m)
+      m.Parent = rlf
+      task.wait()
+    end
+    -- 车站：股道东边一条站台（雨棚、长椅）、站场两头的信号机、北头一座水塔
+    local Y = Map.RAIL_YARD
+    if Y then
+      local dx, dz = Y.bx - Y.ax, Y.bz - Y.az
+      local L = math.sqrt(dx * dx + dz * dz)
+      local ux, uz = dx / L, dz / L
+      local cx, cz = (Y.ax + Y.bx) / 2, (Y.az + Y.bz) / 2
+      local y = gy(cx, cz)
+      local m = Instance.new("Model")
+      m.Name = "Station"
+      local base = CFrame.lookAt(V(cx, y, cz), V(cx + ux, y, cz + uz))
+      local px = (Y.tracks[#Y.tracks] or 20) + 13   -- 站台在最东一股道再往东
+      slab(m, V(14, 2.6, L * 0.55), base * CF(px, 1.3, 0), RGB(150, 148, 144), MAT.Concrete)
+      deco(m, V(14.4, 0.5, L * 0.55), base * CF(px, 2.85, 0), SNOW, MAT.Snow).CastShadow = false
+      deco(m, V(0.5, 0.2, L * 0.55), base * CF(px - 6.8, 2.7, 0), RGB(226, 200, 60), MAT.SmoothPlastic).CastShadow = false   -- 站台边的黄线
+      for q = -2, 2 do   -- 雨棚：一排柱子、一溜斜顶
+        slab(m, V(0.9, 12, 0.9), base * CF(px + 3, 8.6, q * 24), RGB(60, 66, 72), MAT.Metal)
+      end
+      wedge(m, V(13, 2.2, 104), base * CF(px - 0.5, 15.6, 0), RGB(84, 90, 96), MAT.CorrodedMetal, true)
+      deco(m, V(13.4, 0.6, 104), base * CF(px - 0.5, 16.9, 0), SNOW, MAT.Snow).CastShadow = false
+      for q = -1, 1, 2 do   -- 长椅
+        slab(m, V(2, 1.2, 8), base * CF(px + 4, 3.5, q * 30), RGB(96, 70, 50), MAT.Wood)
+      end
+      -- 水塔：站场北头的东边（砖砌的塔身、上面一个木水箱）
+      local wx, wz = Y.bx - uz * (px + 26) + ux * 40, Y.bz + ux * (px + 26) + uz * 40
+      local wy = gy(wx, wz)
+      cyl(m, 26, 9, CF(wx, wy + 13, wz), RGB(128, 74, 58), MAT.Brick, true)
+      cyl(m, 10, 15, CF(wx, wy + 31, wz), RGB(92, 74, 58), MAT.WoodPlanks, true)
+      deco(m, V(1.2, 15.5, 15.5), CF(wx, wy + 36.6, wz) * UP, SNOW, MAT.Snow, Enum.PartType.Cylinder).CastShadow = false   -- 水箱顶上的雪（圆柱轴竖起来：一片薄的圆盘）
+      -- 信号机：站场两头（一根被打断了）
+      for i, e in ipairs({ { Y.ax, Y.az, -1 }, { Y.bx, Y.bz, 1 } }) do
+        local sx, sz = e[1] + ux * e[3] * 40 - uz * -34, e[2] + uz * e[3] * 40 + ux * -34
+        local sy = gy(sx, sz)
+        local tilt = (i == 2) and 0.5 or 0
+        local sb = CF(sx, sy, sz) * CFrame.Angles(tilt, 0, 0)
+        deco(m, V(0.8, 18, 0.8), sb * CF(0, 9, 0), RGB(60, 62, 64), MAT.Metal)
+        deco(m, V(2.4, 5, 1.6), sb * CF(0, 17, 0), RGB(24, 26, 28), MAT.Metal)
+        deco(m, V(1.2, 1.2, 0.4), sb * CF(0, 18, -0.9), RGB(200, 40, 30), MAT.Neon)
+      end
+      atomic(m)
+      m.Parent = rlf
+      nRail += 22
+    end
+    print(string.format("[雪山] 铁路：钢轨、枕木、道口 %d 个零件；防雪棚 %d 座；道口 %d 个", nRail, #(Map.GALLERIES or {}), nCross))
+  end
+
+  ---------------------------------------------------------------- 废弃的车（Map.CIV：民用车、卡车、客车、拖拉机、铁路车皮、机车、飞机残骸）：
+  --   导入了 models/bld/wrecks.glb 就摆原模型（World.building 照元数据拼，再整个转到贴着坡、按摆法侧翻 / 前倾），一个看不见的碰撞盒挡车挡子弹；
+  --   没导入按同样的长宽高用零件拼一辆（车身、驾驶室、车轮）。都不会被炸塌（不带 BldBase）
+  local cvf = folder("Wrecks", sf)
+  local nCiv, nCivModel = 0, 0
+  do
+    local COLS = { wk_bmw = RGB(96, 82, 60), wk_fiat = RGB(110, 70, 48), wk_hatch = RGB(186, 180, 170), wk_suv = RGB(40, 44, 58), wk_uaz = RGB(84, 90, 66),
+      wk_gaz66 = RGB(76, 84, 62), wk_ural = RGB(78, 84, 64), wk_kamaz = RGB(80, 88, 66), wk_bus = RGB(56, 92, 86), wk_tractor = RGB(48, 84, 150),
+      wk_boxcar = RGB(118, 62, 42), wk_hopper = RGB(36, 36, 38), wk_loco = RGB(40, 92, 56), wk_plane = RGB(170, 172, 168) }
+    for i, c in ipairs(Map.CIV or {}) do
+      local D = Map.CIV_DIMS[c.k]
+      local L, W, H = D[1] * c.s, D[2] * c.s, D[3] * c.s
+      -- 贴着坡：前后、左右各取一点地面高，车身跟着倾；再按摆法侧翻（r，绕车身长轴）、前倾（p）
+      local ax = V(math.cos(c.a), 0, -math.sin(c.a))          -- 车身长边（模型 X 轴）
+      local az = V(math.sin(c.a), 0, math.cos(c.a))           -- 模型 Z 轴
+      local function g(v) return V(v.X, gy(v.X, v.Z), v.Z) end
+      local ctr = V(c.x, 0, c.z)
+      local pF, pB = g(ctr + ax * L * 0.4), g(ctr - ax * L * 0.4)
+      local pR, pL = g(ctr + az * W * 0.4), g(ctr - az * W * 0.4)
+      local xA = (pF - pB).Unit
+      local zA = (pR - pL).Unit
+      local up = zA:Cross(xA).Unit
+      if up.Y < 0 then up = -up end
+      local yMid = (pF.Y + pB.Y + pR.Y + pL.Y) / 4
+      local cf = CFrame.fromMatrix(V(c.x, yMid, c.z), xA, up) * CFrame.Angles(c.r, 0, c.p)
+      -- 侧翻、前倾以后最低的那个角贴地（再按 y 往下埋一点）
+      local lowY = math.huge
+      for _, sx in ipairs({ -0.5, 0.5 }) do
+        for _, sy in ipairs({ 0, 1 }) do
+          for _, sz in ipairs({ -0.5, 0.5 }) do
+            local pw = cf * V(sx * L, sy * H, sz * W)
+            lowY = math.min(lowY, pw.Y - gy(pw.X, pw.Z))
+          end
+        end
+      end
+      cf = CF(0, -lowY - 0.3 + (c.y or 0), 0) * cf
+      local done = false
+      if World.importedBld and World.importedBld(c.k) then
+        local base0, m = World.building(cvf, c.k, c.x, c.z, c.a, { scale = c.s, noLight = true, coll = { { 0, 0.45, 0, 0.92, 0.88, 0.92 } } })
+        if m and m:GetAttribute("Imported") then
+          local T = cf * base0:Inverse()
+          for _, p in ipairs(m:GetDescendants()) do
+            if p:IsA("BasePart") then p.CFrame = T * p.CFrame end
+          end
+          m:SetAttribute("BldBase", nil)   -- 车不被炸塌
+          m:SetAttribute("BldSize", nil)
+          m.Name = "Civ_" .. c.k .. "_" .. i
+          nCivModel += 1
+          done = true
+        elseif m then
+          m:Destroy()
+        end
+      end
+      if not done then   -- 没导入：零件拼
+        local m = Instance.new("Model")
+        m.Name = "Civ_" .. c.k .. "_" .. i
+        local col = COLS[c.k] or RGB(90, 84, 76)
+        local rail = c.k == "wk_boxcar" or c.k == "wk_hopper" or c.k == "wk_loco"
+        if c.k == "wk_plane" then
+          slab(m, V(L * 0.92, H * 0.5, W * 0.45), cf * CF(0, H * 0.35, 0), col, MAT.CorrodedMetal)
+          slab(m, V(L * 0.2, H * 0.6, 1), cf * CF(-L * 0.4, H * 0.7, 0), col, MAT.CorrodedMetal)
+        else
+          local bodyH = rail and H * 0.7 or H * 0.45
+          slab(m, V(L * 0.96, bodyH, W * 0.92), cf * CF(0, (rail and H * 0.25 or H * 0.2) + bodyH / 2, 0), col, MAT.CorrodedMetal)
+          if not rail then   -- 驾驶室 / 车厢上半截
+            local cabL = (c.k == "wk_bus") and L * 0.94 or L * 0.42
+            local cabX = (c.k == "wk_bus") and 0 or L * 0.2
+            slab(m, V(cabL, H * 0.4, W * 0.86), cf * CF(cabX, H * 0.2 + bodyH + H * 0.2, 0), RGB(28, 30, 32), MAT.CorrodedMetal)
+          end
+          for _, wx in ipairs({ -0.33, 0.33 }) do
+            for _, wz in ipairs({ -0.42, 0.42 }) do
+              local p = slab(m, V(rail and 1 or W * 0.16, H * 0.24, H * 0.24), cf * CF(wx * L, H * 0.12, wz * W), RGB(22, 22, 24), MAT.SmoothPlastic, Enum.PartType.Cylinder)
+              p.CFrame = cf * CF(wx * L, H * 0.12, wz * W) * CFrame.Angles(0, math.pi / 2, 0)
+            end
+          end
+        end
+        deco(m, V(L * 0.8, 0.5, W * 0.7), cf * CF(0, H + 0.2, 0), SNOW, MAT.Snow).CastShadow = false   -- 车顶的雪
+        atomic(m)
+        m.Parent = cvf
+      end
+      nCiv += 1
+      if i % 6 == 0 then task.wait() end
+    end
+    print(string.format("[雪山] 废弃的车 %d 辆（导入的模型 %d 辆）", nCiv, nCivModel))
+    G.snowCiv = function() return { n = nCiv, model = nCivModel, galleries = #(Map.GALLERIES or {}) } end   -- 测试用
   end
 
   ---------------------------------------------------------------- 交战区四周看不见的墙：只挡人、车（飞机是锚住的、子弹炮弹是射线，都过得去）

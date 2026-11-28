@@ -465,7 +465,7 @@ local ENUMS = {
   HighlightDepthMode = "AlwaysOnTop Occluded",
   UserInputType = "MouseButton1 MouseButton2 MouseButton3 MouseWheel MouseMovement Touch Keyboard Focus Accelerometer Gyro Gamepad1 TextInput InputMethod None",
   UserInputState = "Begin Change End Cancel None",
-  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl LeftAlt RightAlt One Two Three Four Five Six Seven Eight Nine Zero F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 PageUp PageDown Home End Insert Delete ButtonA ButtonB ButtonX ButtonY ButtonL1 ButtonR1 ButtonL2 ButtonR2",
+  KeyCode = "Unknown A B C D E F G H I J K L M N O P Q R S T U V W X Y Z Up Down Left Right Escape Space Return KeypadEnter Backspace Tab LeftShift RightShift LeftControl RightControl LeftAlt RightAlt One Two Three Four Five Six Seven Eight Nine Zero F1 F2 F3 F4 F5 F6 F7 F8 F9 F10 F11 F12 PageUp PageDown Home End Insert Delete ButtonA ButtonB ButtonX ButtonY ButtonL1 ButtonR1 ButtonL2 ButtonR2 LeftSuper RightSuper",
   MouseBehavior = "Default LockCenter LockCurrentPosition",
   CameraType = "Fixed Attach Watch Track Follow Custom Scriptable Orbital",
   RaycastFilterType = "Exclude Include Blacklist Whitelist",
@@ -478,8 +478,12 @@ local ENUMS = {
   RenderPriority = "First Input Camera Character Last",
   StartCorner = "TopLeft TopRight BottomLeft BottomRight",
   ParticleOrientation = "FacingCamera FacingCameraWorldUp VelocityParallel VelocityPerpendicular",
+  TextureMode = "Stretch Wrap Static",   -- 光带 / 拖尾的贴图怎么铺（11-28 尾焰）
+  ParticleEmitterShape = "Box Sphere Cylinder Disc", ParticleEmitterShapeStyle = "Volume Surface", ParticleEmitterShapeInOut = "Outward Inward InAndOut",   -- 粒子出生的体积（11-27 特效）
+  ActuatorRelativeTo = "Attachment0 Attachment1 World",
   ContextActionPriority = "Low Medium Default High",
   ContextActionResult = "Sink Pass",
+  LightingStyle = "Realistic Soft",   -- 新版光照（Technology 弃用后）：World.lighting 设 Realistic
 }
 local Enum = {}
 -- 有的枚举 Value 不是 0、1、2…：渲染优先级同 Roblox（First 0、Input 100、Camera 200、Character 300、Last 2000），
@@ -696,9 +700,13 @@ local function opAt(kind, w)
 end
 R.opAt = opAt
 
+-- 所有粒子发射器（弱表：粒子计数按 Rate × 时间算常喷的那些，见 R.step）
+R.pes = setmetatable({}, { __mode = "k" })
+R.collisionGroups = {}   -- PhysicsService 注册的碰撞组：名字 → { 别的组 = 碰不碰 }
 local function make(cls)
   local o = setmetatable({ _cls = cls, _p = {}, _kids = {}, _attr = {}, _ev = {}, _chg = {}, _dead = false }, INST)
   o._p.Name = cls
+  if cls == "ParticleEmitter" then R.pes[o] = true end
   return o
 end
 
@@ -1046,6 +1054,7 @@ def("BasePart", "PVInstance", {
   Orientation = { T.Vector3, v3() },
   LocalTransparencyModifier = { T.number, 0 },
   AssemblyLinearVelocity = { T.Vector3, v3() },   -- 模拟器没有物理：只记着（跳伞时服务器给人一个初速度）
+  CollisionGroup = { function(v) return type(v) == "string" and (v == "Default" or R.collisionGroups[v] ~= nil) end, "Default" },   -- 碰撞组（要先 PhysicsService 注册，11-27 碎块）
 }, { events = { Touched = true, TouchEnded = true }, ro = { Position = function(o) return partCF(o).Position end }, noCreate = true })
 def("Part", "BasePart", { Shape = { E("PartType"), Enum.PartType.Block } })
 -- 没有 Decoration、GrassLength：Roblox 不许脚本读写这两个（文档 Not Scriptable；一碰就报「不是 Terrain 的有效成员」）——
@@ -1061,7 +1070,10 @@ def("Terrain", "BasePart", {
     local want = region.Size / 4
     if math.abs(want.X - sx) > 0.01 or math.abs(want.Y - sy) > 0.01 or math.abs(want.Z - sz) > 0.01 then error("WriteVoxels 数组大小和区域对不上", 2) end
     R.voxelsWritten = (R.voxelsWritten or 0) + sx * sy * sz
-    if R.voxelLog then table.insert(R.voxelLog, { n = R.stepNo, v = sx * sy * sz, cols = sx * sz }) end   -- 测试开着才记（第几步、多少体素）
+    if R.voxelLog then   -- 测试开着才记（第几步、多少体素、写的是哪一片：x0 / z0 / x1 / z1）
+      local mn, mx = region._min, region._max
+      table.insert(R.voxelLog, { n = R.stepNo, v = sx * sy * sz, cols = sx * sz, x0 = mn and mn._x, z0 = mn and mn._z, x1 = mx and mx._x, z1 = mx and mx._z })
+    end
     -- 小块的写入（开服的网格器校准平台）：每一列记下各层的占有率，射线按 R.surfFrac（假装的网格器）算地面在哪
     if sx * sy * sz <= 60000 and region._min._y < -1000 then   -- 只有地图下面很深的试验平台（地图本身的块不记）
       R.voxCols = R.voxCols or {}
@@ -1126,6 +1138,12 @@ def("Terrain", "BasePart", {
   FillWedge = function(_, c, size, mat)
     if not isCF(c) or not isV3(size) or typeof(mat) ~= "EnumItem" or mat.EnumType ~= "Material" then error("FillWedge(CFrame, Vector3, Material) 参数不对", 2) end
   end,
+  -- 清空整块地形（烘焙地形前、烘的图对不上时：World.terrain）
+  Clear = function()
+    R.terrainCleared = (R.terrainCleared or 0) + 1
+    R.voxCols = nil
+    table.insert(R.terrainFills, { k = "clear", n = R.stepNo })
+  end,
 } })
 def("WedgePart", "BasePart", {})
 def("Clouds", "Instance", { Cover = { T.number, 0.5 }, Density = { T.number, 0.7 }, Color = { T.Color3, newC3(1, 1, 1) }, Enabled = { T.bool, true } })
@@ -1180,7 +1198,23 @@ local guiObj = {
   ClipsDescendants = { T.bool, false }, Rotation = { T.number, 0 }, Active = { T.bool, false },
   SizeConstraint = { E("SizeConstraint"), Enum.SizeConstraint.RelativeXY }, Selectable = { T.bool, false }, Interactable = { T.bool, true },
 }
-def("GuiObject", "Instance", guiObj, { noCreate = true, events = { MouseEnter = true, MouseLeave = true, InputBegan = true, InputEnded = true, InputChanged = true } })
+-- 界面元素在屏幕上的方框（近似：UDim2 + AnchorPoint 一层层往上算，屏幕 1280×720；不管 UIListLayout、UIScale）——设置页的下拉框按按钮的位置摆列表
+local function guiRect(o)
+  local par = rawget(o, "_parent")
+  local px, py, pw, ph = 0, 0, R.vpW or 1280, R.vpH or 720
+  if par and isA(par._cls, "GuiObject") then px, py, pw, ph = guiRect(par) end
+  local S, P, A = o.Size, o.Position, o.AnchorPoint   -- 走 __index（没设过的拿默认值）
+  local w = S.X.Scale * pw + S.X.Offset
+  local h = S.Y.Scale * ph + S.Y.Offset
+  local x = px + P.X.Scale * pw + P.X.Offset - A.X * w
+  local y = py + P.Y.Scale * ph + P.Y.Offset - A.Y * h
+  return x, y, w, h
+end
+def("GuiObject", "Instance", guiObj, { noCreate = true, events = { MouseEnter = true, MouseLeave = true, InputBegan = true, InputEnded = true, InputChanged = true },
+  ro = {
+    AbsolutePosition = function(o) local x, y = guiRect(o) return newV2(x, y) end,
+    AbsoluteSize = function(o) local _, _, w, h = guiRect(o) return newV2(w, h) end,
+  } })
 def("Frame", "GuiObject", {})
 def("CanvasGroup", "GuiObject", { GroupTransparency = { T.number, 0 }, GroupColor3 = { T.Color3, newC3(1, 1, 1) } })   -- 雷达：按圆角裁剪里面的东西
 -- 挂载编辑器：ViewportFrame 里放一个 WorldModel（BulkMoveTo 同 Workspace）
@@ -1263,7 +1297,14 @@ def("ParticleEmitter", "Instance", {
   RotSpeed = { T.NumberRange, NumberRange.new(0) }, Acceleration = { T.Vector3, v3() }, EmissionDirection = { E("NormalId"), Enum.NormalId.Top },
   LightEmission = { T.number, 0 }, LightInfluence = { T.number, 0 }, Drag = { T.number, 0 }, LockedToPart = { T.bool, false }, ZOffset = { T.number, 0 },
   VelocityInheritance = { T.number, 0 }, Orientation = { E("ParticleOrientation"), Enum.ParticleOrientation.FacingCamera }, Brightness = { T.number, 1 },
-}, { methods = { Emit = function(_, n) if n ~= nil and type(n) ~= "number" then error("Emit 要数字", 2) end end, Clear = function() end } })
+  -- 11-27 特效用到的（真 Roblox 都有）：Squash 拉长 / 压扁、出生的体积、跟着风、时间缩放
+  Squash = { T.NumberSequence, NumberSequence.new(0) }, Shape = { E("ParticleEmitterShape"), Enum.ParticleEmitterShape.Box },
+  ShapeStyle = { E("ParticleEmitterShapeStyle"), Enum.ParticleEmitterShapeStyle.Volume }, ShapeInOut = { E("ParticleEmitterShapeInOut"), Enum.ParticleEmitterShapeInOut.Outward },
+  ShapePartial = { T.number, 1 }, WindAffectsDrag = { T.bool, false }, TimeScale = { T.number, 1 },
+}, { methods = { Emit = function(o, n)
+  if n ~= nil and type(n) ~= "number" then error("Emit 要数字", 2) end
+  if R.peCount and R.peCounted(o) then R.peCount.emit = R.peCount.emit + (n or 1) end   -- 粒子计数（tools/mock/vfxreal.lua）
+end, Clear = function() end } })
 def("SpotLight", "Instance", { Brightness = { T.number, 1 }, Range = { T.number, 16 }, Angle = { T.number, 90 }, Color = { T.Color3, newC3(1, 1, 1) },
   Face = { E("NormalId"), Enum.NormalId.Front }, Shadows = { T.bool, false }, Enabled = { T.bool, true } })
 def("SurfaceLight", "Instance", { Brightness = { T.number, 1 }, Range = { T.number, 16 }, Angle = { T.number, 90 }, Color = { T.Color3, newC3(1, 1, 1) },
@@ -1272,7 +1313,7 @@ def("Beam", "Instance", {
   Attachment0 = { T.Instance, nil }, Attachment1 = { T.Instance, nil }, Color = { T.ColorSequence, ColorSequence.new(newC3(1, 1, 1)) }, Transparency = { T.NumberSequence, NumberSequence.new(0.5) },
   Width0 = { T.number, 1 }, Width1 = { T.number, 1 }, LightEmission = { T.number, 0 }, FaceCamera = { T.bool, false }, Enabled = { T.bool, true }, Segments = { T.number, 10 },
   CurveSize0 = { T.number, 0 }, CurveSize1 = { T.number, 0 }, Texture = { T.string, "" }, TextureSpeed = { T.number, 1 }, TextureLength = { T.number, 1 }, ZOffset = { T.number, 0 },
-  LightInfluence = { T.number, 0 }, Brightness = { T.number, 1 },
+  LightInfluence = { T.number, 0 }, Brightness = { T.number, 1 }, TextureMode = { E("TextureMode"), Enum.TextureMode.Stretch },
 })
 def("SpecialMesh", "Instance", { MeshType = { E("MeshType"), Enum.MeshType.Head }, Scale = { T.Vector3, v3(1, 1, 1) }, Offset = { T.Vector3, v3() },
   MeshId = { T.string, "" }, TextureId = { T.string, "" }, VertexColor = { T.Vector3, v3(1, 1, 1) } })
@@ -1282,6 +1323,9 @@ def("Trail", "Instance", {
   FaceCamera = { T.bool, false }, Enabled = { T.bool, true }, Texture = { T.string, "" }, TextureLength = { T.number, 1 }, LightInfluence = { T.number, 1 },
 }, { methods = { Clear = function() end } })
 def("PointLight", "Instance", { Brightness = { T.number, 1 }, Range = { T.number, 8 }, Color = { T.Color3, newC3(1, 1, 1) }, Shadows = { T.bool, false }, Enabled = { T.bool, true } })
+-- 恒力（殉爆飞出去的钢板：抵掉一部分重力，飞得高、落得慢；模拟器没有物理，只记着）
+def("VectorForce", "Instance", { Force = { T.Vector3, v3() }, Attachment0 = { T.Instance, nil }, RelativeTo = { E("ActuatorRelativeTo"), Enum.ActuatorRelativeTo.Attachment0 },
+  ApplyAtCenterOfMass = { T.bool, false }, Enabled = { T.bool, true } })
 def("Highlight", "Instance", {
   Adornee = { T.Instance, nil }, FillColor = { T.Color3, newC3(1, 0, 0) }, OutlineColor = { T.Color3, newC3(1, 1, 1) }, FillTransparency = { T.number, 0.5 },
   OutlineTransparency = { T.number, 0 }, DepthMode = { E("HighlightDepthMode"), Enum.HighlightDepthMode.AlwaysOnTop }, Enabled = { T.bool, true },
@@ -1446,7 +1490,8 @@ R.services = {}
 local camera = make("Camera")
 def("Camera", "Instance", {
   CFrame = { T.CFrame, CFrame.new(0, 20, 20) }, CameraType = { E("CameraType"), Enum.CameraType.Custom }, CameraSubject = { T.Instance, nil }, FieldOfView = { T.number, 70 },
-}, { ro = { ViewportSize = newV2(1280, 720) }, methods = {   -- 能新建（挂载编辑器给 ViewportFrame 一个自己的镜头）
+}, { ro = { ViewportSize = function() return R.viewSize or newV2(R.vpW or 1280, R.vpH or 720) end }, methods = {   -- 能新建（挂载编辑器给 ViewportFrame 一个自己的镜头）；
+  --   画面多大：默认 1280 × 720，测试可以设 R.viewSize（手机横屏的截图：tools/mock/loadshots.lua mobile=1 用 1280 × 640）或 R.vpW / R.vpH（hudshot vp=1920x1080、wttank 切 1080p）
   ScreenPointToRay = function(o, x, y)
     if type(x) ~= "number" or type(y) ~= "number" then error("ScreenPointToRay 要两个数字", 2) end
     return R.pixelRay(o, x, y + 58)
@@ -1455,16 +1500,17 @@ def("Camera", "Instance", {
     if type(x) ~= "number" or type(y) ~= "number" then error("ViewportPointToRay 要两个数字", 2) end
     return R.pixelRay(o, x, y)
   end,
-  -- 透视投影到 1280 × 720 的画面：返回（像素 x, 像素 y, 深度）、在不在画面里
+  -- 透视投影到画面（默认 1280 × 720，R.viewSize 或 R.vpW / R.vpH 改）：返回（像素 x, 像素 y, 深度）、在不在画面里
   WorldToViewportPoint = function(o, p)
     if typeof(p) ~= "Vector3" then error("WorldToViewportPoint 要 Vector3", 2) end
+    local vw, vh = (R.viewSize and R.viewSize.X) or R.vpW or 1280, (R.viewSize and R.viewSize.Y) or R.vpH or 720
     local rel = o.CFrame:Inverse() * p
     local depth = -rel.Z
     local f = 1 / math.tan(math.rad(o.FieldOfView) / 2)
     local d = (math.abs(depth) < 1e-6) and 1e-6 or depth
-    local x = 640 + rel.X / d * f * 360
-    local y = 360 - rel.Y / d * f * 360
-    return v3(x, y, depth), depth > 0 and x >= 0 and x <= 1280 and y >= 0 and y <= 720
+    local x = vw / 2 + rel.X / d * f * (vh / 2)
+    local y = vh / 2 - rel.Y / d * f * (vh / 2)
+    return v3(x, y, depth), depth > 0 and x >= 0 and x <= vw and y >= 0 and y <= vh
   end,
 } })
 
@@ -1472,7 +1518,8 @@ def("Camera", "Instance", {
 function R.pixelRay(o, x, y)
   local f = 1 / math.tan(math.rad(o.FieldOfView) / 2)
   local cf = o.CFrame
-  local d = cf.RightVector * ((x - 640) / (f * 360)) + cf.UpVector * (-(y - 360) / (f * 360)) + cf.LookVector
+  local cx, cy = ((R.viewSize and R.viewSize.X) or R.vpW or 1280) / 2, ((R.viewSize and R.viewSize.Y) or R.vpH or 720) / 2
+  local d = cf.RightVector * ((x - cx) / (f * cy)) + cf.UpVector * (-(y - cy) / (f * cy)) + cf.LookVector
   return setmetatable({ Origin = cf.Position, Direction = d.Unit }, { __type = "Ray" })
 end
 def("WorldModel", "Model", {}, { methods = {
@@ -1485,7 +1532,9 @@ def("WorldModel", "Model", {}, { methods = {
     end
   end,
 } })
-local ws = service("Workspace", { StreamingEnabled = { T.bool, false }, Gravity = { T.number, 196.2 }, CurrentCamera = { T.Instance, nil } }, { parent = "Model", methods = {
+local ws = service("Workspace", { StreamingEnabled = { T.bool, false }, Gravity = { T.number, 196.2 }, CurrentCamera = { T.Instance, nil },
+  GlobalWind = { T.Vector3, v3() },   -- 全局风（World.lighting 按图设、暴风雨在客户端加大）
+}, { parent = "Model", methods = {
   GetServerTimeNow = function() return (R.osTime or os.time()) + clock % 1 end,
   BulkMoveTo = function(_, parts, cfs, mode)
     if type(parts) ~= "table" or type(cfs) ~= "table" or #parts ~= #cfs then error("BulkMoveTo(零件表, CFrame 表) 两个表要一样长", 2) end
@@ -1675,7 +1724,14 @@ R.services.Lighting = service("Lighting", {
   Ambient = { T.Color3, newC3(0, 0, 0) }, EnvironmentDiffuseScale = { T.number, 0 }, EnvironmentSpecularScale = { T.number, 0 }, ExposureCompensation = { T.number, 0 },
   GeographicLatitude = { T.number, 41.7 }, ColorShift_Top = { T.Color3, newC3(0, 0, 0) }, ColorShift_Bottom = { T.Color3, newC3(0, 0, 0) }, ShadowSoftness = { T.number, 0.2 },
   FogColor = { T.Color3, newC3(0.75, 0.75, 0.75) }, FogEnd = { T.number, 100000 }, FogStart = { T.number, 0 },
-})
+  LightingStyle = { E("LightingStyle"), Enum.LightingStyle.Realistic }, PrioritizeLightingQuality = { T.bool, true },   -- 老地点文件里 Future 对成的这两项（11-27 起生成的写 false：tools/build.luau）
+}, { methods = {
+  -- 太阳方向：模拟器不算天文，测试给 R.sunDir（光影的纬度自检：tools/mock/lightreal.lua）；没给照旧报错（游戏里都包了 pcall）
+  GetSunDirection = function(o)
+    if not R.sunDir then error("模拟器没有太阳方向（测试可以给 R.sunDir）", 2) end
+    return R.sunDir(o)
+  end,
+} })
 R.overrides = {}   -- MaterialService:SetBaseMaterialOverride 记下来（测试看雪山把地形的雪换成了哪个变体）
 R.services.MaterialService = service("MaterialService", {}, { methods = {
   SetBaseMaterialOverride = function(_, mat, name)
@@ -1691,7 +1747,9 @@ R.services.StarterGui = service("StarterGui", {}, { methods = {
   end,
   SetCore = function() end,
 } })
-R.services.GuiService = service("GuiService", {}, { methods = { GetGuiInset = function() return newV2(0, 58), newV2(0, 0) end } })
+-- MenuIsOpen：Roblox 自己的系统菜单（按 Esc 开）开着没有——测试可以设 true，看整备的 Esc 是不是让给系统菜单
+R.services.GuiService = service("GuiService", { MenuIsOpen = { T.bool, false } }, { events = { MenuOpened = true, MenuClosed = true },
+  methods = { GetGuiInset = function() return newV2(0, 58), newV2(0, 0) end } })
 -- HttpService：只有 JSONEncode / JSONDecode（科技树存档写给客户端用，Tech.lua / TechUI.lua）；表里只认字符串 / 数字 / 布尔 / 表
 do
   local function enc(v, out)
@@ -1796,6 +1854,29 @@ do
   } })
 end
 R.services.ScriptContext = service("ScriptContext", {}, { events = { Error = true } })
+-- 碰撞组（11-27：殉爆的碎块只跟地形、建筑碰，不碰角色和车）：只记着谁跟谁碰（模拟器没有物理）；R.noCollisionGroups 时注册报错（试「注册不了照旧」那条路）
+local function cgName(n) if type(n) ~= "string" or n == "" or #n > 100 then error("碰撞组名字要 1～100 个字", 3) end return n end
+local function cgHas(n) return n == "Default" or R.collisionGroups[n] ~= nil end
+R.services.PhysicsService = service("PhysicsService", {}, { methods = {
+  RegisterCollisionGroup = function(_, n)
+    if R.noCollisionGroups then error("RegisterCollisionGroup 不能在这里调用", 2) end
+    cgName(n)
+    if n ~= "Default" and not R.collisionGroups[n] then R.collisionGroups[n] = {} end
+  end,
+  IsCollisionGroupRegistered = function(_, n) return cgHas(cgName(n)) end,
+  CollisionGroupSetCollidable = function(_, a, b, on)
+    if not cgHas(cgName(a)) or not cgHas(cgName(b)) then error("碰撞组没注册：" .. tostring(a) .. " / " .. tostring(b), 2) end
+    if type(on) ~= "boolean" then error("CollisionGroupSetCollidable 第三个参数要 true / false", 2) end
+    R.collisionGroups[a] = R.collisionGroups[a] or {}
+    R.collisionGroups[b] = R.collisionGroups[b] or {}
+    R.collisionGroups[a][b], R.collisionGroups[b][a] = on, on
+  end,
+  CollisionGroupsAreCollidable = function(_, a, b)
+    local t = R.collisionGroups[a]
+    if t and t[b] ~= nil then return t[b] end
+    return true
+  end,
+} })
 R.services.ProximityPromptService = service("ProximityPromptService", { Enabled = { T.bool, true } }, { events = { PromptTriggered = true } })
 -- EditableMesh / EditableImage（只模拟接口和参数检查；R.noEditable = true 时当成用不了）
 R.Content = { fromObject = function(o)
@@ -1966,13 +2047,22 @@ R.services.CollectionService = service("CollectionService", {}, { methods = {
 R.keys = {}
 R.services.UserInputService = service("UserInputService", { MouseBehavior = { E("MouseBehavior"), Enum.MouseBehavior.Default }, MouseIconEnabled = { T.bool, true } }, {
   events = { InputBegan = true, InputEnded = true, InputChanged = true, TouchTap = true, TouchPan = true, TouchPinch = true, TouchRotate = true },
-  ro = { TouchEnabled = false, KeyboardEnabled = true, MouseEnabled = true },
+  -- 手机（触屏、没有键盘鼠标）：测试在玩家进服之前设 R.touch = true（tools/mock/loadshots.lua mobile=1）
+  ro = { TouchEnabled = function() return R.touch == true end, KeyboardEnabled = function() return R.touch ~= true end, MouseEnabled = function() return R.touch ~= true end },
   methods = {
     IsKeyDown = function(_, kc)
       if typeof(kc) ~= "EnumItem" or kc.EnumType ~= "KeyCode" then error("IsKeyDown 要 Enum.KeyCode", 2) end
       return R.keys[kc.Name] == true
     end,
-    GetMouseLocation = function() return R.mouseAt or newV2(640, 400) end,
+    -- 鼠标在哪：锁在屏幕中间（MouseBehavior = LockCenter，开车、开飞机时每帧都锁）时跟真机一样永远是屏幕中心；没锁时是测试给的 R.mouseAt
+    GetMouseLocation = function(o)
+      if o.MouseBehavior == Enum.MouseBehavior.LockCenter then
+        local cam = R.workspace and R.workspace.CurrentCamera
+        local vp = cam and cam.ViewportSize or newV2(1280, 720)
+        return newV2(vp.X / 2, vp.Y / 2)
+      end
+      return R.mouseAt or newV2(640, 400)
+    end,
     -- 鼠标锁定时这一帧挪了多少（测试用 R.mouseDelta 给；跟真机一样按帧算：R.step 开头取走，这一帧里谁读都是同一个数）
     GetMouseDelta = function()
       return R.frameDelta or newV2(0, 0)
@@ -2464,7 +2554,23 @@ end
 
 ------------------------------------------------------------ 推进时间
 
+-- 粒子计数（tools/mock/vfxreal.lua：殉爆第一秒所有发射器一共喷了多少颗）：R.peCount = { emit = 0, rate = 0, roots = { 实例… } } 时，
+--   Emit 的颗数、开着的发射器 Rate × 时间都记上（只数 roots 下面的发射器；不给 roots 就全数）
+function R.peCounted(o)
+  local pc = R.peCount
+  if not pc then return false end
+  if rawget(o, "_dead") then return false end
+  if not pc.roots then return rawget(o, "_parent") ~= nil end
+  for _, r in ipairs(pc.roots) do if base.IsDescendantOf(o, r) then return true end end
+  return false
+end
 function R.step(dt)
+  local pc = R.peCount
+  if pc then
+    for pe in pairs(R.pes) do
+      if pe.Enabled and pe.Rate > 0 and R.peCounted(pe) then pc.rate = pc.rate + pe.Rate * dt end
+    end
+  end
   clock = clock + dt
   R.stepNo = (R.stepNo or 0) + 1   -- 第几步（测试按步数地形写入：tools/mock/terrainbg.lua）
   R.frameDelta, R.mouseDelta = R.mouseDelta, nil

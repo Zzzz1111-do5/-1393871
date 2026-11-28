@@ -1,5 +1,7 @@
--- Roblox全面大战场——中英文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
---   客户端按 LocalizationService.RobloxLocaleId 判断：zh 开头用中文，其余英文；设置里能手动切
+-- Roblox全面大战场——界面文字。服务器给客户端发的是文字编号和参数，各人按自己的语言显示
+--   中文、英文写在这个文件里（add）；11-28 用户「多语言做一下」：另外八种——繁體中文、日本語、한국어、Русский、Deutsch、Français、
+--   Español、Português——的译文在 ReplicatedStorage.LangPacks.<代码>（tools/i18n 生成，见 tools/i18n/README.md），缺的退回英文（繁中退回简体）
+--   客户端按 LocalizationService.RobloxLocaleId 挑（Lang.pick）；设置里能手动换
 --   Lang.t(lang, key, ...)：{1} {2} … 换成参数；参数是表 { k = "编号", … } 时先翻译它（服务器发「据点 A」「步枪兵」这种）
 local Lang = {}
 
@@ -163,6 +165,7 @@ add("save.fail", "存档这次没写进去，过一会儿自动再试", "Couldn'
 -- 科技树（Tech.lua / TechTree.lua，用户 11-25）
 add("tree.done", "研究完成：{1}", "Research complete: {1}")
 add("tree.bought", "买下了 {1}（{2} 金币）", "Purchased {1} ({2} coins)")
+add("tree.loadSaved", "{1}：挂载已保存，出击、试驾都按这一套", "{1}: loadout saved for battle and test drives")
 add("redeem.ok", "兑换成功：解锁了 {1} 辆载具", "Code redeemed: {1} vehicles unlocked")
 add("redeem.none", "这个兑换码的载具都已经解锁了", "Everything from this code is already unlocked")
 add("redeem.bad", "兑换码不对", "Invalid code")
@@ -199,6 +202,7 @@ add("down.title", "倒地 · 等待救援", "DOWNED · WAITING FOR REVIVE")
 add("death.title", "阵亡", "Killed in action")
 add("death.by", "被 {1} 击杀 · {2} 米", "Killed by {1} · {2} m")
 add("death.byNear", "被 {1} 击杀", "Killed by {1}")
+add("death.vehLost", "损失的载具", "Vehicle lost")
 add("down.bleed", "{1} 秒后阵亡", "Bleeding out in {1} s")
 add("down.giveUp", "按住 空格 放弃（重新部署）", "Hold SPACE to give up (redeploy)")
 add("down.giveUpTouch", "按住这里放弃", "Hold to give up")
@@ -312,6 +316,8 @@ local VEH = {
   t72ural = { "T-72 乌拉尔 主战坦克", "T-72 Ural MBT" }, t72a = { "T-72A 主战坦克", "T-72A MBT" }, t72b = { "T-72B 主战坦克", "T-72B MBT" },
   t80u = { "T-80U 主战坦克", "T-80U MBT" }, t80b = { "T-80B 主战坦克", "T-80B MBT" }, t80bvm = { "T-80BVM 主战坦克", "T-80BVM MBT" },
   type59 = { "59 式中型坦克", "Type 59 Medium Tank" }, type69 = { "69-II 式中型坦克", "Type 69-II Medium Tank" },
+  t3485 = { "T-34-85 中型坦克", "T-34-85 Medium Tank" }, kpz70 = { "KPz 70 主战坦克", "KPz 70 Main Battle Tank" },
+  su100 = { "SU-100 歼击车", "SU-100 Tank Destroyer" }, marder1a3 = { "黄鼠狼 1A3 步兵战车", "Marder 1A3 IFV" },
   type87rcv = { "87 式侦察警戒车", "Type 87 RCV" }, brdm2 = { "BRDM-2 装甲侦察车", "BRDM-2 Scout Car" }, strela1 = { "9K31「箭-1」防空车", "9K31 Strela-1 SAM" },
   t64a = { "T-64A 主战坦克", "T-64A MBT" }, t64b = { "T-64B 主战坦克", "T-64B MBT" }, type74 = { "74 式主战坦克", "Type 74 MBT" }, type74g = { "74 式改主战坦克", "Type 74 (G) MBT" },
   gepard1a1 = { "猎豹 1A1 自行高炮", "Gepard 1A1 SPAAG" }, gepard1a2 = { "猎豹 1A2 自行高炮", "Gepard 1A2 SPAAG" },
@@ -428,7 +434,15 @@ add("tree.crewNoPts", "技能点不够", "Not enough skill points")
 add("tree.waitDeploy", "{1} 秒后出击", "Deploying in {1} s")
 add("tree.testOn", "训练场试驾：{1}（改装全装上；你的靶道前面 300～2000 米七辆靶车，两辆在跑；天上三架靶机；都不还手；下车回机库）", "Test range: {1} (all modifications; seven target vehicles down your lane at 300-2000 m, two moving; three target aircraft overhead; none shoot back; leave the vehicle to return)")
 add("tree.testOnAir", "训练场试飞：{1}（改装全装上；在训练场跑道上，推油门起飞；北边靶区三架靶机绕圈、地上一排靶车，都不还手；下飞机回机库）", "Test flight: {1} (all modifications; you start on the test range runway; three target aircraft circle over the target area to the north and a row of targets sits on the ground; none shoot back; bail out to return)")
-add("tree.rangeBusy", "训练场还在准备（刚开服），稍等几秒再试驾", "The test range is still being set up (server just started) — try again in a few seconds")
+add("tree.testOnSky", "训练场试飞：{1}（改装全装上；满油满弹在训练场的跑道上滑不起来，直接在空中出发：在靶区南边朝北飞，靶区就在正前方；三架靶机绕圈、地上一排靶车，都不还手；下飞机回机库）", "Test flight: {1} (all modifications; fully loaded it can't get off the test range runway, so you start in the air south of the target area, heading straight for it; three target aircraft circle there and a row of targets sits on the ground; none shoot back; bail out to return)")
+add("tree.testInAir", "训练场试飞：{1}（改装全装上；跑道 / 直升机坪上没摆下，直接在空中出发，靶区就在前面；三架靶机绕圈、地上一排靶车，都不还手；下飞机回机库）", "Test flight: {1} (all modifications; there was no room on the runway / helipad, so you start in the air with the target area ahead; three target aircraft circle there and a row of targets sits on the ground; none shoot back; bail out to return)")
+add("tree.testOnPad", "训练场试飞：{1}（改装全装上；在训练场直升机坪上，拉总距起飞；北边靶区三架靶机绕圈、地上一排靶车，都不还手；下飞机回机库）", "Test flight: {1} (all modifications; you start on the test range helipad, raise the collective to lift off; three target aircraft circle over the target area to the north and a row of targets sits on the ground; none shoot back; bail out to return)")
+add("tree.rangeBusy", "训练场还在准备（刚开服），好了自动开始试驾", "The test range is still being set up (server just started) — your test drive starts by itself when it's ready")
+-- 战场是雪山图的服务器：主界面试驾就在这张图上（Tech.lua chooseRM，用户 11-28「为什么训练场现在还是没有雪山地图」）
+add("tree.snowBusy", "雪山图还在生成（刚开服），好了自动开始试驾", "The Snow Peaks map is still being generated (server just started) — your test drive starts by itself when it's ready")
+add("tree.rangeMatch", "雪山图上正在打一局：这次在训练场试驾", "A battle is on the Snow Peaks map right now: this test drive is on the test range")
+add("tree.testMatch", "雪山图要开打一局了：试驾结束，回到机库", "A battle is starting on the Snow Peaks map: test drive over, back to the hangar")
+add("tree.testOnSnow", "雪山图上试驾：{1}（改装全装上；靶道前面几百米到一两公里摆着靶车，两辆在跑；天上三架靶机；都不还手；下车回机库）", "Test drive on Snow Peaks: {1} (all modifications; target vehicles down your lane from a few hundred metres out to 1-2 km, two moving; three target aircraft overhead; none shoot back; leave the vehicle to return)")
 add("wt.needParts", "修不了：这辆车还没研究改装「零件」", "Can't repair: research the \"Parts\" modification first")
 add("wt.needFpe", "灭不了火：这辆车还没研究改装「灭火器」", "No extinguisher: research the \"FPE\" modification first")
 add("ui.youKilled", "击毙 {1}", "Killed {1}")
@@ -440,6 +454,7 @@ add("ui.reloading", "{1}  换弹中…", "{1}  reloading…")
 add("ui.reloadKey", "R 换弹", "R to reload")
 add("ui.healed", "治疗 +{1}", "Healed +{1}")
 add("ui.spotted", "标记了 {1} 个敌人", "Spotted {1} enemies")
+add("ui.markNone", "准星附近没有看得见的敌人", "No visible enemy near the crosshair")   -- 载具里按中键标记（Weapons.lua vmark）
 add("ui.strikeCalled", "炮火覆盖：{1} 秒后落下", "Artillery inbound in {1}s")
 add("ui.strikeCd", "炮击还要 {1} 秒才能再叫", "Artillery ready in {1}s")
 add("ui.mortarRange", "超出射程（{1}～{2}）", "Out of range ({1}-{2})")
@@ -473,9 +488,87 @@ add("ui.vehHelp", "WASD 驾驶 · 鼠标 瞄准 · 左键 开火 · 1～5 选弹
 -- 坦克瞄准镜里的提示（Drive.lua）：用户——开镜上面写一下，按 V 切换光电模式、按 M 释放烟雾弹
 add("drv.hintOptic", "[V] 切换光电模式：{1}", "[V] Optics: {1}")
 add("drv.hintSmoke", "[M] 释放烟雾弹（剩 {1} 发）", "[M] Smoke ({1} left)")
-add("drv.hintLine", "Shift 退出瞄准镜 · R 激光测距 · Q / 1～5 换弹种 · Z / 滚轮 倍率 · 左键 开火", "Shift leave sight · R lase · Q / 1-5 shell · Z / Wheel zoom · LMB fire")
+add("drv.hintLine", "Shift 退出瞄准镜 · R 测距 · PgUp / PgDn 表尺 · Q / 1～5 换弹种 · Z / 滚轮 倍率 · C 望远镜 · 左键 开炮 · 空格 机枪", "Shift leave sight · R range · PgUp / PgDn sight range · Q / 1-5 shell · Z / Wheel zoom · C binoculars · LMB fire · Space MG")
+add("wtt.space", "空格", "SPC")   -- 弹药栏机枪那格的键位（11-27 起空格打机枪）
+-- 弹药栏（WtTank.lua，用户 11-27「完全按照战雷的风格……更拟真」）：名牌右边的装填、打空了按键、主炮坏了、游戏里的金属射流弹
+add("wtt.load", "装填 {1} s", "Loading {1} s")
+add("wtt.noAmmo", "无弹", "No ammo")
+add("wtt.gunDmg", "主炮损坏", "Main gun damaged")   -- 只在名牌右边写一次（11-27 美术审查第二轮：原来 5 个弹种格各写一个「损坏」）
+add("wtt.jet", "{1} 金属射流弹", "{1} metal jet")   -- 游戏自己的弹（没有真型号可写）：名字照叫
+-- 类型短标签、名牌上的类型都用代号（11-27 美术审查：「射流」夹在 APFSDS / HEAT-MP / MPAT 中间，中英混排）——
+--   第二轮：「HEAT-TDM」不是现成的代号，照战雷写串联破甲弹的样子：名牌类型「HEAT-FS (tandem)」、选中格短标签「HEAT-FS」
+add("wtt.jetType", "串联尾翼稳定破甲弹", "HEAT-FS (tandem)")
+add("wtt.tagJet", "串联破甲", "HEAT-FS")
+-- 弹种（Ballistics.kindOf：按弹的种类、不按型号）：ammo.t 全称（弹药栏上面的名牌、机库的弹药表）、ammo.s 短名（弹药栏每一格左下）——
+--   用户 11-28「目前局内我分辨不出来弹种 这些还是根据语言改变吧 比如我选了中文 穿甲弹就要写上」：中文写中文的弹种（战雷国服的叫法），
+--   英文照战雷写北约缩写；别的语言见 tools/i18n/tr/19.tsv（俄文写俄军的缩写）
+add("ammo.t.apfsds", "尾翼稳定脱壳穿甲弹", "APFSDS")
+add("ammo.t.apds", "脱壳穿甲弹", "APDS")
+add("ammo.t.apcr", "硬芯穿甲弹", "APCR")
+add("ammo.t.aphe", "穿甲爆破弹", "APHE")
+add("ammo.t.apbc", "风帽穿甲弹", "APBC")
+add("ammo.t.ap", "穿甲弹", "AP")
+add("ammo.t.heatfs", "尾翼稳定破甲弹", "HEAT-FS")
+add("ammo.t.heat", "破甲弹", "HEAT")
+add("ammo.t.heatmp", "多用途破甲弹", "HEAT-MP")
+add("ammo.t.mpat", "多用途反坦克弹", "MPAT")
+add("ammo.t.hefrag", "高爆弹", "HE-FRAG")
+add("ammo.t.hesh", "碎甲弹", "HESH")
+add("ammo.t.can", "霰弹", "Canister")
+add("ammo.t.atgm", "反坦克导弹", "ATGM")
+add("ammo.t.jet", "串联尾翼稳定破甲弹", "HEAT-FS (tandem)")
+add("ammo.s.apfsds", "尾翼脱壳", "APFSDS")
+add("ammo.s.apds", "脱壳", "APDS")
+add("ammo.s.apcr", "硬芯", "APCR")
+add("ammo.s.aphe", "穿爆", "APHE")
+add("ammo.s.apbc", "风帽", "APBC")
+add("ammo.s.ap", "穿甲", "AP")
+add("ammo.s.heatfs", "尾翼破甲", "HEAT-FS")
+add("ammo.s.heat", "破甲", "HEAT")
+add("ammo.s.heatmp", "多用破甲", "HEAT-MP")   -- M1A2 两种都带（M830、M830A1）：短名要分得开
+add("ammo.s.mpat", "多用反坦", "MPAT")
+add("ammo.s.hefrag", "高爆", "HE-FRAG")
+add("ammo.s.hesh", "碎甲", "HESH")
+add("ammo.s.can", "霰弹", "Canister")
+add("ammo.s.atgm", "导弹", "ATGM")
+add("ammo.s.jet", "串联破甲", "HEAT-FS")
+-- 一张图一个服务器（Places.lua，用户 11-28「训练场 还有各种地图单独做成一个服务器」）
+add("place.going", "正在前往{1}服务器……", "Heading to the {1} server…")
+add("place.fail", "传送没成功，留在这个服务器", "Teleport failed — staying on this server")
+add("place.rangeHere", "在这个服务器的训练场试驾", "Test driving on this server's range")
+add("place.noBattle", "训练场服务器不打对战：没有能去的对战服务器", "No battle server to go to from the test range")
+add("place.range", "训练场", "test range")
+add("place.all", "大厅", "lobby")
+add("place.city", "钢城", "Steel City")
+add("place.snow", "雪山", "Snow Peaks")
+add("place.sands", "沙海", "Sea of Sand")
+add("place.here.range", "训练场服务器 · 雪山", "Test range server · Snow Peaks")
+add("map.goto", "前往", "Go to")
+add("map.gotoNote", "这张图有自己的服务器：点了传送过去", "This map has its own server — you'll be teleported")
+-- 开战倒计时（用户 11-28 晚「点加入战斗就进入地图里面等着吧 等倒计时结束就开战」：WtBattle.lua）
+add("wtm.prepTitle", "准备阶段 · 原地待命", "PREPARATION · HOLD POSITION")
+add("wtm.prepIn", "战斗将在 {1} 秒后开始", "BATTLE STARTS IN {1}")
+-- 换图（用户 11-28 晚「然后目前没法切地图」：Places.lua G.switchMap、WtMatch.lua matchJoin）
+add("map.switch", "换到这张", "SWITCH")
+add("map.switchNew", "换到「{1}」：开一个新服务器传过去……", "Switching to {1}: moving you to a new server…")
+add("map.switchStudio", "Studio 里一个服务器只建一张图：停止后重新开始，进机库先在「这一局」那块选「{1}」", "In Studio a server builds only one map: stop, press Play again and pick {1} in the hangar's match box first")
+add("map.switchFail", "开新服务器没成功，留在这一局", "Couldn't open a new server — staying here")
+add("map.buildThenMatch", "按「{1}」开图，建好自动开始匹配", "Building {1} — matchmaking starts when it's ready")
+add("ammo.w.mg", "机枪", "MG")   -- 弹药栏里别的武器那几格（WtTank）
+add("ammo.w.ac", "机炮", "AC")
+add("ammo.w.sam", "防空导弹", "SAM")
+add("ammo.w.he", "榴弹", "HE")
+-- 炮长瞄准镜、车长望远镜（GunSight.lua，用户 11-27 照战雷）
+add("gs.sightSet", "表尺 {1} 米", "Sight {1} m")
+add("gs.estR", "≈{1} 米", "≈{1} m")
+add("gs.hdg", "方位 {1}°", "Bearing {1}°")
+add("gs.binoR", "R 估距", "R range")
+add("gs.bino", "望远镜", "BINO")
+add("gs.binoHint", "车长望远镜 · 滚轮 缩放 · R 估距 · G 侦察 · C 收起 · Shift / 右键 进炮长瞄准镜", "Binoculars · Wheel zoom · R range · G spot · C close · Shift / RMB gunner sight")
 add("drv.optic", "光电", "OPT")
 add("drv.smoke", "烟幕", "SMK")
+add("drv.xray", "透视", "X-RAY")   -- 手机上按住透视自己的车（电脑上按住 X）
+add("drv.xrayInside", "车内视角看不了透视：先回到车外", "X-ray isn't available from inside the vehicle: go outside first")
 add("ui.enterVeh", "按 F 上车", "Press F to enter")
 
 -- 舰艇
@@ -516,22 +609,24 @@ local PRESET = {
   nuke = { "核打击", "Nuclear strike" }, phoenix = { "六枚不死鸟", "Six Phoenix" },
 }
 for k, v in pairs(PRESET) do add("preset." .. k, v[1], v[2]) end
+-- 武器型号一律写英文字母缩写（用户 11-27「武器型号用英文字母缩写吧」，同战雷中文版：AIM-9L、R-27ER1、ZB-500）：
+--   中英两边都写型号本身；说明（射程、导引方式）在挂载卡上另写
 local AW = {
-  gsh30 = { "30 毫米航炮", "30 mm cannon" }, m61 = { "20 毫米航炮", "20 mm cannon" }, gsh23 = { "23 毫米双管航炮", "23 mm twin cannon" }, nr30 = { "30 毫米航炮 ×3", "30 mm cannon ×3" }, gau22 = { "25 毫米航炮", "25 mm cannon" }, gau8 = { "GAU-8 30 毫米机炮", "GAU-8 30 mm" },
-  m230 = { "30 毫米链式炮", "30 mm chain gun" }, m134 = { "舱门机枪", "Door gun" },
-  a42 = { "2A42 30 毫米炮", "2A42 30 mm cannon" }, yakb = { "YakB 12.7 毫米机枪", "YakB 12.7 mm gun" }, m197 = { "M197 20 毫米炮", "M197 20 mm cannon" },
-  ataka = { "攻击（9M120）", "Ataka (9M120)" }, shturm = { "突击（9M114）", "Shturm (9M114)" }, vikhr = { "旋风（9K121）", "Vikhr (9K121)" },
-  hot3 = { "HOT 3", "HOT 3" }, tow = { "陶式", "TOW" }, s8 = { "S-8 火箭", "S-8 rockets" }, igla = { "针-V", "Igla-V" }, type91 = { "91 式防空导弹", "Type 91 SAM" },
+  gsh30 = { "GSh-30-1", "GSh-30-1" }, m61 = { "M61A1", "M61A1" }, gsh23 = { "23-3", "23-3" }, nr30 = { "NR-30 ×3", "NR-30 ×3" }, gau22 = { "GAU-22/A", "GAU-22/A" }, gau8 = { "GAU-8/A", "GAU-8/A" },
+  m230 = { "M230", "M230" }, m134 = { "M134", "M134" },
+  a42 = { "2A42", "2A42" }, yakb = { "YakB-12.7", "YakB-12.7" }, m197 = { "M197", "M197" },
+  ataka = { "9M120", "9M120" }, shturm = { "9M114", "9M114" }, vikhr = { "9K121", "9K121" },
+  hot3 = { "HOT 3", "HOT 3" }, tow = { "BGM-71", "BGM-71" }, s8 = { "S-8", "S-8" }, igla = { "9K38", "9K38" }, type91 = { "Type 91", "Type 91" },
   r73 = { "R-73", "R-73" }, r74 = { "R-74M2", "R-74M2" }, r27r = { "R-27R", "R-27R" }, k77m = { "K-77M", "K-77M" },
-  r27er = { "R-27ER", "R-27ER" }, r77 = { "R-77-1", "R-77-1" }, r60 = { "R-60M", "R-60M" }, kh29 = { "Kh-29L 激光制导导弹", "Kh-29L" }, gsh302 = { "30 毫米双管航炮", "30 mm twin cannon" },
-  pl2 = { "霹雳-2", "PL-2" }, pl10 = { "霹雳-10", "PL-10" }, pl15 = { "霹雳-15", "PL-15" }, aim9x = { "AIM-9X", "AIM-9X" }, aim120 = { "AIM-120", "AIM-120" }, aim54 = { "AIM-54 不死鸟", "AIM-54 Phoenix" },
-  ty90 = { "天燕-90", "TY-90" }, aim92 = { "毒刺（机载）", "Stinger (air)" }, akd10 = { "AKD-10", "AKD-10" }, agm114 = { "地狱火", "Hellfire" },
-  kd88 = { "KD-88", "KD-88" }, agm65 = { "小牛", "Maverick" }, ls6 = { "雷石-6", "LS-6" }, gbu12 = { "GBU-12", "GBU-12" }, gbu31 = { "GBU-31", "GBU-31" },
-  mk82 = { "Mk 82 炸弹", "Mk 82 bomb" }, b250 = { "250 公斤炸弹", "250 kg bomb" }, hydra = { "九头蛇火箭", "Hydra rockets" }, fl90 = { "90 毫米火箭", "90 mm rockets" },
-  pl12 = { "霹雳-12", "PL-12" }, yj91 = { "鹰击-91 反辐射导弹", "YJ-91 anti-radiation missile" }, yj83k = { "鹰击-83K 反舰导弹", "YJ-83K anti-ship missile" }, agm88 = { "AGM-88 哈姆", "AGM-88 HARM" },
-  gbu32 = { "GBU-32 联合直接攻击弹药（450 公斤）", "1,000 lb GBU-32 JDAM" }, gbu38 = { "GBU-38 联合直接攻击弹药（230 公斤）", "500 lb GBU-38 JDAM" },
-  gbu39 = { "GBU-39 小直径炸弹", "GBU-39 Small Diameter Bomb" }, lt2 = { "雷霆-2 激光制导炸弹", "LT-2 laser-guided bomb" },
-  hn1 = { "惊雷-1 核导弹", "HN-1 nuke" },
+  r27er = { "R-27ER", "R-27ER" }, r77 = { "R-77-1", "R-77-1" }, r60 = { "R-60M", "R-60M" }, kh29 = { "Kh-29L", "Kh-29L" }, gsh302 = { "GSh-30-2", "GSh-30-2" },
+  pl2 = { "PL-2", "PL-2" }, pl10 = { "PL-10", "PL-10" }, pl15 = { "PL-15", "PL-15" }, aim9x = { "AIM-9X", "AIM-9X" }, aim120 = { "AIM-120", "AIM-120" }, aim54 = { "AIM-54", "AIM-54" },
+  ty90 = { "TY-90", "TY-90" }, aim92 = { "AIM-92", "AIM-92" }, akd10 = { "AKD-10", "AKD-10" }, agm114 = { "AGM-114", "AGM-114" },
+  kd88 = { "KD-88", "KD-88" }, agm65 = { "AGM-65", "AGM-65" }, ls6 = { "LS-6", "LS-6" }, gbu12 = { "GBU-12", "GBU-12" }, gbu31 = { "GBU-31", "GBU-31" },
+  mk82 = { "Mk 82", "Mk 82" }, b250 = { "250-2", "250-2" }, hydra = { "Hydra 70", "Hydra 70" }, fl90 = { "FFAR-90", "FFAR-90" },
+  pl12 = { "PL-12", "PL-12" }, yj91 = { "YJ-91", "YJ-91" }, yj83k = { "YJ-83K", "YJ-83K" }, agm88 = { "AGM-88", "AGM-88" },
+  gbu32 = { "GBU-32", "GBU-32" }, gbu38 = { "GBU-38", "GBU-38" },
+  gbu39 = { "GBU-39", "GBU-39" }, lt2 = { "LT-2", "LT-2" },
+  hn1 = { "HN-1", "HN-1" },
 }
 for k, v in pairs(AW) do add("aw." .. k, v[1], v[2]) end
 -- 高超音速战术核导弹（Nuke.lua / 客户端 Nuke.lua）
@@ -563,6 +658,7 @@ add("hangar.symOn", "左右对称：开", "Symmetric: ON")
 add("hangar.symOff", "左右对称：关", "Symmetric: OFF")
 add("hangar.back", "返回", "BACK")
 add("hangar.save", "保存", "SAVE")
+add("hangar.modified", "（已改）", " (modified)")
 add("preset.sdb", "小直径炸弹", "Small Diameter Bombs")
 add("wcat.gun", "航炮", "Cannon")
 add("wcat.aam", "空空导弹", "Air-to-Air Missile")
@@ -589,6 +685,9 @@ add("air.passenger", "（乘客）", "(passenger)")
 add("air.ab", "加力", "AFTERBURNER")
 add("air.missile", "导弹来袭", "MISSILE")
 add("air.oob", "返回作战区域", "RETURN TO BATTLE AREA")
+add("air.oobT", "返回作战区域  {1}", "RETURN TO BATTLE AREA  {1}")   -- 出作战区读秒（Air.lua oobStep，读完判毁）
+add("ui.oobT", "返回战场区域  {1}", "RETURN TO BATTLE AREA  {1}")   -- 地面车开出战场区域读秒（Armor.lua）
+add("ui.oobOk", "已回到战场区域", "Back in the battle area")
 add("air.stall", "失速", "STALL")
 add("air.pullup", "拉起", "PULL UP")
 add("air.tooFast", "太快 · 收油门再落", "TOO FAST · CUT THROTTLE")
@@ -602,12 +701,14 @@ add("air.locking", "锁定中 {1}%", "LOCKING {1}%")
 add("air.locked", "已锁定", "LOCKED")
 add("air.notYet", "尚未开战", "Weapons cold")
 add("air.needLock", "未锁定", "No lock")
-add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住右键（或 C）拖动自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门 · 滚轮 油门（地上收到底按住倒退）· B 减速板 · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 / 炸弹（雷达弹要雷达锁住，对方侧着飞会丢锁） · 1-6 选弹 · R 换目标 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
-  "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold RMB (or C) and drag to look around · M keyboard flight · Shift/Ctrl/mouse wheel throttle (hold Ctrl at idle on the ground to back up) · B airbrake · LMB gun (fires along the nose; the small circle ahead of enemy planes is the lead) · F missile / bomb (radar missiles need a radar lock; beaming breaks it) · 1-6 select · R next target · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
-add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 滚轮 油门 · B 减速板 · 按住右键拖动自由看（看的方向不跟着飞机转，松开回到身后） · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 · 1-6 选弹 · R 换目标 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
-  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · hold RMB and drag to look around (view stays put while the plane maneuvers) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
-add("air.helpHeli", "鼠标准心 决定机头朝向：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· E 升 / Q 降 · A/D 侧飞 · W/S 也能前推后拉 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
-  "Aim decides where the nose points: aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · E up / Q down · A/D sidestep · W/S also push / pull the cyclic · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
+add("air.needRadar", "需要雷达锁定（半主动雷达弹要自己的雷达一直照着目标）", "Radar lock required (semi-active radar missiles need your radar on the target)")
+add("air.madDog", "未锁定发射：导弹飞出去自己开导引头找前方的目标", "Fired without lock: the missile turns on its own seeker and searches ahead")
+add("air.helpJet", "鼠标 飞行方向（战雷式鼠标瞄准：飞机自己追过去）· W/S 俯仰 · A/D 滚转 · Q/E 方向舵（按着就直接操纵，松开回到鼠标）· 按住右键（或 C）拖动自由看 · M 切纯键盘驾驶 · Shift 加油门 · Ctrl 收油门 · 滚轮 油门（地上收到底按住倒退）· B 减速板 · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 / 炸弹（雷达弹：R 选雷达屏上的目标、Alt+F 锁定，对方侧着飞会丢锁） · 1-6 选弹 · R 换目标 · Alt+R 雷达开关 · Alt+Q 雷达量程 · Alt+E 雷达模式（RWS / TWS / ACM）· Alt+Z 扫描方式 · ←/→ 雷达左右偏转 · Alt+↑↓ / Alt+滚轮 雷达天线俯仰 · Alt+C 天线回中 · Alt+T 选雷达目标 · Alt+F 雷达锁定 / 解锁 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（落点到了自动投）· P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · 空格 跳伞",
+  "Mouse sets the flight direction (War Thunder mouse aim: the plane follows) · W/S pitch · A/D roll · Q/E rudder (held = direct control, release to follow the mouse) · hold RMB (or C) and drag to look around · M keyboard flight · Shift/Ctrl/mouse wheel throttle (hold Ctrl at idle on the ground to back up) · B airbrake · LMB gun (fires along the nose; the small circle ahead of enemy planes is the lead) · F missile / bomb (radar missiles: R picks a target on the radar screen, Alt+F locks it; beaming breaks the lock) · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · ←/→ slew the radar left / right · Alt+↑↓ / Alt+wheel radar antenna elevation · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · Space bail out")
+add("air.helpJetKb", "W 低头 · S 抬头 · A/D 滚转 · Q/E 方向舵 · Shift 加油门 · Ctrl 收油门（地上收到底按住倒退）· 滚轮 油门 · B 减速板 · 按住右键拖动自由看（看的方向不跟着飞机转，松开回到身后） · 左键 机炮（顺着机头打，敌机前面的小圈是提前量）· F 导弹 · 1-6 选弹 · R 换目标 · Alt+R 雷达开关 · Alt+Q 雷达量程 · Alt+E 雷达模式（RWS / TWS / ACM）· Alt+Z 扫描方式 · ←/→ 雷达左右偏转 · Alt+↑↓ / Alt+滚轮 雷达天线俯仰 · Alt+C 天线回中 · Alt+T 选雷达目标 · Alt+F 雷达锁定 / 解锁 · P 光电吊舱 · N 夜视 / 热成像 · X 热诱弹 · J 抛副油箱 · G 起落架 · M 切战雷式鼠标瞄准 · F7 轰炸瞄准镜 · Shift+B 单投 / 双投 / 齐投 · Alt+中键 标目标点（自动投弹）· 空格 跳伞",
+  "W nose down · S nose up · A/D roll · Q/E rudder · Shift throttle up · Ctrl throttle down (hold at idle on the ground to back up) · hold RMB and drag to look around (view stays put while the plane maneuvers) · LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them) · F missile · 1-6 select · R next target · Alt+R radar on/off · Alt+Q radar range · Alt+E radar mode (RWS / TWS / ACM) · Alt+Z scan pattern · ←/→ slew the radar left / right · Alt+↑↓ / Alt+wheel radar antenna elevation · Alt+C center antenna · Alt+T select radar target · Alt+F radar lock / unlock · P targeting pod · N night vision / thermal · X flares · J drop tanks · G gear · M mouse aim (War Thunder) · F7 bombsight · Shift+B single / pair / salvo · Alt+MMB mark target point (auto release) · Space bail out")
+add("air.helpHeli", "鼠标准心 定方向（同战雷）：往下 桨盘前倾往前飞，往上 往后仰（减速、往上顶）· W 升 / S 降（松开自动定高）· A/D 侧飞 · Q/E 转机头 · Alt 自由看 · 左键 机炮 · F 导弹 / 火箭 · 1-6 选弹 · R 换目标 · P 光电 · N 夜视 / 热成像 · X 热诱弹 · J 抛油箱 · 空格 下飞机",
+  "Aim sets the direction (like War Thunder): aim lower to tilt the rotor forward and fly ahead, aim higher to pitch back (slow down, rise) · W up / S down (holds altitude when released) · A/D sidestep · Q/E turn the nose · Alt free look · LMB gun · F missiles/rockets · 1-6 select · R next target · P pod · N night vision / thermal · X flares · J drop tanks · Space exit")
 -- 飞机平显（Fly.lua）：速度、高度框的标题，右侧武器栏的热诱弹；光电吊舱（P）的画面
 add("hud.spd", "速度 km/h", "SPD km/h")
 add("hud.alt", "高度 m", "ALT m")
@@ -709,6 +810,7 @@ add("juice.streak", "连续击杀 {1}", "{1} kill streak")
 
 add("coach.cyclic", "前倾 / 刹车", "Tilt fwd / brake")
 add("coach.strafe", "侧飞", "Sidestep")
+add("coach.yawNose", "转机头", "Turn nose")
 add("coach.rockets", "火箭 / 导弹", "Rockets / missiles")
 add("coach.stowPad", "收起平板", "Close tablet")
 add("coach.telegraph", "车钟（一档一档加减速）", "Engine order")
@@ -749,8 +851,8 @@ add("coach.card.jet.1", "Shift 推油门（推满进加力），A / D 在跑道�
 add("coach.card.jet.2", "速度到 {1} km/h 按住 S 抬头离地，起落架会自动收起；W 低头、S 抬头、A / D 滚转，压坡度再拉 S 就转弯", "At {1} km/h hold S to lift off — the gear retracts by itself. W nose down, S nose up, A / D roll; bank and pull S to turn")
 add("coach.card.jet.3", "左键机炮（打机头标记那里），F 导弹（1–6 换挂载，先锁定），X 热诱弹；回去降落：G 放起落架、Ctrl 收油门、机头对着跑道，停稳就补弹修理", "LMB gun (fires at the nose marker; sticks to enemy vehicles within 6° and leads them), F missile (1–6 stores, lock first), X flares. To land: G gear down, Ctrl throttle down, point the nose at the runway, stop to rearm and repair")
 add("coach.card.heli.1", "先等旋翼转起来（平显上的转速到 100%）", "Wait for the rotor to spin up (RPM 100% on the HUD)")
-add("coach.card.heli.2", "按住 E 升、Q 降；准心往下机头前倾往前飞，准心往上往后仰减速；A / D 侧飞", "Hold E to climb, Q to descend; aim lower to dip the nose and fly ahead, aim higher to pitch back and slow; A / D sidestep")
-add("coach.card.heli.3", "速度有惯性：松杆不会马上停，按 S 往后带杆刹车。左键机炮，F 火箭 / 导弹，空格下飞机", "It keeps its momentum: hold S to flare and brake. LMB gun, F rockets / missiles, Space to get out")
+add("coach.card.heli.2", "按住 W 升、S 降（同战雷）；准心往下机头前倾往前飞，准心往上往后仰减速；A / D 侧飞、Q / E 转机头", "Hold W to climb, S to descend (like War Thunder); aim lower to dip the nose and fly ahead, aim higher to pitch back and slow; A / D sidestep, Q / E turn")
+add("coach.card.heli.3", "速度有惯性：不会马上停，准心往上一抬机头后仰刹车。左键机炮，F 火箭 / 导弹，空格下飞机", "It keeps its momentum: aim higher to flare and brake. LMB gun, F rockets / missiles, Space to get out")
 add("coach.card.uav.1", "你端着平板遥控无人机，人还站在原地——当心被打", "You fly the drone from a tablet while standing where you are — stay covered")
 add("coach.card.uav.2", "鼠标管方向，W / S 加速减速，A / D 滚转", "The mouse steers, W / S speed, A / D roll")
 add("coach.card.uav.3", "右键 / V 切镜头、Z 变焦，F 发导弹，空格收起平板", "RMB / V camera, Z zoom, F missile, Space to put the tablet away")
@@ -1031,6 +1133,9 @@ add("pass.locked", "{1}要用 R 币解锁", "{1} must be unlocked with Robux")
 add("pass.price", "R$ {1}", "R$ {1}")
 add("pass.lockTag", "解锁 R$ {1}", "UNLOCK R$ {1}")
 add("pass.thanks", "已解锁：{1}，谢谢支持！", "Unlocked: {1}. Thanks for the support!")
+add("shop.thanks", "充值成功：{1} 金币已到账，谢谢支持！", "Purchase complete: {1} coins added. Thanks for the support!")
+add("shop.saveFail", "充值的金币暂时存不进存档，Roblox 会稍后自动重试（不会重复扣款）", "Couldn't save your coins yet; Roblox will retry automatically (you won't be charged twice)")
+add("shop.notListed", "这一档还没上架", "This pack isn't on sale yet")
 add("tac.cd", "还在冷却，{1} 秒后才能再叫", "Still cooling down — {1} s")
 add("tac.teamBusy", "队友刚叫过，{1} 秒后再试", "A squadmate just called it — {1} s")
 add("tac.far", "太远了，只能叫 {1} 米以内", "Too far — max {1} m")
@@ -1055,6 +1160,9 @@ add("vw.gun100", "100 毫米炮（2A70）", "100 mm 2A70")
 add("vw.ac30aa", "30 毫米高炮（2A38M ×2）", "30 mm 2A38M ×2")
 add("vw.s57e6", "57E6 地空导弹", "57E6 SAM")
 add("vw.s9m31", "9M31 地空导弹（箭-1）", "9M31 SAM (Strela-1)")
+add("vw.sfb10", "FB-10A 地空导弹", "FB-10A SAM")
+add("aw.sfb10", "FB-10A", "FB-10A")
+add("vw.ac25g", "25 毫米六管炮", "25 mm 6-barrel cannon")
 add("aw.s9m31", "9M31 地空导弹", "9M31 SAM")
 add("vw.ac25", "25 毫米机关炮（KBA）", "25 mm KBA autocannon")
 add("vw.kpvt", "14.5 毫米重机枪（KPVT）", "14.5 mm KPVT HMG")
@@ -1072,6 +1180,11 @@ add("vw.gun105a5", "105 毫米炮（L7A3）", "105 mm L7A3")
 add("vw.gun105m68", "105 毫米炮（M68E1）", "105 mm M68E1")
 add("vw.gun105m60", "105 毫米炮（M68）", "105 mm M68")
 add("vw.gun73", "73 毫米炮（2A28）", "73 mm 2A28 Grom")
+add("vw.gun85", "85 毫米炮（ZiS-S-53）", "85 mm ZiS-S-53")
+add("vw.gun100s", "100 毫米炮（D-10S）", "100 mm D-10S")
+add("vw.rh202", "20 毫米机关炮（Rh 202）", "20 mm Rh 202 autocannon")
+add("vw.milan", "「米兰」反坦克导弹", "MILAN ATGM")
+add("vw.gun152k70", "152 毫米炮 / 导弹发射器（XM150）", "152 mm XM150 gun-launcher")
 add("vw.gun100d", "100 毫米炮（59 式，仿 D-10T）", "100 mm Type 59 (D-10T)")   -- 原来武器栏显示成代码名 vw.gun100d（11-26 观瞄截图里看到的）
 add("vw.gun100d69", "100 毫米炮（69 式）", "100 mm Type 69")
 add("vw.gun152", "152 毫米炮 / 导弹发射器（M81）", "152 mm M81 gun-launcher")
@@ -1129,6 +1242,9 @@ add("gar.opt.gl5", "GL5 硬杀伤主动防护", "GL5 hard-kill APS")
 add("gar.opt.trophy", "Trophy 硬杀伤主动防护", "Trophy hard-kill APS")
 add("gar.opt.lws", "激光告警 + 自动烟幕", "Laser warning + auto smoke")
 add("gar.opt.jd3", "JD-3 激光告警与对抗", "JD-3 laser warning & countermeasure")
+add("gar.opt.shtora", "「窗帘-1」光电对抗（红外干扰灯）", "Shtora-1 (IR dazzlers)")
+add("gar.d.shtora", "T-90A 的「窗帘-1」：炮两边各一个 OTShU-1-7 红外干扰灯（就是那一对红色的大灯），加激光告警。被激光照上自动打烟；指令制导的反坦克弹（陶式、HOT、攻击……靠发射架盯着弹尾的红外灯修正）进到八百多米时约一半被干扰灯骗偏。", "T-90A's Shtora-1: an OTShU-1-7 IR dazzler on each side of the gun (the pair of red lamps) plus laser warning. Laser illumination triggers auto smoke; command-guided ATGMs (TOW, HOT, Ataka…) are spoofed about half the time once within ~850 m.")
+add("kit.irJam", "「窗帘-1」干扰灯骗偏了来袭的反坦克导弹", "Shtora-1 dazzlers spoofed the incoming ATGM")
 add("gar.opt.slat", "车尾、侧后、炮塔尾部栅栏", "Rear, rear-side & bustle slat cage")
 add("gar.opt.belly", "车底防雷板", "Belly mine plate")
 add("gar.opt.plow", "全宽扫雷犁", "Full-width mine plough")
@@ -1196,22 +1312,87 @@ add("dir.5", "西南", "SW")
 add("dir.6", "西", "W")
 add("dir.7", "西北", "NW")
 
+-- 语言列表（设置里的顺序；name 用这种语言自己的写法）
+Lang.LIST = {
+  { code = "zh", name = "简体中文" }, { code = "zh-TW", name = "繁體中文" }, { code = "en", name = "English" },
+  { code = "ja", name = "日本語" }, { code = "ko", name = "한국어" }, { code = "ru", name = "Русский" },
+  { code = "de", name = "Deutsch" }, { code = "fr", name = "Français" }, { code = "es", name = "Español" }, { code = "pt", name = "Português" },
+}
+local VALID = {}
+for _, l in ipairs(Lang.LIST) do VALID[l.code] = true end
+function Lang.valid(code) return VALID[code] == true end
+function Lang.nameOf(code)
+  for _, l in ipairs(Lang.LIST) do if l.code == code then return l.name end end
+  return tostring(code)
+end
+function Lang.nextOf(code)   -- 界面上的语言键：按 LIST 的顺序换下一种
+  for i, l in ipairs(Lang.LIST) do if l.code == code then return Lang.LIST[i % #Lang.LIST + 1].code end end
+  return Lang.LIST[1].code
+end
+function Lang.isZh(lang) return lang == "zh" or lang == "zh-TW" end
+-- Roblox 的 LocaleId（zh-cn、zh-tw、ja-jp、pt-br……）→ 这里的语言
+local LOCALE = { ["zh-cn"] = "zh", ["zh-cjv"] = "zh", ["zh-hans"] = "zh", ["zh-sg"] = "zh",
+  ["zh-tw"] = "zh-TW", ["zh-hk"] = "zh-TW", ["zh-mo"] = "zh-TW", ["zh-hant"] = "zh-TW",
+  ja = "ja", ko = "ko", ru = "ru", de = "de", fr = "fr", es = "es", pt = "pt" }
 function Lang.pick(localeId)
-  if type(localeId) == "string" and string.sub(string.lower(localeId), 1, 2) == "zh" then return "zh" end
-  return "en"
+  if type(localeId) ~= "string" then return "en" end
+  local id = string.lower(localeId)
+  if LOCALE[id] then return LOCALE[id] end
+  local two = string.sub(id, 1, 2)
+  if two == "zh" then return "zh" end
+  return LOCALE[two] or "en"
+end
+-- 别的语言的译文包：{ k = { [键] = 译文 }, p = { [英文原文] = 译文 } }（繁中的 p 按简体原文查）；第一次用到时 require，没有记 false
+local packs = {}
+local function pack(lang)
+  local pk = packs[lang]
+  if pk == nil then
+    pk = false
+    local ok, r = pcall(function()
+      local here = script and script.Parent
+      local folder = here and here:FindFirstChild("LangPacks")
+      local ms = folder and folder:FindFirstChild(lang)
+      return ms and require(ms)
+    end)
+    if ok and type(r) == "table" then pk = r end
+    packs[lang] = pk
+  end
+  return pk or nil
+end
+Lang.pack = pack
+-- 代码里的中英对照（G.L(中, 英)）：中文、英文原样；繁中按简体查、别的语言按英文查，查不到退回原文
+function Lang.pair(lang, zh, en)
+  if lang == "zh" then return zh end
+  if lang == "en" or lang == nil then return en end
+  local P = pack(lang)
+  local p = P and P.p
+  if lang == "zh-TW" then return (p and zh and p[zh]) or zh end
+  return (p and en and p[en]) or en
 end
 
 -- 地图专用的说法（据点名、阵营名……）：键后面加「@地图」（"point.A@desert"）；客户端换地图时设 Lang.mapId（init.client.lua）
 Lang.mapId = nil
 local function tr(lang, key)
-  local T = (lang == "zh") and ZH or EN
   local mid = Lang.mapId
+  if lang == "zh" or lang == "en" or lang == nil then
+    local T = (lang == "zh") and ZH or EN
+    if mid and type(key) == "string" then
+      local k2 = key .. "@" .. mid
+      local v = T[k2] or ZH[k2]
+      if v then return v end
+    end
+    return T[key] or ZH[key] or EN[key] or tostring(key)
+  end
+  -- 别的语言：译文包里的；没有的繁中退回简体、别的退回英文
+  local P = pack(lang)
+  local K = P and P.k
+  local FB = (lang == "zh-TW") and ZH or EN
   if mid and type(key) == "string" then
     local k2 = key .. "@" .. mid
-    local v = T[k2] or ZH[k2]
+    local v = (K and K[k2]) or FB[k2] or ZH[k2]
     if v then return v end
   end
-  return T[key] or ZH[key] or EN[key] or tostring(key)
+  return (K and K[key]) or FB[key] or EN[key] or ZH[key] or tostring(key)
 end
 
 function Lang.t(lang, key, ...)
@@ -1509,7 +1690,8 @@ add("wt.m.trackL", "左履带", "Left track")
 add("wt.m.trackR", "右履带", "Right track")
 add("wt.m.barrel", "炮管", "Barrel")
 add("wt.m.breech", "炮闩", "Breech")
-add("wt.m.tdrive", "炮塔驱动", "Turret drive")
+add("wt.m.tdrive", "方向机", "Traverse drive")
+add("wt.m.edrive", "高低机", "Elevation drive")
 add("wt.m.ammo", "弹药架", "Ammo rack")
 add("wt.m.ammoH", "车体弹药", "Hull ammo")
 add("wt.m.fuelL", "左油箱", "Left fuel tank")
@@ -1525,7 +1707,8 @@ add("wt.ms.trans", "传", "TRN")
 add("wt.ms.track", "履", "TRK")
 add("wt.ms.barrel", "管", "BRL")
 add("wt.ms.breech", "闩", "BRC")
-add("wt.ms.tdrive", "驱", "TRV")
+add("wt.ms.tdrive", "方", "TRV")
+add("wt.ms.edrive", "高", "ELV")
 add("wt.ms.ammo", "弹", "AMO")
 add("wt.ms.fuel", "油", "FUL")
 add("wt.dead", "阵亡", " KO")
@@ -1542,7 +1725,7 @@ add("wt.ric", "跳弹", "RICOCHET")
 add("wt.np", "未击穿", "NON-PENETRATION")
 add("wt.hit", "命中", "HIT")
 add("wt.mm", "装甲 {1} 毫米 / 穿深 {2} 毫米", "armour {1} mm / penetration {2} mm")
-add("wt.xrTitle", "命中回放 · {1} · {2} 米", "HIT CAMERA · {1} · {2} m")
+add("wt.xrName", "{1} · {2} 米", "{1} · {2} m")   -- 命中回放左下小字的第一行：车名 · 距离
 add("wt.xrJetB", "金属射流弹 · 穿深 {1} / 等效 {2} 毫米", "METAL JET · pen {1} / eff {2} mm")
 add("wt.xrJet", "聚能射流 · 穿深 {1} / 等效 {2} 毫米", "SHAPED-CHARGE JET · pen {1} / eff {2} mm")
 add("wt.xr.fs", "长杆穿甲弹 · 杆头被啃短、钻得深 · 穿深 {1} / 等效 {2} 毫米", "APFSDS · rod erodes, goes deep · pen {1} / eff {2} mm")
@@ -1553,7 +1736,6 @@ add("wt.xr.ac", "机炮穿甲弹 · 穿深 {1} / 等效 {2} 毫米", "AUTOCANNON
 add("wt.xr.he", "杀爆弹 · 车外炸开 · 穿深 {1} / 等效 {2} 毫米", "HE · bursts outside · pen {1} / eff {2} mm")
 add("wt.xr.hesh", "碎甲弹 · 装甲没打穿、内壁崩落 · 当量 {1} / 等效 {2} 毫米", "HESH · no hole, inner wall spalls · eq {1} / eff {2} mm")
 add("wt.xr.tandem", "串联破甲弹 · 前级先炸 · 穿深 {1} / 等效 {2} 毫米", "TANDEM HEAT · precursor first · pen {1} / eff {2} mm")
-add("wt.xrSlow", "慢放 ×0.01", "SLOW-MO ×0.01")
 add("wt.tipFire", "起火，按 Y 灭火", "ON FIRE. Press Y to extinguish")
 add("wt.tipFixing", "维修中 {1}%（按 Y 取消）", "Repairing {1}% (Y to cancel)")
 add("wt.tipFix", "有部件损坏：按 Y 维修", "Parts damaged: press Y to repair")
@@ -1565,6 +1747,9 @@ add("wt.youHit", "被炸", "Hit by blast")
 add("wt.swap", "{1} {3} 秒后接替{2}", "{1} takes the {2} seat in {3} s")
 add("wt.swapped", "{1}已接替{2}", "{1} took the {2} seat")
 add("wt.fireOut", "火熄灭了", "Fire is out")
+add("wt.xrBurst", "连续贯穿 ×{1}", "Burst penetrations ×{1}")
+add("drv.noNv", "这辆车没有夜视（只有昼光瞄准镜）", "This vehicle has no night vision (day sight only)")
+add("wt.tipAmmoFire", "弹药架起火！{1} 秒内按 Y 灭火，不然殉爆", "AMMO FIRE! Press Y in {1}s")
 add("wt.extOk", "灭火成功", "Fire extinguished")
 add("wt.fixed", "维修完成", "Repairs complete")
 add("wt.noFix", "没有要修的部件", "Nothing to repair")
@@ -1624,12 +1809,39 @@ add("xr.fuel", "油箱", "Fuel")
 add("xr.ammo", "弹药", "Ammo")
 add("xr.breech", "炮闩", "Breech")
 add("xr.barrel", "炮管", "Barrel")
-add("xr.tdrive", "炮塔驱动", "Turret drive")
+add("xr.tdrive", "方向机", "Traverse drive")
+add("xr.edrive", "高低机", "Elevation drive")
+add("xr.drives", "方向机 / 高低机", "Traverse / elevation drives")
 add("xr.optics", "观瞄", "Optics")
 add("xr.era", "爆反", "ERA")
 add("xr.other", "其他", "Other")
+add("xr.altHint", "按住 Alt：用鼠标指部件看名字、状态", "Hold Alt: point at parts to see names and status")
 add("xr.hurt", "受损", "Damaged")
 add("xr.dead", "坏了 / 阵亡", "Destroyed / KIA")
+-- 11-27「x 透视不够细节」：图例多的几类、鼠标指着的部件旁边写的名字 / 状态 / 细节
+add("xr.track", "履带 / 车轮", "Tracks / wheels")
+add("xr.troops", "载员舱", "Troop bay")
+add("xr.broken", "打坏", "Destroyed")
+add("xr.kia", "阵亡", "KIA")
+add("xr.fire", "起火", "On fire")
+add("xr.s.ok", "完好", "Intact")
+add("xr.s.hurt", "受损", "Damaged")
+add("xr.s.broken", "损毁", "Destroyed")
+add("xr.s.wounded", "受伤", "Wounded")
+add("xr.s.kia", "阵亡", "Killed")
+add("xr.s.fire", "起火", "On fire")
+add("xr.d.turbine", "燃气轮机", "Gas turbine")
+add("xr.d.diesel", "柴油机", "Diesel engine")
+add("xr.d.carousel", "转盘自动装弹机", "Carousel autoloader")
+add("xr.d.bustle", "炮塔尾舱", "Turret bustle")
+add("xr.d.hullRack", "车体弹架", "Hull rack")
+add("xr.d.cans", "弹箱", "Ammo boxes")
+add("xr.d.rounds", "{1} / {2} 发", "{1} / {2} rds")
+add("xr.d.mm", "{1} 毫米", "{1} mm")
+add("xr.n.coax", "并列机枪", "Coaxial MG")
+add("xr.n.csight", "车长周视镜", "Commander's sight")
+add("xr.n.citv", "车长热像仪", "Commander's thermal viewer")
+add("xr.n.atgm", "反坦克导弹发射架", "ATGM launcher")
 add("wt.groundFirst", "第一辆必须是地面车：先开地面车打出分、攒够 SP 才能出飞机", "Your first vehicle must be a ground vehicle — earn SP before spawning aircraft")
 add("wtm.sp", "SP {1}", "SP {1}")
 add("wtm.lineup", "出击阵容 {1} / {2}", "Lineup {1} / {2}")
@@ -1749,6 +1961,204 @@ add("wt.radarOn", "雷达开", "RADAR ON")
 add("wt.radarRange", "雷达量程 {1} km", "Radar range {1} km")
 add("wt.mslAct", "导弹导引头已开机", "Missile seeker active")
 add("wt.dlLost", "数据链中断", "Datalink lost")
+-- 机载雷达（Radar.lua / Fly.lua，用户 11-27「飞机雷达按型号照战雷做、能用键控制雷达方向」）：照战雷手动锁——R / Alt+T 选目标、Alt+F 锁定；模式字样用真机缩写（中英一样）
+add("rd.keys", "Alt + R 开关 · Q 量程 · E 模式 · Z 扫描", "Alt + R on/off · Q range · E mode · Z scan")   -- 屏下两行（各 316 像素宽）
+add("rd.keys2", "←→ 左右偏转 · Alt + T 选目标 · F 锁定 · ↑↓ / 滚轮 俯仰 · C 回中", "←→ slew · Alt + T target · F lock · ↑↓/wheel elev · C center")   -- 11-28：左右偏转不用按 Alt
+add("rd.scanT", "扫描 ±{1}° · {2} 行（一帧 {3} 秒）", "Scan ±{1}° · {2} bar (frame {3} s)")
+add("rd.modeT", "{1}：{2}", "{1}: {2}")
+add("rd.m.rws", "搜索（边搜索边测距）", "range-while-search")
+add("rd.m.tws", "边扫描边跟踪（对指定航迹打主动雷达弹不用锁定）", "track-while-scan (fire Fox-3 at the selected track without a lock)")
+add("rd.m.acm", "近战（近处第一个扫到的自动锁定）", "air combat (auto-locks the first close contact)")
+add("rd.center", "雷达天线回中", "Radar antenna centered")
+add("rd.alt", "上 {1} / 下 {2} km", "hi {1} / lo {2} km")   -- 扫描区在光标距离（量程一半）上盖住的海拔
+add("rd.noTgt", "雷达屏上没有目标", "No radar contacts")
+add("rd.isOff", "雷达关着（Alt+R 打开）", "Radar is off (Alt+R)")
+add("rd.cantSee", "雷达看不见这个目标", "The radar can't see that target")
+add("rd.lockFar", "太远，锁不上（{1} km 以内）", "Too far to lock (within {1} km)")
+add("rd.lockOff", "目标偏离机头太多，转过去再锁", "Target too far off the nose — turn toward it")
+add("rd.unlock", "解除雷达锁定", "Radar lock released")
+add("rd.arr.mech", "机械扫描", "mechanically scanned")
+add("rd.arr.pesa", "无源相控阵", "passive phased array (PESA)")
+add("rd.arr.aesa", "有源相控阵", "active phased array (AESA)")
+add("rd.kind.pd", "脉冲多普勒", "pulse-Doppler")
+add("rd.kind.pulse", "脉冲", "pulse")
+add("rd.kind.pdp", "脉冲多普勒 + 脉冲", "pulse-Doppler + pulse")
+add("rd.acm.hud", "平显视场", "HUD field")
+add("rd.acm.vert", "竖扫", "vertical scan")
+add("rd.acm.vertLo", "低竖扫", "low vertical scan")
+add("rd.acm.bore", "瞄准线", "boresight")
+add("rd.acm.slew", "可挪扫描", "slewable scan")
+add("rd.acm.hmd", "头盔瞄准", "helmet sight")
+add("rd.acm.pal", "自动截获", "auto acquisition")
+-- 资料卡（TechUI）的「雷达」一节（Radars.card）
+add("tech.radar", "雷达", "Radar")
+add("tech.radar.none", "没有对空雷达", "No air-to-air radar")
+add("tech.radar.type", "{1} · {2}", "{1} · {2}")
+add("tech.radar.det", "发现距离 {1} km（真机，对战斗机迎头）· 游戏里搜索 {2} / 锁定 {3} km", "Detection {1} km (real, fighter head-on) · in game: search {2} / lock {3} km")
+add("tech.radar.est", "（估）", " (est.)")
+add("tech.radar.fov", "方位 ±{1}° · 俯仰 +{2}° / −{3}°", "Azimuth ±{1}° · elevation +{2}° / −{3}°")
+add("tech.radar.bars", "±{1}°×{2} 行", "±{1}° × {2} bar")
+add("tech.radar.far", "（量程 ×{1}）", " (range ×{1})")
+add("tech.radar.scan", "扫描 {1}（{2}°/秒，默认一帧 {3} 秒）", "Scans {1} ({2}°/s, default frame {3} s)")
+add("tech.radar.tws", "边扫边跟 {1} 批 · 同时攻击 {2} 个", "Track-while-scan {1} targets · engage {2}")
+add("tech.radar.stt", "只能单目标跟踪（没有边扫边跟）", "Single-target track only (no TWS)")
+add("tech.radar.iff", "带敌我识别（IFF）：友机在雷达屏上标出来、不能锁", "IFF: friendlies are marked on the scope and can't be locked")
+add("tech.radar.noIff", "没有敌我识别：友机和敌机在屏上一个样", "No IFF: friendlies look the same as enemies")
+add("tech.rcs", "RCS（迎头、干净构型）约 {1} m² · 被雷达发现的距离约为三代机的 {2}%", "RCS (frontal, clean) ~{1} m² · detected at ~{2}% of a 4th-gen fighter's range")
+add("rd.iffFriend", "敌我识别：友机，不能锁", "IFF: friendly, can't lock")
+add("tech.radar.acm", "近战模式：{1}", "ACM modes: {1}")
+
+-- 11-27 拆开重叠的版本（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」「各维度还原一致」）：科技树原来写 base（模型、性能都借）的地面车
+--   各有了自己的型号（VehDefs 的 variant，模型借同族的）——型号名、炮名（科技树里的名字 tree.<键> 照旧自动生成）
+add("veh.m1", "M1 艾布拉姆斯", "M1 Abrams")
+add("veh.m1ip", "IPM1 艾布拉姆斯", "IPM1 Abrams")
+add("veh.m1a1hc", "M1A1 HC 艾布拉姆斯", "M1A1 HC Abrams")
+add("veh.m1a2base", "M1A2 艾布拉姆斯", "M1A2 Abrams")
+add("veh.m1a2sep", "M1A2 SEP", "M1A2 SEP")
+add("veh.m1a2sep3", "M1A2 SEPv3", "M1A2 SEPv3")
+add("vw.gun105m1", "105 毫米炮（M68A1）", "105 mm M68A1")
+add("vw.gun105ip", "105 毫米炮（M68A1）", "105 mm M68A1")
+add("vw.gun120hc", "120 毫米炮（M256）", "120 mm M256")
+add("vw.gun120a2", "120 毫米炮（M256）", "120 mm M256")
+add("vw.gun120sep", "120 毫米炮（M256）", "120 mm M256")
+add("vw.gun120sep3", "120 毫米炮（M256，弹药数据链）", "120 mm M256 (ADL)")
+add("veh.m60", "M60 主战坦克", "M60 MBT")
+add("veh.m60a1rise", "M60A1 RISE 主战坦克", "M60A1 RISE MBT")
+add("veh.leo1a1a1", "豹 1A1A1 主战坦克", "Leopard 1A1A1 MBT")
+add("veh.leo2a0", "豹 2A0 主战坦克", "Leopard 2A0 MBT")
+add("veh.leo2a5", "豹 2A5 主战坦克", "Leopard 2A5 MBT")
+add("vw.gun105m60r", "105 毫米炮（M68）", "105 mm M68")
+add("vw.gun120l44a0", "120 毫米炮（Rh-120 L/44）", "120 mm Rh-120 L/44")
+add("veh.ztz96base", "96 式主战坦克", "Type 96 MBT")
+add("veh.ztz96a", "96A 式主战坦克", "Type 96A MBT")
+add("veh.ztz96", "96B 式主战坦克", "Type 96B MBT")   -- 原来写「ZTZ-96 主战坦克」：这个型号就是 96B（TechTree cn_96b、TankMods.SPEC.ztz96 都是 96B），96 式拆成了 ztz96base
+add("veh.ztz99base", "99 式主战坦克", "Type 99 MBT")
+add("veh.type86", "86 式步兵战车", "Type 86 IFV")
+add("veh.t90a", "T-90A 主战坦克", "T-90A MBT")
+add("veh.m2a0", "M2 布雷德利", "M2 Bradley")
+add("veh.m2a2", "M2A2 布雷德利", "M2A2 Bradley")
+add("vw.gun125c96", "125 毫米炮（ZPT-98）", "125 mm ZPT-98")
+add("vw.gun125c99", "125 毫米炮（ZPT-98）", "125 mm ZPT-98")
+add("vw.gun125m2", "125 毫米炮（2A46M-2）", "125 mm 2A46M-2")
+add("vw.m242", "25 毫米链式炮（M242）", "25 mm M242 Bushmaster")
+add("vw.tow1", "改进型陶式反坦克导弹（BGM-71C）", "I-TOW ATGM (BGM-71C)")
+add("vw.hj73", "红箭-73 反坦克导弹", "HJ-73 ATGM")
+-- 11-27 审查改的：科技树的 M1A1（1985 年的弹、没有 ARAT：m1a1base）、M2A3 的 M242 + M919
+add("veh.m1a1base", "M1A1 艾布拉姆斯", "M1A1 Abrams")
+add("vw.gun120a1", "120 毫米炮（M256）", "120 mm M256")
+add("vw.m242m919", "25 毫米链式炮（M242，M919 贫铀弹）", "25 mm M242 Bushmaster (M919 DU)")
+
+-- 整备（Workshop.lua 外壳、WsArms.lua 挂载页；用户 11-27「整个给载具配置武器的系统 做的很粗糙 我需要非常艺术经验的效果 参考战雷」）
+add("ws.back", "机库", "Hangar")
+add("ws.tab.arms", "挂载", "Loadout")
+add("ws.tab.ammo", "弹药", "Ammo")
+add("ws.tab.mods", "改装", "Mods")
+add("ws.tab.crew", "乘员", "Crew")
+add("ws.tab.skin", "涂装", "Camo")
+add("ws.tab.info", "资料", "Stats")
+add("ws.sub", "{1} · {2} 级 · BR {3}", "{1} · Rank {2} · BR {3}")
+add("ws.autosave", "自动保存", "Autosave")
+add("ws.saved", "已保存", "Saved")
+add("ws.saveFail", "没存上 · 重试", "Not saved · retry")
+add("ws.hint", "拖动转 · 滚轮缩放 · 右键返回", "Drag to orbit · Wheel to zoom · Right-click to go back")
+add("ws.schemes", "方案", "PRESETS")
+add("ws.mine", "我的方案", "MY LOADOUTS")
+add("ws.mineN", "我的 {1}", "Custom {1}")
+add("ws.mineEmpty", "存当前", "Save current")
+add("ws.mineOver", "覆盖成现在这套", "Overwrite with current")
+add("ws.mineClear", "清空", "Clear")
+add("ws.mineModded", "我的 {1} · 改过", "Custom {1} · modified")
+add("ws.presetModded", "照「{1}」改过 {2} 个挂点", "{1} · {2} stations changed")
+add("ws.presetExact", "{1} · 预设", "{1} · preset")
+add("ws.custom", "自定义", "Custom")
+add("ws.modTag", "已改", "MOD")
+add("ws.modShort", "{1}（已改 {2}）", "{1} (modified {2})")
+add("ws.modShort0", "（已改）", " (modified)")
+add("ws.schemeRow", "方案 · {1}", "Loadout · {1}")
+add("ws.undo", "撤销", "Undo")
+add("ws.station", "挂点 {1}", "Station {1}")
+add("ws.sep", "、", ", ")
+add("ws.now", "现在：{1}", "now: {1}")
+add("ws.emptyNow", "空", "empty")
+add("ws.more", "还有 {1} 种", "{1} more")
+add("ws.tapAgain", "再点一下装上", "Tap again to fit")
+add("ws.pick", "选挂点 · 悬停预览", "Pick a station · hover to preview")
+add("ws.pickTouch", "选挂点 · 点两下装上", "Pick a station · tap twice to fit")
+add("ws.manifest", "挂载清单", "LOADOUT")
+add("ws.manifestEmpty", "什么都没挂", "Nothing fitted")
+add("ws.none", "不挂", "Empty")
+add("ws.noneSub", "空挂点", "Empty station")
+add("ws.equipped", "已装", "FITTED")
+add("ws.empty", "空", "Empty")
+add("ws.mixed", "两边不一样", "Asymmetric")
+add("ws.bay", "弹舱", "BAY")
+add("ws.unitFuel", "油", "fuel")
+add("ws.unitRk", "发", "rkts")
+add("ws.tubes", "{1} 发", "{1} rkts")
+add("ws.gun", "航炮", "CANNON")
+add("ws.gunFixed", "固定武器", "Fixed")
+add("ws.flares", "干扰弹", "FLARES")
+add("ws.flaresLocked", "未研究", "Not researched")
+add("ws.flaresHow", "去改装研究", "Research in Mods")
+add("ws.flaresOn", "热焰弹", "Flares")
+add("ws.flaresAuto", "自动配", "Automatic")
+add("ws.sym", "左右对称", "Symmetric")
+add("ws.noStations", "这一型没有挂点", "No hardpoints")
+for k, v in pairs({ tip = { "翼尖", "Wingtip" }, outer = { "外侧", "Outboard" }, mid = { "中段", "Mid-wing" }, inner = { "内侧", "Inboard" },
+  wing = { "翼下", "Underwing" }, glove = { "翼套", "Glove" }, ctr = { "机腹中线", "Centerline" }, body = { "机身", "Fuselage" },
+  duct = { "进气道下", "Intake" }, stub = { "短翼", "Stub wing" }, tun = { "机腹通道", "Tunnel" }, fus = { "机身", "Fuselage" },
+  bay = { "主弹舱", "Main bay" }, bayS = { "侧弹舱", "Side bay" }, gen = { "挂点", "Station" } }) do add("ws.pos." .. k, v[1], v[2]) end
+add("ws.thisSet", "当前挂载", "CURRENT LOADOUT")
+add("ws.ext", "外挂重量", "Stores weight")
+add("ws.drag", "阻力 ΔCD0", "Drag ΔCD0")
+add("ws.mass", "起飞重量", "Takeoff weight")
+add("ws.heavy", "相对重量", "Relative weight")
+add("ws.heavyVal", "{1}%", "{1}%")
+add("ws.perf", "性能 · 比空挂", "PERFORMANCE · VS. CLEAN")
+add("ws.perfPv", "性能 · 换上以后", "PERFORMANCE · IF FITTED")
+add("ws.colBase", "空挂", "Clean")
+add("ws.colCur", "现在", "Now")
+add("ws.colNew", "换上", "Fitted")
+add("ws.colD", "差", "Δ")
+add("ws.vAB", "极速 · 加力 km/h", "Top speed · AB km/h")
+add("ws.vMil", "极速 · 军推 km/h", "Top speed · mil km/h")
+add("ws.tw", "推重比", "Thrust / weight")
+add("ws.str", "持续转弯 °/s", "Sustained turn °/s")
+add("ws.roc", "最大爬升 m/s", "Max climb m/s")
+add("ws.wl", "翼载 kg/m²", "Wing loading kg/m²")
+add("ws.vMax", "极速 km/h", "Top speed km/h")
+add("ws.endurRow", "巡航续航", "Cruise endurance")
+add("ws.minutes", "{1} 分钟", "{1} min")
+add("ws.perfNote", "1000 m · 不含改装", "1,000 m · no mods")
+add("ws.fuel", "内油", "INTERNAL FUEL")
+add("ws.endur", "巡航 {1} 分钟", "Cruise {1} min")
+add("ws.endurTank", "副油箱 +{1} 分钟", "tanks +{1} min")
+add("ws.fuelKg", "内油 {1} kg", "Internal {1} kg")
+add("ws.fuelKgX", " · 副油箱 {1} kg", " · tanks {1} kg")
+for k, v in pairs({ range = { "射程", "Range" }, speed = { "速度", "Speed" }, dmg = { "威力", "Damage" }, lock = { "锁定", "Lock" },
+  radius = { "杀伤半径", "Blast radius" }, mass = { "重量", "Weight" }, count = { "每个挂点", "Per station" }, tubes = { "发数", "Rockets" },
+  fuel = { "加油", "Fuel" }, drag = { "极速", "Top speed" }, extra = { "多飞", "Extra time" }, shell = { "空壳", "Empty shell" } }) do add("ws.d." .. k, v[1], v[2]) end
+for k, v in pairs({ inf = { "步兵", "Inf" }, light = { "轻甲", "Light" }, armor = { "重甲", "Armor" }, air = { "飞机", "Air" }, ship = { "舰艇", "Ship" },
+  fort = { "工事", "Fort" } }) do add("ws.vs." .. k, v[1], v[2]) end
+-- 武器卡上的短类别、短导引（长的是 wcat.* / guide.*）
+for k, v in pairs({ aam = { "空空", "AAM" }, agm = { "空地", "AGM" }, bomb = { "炸弹", "Bomb" }, gbomb = { "制导炸弹", "Guided bomb" },
+  rkt = { "火箭巢", "Rocket pod" }, tank = { "副油箱", "Drop tank" }, arm = { "反辐射", "Anti-radiation" }, gun = { "航炮", "Cannon" }, sam = { "地空", "SAM" } }) do add("wcs." .. k, v[1], v[2]) end
+for k, v in pairs({ ir = { "红外", "IR" }, radar = { "雷达", "Radar" }, laser = { "激光", "Laser" }, gps = { "卫星", "GPS" }, tv = { "电视", "TV" },
+  arm = { "被动雷达", "Passive radar" }, cmd = { "指令", "Command" }, none = { "无制导", "Unguided" }, gun = { "—", "—" } }) do add("gds." .. k, v[1], v[2]) end
+-- 武器的短名（整备的卡片、3D 标签上；全名是 aw.*）
+for k, v in pairs({ gsh30 = { "GSh-30-1", "GSh-30-1" }, m61 = { "M61A1", "M61A1" }, gau22 = { "GAU-22/A", "GAU-22/A" }, gsh23 = { "23-3", "23-3" },
+  gsh302 = { "GSh-30-2", "GSh-30-2" }, nr30 = { "NR-30", "NR-30" }, gau8 = { "GAU-8/A", "GAU-8/A" }, m230 = { "M230", "M230" }, m134 = { "M134", "M134" },
+  pl2 = { "PL-2", "PL-2" }, pl10 = { "PL-10", "PL-10" }, pl15 = { "PL-15", "PL-15" }, pl12 = { "PL-12", "PL-12" }, aim9x = { "AIM-9X", "AIM-9X" },
+  aim120 = { "AIM-120", "AIM-120" }, ty90 = { "TY-90", "TY-90" }, aim92 = { "AIM-92", "AIM-92" }, aim54 = { "AIM-54", "AIM-54" }, r73 = { "R-73", "R-73" },
+  r74 = { "R-74M2", "R-74M2" }, r27r = { "R-27R", "R-27R" }, k77m = { "K-77M", "K-77M" }, r27er = { "R-27ER", "R-27ER" }, r77 = { "R-77-1", "R-77-1" },
+  r60 = { "R-60M", "R-60M" }, kh29 = { "Kh-29L", "Kh-29L" }, akd10 = { "AKD-10", "AKD-10" }, agm114 = { "AGM-114", "AGM-114" }, kd88 = { "KD-88", "KD-88" },
+  agm65 = { "AGM-65", "AGM-65" }, hn1 = { "HN-1", "HN-1" }, ls6 = { "LS-6", "LS-6" }, gbu12 = { "GBU-12", "GBU-12" }, gbu31 = { "GBU-31", "GBU-31" },
+  gbu32 = { "GBU-32", "GBU-32" }, gbu38 = { "GBU-38", "GBU-38" }, gbu39 = { "GBU-39", "GBU-39" }, lt2 = { "LT-2", "LT-2" }, mk82 = { "Mk 82", "Mk 82" },
+  b250 = { "250-2", "250-2" }, hydra = { "Hydra 70", "Hydra 70" }, fl90 = { "FFAR-90", "FFAR-90" }, s8 = { "S-8", "S-8" }, yj91 = { "YJ-91", "YJ-91" },
+  yj83k = { "YJ-83K", "YJ-83K" }, agm88 = { "AGM-88", "AGM-88" }, tk800 = { "800 升", "800 L tank" }, tk370 = { "370 加仑", "370 gal tank" },
+  tkh = { "外挂油箱", "Aux tank" }, tk230 = { "230 加仑", "230 gal tank" }, a42 = { "2A42", "2A42" }, yakb = { "YakB-12.7", "YakB-12.7" }, m197 = { "M197", "M197" },
+  ataka = { "9M120", "9M120" }, shturm = { "9M114", "9M114" }, vikhr = { "9K121", "9K121" }, hot3 = { "HOT 3", "HOT 3" }, tow = { "BGM-71", "BGM-71" },
+  igla = { "9K38", "9K38" }, type91 = { "Type 91", "Type 91" } }) do add("aws." .. k, v[1], v[2]) end
 
 -- 科技树每一辆的名字（TechTree.lua）：tree.<键>——名牌、击毁提示、驾驶界面写科技树里的名字（借来的型号也写自己的名字）
 do

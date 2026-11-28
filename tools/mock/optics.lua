@@ -60,7 +60,7 @@ end
 print("① 表：各型的夜视、分划、通道（没走科技树的车按型号查年代）")
 do
   local k59 = OPT.kit("cn_59", "type59", 0, 1959, "cn")
-  check(k59.nv == "ir" and k59.ret == "sov" and #k59.modes == 2 and k59.modes[2] == 5, "59 式：主动红外、苏式分划、昼光 + 主动红外")
+  check(k59.nv == "none" and k59.ret == "sov" and #k59.modes == 1, "59 式：老坦克不给夜视（用户 11-28「老坦克别给夜视和光电系统了」）、苏式分划、只有昼光")
   local kA = OPT.kit("us_m1a2sep3", "m1a2", 4, 2017, "us")
   check(kA.nv == "th3" and kA.ret == "hk" and #kA.modes == 3, "M1A2 SEPv3：三代热像、猎歼分划、昼光 + 白热 + 黑热")
   local kG = OPT.kit("de_gepard", "gepard1a1", nil, 1976, "de")
@@ -86,8 +86,8 @@ check(spot ~= nil, "找到放车的平地")
 if not spot then T.summary() return end
 
 local CASES = {
-  { vid = "type59", nv = "ir", ret = "sov", night = "ir", cycle = { "day", "ir" }, digital = false },
-  { vid = "m60a1", nv = "ir", ret = "nato", night = "ir", cycle = { "day", "ir" }, digital = false },
+  { vid = "type59", nv = "none", ret = "sov", night = "day", cycle = { "day" }, digital = false },   -- 老坦克：只有昼光（11-28）
+  { vid = "m60a1", nv = "none", ret = "nato", night = "day", cycle = { "day" }, digital = false },
   { vid = "t72a", nv = "ii", ret = "lrf", night = "nv", cycle = { "day", "nv" }, digital = true },
   { vid = "leo2a4", nv = "th1", ret = "lrf", night = "whot", cycle = { "bhot", "day", "whot" }, digital = true },
   { vid = "t90m", nv = "th3", ret = "hk", night = "whot", cycle = { "bhot", "day", "whot" }, digital = true },
@@ -122,30 +122,25 @@ for i, cs in ipairs(CASES) do
       for _, m in ipairs(st.allow or {}) do names[#names + 1] = MODES[m] end
       check(#names == #cs.cycle, cs.vid .. " 能切的通道：" .. table.concat(names, "、"))
       check(MODES[st.mode] == cs.night, string.format("半夜开镜默认是这辆车最好的夜视：%s（要 %s）", tostring(MODES[st.mode]), cs.night))
-      -- 分划：只显示这一套
-      local okRet, vis = true, {}
-      for _, k in ipairs({ "sov", "nato", "lrf" }) do
-        local f = find("Ret_" .. k)
-        local on = f ~= nil and f.Visible == true
-        if on then vis[#vis + 1] = k end
-        if on ~= (k == cs.ret) then okRet = false end
-      end
-      check(okRet, cs.vid .. " 的分划只显示「" .. cs.ret .. "」那套（显示着的：" .. table.concat(vis, "、") .. "）")
-      local rngT = find("FcsRange")
+      -- 分划（用户 11-27 起：GunSight.lua 照真镜子画、全屏、按密位随倍率缩放；按型号 / 年代挑一家，SightDefs.FAMILY）
+      local FAM = { type59 = "tsh", m60a1 = "nato1", t72a = "tpd", leo2a4 = "natolrf", t90m = "sovmod" }
+      check(C.gunSightFamily == FAM[cs.vid], string.format("%s 的分划是「%s」（要 %s）", cs.vid, tostring(C.gunSightFamily), FAM[cs.vid]))
+      local rc, nl = find("Reticle"), 0
+      if rc then for _, f in ipairs(rc:GetChildren()) do if f.Name == "L" and f.Visible then nl = nl + 1 end end end
+      check(nl >= 12, string.format("分划画出来了（%d 根线）", nl))
+      local eye = find("Eyepiece") or nil
+      check(not (eye and eye.Visible), "全屏开镜：不套圆形目镜")
+      local rngT = find("GsRange")
       check((rngT ~= nil and rngT.Visible) == cs.digital, cs.digital and "距离有数字读数" or "光学年代：距离不写数字")
       if not cs.digital then
-        local box = find("Ret_" .. cs.ret)
-        local ptr = box and box:FindFirstChild("RangePtr")
-        check(ptr ~= nil and ptr.Position.Y.Offset ~= 0, string.format("分划上有距离指针（停在 %s）", ptr and tostring(ptr.Position.Y.Offset) or "-"))
+        local lad = C.gunSight and C.gunSight.lastLadder
+        check(lad ~= nil and #lad >= 10, string.format("光学年代：竖线左边有这一发弹的表尺（%d 格）", lad and #lad or 0))
       end
-      local amm = find("FcsAmmo")
+      local amm = find("GsAmmo")
       check((amm ~= nil and amm.Visible) == cs.digital, cs.digital and "有火控计算机：下沿有弹种、距离读数" or "光学年代：没有数字读数（弹种、距离、待发方块都不显示）")
       local beam, scan, blur = find("IrBeam"), find("ThScan"), Lighting:FindFirstChild("SightBlur")
-      if cs.night == "ir" then
+      if cs.night == "ir" then   -- 11-28 起老坦克不给主动红外了，这一支留着不跑
         check(beam and beam.Visible, "主动红外：只有探照灯那一圈亮，外面压黑")
-        check(C.sightNv == true, "主动红外按夜视增亮（DayNight 的镜里夜视档）")
-        local hv = shownText("HintOptic")
-        check(hv and hv:find(C.T("sight.ir"), 1, true), "提示写着主动红外：" .. tostring(hv))
       else
         check(not (beam and beam.Visible), "不是主动红外：没有探照灯圈")
       end

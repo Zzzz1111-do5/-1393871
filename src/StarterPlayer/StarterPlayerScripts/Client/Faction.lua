@@ -33,7 +33,7 @@ function Faction.init(G)
     local l = Instance.new("TextLabel")
     l.Size, l.Position = size, pos or UDim2.new()
     l.BackgroundTransparency = 1
-    l.Text, l.TextSize, l.TextColor3, l.Font = str or "", ts or 14, color or TEXT, font or Enum.Font.BuilderSansMedium
+    l.Text, l.TextSize, l.TextColor3, l.Font = str or "", ts or 14, color or TEXT, font or Enum.Font.BuilderSans
     l.TextXAlignment = xa or Enum.TextXAlignment.Left
     if anchor then l.AnchorPoint = anchor end
     l.Parent = parent
@@ -63,20 +63,21 @@ function Faction.init(G)
   fit()
   workspace.CurrentCamera:GetPropertyChangedSignal("ViewportSize"):Connect(fit)
   -- 顶上：游戏名、副标题、语言
-  local head = text(content, "", UDim2.new(0, 520, 0, 30), UDim2.new(0.5, 0, 0, 40), 26, TEXT, Enum.Font.BuilderSansExtraBold, Vector2.new(0.5, 0), Enum.TextXAlignment.Center)
-  local sub = text(content, "", UDim2.new(0, 520, 0, 16), UDim2.new(0.5, 0, 0, 74), 12, MUTE, Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0), Enum.TextXAlignment.Center)
+  local head = text(content, "", UDim2.new(0, 520, 0, 30), UDim2.new(0.5, 0, 0, 40), 26, TEXT, Enum.Font.BuilderSansBold, Vector2.new(0.5, 0), Enum.TextXAlignment.Center)
+  local sub = text(content, "", UDim2.new(0, 520, 0, 16), UDim2.new(0.5, 0, 0, 74), 12, MUTE, Enum.Font.BuilderSans, Vector2.new(0.5, 0), Enum.TextXAlignment.Center)
   line(content, UDim2.new(0.5, -40, 0, 98), 80, 0.6)
   local langBtn = Instance.new("TextButton")
   langBtn.Size, langBtn.Position, langBtn.AnchorPoint = UDim2.fromOffset(96, 30), UDim2.new(1, -24, 0, 24), Vector2.new(1, 0)
   langBtn.BackgroundColor3, langBtn.BackgroundTransparency, langBtn.BorderSizePixel = RGB(255, 255, 255), 0.94, 0
-  langBtn.TextColor3, langBtn.TextSize, langBtn.Font = TEXT, 13, Enum.Font.BuilderSansMedium
+  langBtn.TextColor3, langBtn.TextSize, langBtn.Font = TEXT, 13, Enum.Font.BuilderSans
   langBtn.AutoButtonColor = true
   langBtn.Parent = bg
   local lst = Instance.new("UIStroke")
   lst.Color, lst.Transparency, lst.Thickness, lst.ApplyStrokeMode = LINE, 0.8, 1, Enum.ApplyStrokeMode.Border
   lst.Parent = langBtn
-  langBtn.Activated:Connect(function()
-    G.lang = (G.lang == "zh") and "en" or "zh"
+  langBtn.Activated:Connect(function()   -- 11-28 多语言：按 Lang.LIST 的顺序换下一种（十种）
+    G.lang = G.Lang.nextOf(G.lang)
+    if G.setPref then G.setPref("lang", G.lang) end   -- 记进设置（存档；设置页的下拉框也跟着）
     if G.refresh then G.refresh() end
   end)
 
@@ -113,29 +114,29 @@ function Faction.init(G)
       for k = -1, 1 do bar(7, 8, 29 + k * 13, 25) end   -- 三个垛口
     end
     local K = {}
-    K.en = text(c, "", UDim2.new(1, -120, 0, 14), UDim2.fromOffset(102, 34), 11, MUTE, Enum.Font.BuilderSansBold)
-    K.name = text(c, "", UDim2.new(1, -120, 0, 32), UDim2.fromOffset(102, 50), 26, TEXT, Enum.Font.BuilderSansExtraBold)
-    K.role = text(c, "", UDim2.new(1, -56, 0, 18), UDim2.fromOffset(28, 108), 14, COL[side]:Lerp(RGB(255, 255, 255), 0.2), Enum.Font.BuilderSansBold)
-    K.desc = text(c, "", UDim2.new(1, -56, 0, 40), UDim2.fromOffset(28, 132), 13, MUTE, Enum.Font.BuilderSansMedium)
+    K.en = text(c, "", UDim2.new(1, -120, 0, 14), UDim2.fromOffset(102, 34), 11, MUTE, Enum.Font.BuilderSansMedium)
+    K.name = text(c, "", UDim2.new(1, -120, 0, 32), UDim2.fromOffset(102, 50), 26, TEXT, Enum.Font.BuilderSansBold)
+    K.role = text(c, "", UDim2.new(1, -56, 0, 18), UDim2.fromOffset(28, 108), 14, COL[side]:Lerp(RGB(255, 255, 255), 0.2), Enum.Font.BuilderSansMedium)
+    K.desc = text(c, "", UDim2.new(1, -56, 0, 40), UDim2.fromOffset(28, 132), 13, MUTE, Enum.Font.BuilderSans)
     K.desc.TextWrapped = true
     K.desc.TextYAlignment = Enum.TextYAlignment.Top
     line(c, UDim2.fromOffset(28, 188), W - 56)
     K.gear = {}
     for k = 1, 3 do
       local y = 202 + (k - 1) * 34
-      local a = text(c, "", UDim2.new(0.5, -28, 0, 20), UDim2.fromOffset(28, y), 12, MUTE, Enum.Font.BuilderSansMedium)
-      local b = text(c, "", UDim2.new(0.5, -28, 0, 20), UDim2.new(0.5, 0, 0, y), 15, TEXT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Right)
+      local a = text(c, "", UDim2.new(0.5, -28, 0, 20), UDim2.fromOffset(28, y), 12, MUTE, Enum.Font.BuilderSans)
+      local b = text(c, "", UDim2.new(0.5, -28, 0, 20), UDim2.new(0.5, 0, 0, y), 15, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Right)
       K.gear[k] = { a, b }
     end
     line(c, UDim2.fromOffset(28, 310), W - 56)
-    K.players = text(c, "", UDim2.new(0.5, -28, 0, 20), UDim2.fromOffset(28, 326), 13, TEXT, Enum.Font.BuilderSansBold)
+    K.players = text(c, "", UDim2.new(0.5, -28, 0, 20), UDim2.fromOffset(28, 326), 13, TEXT, Enum.Font.BuilderSansMedium)
     local barBg = frame(c, UDim2.new(0.5, -28, 0, 4), UDim2.new(0.5, 0, 0, 334), RGB(255, 255, 255), 0.9)
     K.bar = frame(barBg, UDim2.fromScale(0.5, 1), nil, COL[side], 0)
     local btn = Instance.new("TextButton")
     btn.Name = "Join"
     btn.Size, btn.Position = UDim2.new(1, -56, 0, 50), UDim2.new(0, 28, 1, -78)
     btn.BorderSizePixel = 0
-    btn.Font, btn.TextSize = Enum.Font.BuilderSansExtraBold, 17
+    btn.Font, btn.TextSize = Enum.Font.BuilderSansBold, 17
     btn.AutoButtonColor = true
     btn.Parent = c
     K.btn = btn
@@ -154,7 +155,7 @@ function Faction.init(G)
     K.c, K.stroke = c, cs
     cards[side] = K
   end
-  local foot = text(content, "", UDim2.new(0, 600, 0, 18), UDim2.new(0.5, 0, 1, -40), 13, MUTE, Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0), Enum.TextXAlignment.Center)
+  local foot = text(content, "", UDim2.new(0, 600, 0, 18), UDim2.new(0.5, 0, 1, -40), 13, MUTE, Enum.Font.BuilderSans, Vector2.new(0.5, 0), Enum.TextXAlignment.Center)
 
   local function fmt(sec)
     sec = math.max(0, math.floor(sec or 0))
@@ -171,7 +172,7 @@ function Faction.init(G)
     if not show then return end
     head.Text = T("faction.title")
     sub.Text = T("faction.sub")
-    langBtn.Text = T("ui.lang")
+    langBtn.Text = G.Lang.nameOf(G.lang) .. "  ▸"
     local total = math.max(1, (S.rAtk or 0) + (S.rDef or 0))
     for side, K in pairs(cards) do
       K.en.Text = T("faction." .. side .. ".en")

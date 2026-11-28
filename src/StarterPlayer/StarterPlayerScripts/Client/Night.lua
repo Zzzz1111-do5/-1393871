@@ -101,7 +101,7 @@ function Night.init(G)
   hint.BackgroundTransparency = 1
   hint.TextColor3 = RGB(186, 255, 196)
   hint.TextTransparency = 1
-  hint.Font = Enum.Font.BuilderSansMedium
+  hint.Font = Enum.Font.BuilderSans
   hint.TextSize = 15
   hint.Visible = false
   hint.Parent = hintGui
@@ -199,9 +199,19 @@ function Night.init(G)
     if not hum or hum.Health <= 0 then return end
     -- 开地面载具（用户 11-22：坦克第三人称、第一人称都要有红外）：N 在 夜视 → 热成像（下面 vehThermal，白热）→ 关 之间切
     if G.drive and not G.fly and not G.sail then
+      -- 按这辆车真有的（WtOptics，用户 11-28「老坦克别给夜视和光电系统了」）：没有夜视的老车按 N 不理（提示一下）；
+      --   只有微光夜视的只能开夜视；有热像的 夜视 → 热成像 → 关
+      local nvk = G.driveNv and G.driveNv() or "th2"
+      if nvk == "none" then
+        if on then setOn(false) end
+        if G.vehThermal and G.vehThermal() then G.vehThermal(false) end
+        if G.toast then G.toast(G.T and G.T("drv.noNv") or "No night vision", "info") end
+        return
+      end
+      local thermal = nvk == "th1" or nvk == "th2" or nvk == "th3"
       if on then
         setOn(false)
-        G.vehThermal(true)
+        if thermal then G.vehThermal(true) end
       elseif G.vehThermal() then
         G.vehThermal(false)
       else
@@ -293,23 +303,45 @@ function Night.init(G)
   virCC.Enabled = false
   virCC.Saturation, virCC.Contrast, virCC.Brightness, virCC.TintColor = -1, 0.42, -0.12, RGB(236, 238, 238)
   virCC.Parent = Lighting
-  local virHl = {}
-  local function virHlClear()
-    for _, h in ipairs(virHl) do h:Destroy() end
-    virHl = {}
-  end
-  local function virHlAdd(a)
+  -- 高亮：一个给所有实体的样子（G.viewFolder），再给最近的 24 个别的玩家（Highlight 同时最多画 31 个）。
+  --   11-27 M3 丝滑：原来每半秒把全部 Highlight 拆掉重建——引擎每次都要把几百上千块载具零件重新收一遍，热成像里每半秒一顿；
+  --   现在罩实体样子的那个进热成像建一次、一直留着，玩家的只在最近的 24 个换人时增删（没变的不动），出热成像再全拆
+  local virHlView, virHlPl = nil, {}   -- [角色] = Highlight
+  local function newHl(a)
     local h = Instance.new("Highlight")
     h.FillColor, h.OutlineColor = Color3.new(1, 1, 1), Color3.new(1, 1, 1)
     h.FillTransparency, h.OutlineTransparency = 0.12, 0.65
     h.DepthMode = Enum.HighlightDepthMode.Occluded
     h.Adornee = a
     h.Parent = workspace.CurrentCamera
-    table.insert(virHl, h)
+    return h
   end
-  local function virHlRefresh()   -- 一个给所有实体的样子，再给最近的 24 个别的玩家（Highlight 同时最多画 31 个）
-    virHlClear()
-    if G.viewFolder then virHlAdd(G.viewFolder) end
+  -- 新出来的车（View 往 G.viewFolder 里放了新模型）：Highlight 照理会跟着把新零件罩上，但 M3 上还没核实过（11-27 审查）——
+  --   保险起见记一笔，下一次半秒挑人时把罩车的那一个重建（只这一个；最多 3 秒一次，几辆车一起出来也只重建一回）
+  local vfConn, vfSeen, vfDirty, vfKick = nil, nil, false, -99
+  local function virHlClear()
+    if virHlView then virHlView:Destroy() virHlView = nil end
+    for _, h in pairs(virHlPl) do h:Destroy() end
+    virHlPl = {}
+    if vfConn then vfConn:Disconnect() vfConn = nil end
+    vfSeen, vfDirty = nil, false
+  end
+  local function virHlRefresh()
+    local vf = G.viewFolder
+    if vf ~= vfSeen then
+      if vfConn then vfConn:Disconnect() vfConn = nil end
+      vfSeen, vfDirty = vf, false
+      if vf then vfConn = vf.ChildAdded:Connect(function() vfDirty = true end) end
+    end
+    if vfDirty and virHlView and os.clock() - vfKick >= 8 then   -- 同 Drive：保险放到 8 秒
+      vfDirty, vfKick = false, os.clock()
+      virHlView:Destroy()
+      virHlView = nil
+    end
+    if vf and not (virHlView and virHlView.Parent and virHlView.Adornee == vf) then
+      if virHlView then virHlView:Destroy() end
+      virHlView = newHl(vf)
+    end
     local cam = workspace.CurrentCamera
     local cp = cam and cam.CFrame.Position or Vector3.zero
     local list = {}
@@ -319,7 +351,17 @@ function Night.init(G)
       if pl ~= me and hrp then table.insert(list, { ch, (hrp.Position - cp).Magnitude }) end
     end
     table.sort(list, function(a, b) return a[2] < b[2] end)
-    for i = 1, math.min(24, #list) do virHlAdd(list[i][1]) end
+    local want = {}
+    for i = 1, math.min(24, #list) do want[list[i][1]] = true end
+    for ch, h in pairs(virHlPl) do
+      if not want[ch] or not h.Parent or h.Adornee ~= ch then
+        h:Destroy()
+        virHlPl[ch] = nil
+      end
+    end
+    for ch in pairs(want) do
+      if not virHlPl[ch] then virHlPl[ch] = newHl(ch) end
+    end
   end
   local virArt = nil
   local function virApply(want)
@@ -349,6 +391,7 @@ function Night.init(G)
     return vir
   end
   G.vehThermalShown = function() return virShown end   -- 测试用
+  G.vehIrHide = function() virApply(false) end   -- XrayOwn 建透视那一帧马上让开（不等下一帧这里的判断：同一帧两边加起来超 31 个 Highlight）
   G.frameConn("VehIr", function(dt)
     if vir then
       local hum = me.Character and me.Character:FindFirstChildOfClass("Humanoid")
@@ -359,7 +402,8 @@ function Night.init(G)
         return
       end
     end
-    virApply(vir and not held() and not heldOptic())
+    -- 按住 X 透视自己的车（XrayOwn）时也让开：Highlight 全客户端同时最多画 31 个，这里 1 + 24 个、透视二十来个，加起来超了就有几组不画
+    virApply(vir and not held() and not heldOptic() and not (G.ownXrayOn and G.ownXrayOn()))
     if not virShown then return end
     virT += dt
     if virT > 0.5 then virT = 0 virHlRefresh() end   -- 别的玩家走近走远：半秒重挑一次

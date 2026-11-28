@@ -779,13 +779,20 @@ function FPSView.init(G)
       if p:IsA("BasePart") then p.LocalTransparencyModifier = on and 1 or 0 end
     end
   end
+  -- 手里那件工具（第三人称的样子）藏着：换了工具、工具上新挂了零件（配件、激光）、或者过了半秒才再藏一遍
+  --   （11-27 M3 丝滑：原来每帧把整件工具 GetDescendants 一遍、二十来块零件每帧写一遍）
+  local hideDirty, hideConn, hideT = true, nil, 0
+  local function unhook()
+    if hideConn then hideConn:Disconnect() hideConn = nil end
+    hideDirty = true
+  end
 
   -- 每帧（Play.stepPlay 之后）：active 拿着装备、第一人称；aiming 开镜
   function G.stepFPS(dt, active, aiming, hide, curTool)
     local ch = me.Character
     local tool = active and ch and ((curTool and curTool.Parent == ch) and curTool or ch:FindFirstChildOfClass("Tool")) or nil
     local id = tool and tool:GetAttribute("Weapon")
-    if hiddenTool and hiddenTool ~= tool then hideTool(hiddenTool, false) hiddenTool = nil end
+    if hiddenTool and hiddenTool ~= tool then hideTool(hiddenTool, false) hiddenTool = nil unhook() end
     if not id then
       if vm then destroyVM() end
       return
@@ -817,9 +824,15 @@ function FPSView.init(G)
         vm.tool = tool
       end
     end
-    hideTool(tool, true)
-    hiddenTool = tool
     local t = now()
+    if hiddenTool ~= tool or hideDirty or t - hideT > 0.5 then
+      if hiddenTool ~= tool then
+        unhook()
+        hideConn = tool.DescendantAdded:Connect(function() hideDirty = true end)
+      end
+      hideTool(tool, true)
+      hiddenTool, hideDirty, hideT = tool, false, t
+    end
     dt = math.clamp(dt or 1 / 60, 1 / 240, 0.1)
     -- 镜头转动 → 枪滞后（sway）
     local cc = cam.CFrame
@@ -1000,6 +1013,7 @@ function FPSView.init(G)
   -- 不是第一人称了（死了、上车、第三人称）：收起来
   function G.fpsOff()
     if hiddenTool then hideTool(hiddenTool, false) hiddenTool = nil end
+    unhook()
     destroyVM()
     lastCam, lastPos = nil, nil
   end

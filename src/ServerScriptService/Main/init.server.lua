@@ -89,7 +89,7 @@ G.ACT = ACT   -- 各模块往里登记客户端能发来的操作：ACT.deploy =
 
 -- 各模块挂到 G 上；一个出错不影响后面的（init 里不能等网络、不能久等，要等的放 task.spawn）
 G.World = require(script:WaitForChild("World"))
-for _, name in ipairs({ "Imports", "Store", "Economy", "Tech", "Gunsmith", "Passes", "Ents", "Rewind", "Round", "Revive", "Squads", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Wt", "Kit", "Air", "WtAir", "Nuke", "Depots", "WtMatch", "FarLod", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle", "Trees", "Pve" }) do
+for _, name in ipairs({ "Places", "Imports", "Store", "Economy", "Tech", "Gunsmith", "Passes", "Shop", "Ents", "Rewind", "Round", "Revive", "Squads", "Weapons", "Vehicles", "Armor", "Era", "Aps", "Wt", "Kit", "Air", "WtAir", "Nuke", "Depots", "WtMatch", "FarLod", "Navy", "Forts", "Nav", "Bots", "AIVeh", "Tactical", "Battle", "Trees", "Pve" }) do
   local mod = script:FindFirstChild(name)
   if mod then
     local ok, err = pcall(function() require(mod).init(G) end)
@@ -99,7 +99,7 @@ end
 
 ---------------------------------------------------------------- 客户端发来的操作
 
-G.R.Act.OnServerEvent:Connect(function(pl, op, a, b, c, d)   -- d：飞机部署时的挂载
+G.R.Act.OnServerEvent:Connect(function(pl, op, a, b, c, d, e)   -- d：飞机部署时的挂载；e：整备即时存挂载时「不弹提示」（Tech.lua treeLoad）
   local P = G.P[pl]
   if not P or type(op) ~= "string" then return end
   -- 限流：每秒十几次
@@ -109,7 +109,7 @@ G.R.Act.OnServerEvent:Connect(function(pl, op, a, b, c, d)   -- d：飞机部署
   if P.tokens < 1 then return end
   P.tokens -= 1
   local f = ACT[op]
-  if f then G.try("操作 " .. op, f, P, a, b, c, d) end
+  if f then G.try("操作 " .. op, f, P, a, b, c, d, e) end
 end)
 
 G.R.Shoot.OnServerEvent:Connect(function(pl, id, a, b)
@@ -187,11 +187,18 @@ local function waitMap()
     pcall(function() forced = workspace:GetAttribute("MapName") end)
     if type(forced) == "string" and Map.profile(forced) then G.mapId = forced end
   end
+  -- 一张图一个服务器（Places.lua，用户 11-28）：这个地点是哪一张图的（或训练场：开雪山）就直接开那张，不投票
+  if not G.mapId and G.placesWait then
+    G.placesWait(10)
+    local pm = G.placeMap and G.placeMap()
+    if pm and Map.profile(pm) then G.mapId = pm end
+  end
   if not G.mapId and #Map.ids == 1 then G.mapId = Map.ids[1] end   -- 只剩一张（沙海）：不用投票，开服就建（进来的人点「开始游戏」时地图多半已经好了）
   -- 空服等多久就按默认开：Studio / 测试台 3 秒；线上服务器是第一个玩家要进来才开的，他还在加载（可能十几秒）——等 30 秒
   local emptyWait = Config.MapWaitEmpty or (game:GetService("RunService"):IsStudio() and 3 or 30)
   local grace = (Config.MapVote and Config.MapVote.grace) or 3
   local pushAt = 0
+  local joinChecked = {}   -- 进来的人看过一遍传送数据了没有
   while not G.mapId do
     -- 投票中半秒发一次状态（票数、倒计时、在场人数：有人进来、走了也跟着变）
     if os.clock() >= pushAt and #Players:GetPlayers() > 0 and G.pushAll then
@@ -200,6 +207,18 @@ local function waitMap()
     end
     local anyone = #Players:GetPlayers() > 0
     local waited = os.clock() - t0
+    -- 有人在、却没人投：等他选（用户 11-28 晚「然后目前没法切地图」）——11-28 一度改成进来二十秒没人投就按默认那张开（那时训练场要等战场的图），
+    --   机库里还没去点「这一局」选图，钢城就已经建起来了，之后点哪张都换不了。现在训练场开服就建、跟这张图没关系，不再替人定：
+    --   在机库「这一局」那块点一张就是投一票；没选图就点「开战」= 投默认那张（WtMatch.lua matchJoin）；一直没人管才 MapWaitMax 后按默认开
+    -- 从别的服务器传过来、带着要打的图（「换到这张图」开的新服务器：Places.lua G.switchMap）：直接投那张，在场的人都投了 → grace 秒后开
+    for _, pl in ipairs(Players:GetPlayers()) do
+      if G.mapVotes[pl] == nil and not joinChecked[pl] then
+        joinChecked[pl] = true
+        local ok, jd = pcall(function() return pl:GetJoinData() end)
+        local td = ok and type(jd) == "table" and jd.TeleportData or nil
+        if type(td) == "table" and type(td.map) == "string" then G.voteMap(pl, td.map) end
+      end
+    end
     if voteEnds then
       -- 在场的人都投了：再等 grace 秒（还能改票）就开
       local _, voters = voteCounts()
@@ -227,19 +246,47 @@ local function waitMap()
   print("[全面大战场] 地图：" .. G.mapId)
 end
 
+-- 训练场（用户 11-26 晚「把训练场单独做一张地图吧」）：自己一块区块（Zones.RANGE），跟战场那张图没关系——开服马上在后台建（Range.lua）。
+--   用户 11-28「主界面不切地图就试驾不了」：原来要等投票定图（没人投要等二十秒）、战场整张建完才开始建训练场，
+--   钢城要建好一阵子，主界面点试驾一直「训练场还在准备」；现在跟投票、建战场同时走，开服几秒就能试驾
+--   一张图一个服务器（Places.lua）：训练场服务器在雪山图上试驾、不建这一块；有能传送过去的训练场地点也不建（传送没成功时 G.ensureRange 再建）
+local rangeBuilding = false
+function G.ensureRange()
+  if rangeBuilding then return end
+  rangeBuilding = true
+  task.spawn(function()
+    G.try("训练场", function() require(script:WaitForChild("Range")).build(G.World, G, nil) end)
+  end)
+end
+task.spawn(function()
+  if G.placesWait then G.placesWait(10) end
+  -- 战场就是雪山图（只剩这一张，开服就定；测试台 MapName）：主界面试驾就在这张图上（Tech.lua chooseRM，用户 11-28「为什么训练场现在还是没有雪山地图」），
+  --   不先建训练场区块（省开服的 CPU、内存、体素：用户 11-28 晚「现在太卡了」）——这张图上正在打一局、有人点试驾时才建（Tech.lua 按需 G.ensureRange）
+  local t0 = os.clock()
+  while not G.mapId and os.clock() - t0 < 2 do task.wait(0.1) end
+  if G.testBattleSnow and G.testBattleSnow() then return end
+  if not G.wantLocalRange or G.wantLocalRange() then G.ensureRange() end
+end)
+
 task.spawn(function()
   waitMap()
   local ok, err = xpcall(function() G.World.build(G) end, tb)
   if not ok then bootError("生成地图", err) G.worldReady = true end
+  -- 训练场服务器（Places.lua）：雪山图建好了，按地形算靶道（SnowRange.lua），试驾就在这张图上
+  if G.placeRole == "range" then
+    G.try("训练场（雪山）", function()
+      G.testRange = require(script:WaitForChild("SnowRange")).new(G.Map)
+      G.rangeReady = G.testRange ~= nil
+    end)
+  elseif G.testBattleSnow and G.testBattleSnow() then
+    -- 别的服务器、战场是雪山图：这张图上没在打一局的时候试驾就在这上面（同训练场服务器那一套靶道，Tech.lua chooseRM）
+    G.try("试驾（战场的雪山图）", function() G.battleRange = require(script:WaitForChild("SnowRange")).new(G.Map) end)
+  end
   if G.farLodPublish then G.try("远景替身", G.farLodPublish) end   -- 流式加载时远处的楼画替身（FarLod.lua）
   if G.depotsBuild then G.try("生成点", G.depotsBuild) end   -- 载具生成点（要等舰队甲板建好）
   if G.navBuild then G.try("寻路", G.navBuild) end   -- 后台算机器人走路的流场
   if G.roundStart then G.try("开局", G.roundStart) end
   print("[全面大战场] " .. Config.Version .. " 地图好了：" .. tostring(G.terrainChunks) .. " 块地形、" .. tostring(G.terrainVoxels) .. " 个体素")
-  -- 训练场（用户 11-26 晚「把训练场单独做一张地图吧」）：自己一块区块（Zones.RANGE），战场开局以后在后台建（Range.lua）；建好以前试驾先等等
-  task.spawn(function()
-    G.try("训练场", function() require(script:WaitForChild("Range")).build(G.World, G, workspace:FindFirstChild("Map")) end)
-  end)
 end)
 
 ---------------------------------------------------------------- 特效：枪声只发给附近的人

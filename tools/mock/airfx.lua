@@ -38,6 +38,15 @@ if not st then T.summary() return end
 -- 真的滑跑起飞（直接把飞机摆到天上，服务器不认会拉回跑道）：Shift 推油门、速度到了按住 S 抬头（用户 11-21：WASD 控制方向），离地后爬一会儿
 T.key(Enum.KeyCode.LeftShift, true)
 T.runUntil(function() return st.spd >= e.def.vRot end, 40)
+do   -- 用户 11-28「起飞时马赫环喷到地上要能有对应效果」：滑跑推满油门，喷口后面的地上吹起尘土；开着加力地面映成橙色
+  R.run(0.2)
+  local v0 = C.views and C.views[e.model]
+  local B, k = nil, 0
+  if v0 and C.airBlast then B, k = C.airBlast(v0) end
+  check(B ~= nil and (k or 0) > 0.1 and B.pe.Rate > 0,
+    string.format("起飞滑跑：喷口后面的地上吹起尘土（强度 %.2f、每秒 %s 团，油门 %d）", k or 0, B and tostring(B.pe.Rate) or "-", st.thr or 0))
+  if (st.thr or 0) > 105 then check(B ~= nil and B.light.Enabled and B.light.Brightness > 0, "开着加力：地面被尾焰映成橙色") end
+end
 T.key(Enum.KeyCode.S, true)
 T.runUntil(function() return not st.ground end, 10)
 R.run(1)
@@ -51,6 +60,10 @@ st.spd = e.def.vMil * 0.8
 st.vel = st.vdir * st.spd
 R.run(2)
 local v = C.views and C.views[e.model]
+do
+  local B, k = C.airBlast(v)
+  check((k or 0) == 0 and (not B or B.pe.Rate == 0), "飞高了：地上不再吹尘土")
+end
 local function trailsOn()
   local n = 0
   for _, d in ipairs(v.M.model:GetDescendants()) do if d.ClassName == "Trail" and d.Name == "Vortex" and d.Enabled then n = n + 1 end end
@@ -114,7 +127,7 @@ R.run(1)
 check(booms == 1, "一直在音障上面不再响")
 C.sfx = sfx0
 
-print("③ 尾喷（用户 11-24 夜照战雷米格-29 的截图重做）：军推只有喷口里的热芯；加力是一条长长的半透明橙色光柱 + 喷口后面一截粉白的焰芯，喷口里发橙粉色；没有蓝边管子、马赫环、玻璃气泡")
+print("③ 尾喷（用户 11-28「飞机尾喷的效果非常烂而且不是立体的」「这个特效太卡通了吧」「飞机尾焰也跟战雷区别很大」）：军推只有喷口里的热芯；加力是几层柔边贴图光带叠的火 + 喷口柔光 + 一串马赫环；喷口里发橙粉色；没有蓝边管子、玻璃气泡")
 local function beams(name)
   local n = 0
   for _, d in ipairs(v.M.model:GetDescendants()) do if d.ClassName == "Beam" and d.Name == name and d.Enabled then n = n + 1 end end
@@ -130,26 +143,48 @@ for _, d in ipairs(v.M.model:GetDescendants()) do if d:IsA("BasePart") and d.Mat
 check(glass == 0, "没有玻璃球热浪")
 local haze = 0
 for _, d in ipairs(v.M.model:GetDescendants()) do if d.ClassName == "ParticleEmitter" and d.Name == "HeatHaze" then haze = haze + 1 end end
-check(haze == 0, "喷口后面没有热浪粒子（用户：喷口有怪异的泡泡）")
+check(haze == 0, "喷口后面没有圆团的热浪粒子（用户 11-18：喷口有怪异的泡泡）")
+-- 用户 11-28「发动机中心还有小小的热浪」：喷口正中一小股，顺着气流拉长的细丝、很淡
+local shim, shimOk = 0, true
+for _, d in ipairs(v.M.model:GetDescendants()) do
+  if d.ClassName == "ParticleEmitter" and d.Name == "HeatShimmer" then
+    shim = shim + 1
+    local minTr = 1
+    for _, kp in ipairs(d.Transparency.Keypoints) do minTr = math.min(minTr, kp.Value) end
+    if d.Orientation ~= Enum.ParticleOrientation.VelocityParallel or minTr < 0.88 or not d.LockedToPart then shimOk = false end
+  end
+end
+check(shim >= 1 and shimOk, string.format("喷口正中一小股热浪：顺着气流拉长的细丝、很淡、锁在喷口上（%d 股）", shim))
 st.thr, st.thrE = 100, 100
 R.run(0.3)
-check(beams("AbFill") == 0 and beams("AbCore") == 0, "军推：没有加力的光柱")
+local function emitting(name)   -- 开着的这种光带 / 粒子有几个
+  local n = 0
+  for _, d in ipairs(v.M.model:GetDescendants()) do if (d.ClassName == "Beam" or d.ClassName == "ParticleEmitter") and d.Name == name and d.Enabled then n = n + 1 end end
+  return n
+end
+-- ② 冲过了音障：速度贴着极限速度时飞控把油门压在 100 以下（开不了加力）——放回巡航速度再看尾焰
+st.spd = e.def.vMil * 0.8
+st.vel = st.vdir * st.spd
+st.vneCut = nil
+check(emitting("AbFlame") == 0 and emitting("AbDiamond") == 0, "军推：没有加力火焰")
 st.thr, st.thrE = 130, 130
 R.run(0.3)
-check(beams("AbFill") >= 2 and beams("AbCore") >= 2, string.format("加力：每个喷口一条橙色光柱、一截焰芯（%d / %d 条）", beams("AbFill"), beams("AbCore")))
+local nEng = #(v.M.plumes or {})
+check(nEng >= 1 and emitting("AbFlame") >= nEng and emitting("AbCore") >= nEng and emitting("AbGlow") >= nEng and emitting("AbDiamond") >= nEng,
+  string.format("加力：每个喷口几层柔边光带的火、焰芯、喷口柔光、一串马赫环（%d 台：焰身 %d、焰芯 %d、柔光 %d、马赫环 %d 颗）", nEng,
+    emitting("AbFlame"), emitting("AbCore"), emitting("AbGlow"), emitting("AbDiamond")))
+check(beams("AbFill") == 0, "不再是 11-24 那版没贴图的硬边光带")
 check(shown("AbTube") == 0 and shown("MachRing") == 0, "没有 11-23 那版的蓝边管子、马赫环")
-local fillLen = 0
-for _, d in ipairs(v.M.model:GetDescendants()) do
-  if d.ClassName == "Attachment" and d.Name == "FillEnd" then fillLen = math.max(fillLen, d.Position.Z) end
-end
-check(fillLen > 12, string.format("光柱拉得长（%.0f 格，满加力约七个喷口直径）", fillLen))
+local fillLen, fillD = 0, 1
+for _, I in ipairs(C.airModels and C.airModels.plumeInfo(v.M) or {}) do if (I.Lv or 0) > fillLen then fillLen, fillD = I.Lv, I.D end end
+check(fillLen > fillD * 3, string.format("火焰拉得出来（%.0f 格 = %.1f 个喷口直径；战雷那样满加力三四个喷口直径）", fillLen, fillLen / fillD))
 local hotOk = false
 for _, d in ipairs(v.M.model:GetDescendants()) do
   if d:IsA("BasePart") and d.Transparency < 0.3 and d.Color.R > 0.95 and d.Color.G > 0.55 and d.Color.B > 0.3 and d.Color.B < 0.8 then hotOk = true end
 end
 check(hotOk, "喷口里烧得发橙粉色")
 
-print("⑤ 导弹视角小窗：自己打出去的弹，右上角从弹上看目标；命中写「命中」，停一会儿关掉")
+print("⑤ 自己打出去的弹：不再自动开小窗，提示按 L 跟踪（11-25 起；按 L 镜头跟着弹走的那套在 mslcam.lua）")
 do
   local p0 = st.cf.Position
   local foe = G.spawnAircraft("def", "f22", CF(p0.X + 600, p0.Y + 40, p0.Z - 900), nil, nil)
@@ -163,30 +198,13 @@ do
     R.as("client", function() C.onMyShot({ id = id, tg = foe.id, w = "pl15", p = mpos, by = st.id }) end)
     R.run(0.2)
     local gui = me.PlayerGui:FindFirstChild("MslCam")
-    local vpf = gui and gui:FindFirstChild("View", true)
-    local cl = vpf and vpf:FindFirstChild("Model")
-    check(gui and gui.Enabled, "开了导弹视角小窗")
-    check(cl ~= nil, "小窗里复制了一份目标（白热）")
-    local cam2 = vpf and vpf.CurrentCamera
-    local okLook = false
-    if cam2 and cl then
-      local sum, n = V3(0, 0, 0), 0
-      for _, d in ipairs(cl:GetDescendants()) do if d:IsA("BasePart") then sum = sum + d.Position n = n + 1 end end
-      local pv = sum / math.max(n, 1)
-      okLook = (pv - cam2.CFrame.Position).Unit:Dot(cam2.CFrame.LookVector) > 0.97
-    end
-    check(okLook, "小窗的镜头对着目标")
-    local info = gui and gui:FindFirstChild("Info", true)
-    check(info and info.Text:find("km", 1, true), "写着目标多远、还剩几秒：" .. tostring(info and info.Text))
-    -- 命中：弹飞到目标身上没了
-    C.flyingShots[id].p = foe.root.CFrame.Position + V3(3, 0, 0)
-    R.as("client", function() C.onShotEnd(id, C.flyingShots[id]) end)
+    check(not (gui and gui.Enabled), "小窗没有自己弹出来（用户 11-25）")
+    local hint = false
+    for _, t in ipairs(T.texts()) do if t == C.T("mcam.followHint") then hint = true end end
+    check(hint and C.mslFollowAvail and C.mslFollowAvail(), "提示按 L 跟踪这一发，这时按 L 跟得上")
     C.flyingShots[id] = nil
-    R.run(0.2)
-    local res = gui and gui:FindFirstChild("Result", true)
-    check(res and res.Text == C.T("mcam.hit"), "写着「命中」")
+    R.as("client", function() C.onShotEnd(id, { p = foe.root.CFrame.Position }) end)
     R.run(1.5)
-    check(not gui.Enabled, "过一会儿关掉了")
   end
 end
 

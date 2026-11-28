@@ -113,7 +113,7 @@ function Nuke.init(G)
     if anchor then l.AnchorPoint = anchor end
     l.BackgroundTransparency = 1
     l.Text, l.TextSize, l.TextColor3 = "", ts or 14, col or Color3.new(1, 1, 1)
-    l.Font = font or Enum.Font.BuilderSansMedium
+    l.Font = font or Enum.Font.BuilderSans
     l.TextStrokeTransparency = 0.5
     l.Parent = parent
     return l
@@ -123,8 +123,8 @@ function Nuke.init(G)
   banner.Visible = false
   local bLine = frame(banner, UDim2.new(1, 0, 0, 3), nil, RED, 0)
   local bLine2 = frame(banner, UDim2.new(1, 0, 0, 3), UDim2.new(0, 0, 1, -3), RED, 0)
-  local bTitle = label(banner, UDim2.new(1, 0, 0, 34), UDim2.fromOffset(0, 8), 28, RED, Enum.Font.BuilderSansExtraBold)
-  local bSub = label(banner, UDim2.new(1, -24, 0, 20), UDim2.fromOffset(12, 46), 15, WHITE, Enum.Font.BuilderSansMedium)
+  local bTitle = label(banner, UDim2.new(1, 0, 0, 34), UDim2.fromOffset(0, 8), 28, RED, Enum.Font.BuilderSansBold)
+  local bSub = label(banner, UDim2.new(1, -24, 0, 20), UDim2.fromOffset(12, 46), 15, WHITE, Enum.Font.BuilderSans)
   local flashF = frame(gui, UDim2.fromScale(1, 1), nil, WHITE, 1)
   flashF.ZIndex = 10
   local bars = {}
@@ -135,10 +135,10 @@ function Nuke.init(G)
   end
   local armF = frame(gui, UDim2.fromOffset(300, 44), UDim2.new(0.5, 0, 0.7, 0), RGB(8, 6, 6), 0.35, Vector2.new(0.5, 0))
   armF.Visible = false
-  local armL = label(armF, UDim2.new(1, 0, 0, 24), UDim2.fromOffset(0, 4), 15, AMBER, Enum.Font.BuilderSansBold)
+  local armL = label(armF, UDim2.new(1, 0, 0, 24), UDim2.fromOffset(0, 4), 15, AMBER, Enum.Font.BuilderSansMedium)
   local armBg = frame(armF, UDim2.new(1, -24, 0, 6), UDim2.new(0, 12, 1, -12), RGB(60, 40, 30), 0.2)
   local armBar = frame(armBg, UDim2.fromScale(0, 1), nil, RED, 0)
-  local zoneL = label(gui, UDim2.fromOffset(420, 26), UDim2.new(0.5, 0, 0, 206), 18, RGB(200, 255, 120), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0))
+  local zoneL = label(gui, UDim2.fromOffset(420, 26), UDim2.new(0.5, 0, 0, 206), 18, RGB(200, 255, 120), Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0))
   zoneL.Visible = false
 
   -- 按住发射键解锁（Fly.lua 每帧调：has 选的是核导弹、还有弹；k 按住了几成）
@@ -229,9 +229,9 @@ function Nuke.init(G)
     bb.StudsOffset = V(0, 60, 0)
     bb.Adornee = a
     bb.Parent = me:WaitForChild("PlayerGui")
-    local icon = label(bb, UDim2.new(1, 0, 0, 40), nil, 38, col, Enum.Font.BuilderSansExtraBold)
+    local icon = label(bb, UDim2.new(1, 0, 0, 40), nil, 38, col, Enum.Font.BuilderSansBold)
     icon.Text = "☢"
-    local tl = label(bb, UDim2.new(1, 0, 0, 22), UDim2.fromOffset(0, 44), 15, col, Enum.Font.BuilderSansBold)
+    local tl = label(bb, UDim2.new(1, 0, 0, 22), UDim2.fromOffset(0, 44), 15, col, Enum.Font.BuilderSansMedium)
     W.bb, W.tl = bb, tl
     table.insert(warns, W)
     banner.Visible = true

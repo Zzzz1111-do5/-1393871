@@ -38,6 +38,42 @@
 local n=0 for _,r in ipairs({workspace,game:GetService("ReplicatedStorage"),game:GetService("ServerStorage")}) do for _,d in ipairs(r:GetDescendants()) do if d:IsA("BasePart") and (d.Name:match("^[VASONWBP]_") or d.Name:match("^FPS_M4")) then d:Destroy() n+=1 end end end print("删了 "..n.." 块以前导入的零件，可以全部重导了")
 
   （11 月 24 日起 A、B、D、E 几个 AI 会话各自编号：A 第一～八包、B 第二～六包、D 第四～八包、E 第一～七包，新的在上面）
+  11-28 夜里这一包（卡顿：烘焙地形；飞机不再撞看不见的山；导弹锁定照战雷；雷达默认 4 行；训练场一直白天；主页不显示 SP；
+    坦克开炮、炮弹打地面的声音和弹坑；主界面试驾在雪山图上；坦克炮一发打下直升机）：
+    换游戏文件（或者「三、只换脚本」），不用导模型。另外强烈建议烘焙一次地形（只做一次，几分钟）——
+    · 飞机开一会儿就炸、显示被 ground 击杀，也是这个原因：没烘焙时远处的山还没写出来（看不见），原来照样算撞上。
+      这一包起没写出来的山不算撞；烘焙以后整张图开服就全了，看得见的山才撞
+    · 为什么：雪山图开服前只写两边基地一带，其余的地形开服以后在后台写十几二十分钟，这期间服务器一直占着、客户端一直在重建地形，
+      没写到的地方是一块块垫底的平地（「雪山图这一块一直加载不 这个图非常卡顿」）。烘焙就是把整张地形提前写好、跟地点文件一起存下来，开服一块都不用写
+    · 做法：在 Studio 打开游戏，不要点「开始」；菜单「视图」→「命令栏」，粘贴下面这一行、回车：
+
+require(game.ServerScriptService.Main.TerrainBake)()
+
+      Output 里每 5 秒报一次进度，做完写「烘焙完了」（几分钟，这期间 Studio 会有点卡），然后按 Ctrl + S 存档（地点文件会大一些）
+    · 之后换脚本用「三、只换脚本」（ScriptsUpdate.rbxmx），烘好的地形留着；直接打开新的 RobloxTotalBattlefield.rbxlx 的话要再烘一次。
+      哪个版本改了地形的算法，开服时 Output 会提示「烘焙的地形……对不上」，照上面再烘一次（不烘也能玩，只是照旧开服现写）
+    · 多个地点（训练场、雪山……）：每个地点的文件各烘一次再发布
+  11-28 清早这一包（新车：中系 SU-100 歼击车（引进，没有炮塔：炮左右各 8°，瞄出去车体自己转过去）、德系黄鼠狼 1A3 步兵战车）：
+    换游戏文件，另外新导入两个文件——
+    · veh/su100.glb：SU-100（XxRxX 的 CC-BY 模型，1.9 MB）；veh/marder.glb：黄鼠狼 1A3（Scout 的 CC-BY 模型，6.9 MB；原模型没有贴图，
+      北约三色迷彩是转换时生成的，贴图在文件里）。「导入 3D」导进 Workspace，块叫 V_<键>__<组>_<号>，开服自动收好；
+      没导入的话用零件拼的车壳代替。署名：models/veh/credits.txt
+  11-28 凌晨这一包（新车：中系 T-34-85（引进）、德系 KPz 70；借现成模型的中系 T-80U（引进）、德系米格-29G）：换游戏文件，另外新导入两个文件——
+    · veh/t3485.glb：T-34-85（julianrijken 的 CC-BY 模型，3.7 MB）；veh/mbt70.glb：KPz 70 / MBT-70（_Muzaev 的 CC-BY 模型，9 MB）。
+      「导入 3D」导进 Workspace，块叫 V_<键>__<组>_<号>，开服自动收好；没导入的话用零件拼的车壳代替。署名：models/veh/credits.txt
+  11-28 深夜这一包（雪山丰富起来：铁路、废弃的车、房子翻倍、交战区崎岖；挂载界面重做；吊舱照战雷；飞机镜头不被拽回机头；卡顿；没投票也能进训练场）：
+    换游戏文件，另外新导入一个文件——
+    · bld/wrecks.glb：雪山上废弃的车 14 种（轿车、两厢车、越野车、UAZ 吉普、乌拉尔 / 卡玛斯 / 嘎斯-66 卡车、客车、拖拉机、棚车、煤斗车、
+      M62 内燃机车、坠毁的飞机……，Sketchfab 上 CC-BY 的，带贴图，23 MB）。「导入 3D」导进 Workspace，块叫 B_<键>__Body_<号>，
+      开服收进 ReplicatedStorage.Imported.Bld；没导入的话照同样的大小用零件拼（位置一样）。署名：models/bld/wrecks_credits.txt
+  11-28 晚这一包（直升机照战雷的鼠标瞄准：W 升 S 降、鼠标定方向、A/D 侧飞、Q/E 转机头；飞机滚转收得住、转弯机动性高一点；
+    机枪、机关炮的声音换成真录音的连发 / 单发）：只换游戏文件（或者「三、只换脚本」），不用导模型。
+    声音用的是创作者商店里 ProSoundEffects 的公开音频（任何游戏都能直接用），不用上传；载不下来的话照旧是原来的声音
+  11-28 这一包（挂载表、局内出击页、金币充值、T-90A「窗帘-1」红灯、车被打爆照战雷、开镜黑框 / 望远镜缩放、弹药架起火殉爆、PGL-625……）：
+    只换游戏文件（或者「三、只换脚本」），不用导模型。
+    金币充值要上架才能真的收 R 币：创作者后台（create.roblox.com → 这个体验 → 盈利 / Monetization → 开发者产品 / Developer Products）建 5 个产品，
+    价格照 99 / 199 / 499 / 999 / 1999 R 币填（想改价钱就照自己的填，充值页显示 Roblox 查到的真价钱），把 5 个产品编号按顺序填进
+    ReplicatedStorage → Config 里 Config.CoinPacks 的 id（现在都是 0：充值页上写「未上架」）。Studio 里测试购买不花钱。
   E 11-26 深夜这一包：新地图「雪山」（选地图界面投票选它）要导的 11 个文件，都是「导入 3D」导进 Workspace，开服自动收好——
     · snow/rockscan.glb、icy.glb、wmsnow.glb：谷边的雪山（3 种模型拼成连绵的山脊，原模型不减面，一共约 70 MB；块叫 P_<键>__c<号>，
       收进 ReplicatedStorage.Imported.Peaks）。游戏里在你自己的电脑上把它们转着拼成一百七十来座，一直铺到四十多公里外。
@@ -690,7 +726,8 @@ local SSS=game:GetService("ServerScriptService") local SS=game:GetService("Serve
      输出（Window → Output）里出现「脚本换好了：33 项……」就好了（项数以后可能变）：同名的旧脚本删掉、新的放到原来的位置，ScriptsUpdate 文件夹自己删掉。
   4. 保存（要上线就「发布到 Roblox」）。
   注意：只有涉及「要重导模型」的更新（上面写着「第 N 包：重导 …」的）才需要另外导模型；只改脚本的更新这四步就够了。
-  还有：地点文件自己的设置 ScriptsUpdate 换不了——Workspace 的流式加载（D 第五包）、Terrain 的草叶（A 第七包）要照那一包里写的在属性面板里手动设一次。
+  还有：地点文件自己的设置 ScriptsUpdate 换不了——Workspace 的流式加载（D 第五包）、Terrain 的草叶（A 第七包）要照那一包里写的在属性面板里手动设一次；
+    11-27 光影：资源管理器 Lighting → 属性里 LightingStyle 选 Realistic、PrioritizeLightingQuality 取消勾选（画质往下降时先保视野距离、M3 上更顺；脚本改不了这两项）。
   更省事的办法是上面「二」：把导入的模型存一次传上来，以后我给的 RobloxTotalBattlefield.rbxlx 就自带你的模型，直接打开整个文件就行。
 
 四、注意

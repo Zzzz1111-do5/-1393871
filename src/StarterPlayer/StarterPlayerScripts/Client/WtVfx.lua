@@ -7,6 +7,9 @@
 --   · 泄压板（WtBlow 变了，M1 炮塔尾舱）：尾舱顶上一道冲天火柱，烧六七秒慢慢小下去，后面一股黑烟
 --   · 炮管打坏：炮管耷拉下来（View.lua 按 G.wtModState）；履带打断：那边的履带板停住、上面一段掉了（Tracks.lua）
 --   · 自己的车观瞄（optics）受损：开镜时镜里几道裂纹、发糊；打坏：裂成一片、更糊、只剩最低倍率、没有热成像（Drive.lua 问 G.opticsDead）
+--   11-27（照战雷、M3 上要丝滑）：火（fire_main 本身暗褐）LightInfluence 0 + Brightness 3 才亮；黑烟换成深灰的烟贴图、受光照、跟着风；
+--     火星是白点顺着速度拉成线（不用八角星）；状态、喷多少、火光每秒只看 10 次，变化超过一成才写（原来每帧每辆车都改 Rate、Color、亮度）；
+--     位置还是每帧跟着车（只有正在冒烟冒火的车）
 local RS = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
 local Lighting = game:GetService("Lighting")
@@ -24,7 +27,8 @@ function WtVfx.init(G)
   local me = Players.LocalPlayer
   local FIRE = "rbxasset://textures/particles/fire_main.dds"
   local SMOKE = "rbxasset://textures/particles/smoke_main.dds"
-  local SPARK = "rbxasset://textures/particles/sparkles_main.dds"
+  local SOOT = "rbxasset://textures/particles/explosion01_smoke_main.dds"   -- 深灰的烟（黑烟）
+  local GLOW = "rbxasset://textures/particles/explosion01_implosion_main.dds"   -- 白色柔边圆点（火星：顺着速度拉成线）
   local NEAR = 900
 
   -- 模块状态（2 好、1 受损、0 毁了），给别的客户端模块用
@@ -39,11 +43,13 @@ function WtVfx.init(G)
     p.Parent = parent
     return p
   end
+  -- o.emit：自己发光（火、火星：LightInfluence 0、Brightness 推亮）；不写的受光照（烟）；o.vp 顺着速度拉成线；o.wind 跟着风
   local function emitter(parent, o)
     local pe = Instance.new("ParticleEmitter")
     pe.Texture = o.tex
     pe.Color = o.col
-    pe.LightEmission, pe.LightInfluence = o.emit or 0, o.emit and 0 or 0.9
+    pe.LightEmission, pe.LightInfluence = o.emit or 0, o.emit and 0 or 1
+    pe.Brightness = o.bright or 1
     pe.Size = o.size
     pe.Transparency = o.tr or NS({ NK(0, 0.2), NK(1, 1) })
     pe.Lifetime = NumberRange.new(o.life[1], o.life[2])
@@ -51,13 +57,37 @@ function WtVfx.init(G)
     pe.SpreadAngle = Vector2.new(o.spread or 12, o.spread or 12)
     pe.Acceleration = o.acc or V(0, 3, 0)
     pe.Drag = o.drag or 0.6
-    pe.Rotation = NumberRange.new(0, 360)
-    pe.RotSpeed = NumberRange.new(-80, 80)
+    if o.vp then
+      pe.Orientation = Enum.ParticleOrientation.VelocityParallel
+      pe.Rotation, pe.RotSpeed = NumberRange.new(0), NumberRange.new(0)
+      pcall(function() pe.Squash = NS({ NK(0, 2), NK(1, 1) }) end)
+    else
+      pe.Rotation = NumberRange.new(0, 360)
+      pe.RotSpeed = NumberRange.new(-80, 80)
+    end
+    if o.wind then pcall(function() pe.WindAffectsDrag = true end) end
     pe.EmissionDirection = Enum.NormalId.Top
     pe.Rate = 0
     pe.Enabled = true
     pe.Parent = parent
     return pe
+  end
+  -- 变化超过一成才写（Rate、亮度：每秒看 10 次，别每次都写）
+  local function setRate(pe, r)
+    local cur = pe.Rate
+    if r <= 0 then
+      if cur ~= 0 then pe.Rate = 0 end
+    elseif cur == 0 or math.abs(r - cur) > cur * 0.1 then
+      pe.Rate = r
+    end
+  end
+  local function setB(l, b)
+    local cur = l.Brightness
+    if b <= 0 then
+      if cur ~= 0 then l.Brightness = 0 end
+    elseif cur == 0 or math.abs(b - cur) > cur * 0.1 then
+      l.Brightness = b
+    end
   end
   local function light(parent, col, range)
     local l = Instance.new("PointLight")
@@ -96,11 +126,17 @@ function WtVfx.init(G)
     local parent = v.model or workspace
     -- 发动机盖：烟（受损淡灰、毁了浓黑）、火（起火）
     F.engP = mount(parent)
-    F.engSmoke = emitter(F.engP, { tex = SMOKE, col = ColorSequence.new(RGB(150, 148, 144)), size = NS({ NK(0, 2), NK(1, 9) }), life = { 2.5, 4 }, speed = { 3, 6 }, spread = 14 })
-    F.fire = emitter(F.engP, { tex = FIRE, col = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 220, 150)), ColorSequenceKeypoint.new(0.5, RGB(255, 120, 40)), ColorSequenceKeypoint.new(1, RGB(160, 40, 20)) }),
-      size = NS({ NK(0, 2.6), NK(0.6, 3.4), NK(1, 0.8) }), life = { 0.45, 0.8 }, speed = { 4, 8 }, spread = 18, emit = 1, acc = V(0, 6, 0),
+    -- 发动机受损：淡灰烟；打坏了：深灰的黑烟（两个发射器换着开，不改颜色——改颜色连已经飘着的烟一起变）
+    F.engSmoke = emitter(F.engP, { tex = SMOKE, col = ColorSequence.new(RGB(150, 148, 144)), size = NS({ NK(0, 2), NK(1, 9) }), life = { 2.5, 4 }, speed = { 3, 6 }, spread = 14, wind = true })
+    F.engBlack = emitter(F.engP, { tex = SOOT, col = ColorSequence.new(RGB(255, 255, 255)), size = NS({ NK(0, 2.4), NK(1, 11) }), life = { 3, 4.5 }, speed = { 3, 7 }, spread = 14, wind = true,
+      tr = NS({ NK(0, 0.1), NK(1, 1) }) })
+    -- 火的中心偏白（用户 11-28「战雷的火中心偏白」）：刚喷出来近乎白热，往上飘才转金黄 → 橙 → 暗红
+    F.fire = emitter(F.engP, { tex = FIRE, col = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 250, 236)), ColorSequenceKeypoint.new(0.25, RGB(255, 222, 150)),
+      ColorSequenceKeypoint.new(0.55, RGB(255, 126, 42)), ColorSequenceKeypoint.new(1, RGB(160, 40, 20)) }),
+      size = NS({ NK(0, 2.6), NK(0.6, 3.4), NK(1, 0.8) }), life = { 0.45, 0.8 }, speed = { 4, 8 }, spread = 18, emit = 0.9, bright = 3, acc = V(0, 6, 0),
       tr = NS({ NK(0, 0.15), NK(0.7, 0.45), NK(1, 1) }) })
-    F.fireSmoke = emitter(F.engP, { tex = SMOKE, col = ColorSequence.new(RGB(34, 32, 30)), size = NS({ NK(0, 3.5), NK(1, 18) }), life = { 3.5, 5.5 }, speed = { 6, 10 }, spread = 16, acc = V(0, 4, 0) })
+    F.fireSmoke = emitter(F.engP, { tex = SOOT, col = ColorSequence.new(RGB(255, 255, 255)), size = NS({ NK(0, 3.5), NK(1, 18) }), life = { 3.5, 5.5 }, speed = { 6, 10 }, spread = 16, acc = V(0, 4, 0),
+      wind = true, tr = NS({ NK(0, 0.08), NK(1, 1) }) })
     F.fireLight = light(F.engP, RGB(255, 140, 60), 22)
     -- 舱口：弹药架起火的火柱、火星
     F.hatch = {}
@@ -108,95 +144,106 @@ function WtVfx.init(G)
       local p = mount(parent)
       table.insert(F.hatch, { p = p,
         jet = emitter(p, { tex = FIRE, col = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 246, 210)), ColorSequenceKeypoint.new(0.35, RGB(255, 170, 70)), ColorSequenceKeypoint.new(1, RGB(200, 60, 24)) }),
-          size = NS({ NK(0, 1.6), NK(0.3, 3.2), NK(1, 1.0) }), life = { 0.35, 0.6 }, speed = { 22, 34 }, spread = 7, emit = 1, acc = V(0, 4, 0), drag = 1.2,
+          size = NS({ NK(0, 1.6), NK(0.3, 3.2), NK(1, 1.0) }), life = { 0.35, 0.6 }, speed = { 22, 34 }, spread = 7, emit = 1, bright = 3.5, acc = V(0, 4, 0), drag = 1.2,
           tr = NS({ NK(0, 0.05), NK(0.6, 0.35), NK(1, 1) }) }),
-        spark = emitter(p, { tex = SPARK, col = ColorSequence.new(RGB(255, 200, 120)), size = NS({ NK(0, 0.45), NK(1, 0.1) }), life = { 0.4, 0.9 }, speed = { 25, 45 }, spread = 32, emit = 1,
-          acc = V(0, -20, 0), drag = 0.4, tr = NS({ NK(0, 0), NK(1, 1) }) }) })
+        spark = emitter(p, { tex = GLOW, col = ColorSequence.new(RGB(255, 210, 140)), size = NS({ NK(0, 0.4), NK(1, 0.1) }), life = { 0.4, 0.9 }, speed = { 25, 45 }, spread = 32, emit = 1,
+          bright = 3, vp = true, acc = V(0, -20, 0), drag = 0.4, tr = NS({ NK(0, 0), NK(1, 1) }) }) })
     end
     F.afLight = light(F.engP, RGB(255, 190, 110), 34)
     -- 泄压板：尾舱顶上的火柱
     if F.spots.bustle then
       F.bP = mount(parent)
       F.bJet = emitter(F.bP, { tex = FIRE, col = ColorSequence.new({ ColorSequenceKeypoint.new(0, RGB(255, 250, 225)), ColorSequenceKeypoint.new(0.3, RGB(255, 180, 80)), ColorSequenceKeypoint.new(1, RGB(210, 70, 28)) }),
-        size = NS({ NK(0, 2.2), NK(0.4, 4.2), NK(1, 1.4) }), life = { 0.45, 0.75 }, speed = { 32, 46 }, spread = 5, emit = 1, acc = V(0, 6, 0), drag = 1.0,
+        size = NS({ NK(0, 2.2), NK(0.4, 4.2), NK(1, 1.4) }), life = { 0.45, 0.75 }, speed = { 32, 46 }, spread = 5, emit = 1, bright = 3.5, acc = V(0, 6, 0), drag = 1.0,
         tr = NS({ NK(0, 0.05), NK(0.6, 0.3), NK(1, 1) }) })
-      F.bSmoke = emitter(F.bP, { tex = SMOKE, col = ColorSequence.new(RGB(40, 38, 36)), size = NS({ NK(0, 4), NK(1, 20) }), life = { 3, 5 }, speed = { 14, 20 }, spread = 8, acc = V(0, 5, 0) })
+      F.bSmoke = emitter(F.bP, { tex = SOOT, col = ColorSequence.new(RGB(255, 255, 255)), size = NS({ NK(0, 4), NK(1, 20) }), life = { 3, 5 }, speed = { 14, 20 }, spread = 8, acc = V(0, 5, 0),
+        wind = true, tr = NS({ NK(0, 0.1), NK(1, 1) }) })
       F.bLight = light(F.bP, RGB(255, 200, 120), 40)
     end
     return F
   end
   local function off(F)
-    F.engSmoke.Rate, F.fire.Rate, F.fireSmoke.Rate = 0, 0, 0
-    F.fireLight.Brightness, F.afLight.Brightness = 0, 0
-    for _, h in ipairs(F.hatch) do h.jet.Rate, h.spark.Rate = 0, 0 end
-    if F.bJet then F.bJet.Rate, F.bSmoke.Rate, F.bLight.Brightness = 0, 0, 0 end
+    if F.isOff then return end
+    F.isOff = true
+    setRate(F.engSmoke, 0) setRate(F.engBlack, 0) setRate(F.fire, 0) setRate(F.fireSmoke, 0)
+    setB(F.fireLight, 0) setB(F.afLight, 0)
+    for _, h in ipairs(F.hatch) do setRate(h.jet, 0) setRate(h.spark, 0) end
+    if F.bJet then setRate(F.bJet, 0) setRate(F.bSmoke, 0) setB(F.bLight, 0) end
   end
 
   -- 泄压板泄了几次（WtBlow）：第一次看到这辆车时记下（后进来的人不重放以前的），以后一变就喷
   local blowSeen = setmetatable({}, { __mode = "k" })   -- [视图] = { n = 次数, t = 这次喷的时刻 }
   local acc = 0
+  local function place(v, F)   -- 位置：发动机盖跟车身、舱口跟炮塔（WtDamage 的炮塔系：炮塔转轴、转角同 View）
+    local d = v.def
+    local tf = d.turret and (v.hullF * CF(d.turret.pivot) * CFrame.Angles(0, -math.rad(v.ty or 0), 0)) or v.hullF
+    F.engP.CFrame = v.hullF * CF(F.spots.eng)
+    for i, h in ipairs(F.hatch) do h.p.CFrame = (d.turret and tf or v.hullF) * CF(F.spots.hatch[i]) end
+    if F.bP then F.bP.CFrame = tf * CF(F.spots.bustle) end
+  end
   RunService.RenderStepped:Connect(function(dt)
     acc += dt
+    local slow = acc >= 0.1   -- 状态、喷多少、火光：每秒 10 次
+    if slow then acc = 0 end
     local t = os.clock()
     local cp = cam.CFrame.Position
     for em, v in pairs(G.views or {}) do
       if v.kind == "veh" and v.def and v.hullF and em.Parent then
-        local d = v.def
-        local near = not v.wrecked and (v.hullF.Position - cp).Magnitude < NEAR
         local F = fx[v]
-        local engS = W.modState(em, d, "engine")
-        local fire = em:GetAttribute("WtF") == true
-        local af = em:GetAttribute("WtAF") == true
-        local blowN = em:GetAttribute("WtBlow") or 0
-        local bs = blowSeen[v]
-        if not bs then
-          bs = { n = blowN, t = nil }
-          blowSeen[v] = bs
-        elseif blowN ~= bs.n then
-          bs.n, bs.t = blowN, t
-        end
-        local busy = engS < 2 or fire or af or (bs.t ~= nil and t - bs.t < 9)
-        if near and busy and (not F or F.M ~= v.M) then
-          local ok, r = pcall(build, v)
-          if ok then
-            F = r
-            F.M = v.M
-            fx[v] = F
+        if slow then
+          local d = v.def
+          local near = not v.wrecked and (v.hullF.Position - cp).Magnitude < NEAR
+          local engS = W.modState(em, d, "engine")
+          local fire = em:GetAttribute("WtF") == true
+          local af = em:GetAttribute("WtAF") == true
+          local blowN = em:GetAttribute("WtBlow") or 0
+          local bs = blowSeen[v]
+          if not bs then
+            bs = { n = blowN, t = nil }
+            blowSeen[v] = bs
+          elseif blowN ~= bs.n then
+            bs.n, bs.t = blowN, t
           end
-        end
-        if F then
-          if not near then off(F)
-          else
-            -- 位置：发动机盖跟车身、舱口跟炮塔（WtDamage 的炮塔系：炮塔转轴、转角同 View）
-            local tf = d.turret and (v.hullF * CF(d.turret.pivot) * CFrame.Angles(0, -math.rad(v.ty or 0), 0)) or v.hullF
-            F.engP.CFrame = v.hullF * CF(F.spots.eng)
-            for i, h in ipairs(F.hatch) do h.p.CFrame = (d.turret and tf or v.hullF) * CF(F.spots.hatch[i]) end
-            if F.bP then F.bP.CFrame = tf * CF(F.spots.bustle) end
-            -- 发动机烟
-            if engS == 0 then F.engSmoke.Rate, F.engSmoke.Color = 16, ColorSequence.new(RGB(48, 46, 44))
-            elseif engS == 1 then F.engSmoke.Rate, F.engSmoke.Color = 6, ColorSequence.new(RGB(150, 148, 144))
-            else F.engSmoke.Rate = 0 end
-            -- 起火：火苗一跳一跳、火光一闪一闪
-            local k = 0.75 + 0.3 * math.sin(t * 13 + v.t) + 0.15 * math.sin(t * 31)
-            F.fire.Rate = (fire and not af) and 34 * k or (af and 14 or 0)
-            F.fireSmoke.Rate = fire and 10 or 0
-            F.fireLight.Brightness = fire and (2.2 * k) or 0
-            -- 弹药架起火：舱口火柱
-            for _, h in ipairs(F.hatch) do
-              h.jet.Rate = af and (95 * (0.8 + 0.4 * math.sin(t * 19 + h.p.Position.X))) or 0
-              h.spark.Rate = af and 45 or 0
-            end
-            F.afLight.Brightness = af and (5 * k) or 0
-            -- 泄压板：WtBlow 一变就喷六七秒
-            if F.bJet then
-              local age = bs.t and (t - bs.t) or 99
-              local q = (age < 6.5) and math.clamp(1 - (age - 3) / 3.5, 0.15, 1) or 0
-              F.bJet.Rate = 140 * q
-              F.bSmoke.Rate = (age < 9) and 12 or 0
-              F.bLight.Brightness = 6 * q * k
+          local busy = engS < 2 or fire or af or (bs.t ~= nil and t - bs.t < 9)
+          if near and busy and (not F or F.M ~= v.M) then
+            local ok, r = pcall(build, v)
+            if ok then
+              F = r
+              F.M = v.M
+              fx[v] = F
             end
           end
+          if F then
+            F.live = near and busy
+            if not F.live then off(F)
+            else
+              F.isOff = false
+              -- 发动机烟：受损淡灰、打坏了黑烟
+              setRate(F.engSmoke, (engS == 1) and 6 or 0)
+              setRate(F.engBlack, (engS == 0) and 14 or 0)
+              -- 起火：火苗一跳一跳、火光一闪一闪
+              local k = 0.75 + 0.3 * math.sin(t * 13 + v.t) + 0.15 * math.sin(t * 31)
+              setRate(F.fire, (fire and not af) and 34 * k or (af and 14 or 0))
+              setRate(F.fireSmoke, fire and 10 or 0)
+              setB(F.fireLight, fire and (2.2 * k) or 0)
+              -- 弹药架起火：舱口火柱
+              for _, h in ipairs(F.hatch) do
+                setRate(h.jet, af and (95 * (0.8 + 0.4 * math.sin(t * 19 + h.p.Position.X))) or 0)
+                setRate(h.spark, af and 45 or 0)
+              end
+              setB(F.afLight, af and (5 * k) or 0)
+              -- 泄压板：WtBlow 一变就喷六七秒
+              if F.bJet then
+                local age = bs.t and (t - bs.t) or 99
+                local q = (age < 6.5) and math.clamp(1 - (age - 3) / 3.5, 0.15, 1) or 0
+                setRate(F.bJet, 140 * q)
+                setRate(F.bSmoke, (age < 9) and 12 or 0)
+                setB(F.bLight, 6 * q * k)
+              end
+            end
+          end
         end
+        if F and F.live then place(v, F) end
       end
     end
   end)
@@ -283,7 +330,7 @@ function WtVfx.init(G)
   note.Position = UDim2.new(0.5, 0, 0, 66)
   note.Size = UDim2.fromOffset(420, 22)
   note.BackgroundTransparency = 1
-  note.Font = Enum.Font.BuilderSansBold
+  note.Font = Enum.Font.BuilderSansMedium
   note.TextSize = 16
   note.TextColor3 = RGB(255, 170, 90)
   note.TextStrokeTransparency = 0.4

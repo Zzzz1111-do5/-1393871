@@ -45,7 +45,9 @@ TT.RANK_NEED = { 3, 3, 3, 2, 2, 2 }
 --   11-25 用户「内容还不齐，风格不统一」「找不到的你可以直接删掉」：没有原模型的都删了——借别的型号模型的暂用车 / 机
 --   （狂风借 F-14、苏-25 借 A-10、59 式借 M60……）、零件拼的（PGZ-07、LD-2000、OH-1……）一共 116 项；留下的每一项要么有自己的原模型，
 --   要么借同族、外形几乎一样的（M1 借 M1A1、苏-27 借歼-11、苏-30SM 借歼-16、F-15A / E 借 F-15C、F-2A 借 F-16）。以后找到原模型再加回来
---   德国的固定翼一架都没找到（F-4F、狂风、台风、米格-29G、F-104G 都没有能用的模型），这棵树先空着
+--   11-27（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」）：地面树写 base 的 18 项都拆成了自己的型号（veh + model：性能自己的、模型借同族的），
+--   地面树没有 base 了；飞机那几项（F-16A、苏-27SM……）还写 base，另外拆
+--   德国的固定翼一架都没找到（F-4F、狂风、台风、米格-29G、F-104G 都没有能用的模型），这棵树先空着；11-28 米格-29G 借俄系米格-29 的模型先放上
 local G, A, H = "ground", "air", "heli"
 local LIST = {
   cn = {
@@ -54,13 +56,23 @@ local LIST = {
       --   起步车照规则（最低一级、最早的）变成 59 式；96 式不再白送
       { "cn_59", "59式中型坦克", "Type 59", 1959, 1, 1, 6.7, veh = "type59" },
       { "cn_69", "69-II式中型坦克", "Type 69-II", 1982, 2, 1, 7.7, veh = "type69", model = "type59" },
-      { "cn_96", "96式主战坦克", "Type 96", 1997, 5, 1, 9.7, base = "ztz96" },
-      { "cn_96a", "96A式主战坦克", "Type 96A", 2006, 6, 1, 10.3, base = "ztz96" },
+      -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开」「各维度还原一致」）：96 式、96A、99 式、86 式原来写 base（借 96B / 99A / BMP-1），
+      --   现在各开各的型号、模型借同族的（科技树写「同族模型」）
+      { "cn_96", "96式主战坦克", "Type 96", 1997, 5, 1, 9.7, veh = "ztz96base", model = "ztz96" },
+      { "cn_96a", "96A式主战坦克", "Type 96A", 2006, 6, 1, 10.3, veh = "ztz96a", model = "ztz96" },
       { "cn_96b", "96B式主战坦克", "Type 96B", 2016, 7, 1, 10.7, veh = "ztz96" },
-      { "cn_99", "99式主战坦克", "Type 99", 2001, 5, 2, 10.7, base = "ztz99a" },
+      { "cn_99", "99式主战坦克", "Type 99", 2001, 5, 2, 10.7, veh = "ztz99base", model = "ztz99a" },
       { "cn_99a", "99A式主战坦克", "Type 99A", 2011, 6, 2, 11.7, veh = "ztz99a" },
-      { "cn_86", "86式步兵战车", "Type 86", 1986, 4, 4, 7.7, base = "bmp1" },
-      { "cn_pgl625", "PGL-625 自行高炮", "PGL-625", 2019, 7, 5, 11.0, veh = "pgl625" },
+      { "cn_86", "86式步兵战车", "Type 86", 1986, 4, 4, 7.7, veh = "type86", model = "bmp1" },
+      { "cn_pgl625", "PGL-625 弹炮结合", "PGL-625", 2019, 7, 5, 11.0, veh = "pgl625" },   -- 25 毫米六管炮 + 4 枚防空导弹
+      -- 11-28 用户「中国当年买过的坦克你也找模型」：九十年代初从俄罗斯引进评估的 T-80U（同俄系那辆：模型、性能都是它）；
+      --   放在第二条线的最后（排在 99A 后面：上一项级别比它高，不连前置，单独研究）
+      { "cn_t80u", "T-80U（引进）", "T-80U (imported)", 1993, 5, 2, 10.7, veh = "t80u", nostart = true },
+      -- 11-28 同上：1950～1955 年从苏联买的 T-34-85（抗美援朝、建军初期的主力；Sketchfab 真模型 blveh.json t3485）。一级、第一列打头
+      --   （排在列表最后：59 式那一列的前置不变）；nostart：比 59 式老，可起步车照旧是 59 式
+      { "cn_t3485", "T-34-85（引进）", "T-34-85 (imported)", 1950, 1, 1, 5.7, veh = "t3485", nostart = true },
+      -- 11-28 同上：五十年代初从苏联买的 SU-100 歼击车（Sketchfab 真模型 blveh.json su100；没有炮塔，炮左右各 8°）——「轻型 / 歼击车」一列原来空着
+      { "cn_su100", "SU-100（引进）", "SU-100 (imported)", 1951, 1, 3, 6.0, veh = "su100", nostart = true },
     },
     [A] = {
       { "cn_j6", "歼-6", "J-6", 1962, 1, 1, 8.0, veh = "j6" },
@@ -83,17 +95,26 @@ local LIST = {
   de = {
     [G] = {
       { "de_leo1", "豹1", "Leopard 1", 1965, 1, 1, 7.0, veh = "leo1" },
-      { "de_leo1a1a1", "豹1A1A1", "Leopard 1A1A1", 1975, 2, 1, 7.7, base = "leo1" },
+      -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开」「各维度还原一致」）：豹 1A1A1、豹 2A0、豹 2A5 原来写 base，现在各开各的型号、模型借同族的
+      { "de_leo1a1a1", "豹1A1A1", "Leopard 1A1A1", 1975, 2, 1, 7.7, veh = "leo1a1a1", model = "leo1" },
       { "de_leo1a5", "豹1A5", "Leopard 1A5", 1987, 4, 1, 8.3, veh = "leo1a5", model = "leo1" },
-      { "de_leo2a0", "豹2A0", "Leopard 2A0", 1979, 3, 2, 9.0, base = "leo2a4" },
+      -- 11-28 用户「你把德国的各种载具全部补齐……包括坦克」：KPz 70（美德合作的 MBT-70，Sketchfab 真模型 blveh.json mbt70）——豹 2 的前身，
+      --   排在豹 2A0 前面当它的前置（同战雷：KPz 70 → 豹 2）
+      { "de_kpz70", "KPz 70", "KPz 70", 1969, 2, 2, 8.7, veh = "kpz70" },
+      { "de_leo2a0", "豹2A0", "Leopard 2A0", 1979, 3, 2, 9.0, veh = "leo2a0", model = "leo2a6" },
       { "de_leo2a4", "豹2A4", "Leopard 2A4", 1985, 4, 2, 9.7, veh = "leo2a4", model = "leo2a6" },
-      { "de_leo2a5", "豹2A5", "Leopard 2A5", 1995, 5, 2, 10.7, base = "leo2a6" },
+      { "de_leo2a5", "豹2A5", "Leopard 2A5", 1995, 5, 2, 10.7, veh = "leo2a5", model = "leo2a6" },
       { "de_leo2a6", "豹2A6", "Leopard 2A6", 2001, 5, 2, 11.3, veh = "leo2a6" },
       { "de_leo2a7v", "豹2A7V", "Leopard 2A7V", 2020, 7, 2, 12.0, veh = "leo2a7v" },
+      -- 11-28 用户「你把德国的各种载具全部补齐」：黄鼠狼 1A3 步兵战车（Sketchfab 真模型 blveh.json marder）——「步兵战车」一列原来空着
+      { "de_marder1a3", "黄鼠狼 1A3", "Marder 1A3", 1988, 4, 4, 7.7, veh = "marder1a3" },
       { "de_gepard", "猎豹1A1", "Gepard 1A1", 1976, 3, 5, 8.3, veh = "gepard1a1" },
       { "de_gepard1a2", "猎豹1A2", "Gepard 1A2", 1998, 5, 5, 9.3, veh = "gepard1a2" },
     },
     [A] = {
+      -- 11-28 用户「你把德国的各种载具全部补齐」：两德统一后联邦德国空军接收的米格-29G（原东德空军的 9.12A，换了北约的敌我识别、导航）——
+      --   模型、性能借俄系的米格-29（9.12）
+      { "de_mig29g", "米格-29G", "MiG-29G", 1990, 4, 1, 12.0, veh = "mig29" },
     },
     [H] = {   -- 德国：虎式 UHT（攻击）。NH90 TTH 是纯运输（没有武器），11-26 用户「很多运输型直升机可以去掉了 实战没有意义」删了
       { "de_tiger", "虎式 UHT", "Tiger UHT", 2005, 6, 1, 10.3, veh = "tiger" },
@@ -101,21 +122,28 @@ local LIST = {
   },
   us = {
     [G] = {
-      { "us_m60", "M60 巴顿", "M60", 1960, 1, 1, 7.0, base = "m60a1" },
+      -- 11-27 拆开重叠的版本：M60、M60A1 RISE 原来写 base（借 M60A1），现在各开各的型号、模型借同族的（M60A3）
+      { "us_m60", "M60 巴顿", "M60", 1960, 1, 1, 7.0, veh = "m60", model = "m60a3" },
       { "us_m60a1", "M60A1", "M60A1", 1962, 1, 1, 7.3, veh = "m60a1", model = "m60a3" },
-      { "us_m60a1rise", "M60A1 RISE", "M60A1 RISE", 1977, 3, 1, 7.7, base = "m60a1" },
+      { "us_m60a1rise", "M60A1 RISE", "M60A1 RISE", 1977, 3, 1, 7.7, veh = "m60a1rise", model = "m60a3" },
       { "us_m60a3", "M60A3 TTS", "M60A3 TTS", 1979, 3, 1, 8.0, veh = "m60a3" },
-      { "us_m1", "M1 艾布拉姆斯", "M1 Abrams", 1980, 3, 2, 9.3, base = "m1a1" },
-      { "us_m1ip", "M1IP", "IPM1", 1984, 4, 2, 9.7, base = "m1a1" },
-      { "us_m1a1", "M1A1", "M1A1", 1985, 4, 2, 10.3, veh = "m1a1" },
-      { "us_m1a1hc", "M1A1 HC", "M1A1 HC", 1988, 4, 2, 10.7, base = "m1a1" },
-      { "us_m1a2", "M1A2", "M1A2", 1992, 5, 2, 11.0, base = "m1a2" },
-      { "us_m1a2sep", "M1A2 SEP", "M1A2 SEP", 2000, 5, 2, 11.3, base = "m1a2" },
+      -- 11-27 拆开重叠的版本（用户「把重叠的版本拆开（M1A2 / SEP / SEPv3 等）」「各维度还原一致」）：M1 一族原来六项写 base（模型、性能都借 M1A1 / M1A2 SEPv2），
+      --   现在各开各的型号（VehDefs：炮、弹、装甲、机动、观瞄照年代），模型借同族的（科技树上写「同族模型」）
+      { "us_m1", "M1 艾布拉姆斯", "M1 Abrams", 1980, 3, 2, 9.3, veh = "m1", model = "m1a1" },
+      { "us_m1ip", "M1IP", "IPM1", 1984, 4, 2, 9.7, veh = "m1ip", model = "m1a1" },
+      -- 11-27 审查第 1 条：M1A1 原来开老的 m1a1（2003 年的 M829A3、ARAT / TUSK 改装页：比后面的 HC、M1A2、SEP 都强）——
+      --   开自己的 m1a1base（1985 年的 M829 / M830 / M829A1、没有 ARAT），模型照旧是 M1A1 自己的（ImportedMeta 的 alias m1a1base → m1a1i）；
+      --   老的 m1a1 留给老模式、老 AI 名单。不写 model（二审：写了 TechUI 会在卡片上标「同族模型」、详情写「模型暂用同族的 M1A1」，可那就是它自己的模型）
+      { "us_m1a1", "M1A1", "M1A1", 1985, 4, 2, 10.3, veh = "m1a1base" },
+      { "us_m1a1hc", "M1A1 HC", "M1A1 HC", 1988, 4, 2, 10.7, veh = "m1a1hc", model = "m1a1" },
+      { "us_m1a2", "M1A2", "M1A2", 1992, 5, 2, 11.0, veh = "m1a2base", model = "m1a2" },
+      { "us_m1a2sep", "M1A2 SEP", "M1A2 SEP", 2000, 5, 2, 11.3, veh = "m1a2sep", model = "m1a2" },
       { "us_m1a2sep2", "M1A2 SEPv2", "M1A2 SEPv2", 2008, 6, 2, 11.7, veh = "m1a2" },
-      { "us_m1a2sep3", "M1A2 SEPv3", "M1A2 SEPv3", 2017, 7, 2, 12.0, base = "m1a2" },
+      { "us_m1a2sep3", "M1A2 SEPv3", "M1A2 SEPv3", 2017, 7, 2, 12.0, veh = "m1a2sep3", model = "m1a2" },
       { "us_m551", "M551 谢里登", "M551 Sheridan", 1966, 1, 3, 6.3, veh = "m551" },
-      { "us_m2", "M2 布雷德利", "M2 Bradley", 1981, 3, 4, 8.0, base = "m2a3" },
-      { "us_m2a2", "M2A2 布雷德利", "M2A2", 1988, 4, 4, 8.7, base = "m2a3" },
+      -- 11-27 拆开重叠的版本：M2、M2A2 原来写 base（借 M2A3），现在各开各的型号（M242 25 毫米、陶式 / 陶式 2），模型借同族的
+      { "us_m2", "M2 布雷德利", "M2 Bradley", 1981, 3, 4, 8.0, veh = "m2a0", model = "m2a3" },
+      { "us_m2a2", "M2A2 布雷德利", "M2A2", 1988, 4, 4, 8.7, veh = "m2a2", model = "m2a3" },
       { "us_m2a3", "M2A3 布雷德利", "M2A3", 2000, 5, 4, 9.3, veh = "m2a3" },
       { "us_m163", "M163 火神", "M163 VADS", 1968, 2, 5, 7.0, veh = "m163" },
       { "us_cram", "C-RAM 陆基密集阵", "C-RAM", 2005, 6, 5, 10.0, veh = "cram" },
@@ -169,7 +197,7 @@ local LIST = {
       { "ru_t72", "T-72 乌拉尔", "T-72 Ural", 1973, 2, 1, 8.0, veh = "t72ural", model = "t72b3", free = true },   -- T-55 / T-62 没有原模型（删了；11-27 又找了一遍：Sketchfab 上能下的不是扒的就是粗模）
       { "ru_t72a", "T-72A", "T-72A", 1979, 3, 1, 8.7, veh = "t72a", model = "t72b3" },
       { "ru_t72b", "T-72B", "T-72B", 1985, 4, 1, 9.7, veh = "t72b", model = "t72b3" },
-      { "ru_t90a", "T-90A", "T-90A", 2004, 5, 1, 10.7, base = "t90m" },
+      { "ru_t90a", "T-90A", "T-90A", 2004, 5, 1, 10.7, veh = "t90a", model = "t90m" },   -- 11-27 拆开重叠的版本：原来写 base 借 T-90M
       { "ru_t72b3", "T-72B3", "T-72B3", 2013, 6, 1, 11.0, veh = "t72b3" },
       { "ru_t90m", "T-90M 突破-3", "T-90M", 2020, 7, 1, 12.0, veh = "t90m" },
       { "ru_t64a", "T-64A", "T-64A", 1969, 2, 2, 8.3, veh = "t64a" },
@@ -213,26 +241,34 @@ local LIST = {
 --   地面树只在坦克那几列（主战、第二条线、轻型）里挑，一辆坦克都没有才看步战车、防空车；
 --   轻型那一列里的侦察车（scout：BRDM-2、87 式侦察警戒车）不算坦克，不挑它；
 --   直升机树、固定翼哪一列都行（11-26 纯运输直升机删了：起步的是最老、级别最低的那架——米-8MT、UH-1N、AH-1S、直-8、虎式）
+--   11-28 用户「送就只送1级载具 飞机要拿金币买」：只有地面树的起步车白送（还得是一级），飞机、直升机树的不送了
 local STARTER_COLS = { ground = { [1] = true, [2] = true, [3] = true } }
+--   11-28「送就只送1级载具」：先找一级的坦克；没有一级坦克就找一级的步战车、防空车（俄系：T-72 乌拉尔是二级，白送一级的 BMP-1）；
+--   整棵树连一辆一级车都没有（日系：最老的是二级的 74 式）才照旧送最老的那辆坦克——不然这个系一辆车都开不了
 local function pickStarter(list, br)
   local pref = STARTER_COLS[br]
-  for pass = 1, 2 do
-    local best, bi
+  local function best(ok)
+    local b, bi
     for i, it in ipairs(list) do
-      if it.prev == nil and (pass == 2 or not pref or (pref[it.col] and not it.scout)) then
-        local better = not best
-        if best then
-          if it.rank ~= best.rank then better = it.rank < best.rank
-          elseif (it.year or 0) ~= (best.year or 0) then better = (it.year or 0) < (best.year or 0)
-          elseif it.br ~= best.br then better = it.br < best.br
+      if it.prev == nil and ok(it) then
+        local better = not b
+        if b then
+          if it.rank ~= b.rank then better = it.rank < b.rank
+          elseif (it.year or 0) ~= (b.year or 0) then better = (it.year or 0) < (b.year or 0)
+          elseif it.br ~= b.br then better = it.br < b.br
           else better = i < bi end
         end
-        if better then best, bi = it, i end
+        if better then b, bi = it, i end
       end
     end
-    if best or not pref then return best end
+    return b
   end
-  return nil
+  if not pref then return best(function() return true end) end
+  --   11-28：引进的车（nostart：T-34-85 这类比本国起步车更老的外国车）不当起步车——不然一加进来白送的就换了，已有存档里那辆白送车没了
+  return best(function(it) return it.rank == 1 and pref[it.col] and not it.scout and not it.nostart end)
+    or best(function(it) return it.rank == 1 and not it.scout and not it.nostart end)
+    or best(function(it) return pref[it.col] and not it.scout and not it.nostart end)
+    or best(function() return true end)
 end
 TT.pickStarter = pickStarter   -- 测试用：拿一份假的车单验证规则
 TT.START = {}   -- [系][树] = 起步车的 key（这棵树空着就没有）
@@ -247,7 +283,7 @@ for _, nat in ipairs(TT.NATIONS) do
     local out, lastInCol = {}, {}
     for _, row in ipairs(LIST[nat][br]) do
       local it = { key = row[1], name = row[2], en = row[3], year = row[4], rank = row[5], col = row[6], br = row[7],
-        veh = row.veh, base = row.base, model = row.model, scout = row.scout, nat = nat, branch = br }
+        veh = row.veh, base = row.base, model = row.model, scout = row.scout, nostart = row.nostart, nat = nat, branch = br }
       it.play = it.veh or it.base   -- 出车开哪一型
       it.stand = it.veh == nil      -- 暂用别的型号（模型和性能都借）
       -- model：性能是这一型自己的（VehDefs 里有它的炮、弹、装甲、机动），只是还没有它自己的模型，借同族那一型的真模型
@@ -262,7 +298,8 @@ for _, nat in ipairs(TT.NATIONS) do
       table.insert(out, it)
       TT.byKey[it.key] = it
     end
-    local st = pickStarter(out, br)
+    -- 只白送地面树的一级车（用户 11-28「送就只送1级载具 飞机要拿金币买」）：飞机、直升机树没有起步车，要拿金币买
+    local st = (br == "ground") and pickStarter(out, br) or nil
     if st then
       st.free = true
       TT.START[nat][br] = st.key
@@ -280,6 +317,9 @@ for _, nat in ipairs(TT.NATIONS) do
     end
   end
 end
+-- 老的 m1a1（老模式、老 AI 名单还在开）11-27 起不是哪一项的 veh 了（科技树的 M1A1 开 m1a1base）：沙盒、电脑车按型号找年代、国家时照旧认 us_m1a1
+--   （同一年、同一国：观瞄、火控代跟原来一样）
+TT.byVeh.m1a1 = TT.byVeh.m1a1 or TT.byKey.us_m1a1
 
 function TT.get(key) return TT.byKey[key] end
 -- 这一系这棵树的起步车（白送的那一辆；树空着返回 nil）

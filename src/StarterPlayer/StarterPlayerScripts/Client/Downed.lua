@@ -85,7 +85,7 @@ function Downed.init(G)
     l.BackgroundTransparency = 1
     l.Size = UDim2.new(1, 0, 0, size + 6)
     l.Position = UDim2.fromOffset(0, y)
-    l.Font = font or Enum.Font.BuilderSansBold
+    l.Font = font or Enum.Font.BuilderSansMedium
     l.TextSize = size
     l.TextColor3 = color
     l.TextStrokeTransparency = 0.55
@@ -129,7 +129,7 @@ function Downed.init(G)
   giveBtn.BackgroundColor3 = RGB(20, 20, 20)
   giveBtn.BackgroundTransparency = 0.35
   giveBtn.BorderSizePixel = 0
-  giveBtn.Font = Enum.Font.BuilderSansBold
+  giveBtn.Font = Enum.Font.BuilderSansMedium
   giveBtn.TextSize = 15
   giveBtn.TextColor3 = RGB(240, 240, 235)
   giveBtn.Text = T("down.giveUpTouch")
@@ -315,7 +315,7 @@ function Downed.init(G)
     tag.BackgroundTransparency = 1
     tag.Position = UDim2.fromOffset(0, 32)
     tag.Size = UDim2.new(1, 0, 0, 16)
-    tag.Font = Enum.Font.BuilderSansBold
+    tag.Font = Enum.Font.BuilderSansMedium
     tag.TextSize = 13
     tag.TextColor3 = RGB(255, 240, 236)
     tag.TextStrokeTransparency = 0.4

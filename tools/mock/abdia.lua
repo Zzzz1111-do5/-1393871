@@ -1,11 +1,13 @@
 -- 加力尾焰里的马赫环（激波钻石，模拟器）：python3 tools/mock/run.py tools/mock/abdia.lua [out=<目录>]
 --   用户 11-27「去网上找飞机尾喷口马赫环照片然后自己做」：不开服，直接 require 客户端的 AirModels 拼飞机、按油门摆好，检查——
---   ① 军推没有马赫环（只有加力才有）；全是朝镜头的发光光带（Beam），没有硬边的零件（以前「一节一节的马赫环」）
+--   ① 军推没有马赫环、没有火焰（只有加力才有）；没有硬边的环 / 管子零件（以前「一节一节的马赫环」）
 --   ② 满加力：每台发动机一串，第一颗亮核离喷口 0.3～1 个喷口直径 D，间距 0.9～1.4 D，比焰身窄，越往后越淡
 --   ③ 半加力比满加力少、淡；夜里比白天多
---   ④ 镜头顺着喷流从正后方看：淡掉（光带缩成一条线）；换到侧面又有
+--   ④ 像战雷、不卡通（用户 11-28「飞机尾喷的效果非常烂而且不是立体的」「这个特效太卡通了吧」「飞机尾焰也跟战雷区别很大」）：
+--      焰身、焰芯、马赫环都是贴了柔边圆点贴图的光带（整张贴图拉在带子上、不滚动：正中最亮、四边虚），焰身带子的正中在喷口出口
+--      （前半截藏在喷口里）；喷口一团朝镜头的柔光（正后方看也亮）；没有硬边的发光零件
 --   ⑤ 推力矢量喷口（歼-20）抬头偏转：一串钻石跟着焰身一起偏
---   ⑥ 离镜头 700 格外不画
+--   ⑥ 离镜头 700 格外不画马赫环、焰芯（外面两层还在）
 --   零件拼的（没有原模型）、原模型（喷口位置按 ImportedAir 的 noz）、二元喷口（F-22）都走一遍；out= 每种状态导出一份 JSON，
 --   tools/mock/abdia_view.cjs 照 Roblox 的画法画成图（和真机照片并排看）
 local T = dofile(MOCK_DIR .. "/common.lua")
@@ -32,11 +34,12 @@ local BASE = CF(0, 300, 0)
 -- 拼一架：imp = false 时把导入的原模型藏起来（零件拼的那条路）
 local function build(id, imp)
   local air = RS:FindFirstChild("Imported"):FindFirstChild("Air")
-  local f = air:FindFirstChild((IA.alias[id]:gsub("~$", "")))
-  if not imp then f.Parent = nil end
+  local key = IA.alias[id] and (IA.alias[id]:gsub("~$", ""))
+  local f = key and air:FindFirstChild(key)
+  if f and not imp then f.Parent = nil end
   local M
   R.as("client", function() M = AM.build(AD.get(id), "atk", {}) end)
-  if not imp then f.Parent = air end
+  if f and not imp then f.Parent = air end
   M.model.Parent = R.workspace
   return M
 end
@@ -48,24 +51,18 @@ local function pose(M, o)
   local c = { thr = o.thr, rpm = math.min(o.thr, 105), gear = 0, spinJ = 0, pit = o.pit or 0 }
   for _ = 1, 4 do R.as("client", function() AM.pose(M, BASE, c, R.clock()) end) R.run(1 / 30) end
 end
--- 每台发动机的那串：{ D 喷口直径, n 亮着几颗, z 每颗亮核离焰身起点多远, w 宽, a 亮核不透明度, wp 亮核世界位置 }
+-- 每台发动机的那串（AirModels.plumeInfo）：{ D 喷口直径, n 亮着几颗, z 每颗离喷口多远, w 宽, a 不透明度, wp 世界位置, on 焰身开着, core 焰芯开着, Lv 焰长, src 挂点 }
 local function chains(M)
   local out = {}
-  for _, it in ipairs(M.items) do
-    if it.plume and it.dia then
-      local ch = { D = it.diaD, n = 0, z = {}, w = {}, a = {}, wp = {}, src = it.p, fillEnd = it.fillEnd, fill = it.fill }
-      for _, dm in ipairs(it.dia) do
-        if dm.bm[1].Enabled then
-          ch.n = ch.n + 1
-          table.insert(ch.z, dm.p[1].Position.Z)   -- 亮核离焰身起点（喷口出口）多远
-          table.insert(ch.w, dm.bm[1].Width1)
-          local kp = dm.bm[1].Transparency.Keypoints
-          table.insert(ch.a, 1 - kp[#kp].Value)
-          table.insert(ch.wp, dm.p[1].WorldPosition)
-        end
-      end
-      table.insert(out, ch)
+  for _, I in ipairs(AM.plumeInfo(M)) do
+    local ch = { D = I.D, n = #I.dia, z = {}, w = {}, a = {}, wp = {}, on = I.on, core = I.core, Lv = I.Lv, src = I.src, info = I }
+    for _, dm in ipairs(I.dia) do
+      table.insert(ch.z, dm.z)
+      table.insert(ch.w, dm.w)
+      table.insert(ch.a, dm.a)
+      table.insert(ch.wp, dm.wp)
     end
+    table.insert(out, ch)
   end
   return out
 end
@@ -122,7 +119,8 @@ local function dump(M, id, o, name)
 end
 if OUT then os.execute('mkdir -p "' .. OUT .. '"') end
 
-for _, spec in ipairs({ { "j20", false, "歼-20（零件拼的）" }, { "j20", true, "歼-20（原模型、推力矢量喷口）" }, { "f16", true, "F-16（原模型）" }, { "f22", true, "F-22（二元喷口）" } }) do
+for _, spec in ipairs({ { "j20", false, "歼-20（零件拼的）" }, { "j20", true, "歼-20（原模型、推力矢量喷口）" }, { "f16", true, "F-16（原模型）" }, { "f22", true, "F-22（二元喷口）" },
+  { "j8", false, "歼-8（老式涡喷：马赫环浓）" }, { "j10", false, "歼-10（一般）" } }) do
   local id, imp, label = spec[1], spec[2], spec[3]
   print("—— " .. label)
   local M = build(id, imp)
@@ -134,6 +132,9 @@ for _, spec in ipairs({ { "j20", false, "歼-20（零件拼的）" }, { "j20", t
   local mil = 0
   for _, ch in ipairs(chains(M)) do mil = mil + ch.n end
   check(mil == 0, label .. "：军推没有马赫环（" .. mil .. " 颗）")
+  local milOn = 0
+  for _, ch in ipairs(chains(M)) do if ch.on then milOn = milOn + 1 end end
+  check(milOn == 0, label .. "：军推没有加力火焰")
   -- ② 满加力、白天
   pose(M, { thr = 125 })
   dump(M, id, { thr = 125 }, tag .. "_ab_day")
@@ -155,18 +156,40 @@ for _, spec in ipairs({ { "j20", false, "歼-20（零件拼的）" }, { "j20", t
       print(string.format("  满加力白天：%d 颗，第一颗亮核离喷口 %.2f D、间距 %.2f D，亮核不透明度 %s", ch.n, z1, ch.n > 1 and (ch.z[2] - ch.z[1]) / D or 0,
         table.concat((function() local t = {} for k = 1, ch.n do t[k] = string.format("%.2f", ch.a[k]) end return t end)(), " ")))
     end
-    check(ch.n >= 4 and ch.n <= 9, string.format("%s 第 %d 串：满加力白天 %d 颗（4～9）", label, i, ch.n))
+    -- 用户 11-28「他先进的飞机尾喷……没有那么明显的马赫环 都是淡淡的」「有的飞机那个马赫环是非常浓烈的」：按机型三种样子
+    local sty = AM.plumeStyle(AD.get(id))
+    if i == 1 then print("  样子：" .. sty) end
+    if sty == "blue" then
+      check(ch.n >= 1 and ch.n <= 4 and ch.a[1] <= 0.2, string.format("%s 第 %d 串：先进的发动机，白天马赫环淡淡几颗（%d 颗、第一颗 %.2f）", label, i, ch.n, ch.a[1] or 0))
+    elseif sty == "strong" then
+      check(ch.n >= 5 and ch.a[1] >= 0.5, string.format("%s 第 %d 串：老式发动机，马赫环又多又亮（%d 颗、第一颗 %.2f）", label, i, ch.n, ch.a[1] or 0))
+    else
+      check(ch.n >= 3 and ch.a[1] >= 0.15 and ch.a[1] <= 0.4, string.format("%s 第 %d 串：一般的，白天淡淡几颗（%d 颗、第一颗 %.2f）", label, i, ch.n, ch.a[1] or 0))
+    end
     check(z1 >= 0.3 and z1 <= 1.0, string.format("%s 第 %d 串：第一颗亮核离喷口 %.2f D（0.3～1）", label, i, z1))
     check(okSp, label .. "：间距 0.9～1.4 D")
     check(okW, label .. "：比焰身窄（亮核宽不到 0.7 D）")
     check(okA, label .. "：越往后越淡")
   end
   check(partsNamed(M, "^MachRing$") == 0 and partsNamed(M, "^AbTube$") == 0, label .. "：没有硬边的环 / 管子零件")
-  local beamsOk = true
+  -- ④ 像战雷、不卡通：柔边贴图的光带 + 喷口柔光，没有硬边的发光零件
+  local soft, nStrip, hard, glowOk = true, 0, 0, false
   for _, d in ipairs(M.model:GetDescendants()) do
-    if d.ClassName == "Beam" and d.Name == "AbDiamond" and (not d.FaceCamera or d.LightEmission < 1) then beamsOk = false end
+    if d:IsA("BasePart") and (d.Name == "AbFlame" or d.Name == "AbDiamond") then hard = hard + 1 end
+    if d.ClassName == "Beam" and (d.Name == "AbFlame" or d.Name == "AbCore" or d.Name == "AbDiamond") then
+      nStrip = nStrip + 1
+      if not d.Texture:find("implosion", 1, true) or d.TextureSpeed ~= 0 or d.TextureMode ~= R.Enum.TextureMode.Stretch or not d.FaceCamera then soft = false end
+    end
+    if d.ClassName == "ParticleEmitter" and d.Name == "AbGlow" and d.Enabled and d.LockedToPart then glowOk = true end
   end
-  check(beamsOk, label .. "：马赫环是朝镜头、叠加发光的光带")
+  check(soft and nStrip > 0 and hard == 0, string.format("%s：焰身、焰芯、马赫环都是柔边贴图的光带（%d 条，硬边零件 %d）", label, nStrip, hard))
+  check(glowOk, label .. "：喷口一团朝镜头的柔光（正后方看也亮）")
+  local L1 = day[1].info.layers.outer
+  check(L1.a0.Position.Z < 0 and L1.a1.Position.Z > 0, string.format("%s：焰身带子的正中在喷口出口（%.1f → %.1f 格，前半截藏在喷口里）", label, L1.a0.Position.Z, L1.a1.Position.Z))
+  local nOn = 0
+  for _, ch in ipairs(day) do if ch.on and ch.core then nOn = nOn + 1 end end
+  check(nOn == #day, label .. "：每台都有焰身、焰芯（" .. nOn .. " / " .. #day .. " 台）")
+  check(day[1].Lv > day[1].D * 3, string.format("%s：满加力焰身露出来 %.1f D（三个喷口直径以上）", label, day[1].Lv / day[1].D))
   -- ③ 半加力、夜里
   pose(M, { thr = 112 })
   dump(M, id, { thr = 112 }, tag .. "_half_day")
@@ -175,36 +198,34 @@ for _, spec in ipairs({ { "j20", false, "歼-20（零件拼的）" }, { "j20", t
   pose(M, { thr = 125, clock = 1 })
   dump(M, id, { thr = 125, clock = 1 }, tag .. "_ab_night")
   local night = chains(M)[1]
-  check(night.n > day[1].n, string.format("%s：夜里比白天多（%d / %d 颗）", label, night.n, day[1].n))
-  -- ④ 正后方看
+  check(night.n >= day[1].n and night.a[1] > day[1].a[1], string.format("%s：夜里比白天多、亮（%d / %d 颗，%.2f / %.2f）", label, night.n, day[1].n, night.a[1] or 0, day[1].a[1] or 0))
+  -- 正后方看：椭球本来就是立体的，不用像光带那样淡掉
   local nz = AM.nozzles(M)[1].p
   pose(M, { thr = 125, camL = V3(nz.X, nz.Y + 0.3, nz.Z + 80) })
   dump(M, id, { thr = 125, camL = V3(nz.X, nz.Y + 0.3, nz.Z + 80) }, tag .. "_ab_rear")
-  local rear = 0
-  for _, ch in ipairs(chains(M)) do rear = rear + ch.n end
-  check(rear == 0, label .. "：镜头从正后方顺着喷流看，马赫环淡掉（" .. rear .. " 颗）")
-  pose(M, { thr = 125, camL = V3(30, 8, 70) })
-  dump(M, id, { thr = 125, camL = V3(30, 8, 70), clock = 18 }, tag .. "_ab_quarter")
-  check(chains(M)[1].n > 0, label .. "：斜后方又看得见")
+  check(chains(M)[1].n > 0, label .. "：镜头从正后方看也有（立体的，不用淡掉）")
   -- ⑤ 推力矢量
   if id == "j20" and imp then
     pose(M, { thr = 125, camL = V3(40, 2, 30), pit = 0 })
     local ch0 = chains(M)[1]
-    local a0 = (ch0.wp[ch0.n] - ch0.src.Position).Unit
+    local a0 = (ch0.wp[ch0.n] - ch0.wp[1]).Unit
     pose(M, { thr = 125, camL = V3(40, 2, 30), pit = 1 })
     local ch1 = chains(M)[1]
-    local src = ch1.src
-    local a1 = (ch1.wp[ch1.n] - src.Position).Unit
-    local f1 = (ch1.fillEnd.WorldPosition - src.Position).Unit
+    local a1 = (ch1.wp[ch1.n] - ch1.wp[1]).Unit
+    local f1 = ch1.src.CFrame.ZVector   -- 焰身的轴（挂点 +Z 朝后）
     local ang = math.deg(math.acos(mclamp(a0:Dot(a1), -1, 1)))
     print(string.format("  抬头：钻石串偏了 %.1f°，跟焰身同轴（夹角 %.2f°）", ang, math.deg(math.acos(mclamp(a1:Dot(f1), -1, 1)))))
     check(ang > 5 and a1:Dot(f1) > 0.9995, "推力矢量喷口偏转：马赫环跟着焰身一起偏")
   end
   -- ⑥ 远处
   pose(M, { thr = 125, camL = V3(900, 0, 0) })
-  local far = 0
-  for _, ch in ipairs(chains(M)) do far = far + ch.n end
-  check(far == 0, label .. "：离镜头 700 格外不画（" .. far .. " 颗）")
+  local far, farCore, farEnv = 0, 0, 0
+  for _, ch in ipairs(chains(M)) do
+    far = far + ch.n
+    if ch.core then farCore = farCore + 1 end
+    if ch.on then farEnv = farEnv + 1 end
+  end
+  check(far == 0 and farCore == 0 and farEnv >= 1, string.format("%s：离镜头 700 格外不画马赫环（%d 颗）、焰芯（%d），焰身还在（%d）", label, far, farCore, farEnv))
   M.model:Destroy()
 end
 check(#R.errors == 0, "没有报错：" .. table.concat(R.errors, " | "))

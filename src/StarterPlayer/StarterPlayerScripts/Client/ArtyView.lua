@@ -23,7 +23,7 @@ function ArtyView.init(G)
   local me = Players.LocalPlayer
   local cam = workspace.CurrentCamera
   local M = 2.8   -- 1 米多少格
-  local function L(zh, en) return (G.lang == "en") and en or zh end
+  local function L(zh, en) return G.L(zh, en) end   -- 多语言（11-28）：按现在的语言查
 
   local A = { on = false, aim = nil, h = 620, yaw = 0, bloom = 1, hidden = {}, seenAt = 0 }
   local folder = nil

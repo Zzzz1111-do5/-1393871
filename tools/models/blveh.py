@@ -211,6 +211,97 @@ for mn, rgb in CFG.get('matColor', {}).items():
         lin = [((c / 255 + 0.055) / 1.055) ** 2.4 if c / 255 > 0.04045 else c / 255 / 12.92 for c in rgb]
         bsdf.inputs['Base Color'].default_value = (lin[0], lin[1], lin[2], 1)
 
+# 迷彩（camo { mats: [材质名…], cols: [[r, g, b] 底色, 第二色, 第三色], share: [底色、第二色、第三色各占多少], tile: 一张图铺多大（米）, size: 贴图边长 }）：
+#   原模型没有贴图（黄鼠狼 1A3：Sketchfab 的 GLB、源文件里都只有几何，材质是 Sketchfab 随手给的粉彩色）——
+#   这几种材质的块合成一种材质，贴一张自己生成的三色迷彩：
+#   · 图：整数波矢的余弦波叠加（四方连续，铺开没有接缝），按分位数切成底色 / 第二色两大块，另一层噪声切出第三色（黑）的小块；
+#     边是硬的（抗锯齿一个像素），加一点大尺度的深浅（旧漆、泥）和细颗粒
+#   · UV：按世界坐标盒式投影（每个面看法线主要朝哪：顶面用 X、前后，侧面用前后、高度，前后面用 X、高度），一格 = tile 米，
+#     朝正反两面错开一点（左右两边的斑不一样）——不展 UV：细节多的模型（12 万三角形、上千个小零件）展出来几千个小岛，一张图装不下
+#     （试过 Smart UV + Cycles 烘焙：小零件一块只分到几个像素，糊成一片）
+#   原来的 UV 层删掉（Roblox 只认第一套 UV）——所以只用在整辆车本来就没有贴图的模型上
+CAMO = CFG.get('camo')
+if CAMO:
+    import numpy as np
+    cmats = set(CAMO['mats'])
+    cobjs = [o for o in objs if any(m and m.name in cmats for m in o.data.materials)]
+    SZ = int(CAMO.get('size', 1024))
+    TILE = float(CAMO.get('tile', 5.0)) * S   # 一张图铺多大（格）
+    rng = np.random.default_rng(int(CAMO.get('seed', 7)))
+    yy, xx = np.mgrid[0:SZ, 0:SZ] / SZ
+
+    def field(n, kmax, slope):   # 四方连续的噪声：整数波矢的余弦波，振幅按 1/|k|^slope
+        f = np.zeros((SZ, SZ))
+        for _ in range(n):
+            kx, ky = rng.integers(-kmax, kmax + 1, 2)
+            if kx == 0 and ky == 0:
+                continue
+            f += (kx * kx + ky * ky) ** (-slope / 2) * np.cos(2 * np.pi * (kx * xx + ky * yy) + rng.uniform(0, 2 * np.pi))
+        return (f - f.mean()) / f.std()
+
+    share = CAMO.get('share', [0.45, 0.35, 0.20])
+    f1 = field(48, 7, 1.2) + 0.18 * field(40, 18, 0.6)   # 两大块（边上带点毛糙）
+    f2 = field(48, 9, 1.1) + 0.2 * field(40, 20, 0.6)    # 第三色的小块
+    t1 = np.quantile(f1, share[0] / (share[0] + share[1]))
+    t2 = np.quantile(f2, 1 - share[2])
+    px1 = 1.0 / (np.abs(np.gradient(f1)[0]) + np.abs(np.gradient(f1)[1]) + 1e-6)   # 一个像素宽的过渡（抗锯齿）
+    px2 = 1.0 / (np.abs(np.gradient(f2)[0]) + np.abs(np.gradient(f2)[1]) + 1e-6)
+    a1 = np.clip((f1 - t1) * px1 * 0.7 + 0.5, 0, 1)
+    a2 = np.clip((f2 - t2) * px2 * 0.7 + 0.5, 0, 1)
+    # 8 位的图（bpy.data.images.new 默认）pixels 里存的就是 sRGB 值，不换线性（换了整张暗一大截）
+    c0, c1, c2 = (np.asarray(c, dtype=np.float64) / 255 for c in CAMO['cols'])
+    col = c0[None, None, :] * (1 - a1[..., None]) + c1[None, None, :] * a1[..., None]
+    col = col * (1 - a2[..., None]) + c2[None, None, :] * a2[..., None]
+    shade = 1 + 0.07 * np.tanh(field(30, 3, 1.0)) + 0.025 * rng.standard_normal((SZ, SZ))   # 旧漆深浅、颗粒
+    col = np.clip(col * shade[..., None], 0, 1)
+    img = bpy.data.images.new('camo_' + KEY, SZ, SZ)
+    rgba = np.concatenate([col, np.ones((SZ, SZ, 1))], axis=2)[::-1]   # Blender 的图从下往上存
+    img.pixels.foreach_set(rgba.astype(np.float32).ravel())
+    img.pack()
+    cm = bpy.data.materials.new('camo_' + KEY)
+    cm.use_nodes = True
+    nt = cm.node_tree
+    for n in list(nt.nodes):
+        nt.nodes.remove(n)
+    tex = nt.nodes.new('ShaderNodeTexImage')
+    tex.image = img
+    uvn = nt.nodes.new('ShaderNodeUVMap')
+    uvn.uv_map = 'CamoUV'
+    bsdf = nt.nodes.new('ShaderNodeBsdfPrincipled')
+    bsdf.inputs['Roughness'].default_value = 0.8
+    bsdf.inputs['Metallic'].default_value = 0.0
+    outn = nt.nodes.new('ShaderNodeOutputMaterial')
+    nt.links.new(uvn.outputs['UV'], tex.inputs['Vector'])
+    nt.links.new(tex.outputs['Color'], bsdf.inputs['Base Color'])
+    nt.links.new(bsdf.outputs['BSDF'], outn.inputs['Surface'])
+    OFF = {(0, 1): (0.0, 0.0), (0, -1): (0.37, 0.61), (1, 1): (0.13, 0.29), (1, -1): (0.71, 0.05), (2, 1): (0.53, 0.83), (2, -1): (0.19, 0.47)}
+    for o in cobjs:
+        for i, m in enumerate(o.data.materials):
+            if m and m.name in cmats:
+                o.data.materials[i] = cm
+        for uv in list(o.data.uv_layers):
+            o.data.uv_layers.remove(uv)
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        uvl = bm.loops.layers.uv.new('CamoUV')
+        for f in bm.faces:
+            n = f.normal
+            ax = max(range(3), key=lambda i: abs(n[i]))
+            sg = 1 if n[ax] >= 0 else -1
+            du, dv = OFF[(ax, sg)]
+            for lp in f.loops:
+                p = lp.vert.co
+                if ax == 2:
+                    u, v = p.x, p.y
+                elif ax == 0:
+                    u, v = p.y, p.z
+                else:
+                    u, v = p.x, p.z
+                lp[uvl].uv = (u / TILE + du, v / TILE + dv)
+        bm.to_mesh(o.data)
+        bm.free()
+    print('迷彩：%d 块合成一种材质，贴 %d² 的四方连续迷彩（一格 %.1f 米）' % (len(cobjs), SZ, TILE / S))
+
 # 贴图调色（texTint [{ img: 贴图名里的一段, rgb: [r, g, b] }]：原模型贴图是没上漆的灰色（豹 1），按真车涂装把中位色调到 rgb，
 #   脏污、磨损、阴影这些明暗细节照留——每个通道乘同一个倍数）
 for rule in CFG.get('texTint', []):

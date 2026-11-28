@@ -45,13 +45,17 @@ function Nade.init(G)
   local fuseL = Instance.new("TextLabel")
   fuseL.Size = UDim2.fromScale(1, 1)
   fuseL.BackgroundTransparency = 1
-  fuseL.Font = Enum.Font.BuilderSansBold
+  fuseL.Font = Enum.Font.BuilderSansMedium
   fuseL.TextSize = 15
   fuseL.TextColor3 = RGB(255, 120, 90)
   fuseL.TextStrokeTransparency = 0.4
   fuseL.Parent = bb
 
+  -- 收起来：已经收着就不再写（11-27 M3 丝滑：原来不扔雷的时候每帧给 34 个点、3 个圈写一遍透明度）
+  local shown = true
   local function hide()
+    if not shown then return end
+    shown = false
     for _, d in ipairs(dots) do d.Transparency = 1 end
     bounceRing.Transparency, boomRing.Transparency, boomCore.Transparency = 1, 1, 1
     bb.Enabled = false
@@ -71,6 +75,7 @@ function Nade.init(G)
     local on = w ~= nil and w.kind == "throw" and aiming == true and head ~= nil and hum ~= nil and hum.Health > 0 and not G.drive
     G.nadeArc.on = on
     if not on then hide() return end
+    shown = true
     -- 出手：跟服务器一样
     local aim = G.aimPoint and G.aimPoint(w.range or 90) or (cam.CFrame.Position + cam.CFrame.LookVector * 40)
     local m = head.Position + V(0, 0.5, 0)

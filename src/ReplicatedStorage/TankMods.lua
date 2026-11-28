@@ -27,13 +27,18 @@ TM.SPEC = {
   leclerc = { t = 56.5, hp = 1500, vmax = 72, ammo = 40, ready = 22 },   -- 勒克莱尔：56.5 吨、V8X 1500 马力、72 km/h、40 发（尾舱自动装弹机 22 发）
   t72b3 = { t = 46, hp = 1130, vmax = 60, ammo = 45, ready = 22 },   -- T-72B3（2016 年型）：46 吨、V-92S2F 1130 马力、60 km/h、45 发（自动装弹机 22 发）
   t80u = { t = 46, hp = 1250, vmax = 70, ammo = 45, ready = 28 },   -- T-80U：46 吨、GTD-1250 燃气轮机、70 km/h、45 发（自动装弹机 28 发）   -- T-90M：46.5 吨、V-92S2F 1130 马力、60 km/h、43 发（自动装弹机 22 发）
+  -- 11-27 拆开重叠的版本：能装改装（爆反、主动防护）的同族变型（改装页照同族那一型，见文件末尾），车重、功率按各自的
+  m1a2sep3 = { t = 66.8, hp = 1500, vmax = 67, ammo = 42, ready = 36 },   -- M1A2 SEPv3：66.8 吨（73.6 短吨）、AGT1500、67 km/h、42 发
+  ztz96a = { t = 42.8, hp = 800, vmax = 65, ammo = 41, ready = 22 },     -- 96A：42.8 吨、800 马力（另说 865，估）、65 km/h
+  ztz99base = { t = 53, hp = 1500, vmax = 70, ammo = 41, ready = 22 },   -- 99 式（2001）：51–54 吨（估）、150HB 1500 马力、70 km/h（估）
+  t90a = { t = 46.5, hp = 1000, vmax = 60, ammo = 43, ready = 22 },      -- T-90A：46.5 吨、V-92S2 1000 马力、60 km/h、43 发（自动装弹机 22）
 }
 
 ---------------------------------------------------------------- 爆反型号
 
 -- k 挨单装药破甲弹（火箭弹）时剩几成伤害、kt 挨串联装药（反坦克导弹：前级先把爆反引爆）时剩几成、ke 挨尾翼稳定脱壳穿甲弹时剩几成，
 --   kg 每格（一个盒子）加多重、th 盒子厚度倍数（重型爆反钢板厚、盒子更厚）
---   FY-2：第二代、轻型（对破甲弹）；FY-4：重型（对穿甲弹也有用，相当于接触-5：官方说能削掉约两成穿深）；
+--   FY-2：第二代、轻型（对破甲弹）；FY-4：重型（对穿甲弹也有用，相当于接触-5：官方说能削掉约两成穿深；96A / 96B / 99A 出厂都是它）；
 --   ARAT-1（M19 块）：每块 65 磅（美国陆军 2020 年报道）≈ 29.5 千克，对单装药火箭弹；ARAT-2（M32 块）叠在 M19 外面成双层，专门对付串联装药
 TM.ERA = {
   fy2 = { k = 0.30, kt = 0.85, ke = 1.00, kg = 22, th = 1.0 },   -- 重量估
@@ -62,9 +67,13 @@ TM.APS = {
 -- 激光告警：激光制导的导弹 / 炸弹（AirDefs 的 guide = "laser"：AKD-10、AGM-114、GBU-12、雷石……）冲着这辆车来时报警、报方向，
 --   auto 自动打一组烟幕弹（烟幕挡住激光照射，导弹丢了目标）；dazzle 激光压制：照射源被干扰的概率（JD-3，公开资料很少，估）
 --   kg 估
+-- shtora「窗帘-1」（T-90 / T-90A，用户 11-28「t90我记得有一对红色的车灯 这个一定要还原的跟原车一样」）：
+--   炮两边各一个 OTShU-1-7 红外干扰灯（红色的大圆灯）+ 激光告警（照上了自动打烟）；irJam 红外干扰灯骗掉指令制导反坦克弹
+--   （陶式、HOT、攻击……发射架上的测角仪跟着弹尾的红外灯修正：干扰灯一晃就偏）的概率，估；kg 估
 TM.EW = {
   lws = { kg = 60, auto = true, dazzle = 0 },
   jd3 = { kg = 120, auto = true, dazzle = 0.45 },
+  shtora = { kg = 350, auto = true, dazzle = 0, irJam = 0.5 },
 }
 
 ---------------------------------------------------------------- 其它加装件
@@ -89,7 +98,7 @@ TM.OPT = {
   none = { slot = "*" },
   fy2 = { slot = "era" }, fy4 = { slot = "era" }, arat = { slot = "era" }, arat2 = { slot = "era" },
   gl5 = { slot = "aps" }, trophy = { slot = "aps" },
-  lws = { slot = "ew" }, jd3 = { slot = "ew" },
+  lws = { slot = "ew" }, jd3 = { slot = "ew" }, shtora = { slot = "ew" },
   slat = { slot = "slat" }, belly = { slot = "belly" }, plow = { slot = "eng" }, mcs = { slot = "cam" },
   -- 以前的（车顶武器：坦克不带机枪以后这一位去掉了；hk 旧的硬杀伤 = 这型车的那一套）
   stock = { slot = "roof" },
@@ -105,9 +114,13 @@ TM.CATS = {
 }
 -- 用户 11-22：「坦克不要弄哪个机枪」——坦克不带机枪（VehDefs.TANK_MG）：车顶武器这一位（原装机枪 / GAU-8 加特林）也去掉
 local TANK_MG = false
+local VD = nil   -- 型号表（noEra、like 按它查：TM.eraOf、文件末尾的退同族）
 do
-  local okV, VD = pcall(function() return require(RS:WaitForChild("VehDefs", 3)) end)
-  if okV and type(VD) == "table" and VD.TANK_MG ~= false then TANK_MG = true end
+  local okV, vd = pcall(function() return require(RS:WaitForChild("VehDefs", 3)) end)
+  if okV and type(vd) == "table" then
+    VD = vd
+    if vd.TANK_MG ~= false then TANK_MG = true end
+  end
 end
 if TANK_MG then table.insert(TM.SLOTS, "roof") end
 
@@ -115,9 +128,17 @@ if TANK_MG then table.insert(TM.SLOTS, "roof") end
 TM.FOR = {
   ztz99a = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "none", "jd3" }, slat = { "none", "slat" }, belly = { "none", "belly" },
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
-  ztz96 = { era = { "fy2", "fy4" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
+  -- 96B（ztz96）：11-27 审查第 5 条——原来出厂 FY-2，比 2006 年的 96A（FY-4）还轻；公开资料（维基百科 Type 96：96A 车体正面 FY-4、96B 的装甲布局同 96A；
+  --   globalmilitary.net：96A、96B 炮塔、首上、储物筐都是箭形 FY-4）两型都是 FY-4，出厂改成 FY-4（FY-2 留着能换）
+  ztz96 = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
   t90m = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
+    eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
+  -- T-90A 出厂带「窗帘-1」（炮两边两个红外干扰灯，红色的大圆灯——T-90M 换了新炮塔、没有了）
+  t90a = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "shtora", "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
+    eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
+  -- 11-27 拆开重叠的版本：96A 出厂就是箭形 FY-4（模型是 96B 的，上面的块按 FY-4 算）；别的照 96B（96B 也改成出厂 FY-4 以后，两套一样）
+  ztz96a = { era = { "fy4", "fy2" }, aps = { "none", "gl5" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock" } },
   m1a2 = { era = { "arat", "arat2" }, aps = { "none", "trophy" }, ew = { "none", "lws" }, slat = { "none", "slat" }, belly = { "none", "belly" },
     eng = { "none", "plow" }, cam = { "none", "mcs" }, roof = { "stock", "gau8" } },
@@ -140,11 +161,17 @@ TM.PRESETS = {
     { id = "urban", z = { "tf", "ts", "tb", "gl", "sk", "sr" }, set = { era = "fy4", aps = "gl5", ew = "jd3", slat = "slat", belly = "belly" } },
     { id = "breach", z = { "tf", "ts", "gl", "sk" }, set = { era = "fy4", eng = "plow", belly = "belly" } },
   },
-  ztz96 = {
-    { id = "factory", z = { "tf", "ts", "gl", "sk" }, set = { era = "fy2", aps = "none", ew = "none", slat = "none", belly = "none", eng = "none", cam = "none" } },
+  ztz96 = {   -- 11-27：96B 出厂 FY-4（同 96A）
+    { id = "factory", z = { "tf", "ts", "gl", "sk" }, set = { era = "fy4", aps = "none", ew = "none", slat = "none", belly = "none", eng = "none", cam = "none" } },
     { id = "front", z = { "tf", "ts", "gl", "lf", "sk" }, set = { era = "fy4", aps = "gl5" } },
     { id = "urban", z = { "tf", "ts", "tb", "gl", "sk", "sr" }, set = { era = "fy4", aps = "gl5", ew = "lws", slat = "slat", belly = "belly" } },
     { id = "breach", z = { "tf", "ts", "gl", "sk" }, set = { eng = "plow", belly = "belly" } },
+  },
+  ztz96a = {   -- 11-27：96A 出厂 FY-4（同 96B 的四套预设，爆反默认换成 FY-4）
+    { id = "factory", z = { "tf", "ts", "gl", "sk" }, set = { era = "fy4", aps = "none", ew = "none", slat = "none", belly = "none", eng = "none", cam = "none" } },
+    { id = "front", z = { "tf", "ts", "gl", "lf", "sk" }, set = { era = "fy4", aps = "gl5" } },
+    { id = "urban", z = { "tf", "ts", "tb", "gl", "sk", "sr" }, set = { era = "fy4", aps = "gl5", ew = "lws", slat = "slat", belly = "belly" } },
+    { id = "breach", z = { "tf", "ts", "gl", "sk" }, set = { era = "fy4", eng = "plow", belly = "belly" } },
   },
   t90m = {   -- 出厂就是「化石」重型爆反四个区全贴；城市型加车尾、侧面后段的栅栏和防地雷底板（叙利亚、乌克兰战场的样子）
     { id = "factory", z = { "tf", "ts", "gl", "sk" }, set = { era = "fy4", aps = "none", ew = "none", slat = "none", belly = "none", eng = "none", cam = "none" } },
@@ -183,7 +210,11 @@ local function meta()
   return EM, IM
 end
 -- 型号的爆反布局：{ kind, tur, tb, hb, roof, b = { … }, aps, own }；没有的 nil
+--   11-27：借同族模型、真车没有这些块的型号（VehDefs 的 noEra：T-80B、T-72 乌拉尔 / A / B、M1～M1A2 SEP、96 式）返回 nil——
+--   原来按模型拿 EraMeta，T-80B 平白多 22 格接触-5、T-72 乌拉尔 / A / B 37 格；服务器 Era、驾驶界面、VehModels、改装页都走这里，一处挡住
 function TM.eraOf(id)
+  local d = VD and VD.get and VD.get(id)
+  if d and d.noEra then return nil end
   local em, im = meta()
   if not em or not im or not im.alias then return nil end
   local key = im.alias[id]
@@ -489,6 +520,22 @@ function TM.bearing(base, yaw, from)
   local horiz = math.sqrt(lp.X * lp.X + lp.Z * lp.Z)
   local el = math.deg(math.atan2(lp.Y, math.max(horiz, 1e-3)))
   return az, el
+end
+
+---------------------------------------------------------------- 同族的变型退到同族（11-27 拆重叠的版本）
+-- VehDefs 里写了 like 的变型（M1A2 SEPv3 借 M1A2 SEPv2、T-90A 借 T-90M、99 式借 99A……）没单独登记改装时，能选的、默认贴哪些区、预设
+--   照同族那一型（爆反格按同一个模型的 EraMeta，本来就一样）；车重、功率按各自的 SPEC（没写才退到同族：TM.stats 要有它）。
+--   noEra 的不退：真车没有这些块，也就没有改装页（要给就单独写一份不带爆反的 TM.FOR）
+if VD and type(VD.D) == "table" then
+  for id, d in pairs(VD.D) do
+    local like = d.like
+    if like and not d.noEra and TM.FOR[id] == nil and TM.FOR[like] ~= nil then
+      TM.FOR[id] = TM.FOR[like]
+      TM.ERADEF[id] = TM.ERADEF[id] or TM.ERADEF[like]
+      TM.PRESETS[id] = TM.PRESETS[id] or TM.PRESETS[like]
+      TM.SPEC[id] = TM.SPEC[id] or TM.SPEC[like]
+    end
+  end
 end
 
 return TM

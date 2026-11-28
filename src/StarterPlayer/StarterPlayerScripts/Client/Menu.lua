@@ -38,7 +38,7 @@ function Menu.init(G)
     local l = Instance.new("TextLabel")
     l.Size, l.Position = size, pos or UDim2.new()
     l.BackgroundTransparency = 1
-    l.Text, l.TextSize, l.TextColor3, l.Font = str or "", ts or 14, color or TEXT, font or Enum.Font.BuilderSansMedium
+    l.Text, l.TextSize, l.TextColor3, l.Font = str or "", ts or 14, color or TEXT, font or Enum.Font.BuilderSans
     l.TextXAlignment = xa or Enum.TextXAlignment.Left
     l.TextTruncate = Enum.TextTruncate.AtEnd
     if anchor then l.AnchorPoint = anchor end
@@ -82,9 +82,9 @@ function Menu.init(G)
 
   -- 左上：玩家名、军衔、经验条
   local X0, CW = 48, 440
-  local who = text(content, "", UDim2.fromOffset(CW, 26), UDim2.fromOffset(X0, 92), 22, WHITE, Enum.Font.BuilderSansBold)
-  local rankLine = text(content, "", UDim2.fromOffset(CW - 140, 14), UDim2.fromOffset(X0, 122), 11, MUTE, Enum.Font.BuilderSansMedium)
-  local xpLine = text(content, "", UDim2.fromOffset(160, 14), UDim2.fromOffset(X0 + CW, 122), 11, MUTE, Enum.Font.BuilderSansMedium, V2(1, 0), Enum.TextXAlignment.Right)
+  local who = text(content, "", UDim2.fromOffset(CW, 26), UDim2.fromOffset(X0, 92), 22, WHITE, Enum.Font.BuilderSansMedium)
+  local rankLine = text(content, "", UDim2.fromOffset(CW - 140, 14), UDim2.fromOffset(X0, 122), 11, MUTE, Enum.Font.BuilderSans)
+  local xpLine = text(content, "", UDim2.fromOffset(160, 14), UDim2.fromOffset(X0 + CW, 122), 11, MUTE, Enum.Font.BuilderSans, V2(1, 0), Enum.TextXAlignment.Right)
   local xpBg = frame(content, UDim2.fromOffset(CW, 2), UDim2.fromOffset(X0, 142), WHITE, 0.85)
   local xpFill = frame(xpBg, UDim2.fromScale(0, 1), nil, WHITE, 0)
 
@@ -113,11 +113,11 @@ function Menu.init(G)
     b.Parent = content
     local st = stroke(b, 0.88)
     local K = { b = b, st = st }
-    K.cat = text(b, "", UDim2.fromOffset(260, 12), UDim2.fromOffset(20, 24), 10, MUTE, Enum.Font.BuilderSansMedium)
-    K.title = text(b, "", UDim2.fromOffset(300, 30), UDim2.fromOffset(19, 40), 24, WHITE, Enum.Font.BuilderSansBold)
-    K.sub = text(b, "", UDim2.fromOffset(300, 14), UDim2.fromOffset(20, 74), 10, MUTE, Enum.Font.BuilderSansMedium)
-    K.tag = text(b, "", UDim2.fromOffset(180, 16), UDim2.new(1, -18, 0, 36), 13, WHITE, Enum.Font.BuilderSansBold, V2(1, 0), Enum.TextXAlignment.Right)
-    K.subtag = text(b, "", UDim2.fromOffset(180, 12), UDim2.new(1, -18, 0, 56), 10, MUTE, Enum.Font.BuilderSansMedium, V2(1, 0), Enum.TextXAlignment.Right)
+    K.cat = text(b, "", UDim2.fromOffset(260, 12), UDim2.fromOffset(20, 24), 10, MUTE, Enum.Font.BuilderSans)
+    K.title = text(b, "", UDim2.fromOffset(300, 30), UDim2.fromOffset(19, 40), 24, WHITE, Enum.Font.BuilderSansMedium)
+    K.sub = text(b, "", UDim2.fromOffset(300, 14), UDim2.fromOffset(20, 74), 10, MUTE, Enum.Font.BuilderSans)
+    K.tag = text(b, "", UDim2.fromOffset(180, 16), UDim2.new(1, -18, 0, 36), 13, WHITE, Enum.Font.BuilderSansMedium, V2(1, 0), Enum.TextXAlignment.Right)
+    K.subtag = text(b, "", UDim2.fromOffset(180, 12), UDim2.new(1, -18, 0, 56), 10, MUTE, Enum.Font.BuilderSans, V2(1, 0), Enum.TextXAlignment.Right)
     for _, l in ipairs({ K.tag, K.subtag, K.title }) do
       l.TextStrokeTransparency = 0.6
       l.TextStrokeColor3 = Color3.new(0, 0, 0)
@@ -133,11 +133,11 @@ function Menu.init(G)
   local panel = frame(content, UDim2.fromOffset(560, 560), UDim2.fromOffset(1232, 92), RGB(8, 10, 12), 0.08, V2(1, 0))
   panel.Visible = false
   stroke(panel, 0.86)
-  local pTitle = text(panel, "", UDim2.new(1, -120, 0, 24), UDim2.fromOffset(24, 20), 18, WHITE, Enum.Font.BuilderSansBold)
+  local pTitle = text(panel, "", UDim2.new(1, -120, 0, 24), UDim2.fromOffset(24, 20), 18, WHITE, Enum.Font.BuilderSansMedium)
   local pClose = Instance.new("TextButton")
   pClose.Size, pClose.Position, pClose.AnchorPoint = UDim2.fromOffset(80, 24), UDim2.new(1, -20, 0, 20), V2(1, 0)
   pClose.BackgroundTransparency = 1
-  pClose.TextColor3, pClose.TextSize, pClose.Font = MUTE, 12, Enum.Font.BuilderSansMedium
+  pClose.TextColor3, pClose.TextSize, pClose.Font = MUTE, 12, Enum.Font.BuilderSans
   pClose.TextXAlignment = Enum.TextXAlignment.Right
   pClose.Parent = panel
   frame(panel, UDim2.new(1, -48, 0, 1), UDim2.fromOffset(24, 56), WHITE, 0.88)
@@ -162,7 +162,7 @@ function Menu.init(G)
   pBody.TextSize = 13
   pBody.LineHeight = 1.25
   pBody.TextColor3 = TEXT
-  pBody.Font = Enum.Font.BuilderSansMedium
+  pBody.Font = Enum.Font.BuilderSans
   pBody.Parent = pScroll
   local panelKind = nil
   local function head(s) return '<font color="#FFFFFF" size="14"><b>' .. s .. "</b></font>" end
@@ -257,9 +257,9 @@ function Menu.init(G)
   end)
 
   -- 右下：游戏名、测试版、版本号
-  local gTitle = text(content, "", UDim2.fromOffset(400, 24), UDim2.fromOffset(1232, 624), 20, WHITE, Enum.Font.BuilderSansBold, V2(1, 0), Enum.TextXAlignment.Right)
-  local gSub = text(content, "", UDim2.fromOffset(400, 14), UDim2.fromOffset(1232, 652), 11, MUTE, Enum.Font.BuilderSansMedium, V2(1, 0), Enum.TextXAlignment.Right)
-  local gVer = text(content, "", UDim2.fromOffset(400, 12), UDim2.fromOffset(1232, 668), 10, FAINT, Enum.Font.BuilderSansMedium, V2(1, 0), Enum.TextXAlignment.Right)
+  local gTitle = text(content, "", UDim2.fromOffset(400, 24), UDim2.fromOffset(1232, 624), 20, WHITE, Enum.Font.BuilderSansMedium, V2(1, 0), Enum.TextXAlignment.Right)
+  local gSub = text(content, "", UDim2.fromOffset(400, 14), UDim2.fromOffset(1232, 652), 11, MUTE, Enum.Font.BuilderSans, V2(1, 0), Enum.TextXAlignment.Right)
+  local gVer = text(content, "", UDim2.fromOffset(400, 12), UDim2.fromOffset(1232, 668), 10, FAINT, Enum.Font.BuilderSans, V2(1, 0), Enum.TextXAlignment.Right)
 
   ---------------------------------------------------------------- 刷新
 

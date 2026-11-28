@@ -1,0 +1,17 @@
+雪山的写实车辆残骸（models/bld/wrecks.glb）——都是 Sketchfab 上 CC-BY-4.0 授权的模型（http://creativecommons.org/licenses/by/4.0/），
+改动：按真高缩放、换成 Roblox 的格、按材质切块（有的减了面）、贴图缩到最长边 1024；游戏里按地块的大小可能再整体缩放。
+
+· 废弃轿车（宝马 E30）：Abandoned Car - BMW E30 Sedan，作者 ROH3D（https://sketchfab.com/models/32498418a32d43a78d0847ce4c55fcb0），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真车全长缩放、换成 Roblox 的格、减面到 12000 个三角形、按材质切块、贴图缩到 1024
+· 棚车（铁路货车厢）：Railway Boxcar Freight Wagon | Detailed 3D Model，作者 saadthedesigner314（https://sketchfab.com/models/6cede42e50cc4042addfbedac1311551），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、原模型比例偏矮，按真高 4.2 米缩放（全长随之约 18 米，同欧洲大型棚车）、按材质切块、贴图缩到 1024
+· 废弃的旧客车：Abandoned Old Bus，作者 dylanheyes（https://sketchfab.com/models/7acca98c959a4740b5aa8a42647dfc58），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真车全长缩放、换成 Roblox 的格、减面到 24000 个三角形、按材质切块、贴图缩到 1024
+· 废弃轿车（菲亚特 132）：Abandoned Car - Fiat 132，作者 ROH3D（https://sketchfab.com/models/40ecf745664846bba3f7331b11cd99f8），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真车全长缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 嘎斯-66 卡车：GAZ-66 Offroad Truck，作者 Yo.Ri（https://sketchfab.com/models/1cc3374ed6874124991c8058ec79c3d3），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真车全长缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 烧毁的两厢车：Abandoned Car，作者 Leandro Andrade（https://sketchfab.com/models/c25ccc5a116342218d02dd57607e3f71），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真车全长缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· 煤斗车（铁路货车厢）：Coal Hopper Railway Wagon | Detailed 3D Model，作者 saadthedesigner314（https://sketchfab.com/models/287266d5edf749318cb9869fe583e0ae），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真高缩放、换成 Roblox 的格、按真高 3.7 米缩放、按材质切块、贴图缩到 1024
+· 卡马斯-5330 卡车：Kamaz 5330，作者 Brout（https://sketchfab.com/models/e86a62f4b8c84e03b2c6e32c51474bc7），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真车全长缩放、换成 Roblox 的格、减面到 16000 个三角形、按材质切块、贴图缩到 1024
+· М62 内燃机车：Diesel locomotive M62，作者 Chicken cutlet（https://sketchfab.com/models/a923943868db43f382fe8edaab358d75），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真车全长缩放、换成 Roblox 的格、减面到 26000 个三角形、按材质切块、贴图缩到 1024
+· P-166 飞机残骸：Piaggio P-166 Portofino wrecked Airplane，作者 robertmasiboda（https://sketchfab.com/models/c2594a2d3a5d45868923264237085457），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真车全长缩放、换成 Roblox 的格、减面到 22000 个三角形、去掉实景扫描连着的一块地皮、按材质切块、贴图缩到 1024
+· 撞烂的越野车：Crashed Abandoned Car - Game Ready，作者 Rashad Ibrahimli（https://sketchfab.com/models/66ef51a84c9843dda53bf0b4b9020011），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真车全长缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· MTZ-80 拖拉机：MTZ-80_ Lowpoly，作者 Vebis_V_stolb_GT（https://sketchfab.com/models/6c1da5c5d3aa424cb5ac35d4833af047），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真车全长缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024
+· UAZ-469 吉普：Uaz-469，作者 Yo.Ri（https://sketchfab.com/models/70c8691c6fb64b859fbfc16babfa2c5f），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真车全长缩放、换成 Roblox 的格、减面到 12000 个三角形、按材质切块、贴图缩到 1024
+· 乌拉尔-4320 卡车：Ural 4320，作者 Brout（https://sketchfab.com/models/f953c51a5dbc4a15949f4dcc0905c4e8），CC-BY-4.0 授权（http://creativecommons.org/licenses/by/4.0/）；改动：按真车全长缩放、换成 Roblox 的格、按材质切块、贴图缩到 1024

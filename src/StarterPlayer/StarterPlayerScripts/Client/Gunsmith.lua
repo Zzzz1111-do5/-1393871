@@ -28,7 +28,7 @@ function Gunsmith.init(G)
   local TEXT, MUTE, FAINT = RGB(236, 238, 236), RGB(150, 156, 158), RGB(90, 96, 100)
   local ACC, ACC2 = RGB(206, 255, 72), RGB(18, 22, 8)
   local UP, DOWN = RGB(108, 232, 126), RGB(255, 98, 86)
-  local F_B, F_M, F_K = Enum.Font.BuilderSansBold, Enum.Font.BuilderSansMedium, Enum.Font.BuilderSansExtraBold
+  local F_B, F_M, F_K = Enum.Font.BuilderSansMedium, Enum.Font.BuilderSans, Enum.Font.BuilderSansBold
 
   ---------------------------------------------------------------- 装着配件的枪（改枪界面、部署界面的大图）
 

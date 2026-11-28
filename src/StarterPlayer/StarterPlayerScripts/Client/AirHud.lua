@@ -32,7 +32,7 @@ function AirHud.init(G)
   local HOLO, TXT, MUTE, INK = TH.C.HUD, TH.C.TEXT, TH.C.MUTE, TH.C.BG   -- 全息绿（用户 11-21：蓝色全部改成绿色，原来青色 110, 226, 240）
   local YEL, BAD = TH.C.WARN, TH.C.BAD
   local METAL, METAL_EDGE, METAL_ICON = RGB(138, 146, 152), RGB(200, 206, 210), RGB(226, 230, 232)
-  local BOLD, MONO = Enum.Font.BuilderSansBold, Enum.Font.RobotoMono
+  local BOLD, MONO = Enum.Font.BuilderSansMedium, Enum.Font.RobotoMono
   local WHITE = Color3.new(1, 1, 1)
   local mobile = UIS.TouchEnabled and not UIS.KeyboardEnabled
 

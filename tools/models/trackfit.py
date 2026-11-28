@@ -17,7 +17,7 @@ GLB_DIR, OUT = sys.argv[2], sys.argv[3]
 REVIEW = sys.argv[4] if len(sys.argv) > 4 else None
 # 履带车的原模型（轮式车、牵引炮、固定阵地不要）
 KEYS = ['t72b3', 't80u', 't90m', 't64', 'ztz96', 'ztz99a2', 'm1a1', 'm1a1i', 'm1a2dc', 'leo1', 'leo2a6', 'leo2a7v', 'leclerc', 'm60a3',
-        'type74', 'type10', 'kitera', 'm551', 'm2a3', 'bmp1', 'bmp2', 'm109', 'pzh2000', 'm270', 'gepard', 'm163', 't625', 'type59']
+        'type74', 'type10', 'kitera', 'm551', 'm2a3', 'bmp1', 'bmp2', 'm109', 'pzh2000', 'm270', 'gepard', 'm163', 't625', 'type59', 't3485', 'mbt70', 'su100', 'marder']
 # 个别车自动找的上沿不对：手工给（格，离车底）
 TOP_FIX = {}
 # 上面一段量到了挡泥板 / 车体上（核对图里看的）：这几辆只画下面一段

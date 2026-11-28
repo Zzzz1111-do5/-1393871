@@ -10,8 +10,10 @@ local secs = tonumber(TEST_ARGS:match("%d+") or "") or 10
 local wantLines = TEST_ARGS:find("lines", 1, true) ~= nil
 local cpu = os.clock
 
+-- map=snow / map=city：量线上那两张图（默认照旧沙海，common.lua）
+T.mapName = TEST_ARGS:match("map=(%w+)")
 local G = T.boot()
-T.runUntil(function() return G.worldReady end, 120)
+T.runUntil(function() return G.worldReady end, 900)
 local me = T.join("P1", 7201, true)
 T.runUntil(function() return G.round and (G.round.phase == "prep" or G.round.phase == "battle") end, 30)
 local P = G.P[me]
@@ -22,8 +24,11 @@ me:SetAttribute("Side", "def")
 G.pushOne(P)
 R.run(1)
 local C = T.C
-T.act("deploy", "rifle", "camp")
-R.run(2)
+-- 出生（11-27）：营地出生点改名成 base 了（Round.lua），主菜单要先关掉——原来的 deploy rifle camp 出不了生，开坦克那段跑不到
+T.leaveMenu()
+T.actAs(me, "deploy", "rifle", "base")
+T.runUntil(function() return P.alive and me.Character ~= nil end, 15)
+R.run(1)
 check(P.alive, "守方在营地出生")
 
 -- 场景清单：渲染的负担

@@ -34,6 +34,7 @@ local VD = R.require(RS:FindFirstChild("VehDefs"))
 local IM = R.require(RS:FindFirstChild("ImportedMeta"))
 local Map = G.Map
 local def = VD.get("m2a3")
+local GW = def.weapons[1]   -- 25 毫米炮的武器号（11-27 起 M2A3 是 M242 + M919：m242m919，原来写死 ac30）
 do
   local info = IM.m.m1a1i
   local imp = RS:FindFirstChild("Imported") or R.Instance.new("Folder")
@@ -130,25 +131,25 @@ check(st.wi == 1, "武器选择 → 25 毫米炮")
 check(press("ARMG") and st.safe == true, "武器总开关 → 保险")
 -- 保险时打不响：按住扳机（连发），25 毫米炮的下一发时间不动；拨回待发就打出去
 st.wi = 1
-st.next.ac30 = 0
+st.next[GW] = 0
 st.firing = true
 R.run(0.5)
 st.firing = false
-check((st.next.ac30 or 0) == 0, "保险：按住扳机不开火")
+check((st.next[GW] or 0) == 0, "保险：按住扳机不开火")
 press("ARMG")
 check(st.safe == false, "武器总开关 → 待发")
 st.firing = true
 R.run(0.3)
 st.firing = false
-check((st.next.ac30 or 0) > 0, "待发：按住扳机开火了")
+check((st.next[GW] or 0) > 0, "待发：按住扳机开火了")
 -- 单发：按住只打一发（连发那一路不走）
 press("ROF") press("ROF")
 check(st.rof == "SS", "射速 → 单发")
-st.next.ac30 = 0
+st.next[GW] = 0
 st.firing = true
 R.run(0.8)
 st.firing = false
-check((st.next.ac30 or 0) == 0, "单发：按住不连发（扳一下打一发，这里没扳）")
+check((st.next[GW] or 0) == 0, "单发：按住不连发（扳一下打一发，这里没扳）")
 press("ROF")
 check(st.rof == "HI", "射速 → 高速")
 st.mode = 1

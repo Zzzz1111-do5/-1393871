@@ -87,7 +87,7 @@ function MslCam.init(G)
   local info = label("Info", UDim2.new(1, -8, 1, -4), Vector2.new(1, 1), Enum.TextXAlignment.Right)
   local result = label("Result", UDim2.new(0.5, 0, 0.5, -14), Vector2.new(0.5, 0.5), Enum.TextXAlignment.Center, 22, RGB(255, 240, 200))
   result.Size = UDim2.fromOffset(280, 30)
-  result.Font = Enum.Font.BuilderSansExtraBold
+  result.Font = Enum.Font.BuilderSansBold
 
   local cur = nil   -- { id, w, tgt = { em, anchor, cl0 }, clone, ground, t0, done, endAt }
 
@@ -196,7 +196,7 @@ function MslCam.init(G)
   hint.Position = UDim2.new(0.5, 0, 1, -150)
   hint.Size = UDim2.fromOffset(260, 26)
   hint.BackgroundColor3, hint.BackgroundTransparency, hint.BorderSizePixel = RGB(8, 10, 12), 0.35, 0
-  hint.Font = (TH and TH.F.bold) or Enum.Font.BuilderSansBold
+  hint.Font = (TH and TH.F.bold) or Enum.Font.BuilderSansMedium
   hint.TextSize = 15
   hint.TextColor3 = RGB(236, 238, 236)
   hint.TextStrokeTransparency = 0.5
@@ -237,10 +237,11 @@ function MslCam.init(G)
       local cam = workspace.CurrentCamera
       if not cam then return end
       local dir = follow.dir
-      local want = follow.last - dir * 26 + Vector3.new(0, 7, 0)
-      follow.sm = follow.sm and follow.sm:Lerp(want, math.min(1, dt * 10)) or want
+      -- 镜头相对弹的位置平滑（原来按世界坐标插值：弹一秒飞两千多格，镜头拖在后面一两百格，看着像没跟上）
+      local wantOff = -dir * 26 + Vector3.new(0, 7, 0)
+      follow.off = follow.off and follow.off:Lerp(wantOff, math.min(1, dt * 10)) or wantOff
       cam.CameraType = Enum.CameraType.Scriptable
-      cam.CFrame = CFrame.lookAt(follow.sm, follow.last + dir * 30)
+      cam.CFrame = CFrame.lookAt(follow.last + follow.off, follow.last + dir * 30)
       cam.FieldOfView = 62
     end)
   end)

@@ -1,0 +1,20 @@
+# 换图（用户 11-28 晚「然后目前没法切地图」：Places.lua G.switchMap、WtMatch.lua、机库「这一局」那块 TechUI.lua、选地图界面 MapPick.lua）
+# 列：英文原文⟫日⟫韩⟫俄⟫德⟫法⟫西⟫葡
+SWITCH⟫切り替え⟫전환⟫СМЕНИТЬ⟫WECHSELN⟫CHANGER⟫CAMBIAR⟫TROCAR
+Switching to {1}: moving you to a new server…⟫{1}に切り替え：新しいサーバーへ移動中…⟫{1}(으)로 전환: 새 서버로 이동 중…⟫Смена на «{1}»: переход на новый сервер…⟫Wechsel zu {1}: neuer Server wird geöffnet …⟫Passage à {1} : transfert vers un nouveau serveur…⟫Cambiando a {1}: pasando a un servidor nuevo…⟫Trocando para {1}: indo para um novo servidor…
+In Studio a server builds only one map: stop, press Play again and pick {1} in the hangar's match box first⟫Studio では1つのサーバーにマップは1つだけ：停止して再生し直し、格納庫の「この試合」欄で先に{1}を選んでください⟫Studio에서는 서버 하나에 맵 하나만 만듭니다: 중지 후 다시 시작하고 격납고의 '이번 판' 칸에서 먼저 {1}을(를) 고르세요⟫В Studio сервер строит только одну карту: остановите, снова нажмите «Играть» и сначала выберите «{1}» в ангаре⟫In Studio baut ein Server nur eine Karte: stoppen, erneut auf Play drücken und zuerst im Hangar {1} wählen⟫Dans Studio, un serveur ne construit qu'une carte : arrêtez, relancez Play et choisissez d'abord {1} dans le hangar⟫En Studio un servidor solo crea un mapa: detén, pulsa Play de nuevo y elige primero {1} en el hangar⟫No Studio um servidor só cria um mapa: pare, aperte Play de novo e escolha {1} primeiro no hangar
+Couldn't open a new server — staying here⟫新しいサーバーを開けませんでした — この試合に残ります⟫새 서버를 열지 못했습니다 — 이번 판에 남습니다⟫Не удалось открыть новый сервер — остаёмся здесь⟫Neuer Server konnte nicht geöffnet werden — du bleibst hier⟫Impossible d'ouvrir un nouveau serveur — vous restez ici⟫No se pudo abrir un servidor nuevo — te quedas aquí⟫Não foi possível abrir um novo servidor — você fica aqui
+Building {1} — matchmaking starts when it's ready⟫{1}を生成中 — 完成したらマッチング開始⟫{1} 생성 중 — 완료되면 매칭 시작⟫Строится «{1}» — подбор начнётся, когда карта будет готова⟫{1} wird gebaut — die Spielersuche startet, sobald sie fertig ist⟫Construction de {1} — le matchmaking démarre une fois prêt⟫Creando {1} — el emparejamiento empieza cuando esté listo⟫Criando {1} — a busca de partida começa quando estiver pronto
+Voted. ⟫投票済み。⟫투표 완료. ⟫Голос учтён. ⟫Abgestimmt. ⟫Vote enregistré. ⟫Votado. ⟫Votado. 
+Pick a map above, ⟫上でマップを選び、⟫위에서 맵을 고르고 ⟫Выберите карту выше, ⟫Oben eine Karte wählen, ⟫Choisissez une carte ci-dessus, ⟫Elige un mapa arriba, ⟫Escolha um mapa acima, 
+then TO BATTLE⟫「出撃」を押す⟫'출격'을 누르세요⟫затем «В БОЙ»⟫dann ZUM GEFECHT⟫puis AU COMBAT⟫luego A LA BATALLA⟫depois PARA A BATALHA
+  ·  vote ends in ⟫  ·  投票終了まで ⟫  ·  투표 마감까지 ⟫  ·  до конца голосования ⟫  ·  Abstimmung endet in ⟫  ·  fin du vote dans ⟫  ·  la votación acaba en ⟫  ·  votação termina em 
+Building map ⟫マップ生成中 ⟫맵 생성 중 ⟫Строится карта ⟫Karte wird gebaut ⟫Construction de la carte ⟫Creando mapa ⟫Criando mapa 
+  ·  then matchmaking⟫  ·  完成後にマッチング⟫  ·  완료 후 매칭⟫  ·  затем подбор⟫  ·  danach Spielersuche⟫  ·  puis matchmaking⟫  ·  luego emparejamiento⟫  ·  depois busca de partida
+ (voted)⟫（投票済み）⟫ (투표함)⟫ (голос)⟫ (gewählt)⟫ (voté)⟫ (votado)⟫ (votado)
+Pick a map⟫マップを選ぶ⟫맵 선택⟫Выбрать карту⟫Karte wählen⟫Choisir une carte⟫Elegir mapa⟫Escolher mapa
+  ·  voted⟫  ·  投票済み⟫  ·  투표함⟫  ·  голос отдан⟫  ·  gewählt⟫  ·  voté⟫  ·  votado⟫  ·  votado
+ votes⟫ 票⟫ 표⟫ голосов⟫ Stimmen⟫ votes⟫ votos⟫ votos
+  ·  switch here⟫  ·  ここに切り替え⟫  ·  여기로 전환⟫  ·  сменить на эту⟫  ·  hierher wechseln⟫  ·  passer ici⟫  ·  cambiar aquí⟫  ·  trocar para este
+PREPARATION · HOLD POSITION⟫準備段階 · その場で待機⟫준비 단계 · 제자리 대기⟫ПОДГОТОВКА · ОЖИДАЙТЕ НА МЕСТЕ⟫VORBEREITUNG · POSITION HALTEN⟫PRÉPARATION · RESTEZ EN POSITION⟫PREPARACIÓN · MANTÉN LA POSICIÓN⟫PREPARAÇÃO · MANTENHA A POSIÇÃO
+BATTLE STARTS IN {1}⟫戦闘開始まで {1} 秒⟫{1}초 후 전투 시작⟫БОЙ НАЧНЁТСЯ ЧЕРЕЗ {1}⟫GEFECHT BEGINNT IN {1}⟫LE COMBAT COMMENCE DANS {1}⟫LA BATALLA EMPIEZA EN {1}⟫A BATALHA COMEÇA EM {1}

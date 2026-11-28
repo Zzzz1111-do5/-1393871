@@ -3,7 +3,10 @@
 --   存档 P.data.tree：res 研究完的、own 买下的、rp[key] 攒着的研究点、cur[系:树] 正在研究的、lineup[系] 出击阵容（最多 5 辆）、nat 现在用哪个系、
 --     free[系] 没处放的研究点（研究完多出来的、没选研究目标时挣的）；P.data.codes[码的编号] 兑换过的码（不写给客户端）
 --   白送的只有每系每棵树一辆起步车（TechTree TT.starter，用户 11-26「每个系从只给一辆最基础的坦克开始」），别的研究完再拿金币买
---   给客户端：玩家属性 Tree（JSON，变了才写）；动作（客户端 Act）：treeResearch / treeBuy / treeLineup / treeNat / deployVeh
+--   整备（用户 11-27「整个给载具配置武器的系统 做的很粗糙」）：load[键] 飞机 / 直升机的挂载 { p 照哪套预设改的, l 每个挂点挂什么, f 内油几成 }
+--     （出击、试驾都按它挂；没存过的按第一套预设、满内油）、ammo[键] 地面车配弹 { 弹种 = 几发 }、skin[键] 涂装 { c 涂装, n 战术号码, e 国徽 }
+--     ——ammo / skin 这一步只存着、读档时校验（整备的弹药、涂装页以后用）
+--   给客户端：玩家属性 Tree（JSON，变了才写）；动作（客户端 Act）：treeResearch / treeBuy / treeLineup / treeNat / treeLoad / deployVeh
 --   挣研究点：一局结束按得分（G.treeAward，Round.lua 结算时调）；出车时记下这一局用过哪棵树，研究点分给用过的树正在研究的那辆
 --   出击（deployVeh）：从出击阵容里挑一辆，人直接坐进车里 / 飞机里出现在自己基地（不步行：Config.Wt.noInfantry）；车没了回出击界面
 local RS = game:GetService("ReplicatedStorage")
@@ -19,6 +22,8 @@ function Tech.init(G)
   local AD = require(RS:WaitForChild("AirDefs"))
   local WM = require(RS:WaitForChild("WtMods"))   -- 每辆车的改装（研究点逐项研究，效果真的生效）
   local WC = require(RS:WaitForChild("WtCrew"))   -- 乘员（阵容每个位置一组，攒经验、点技能）
+  local BAL = require(RS:WaitForChild("Ballistics"))   -- 弹种（存档里的配弹只认认得的弹）
+  local SKS = require(RS:WaitForChild("WtSkins"))      -- 涂装（存档里的涂装只认认得的）
   local W = Config.Wt or {}
   local LINEUP = W.lineup or 5
   -- 用户 11-25「5 个槽位限制只能带两个飞行单位」「最多两个飞行单位」：阵容里飞机 + 直升机加起来最多 AIR_MAX 个
@@ -30,7 +35,9 @@ function Tech.init(G)
   local function save(P) if G.saveData then task.spawn(G.saveData, P) end end
   -- mods[车] = { done = { 改装 = true }, cur = 正在研究的改装, rp = 攒在它上面的研究点 }
   --   crew[系]["位置"] = { xp = 乘员经验, sk = { 技能 = 级 } }（位置写成字符串：JSON 不认有空洞的数组）
-  local function blank() return { res = {}, own = {}, rp = {}, cur = {}, lineup = {}, nat = "cn", free = {}, mods = {}, crew = {} } end
+  --   load[车] = { p = 预设, l = { 每个挂点的武器或 false }, f = 内油 }、ammo[车] = { 弹种 = 几发 }、skin[车] = { c, n, e }（见文件头「整备」）
+  --   sets[车] = { ["1"～"3"] = { l, f } }：整备挂载页的三个「我的方案」（键写成字符串：JSON 不认有空洞的数组）
+  local function blank() return { res = {}, own = {}, rp = {}, cur = {}, lineup = {}, nat = "cn", free = {}, mods = {}, crew = {}, load = {}, ammo = {}, skin = {}, sets = {} } end
   local function T(P)
     local d = P.data
     if not d then return nil end
@@ -67,6 +74,98 @@ function Tech.init(G)
     if ok then P.pl:SetAttribute("Tree", s) end
   end
   G.treePublish = publish
+
+  ---------------------------------------------------------------- 整备存档（挂载、配弹、涂装）：客户端发来的、读档读到的都过一遍这里
+  -- 挂载：只收科技树里的飞机 / 直升机、有挂点的；每个挂点只能挂它能挂的（AD.cleanLoad，不对的清成空），内油 0.25～1（AD.cleanFuel）；
+  --   p 是照哪套预设改的（认得的预设才记；改过几个挂点照样记着，界面写「（已改）」）。没给 l 只给了 p：按那套预设展开
+  local function cleanTreeLoad(it, v)
+    local d = it and (it.branch == "air" or it.branch == "heli") and AD.get(it.play)
+    if not d or not d.st or #d.st == 0 or type(v) ~= "table" then return nil end
+    local p = nil
+    if type(v.p) == "string" then
+      for _, x in ipairs(d.presets or {}) do if x.key == v.p then p = v.p end end
+    end
+    local l = (type(v.l) == "table") and AD.cleanLoad(d, v.l) or AD.presetLoad(d, p)
+    return { p = p, l = l, f = AD.cleanFuel(v.f) }
+  end
+  -- 配弹：认得的弹种、0～200 发、最多 8 种（同 Wt.lua wtAmmoSet）
+  local function cleanTreeAmmo(it, v)
+    if not it or it.branch ~= "ground" or type(v) ~= "table" then return nil end
+    local c, n = {}, 0
+    for k, x in pairs(v) do
+      if type(k) == "string" and BAL.AMMO[k] and type(x) == "number" and n < 8 then
+        c[k] = math.clamp(math.floor(x), 0, 200)
+        n += 1
+      end
+    end
+    return (n > 0) and c or nil
+  end
+  -- 涂装：认得的涂装（标准涂装不记）、战术号码 0～999、贴不贴国徽（同 WtMatch.lua wtSkinSet）
+  local function cleanTreeSkin(it, v)
+    if not it or type(v) ~= "table" then return nil end
+    local c = (type(v.c) == "string" and SKS.CAMO[v.c] and v.c ~= "std") and v.c or nil
+    local n = tonumber(v.n)
+    if n then n = math.clamp(math.floor(n), 0, 999) end
+    return { c = c, n = n, e = v.e == true }
+  end
+  -- 我的方案（整备挂载页左栏的三个）：每个照挂载那样清（AD.cleanLoad / cleanFuel），只认 "1"～"3"；一个都没有返回 nil
+  local function cleanTreeSets(it, v)
+    if type(v) ~= "table" then return nil end
+    local out, n = {}, 0
+    for i = 1, 3 do
+      local x = v[tostring(i)] or v[i]
+      local o = (type(x) == "table") and cleanTreeLoad(it, { l = x.l, f = x.f }) or nil
+      if o and type(x.l) == "table" then
+        out[tostring(i)] = { l = o.l, f = o.f }
+        n += 1
+      end
+    end
+    return (n > 0) and out or nil
+  end
+  -- 这一辆存的挂载（出击、试驾用）：挂载表、内油；没存过（或者不是飞机）返回 nil（Air.lua 按第一套预设、满内油）
+  local function treeLoadOf(P, key)
+    local t = T(P)
+    local it = type(key) == "string" and TT.byKey[key] or nil
+    local v = t and t.load and it and t.load[key]
+    local o = v and cleanTreeLoad(it, v)
+    if not o then return nil, nil end
+    return o.l, o.f
+  end
+  G.treeLoadOf = treeLoadOf
+  -- 存挂载（整备的挂载页 / 挂载编辑器 Hangar.lua 的「保存」）：key 科技树的键，load 每个挂点的武器（false 是空），preset 照哪套预设改的，fuel 内油几成；
+  --   quiet：整备的挂载页改一下存一下（即时存），不弹「挂载已保存」。没买的也能存（科技树里随便哪一架都能试驾）；不是飞机、没有挂点的不理
+  G.ACT.treeLoad = function(P, key, load, preset, fuel, quiet)
+    local t = T(P)
+    local it = type(key) == "string" and TT.byKey[key] or nil
+    if not t or not it then return end
+    local o = cleanTreeLoad(it, { l = load, p = preset, f = fuel })
+    if not o then return end
+    t.load = t.load or {}
+    t.load[key] = o
+    if P.pl and quiet ~= true then G.msg(P.pl, "info", "tree.loadSaved", { k = "tree." .. key }) end
+    publish(P)
+    save(P)
+  end
+  -- 我的方案：slot 1～3；load 是 false 清掉这一格
+  G.ACT.treeLoadSet = function(P, key, slot, load, fuel)
+    local t = T(P)
+    local it = type(key) == "string" and TT.byKey[key] or nil
+    slot = tonumber(slot)
+    if not t or not it or not slot or slot ~= math.floor(slot) or slot < 1 or slot > 3 then return end
+    t.sets = t.sets or {}
+    local cur = t.sets[key] or {}
+    if load == false then
+      cur[tostring(slot)] = nil
+    else
+      if type(load) ~= "table" then return end
+      local o = cleanTreeLoad(it, { l = load, f = fuel })
+      if not o then return end
+      cur[tostring(slot)] = { l = o.l, f = o.f }
+    end
+    t.sets[key] = next(cur) and cur or nil
+    publish(P)
+    save(P)
+  end
 
   ---------------------------------------------------------------- 兑换码（用户 11-25「设置一个兑换码 在设置里」「兑换码 Zhengyongshuo 直接解锁所有载具」）
   --   码只放在服务器脚本里（客户端看不到）；存档里记的是编号 id（P.data.codes[id] = 兑换的时间，不进写给客户端的 Tree 属性）；
@@ -210,6 +309,14 @@ function Tech.init(G)
         if type(m.cur) == "string" and WM.canResearch(it, o.done, m.cur) then o.cur = m.cur end
         if type(m.rp) == "number" and m.rp > 0 then o.rp = math.floor(m.rp) end
         t.mods[k] = o
+      end
+    end
+    -- 整备：挂载、配弹、涂装——只留认得的车，内容按上面 cleanTree* 再过一遍（改过挂点、弹种、涂装表以后，旧档里不对的清掉）
+    for f, clean in pairs({ load = cleanTreeLoad, ammo = cleanTreeAmmo, skin = cleanTreeSkin, sets = cleanTreeSets }) do
+      for k, v in pairs(type(src[f]) == "table" and src[f] or {}) do
+        local it = type(k) == "string" and TT.byKey[k] or nil
+        local o = it and clean(it, v)
+        if o then t[f][k] = o end
       end
     end
     P.data.tree = t
@@ -453,7 +560,7 @@ function Tech.init(G)
   -- 这一局按得分算的研究点（击毁、占点都在得分里），赢了多三成、按模式乘；Economy.lua 结算金币也按它（金币 = 研究点 × treeK）
   local function roundRp(P, won)
     local base = math.floor((P.score or 0) * 8 + (P.kills or 0) * 250 + 300 + (P.wtKillRp or 0) / (((W.modeK or {})[G.wtModeNow and G.wtModeNow() or "rb"]) or 1))   -- wtKillRp：击毁加成（WtMatch.lua）
-    local mk = ((W.modeK or {})[G.wtModeNow and G.wtModeNow() or "rb"]) or 1   -- 历史 ×1.3、全真 ×1.6（战雷：越真实奖励越多）
+    local mk = ((W.modeK or {})[G.wtModeNow and G.wtModeNow() or "rb"]) or 1   -- 历史 ×1.3（战雷：越真实奖励越多）
     return math.floor(base * (won and 1.3 or 1) * mk), mk
   end
   G.treeRoundRp = roundRp
@@ -550,36 +657,15 @@ function Tech.init(G)
     if R and R.phase == "battle" and best > 0 then lockN = n end
     return v
   end
-  -- 三种模式（街机 ab / 历史 rb / 全真 sb）：准备阶段按在线的人投的票（票一样多按 W.mode0），开战以后定住；写给客户端 workspace 属性 WtMode
-  local MODES = { ab = true, rb = true, sb = true }
-  local modeNow, modeLock = nil, -1
+  -- 只有历史一种模式（用户 11-27「把全真模式去掉」「历史和街机就保留一个吧」）：不再投票，workspace 属性 WtMode 一直是 rb
+  --   （客户端很多地方按它判断；老客户端还会发 wtModeVote，收了不理）
   function G.wtModeNow()
-    local R = G.round
-    local n = R and R.n or 0
-    if modeNow and modeLock == n then return modeNow end
-    local cnt, real = { ab = 0, rb = 0, sb = 0 }, 0
-    for _, P in pairs(G.P) do
-      if P.pl then
-        real += 1
-        if MODES[P.modeVote] then cnt[P.modeVote] += 1 end
-      end
-    end
-    local best, bn = W.mode0 or "rb", 0
-    for _, m in ipairs({ "ab", "rb", "sb" }) do
-      if cnt[m] > bn then best, bn = m, cnt[m] end
-    end
-    if best ~= modeNow then pcall(function() workspace:SetAttribute("WtMode", best) end) end
-    modeNow = best
-    if R and R.phase == "battle" and real > 0 then modeLock = n end
-    return best
+    if workspace:GetAttribute("WtMode") ~= "rb" then pcall(function() workspace:SetAttribute("WtMode", "rb") end) end
+    return "rb"
   end
-  G.ACT.wtModeVote = function(P, m)
-    if not MODES[m] then return end
-    P.modeVote = m
-    pcall(function() P.pl:SetAttribute("ModeVote", m) end)
-    G.wtModeNow()
-  end
-  G.on("roundStart", function() modeNow, modeLock = nil, -1 G.wtModeNow() end)
+  G.ACT.wtModeVote = function() end
+  G.wtModeNow()
+  G.on("roundStart", function() G.wtModeNow() end)
 
   -- 这一局能出的最高战斗等级（战雷：最多碰到比自己高 brUp 的）
   function G.treeBrCap() return G.treeRoundBr() + (W.brUp or 1.0) end
@@ -729,6 +815,9 @@ function Tech.init(G)
   local SKY = { { 1300, -400, 900, 420, 170 }, { 1800, 500, 1300, 650, 210 }, { 900, 250, 450, 70, 32, true } }
   -- 飞机试驾的地面靶：离靶机中心多少米（往前、往右）
   local AIRGROUND = { { 0, -150 }, { 40, -50 }, { -30, 60 }, { 60, 160 }, { 500, 0 }, { 520, 120 } }
+  -- 飞机试驾在空中出生（跑道上滑不起来的大飞机、摆不到跑道上的兜底）：固定翼退到离靶区中心几秒航程的地方、朝北进场（最多退 12000 格，还在训练场的地形里）——
+  --   炸弹从 1200 格高平飞投下去往前飞 9.7 秒：轰-6K / B-2 出来九秒多才到投弹点，有时间开轰炸瞄准镜对准；MQ-9 慢，按秒算只退 4900 格
+  local RUNIN = 18
   local M = 2.8   -- 一米多少格
   local function flatOk(x, z)
     local Map = G.Map
@@ -736,14 +825,60 @@ function Tech.init(G)
   end
   -- 训练场（MapRange）：第几个在试驾的人用第几条靶道
   local RangeMap = G.Map.Range or require(RS:WaitForChild("MapRange"))
+  -- 在哪试驾（一次试驾定一处，记在 s.rm / s.where）：
+  --   · 训练场服务器（Places.lua，用户 11-28「训练场 还有各种地图单独做成一个服务器」）：开的就是雪山图，在这张图上试
+  --     （G.testRange，SnowRange.lua：同 MapRange 的几个函数，外加按地形挑好的靶车位置）
+  --   · 别的服务器、战场就是雪山图（用户 11-28「试驾你就让我在雪山地图试驾吧搞点靶车」，晚上又问「为什么训练场现在还是没有雪山地图」——
+  --     原来只有单独发布的训练场地点才在雪山上试，Studio、只发布了一个地点的照旧去绿草的训练场区块）：这张图上没在打一局（匹配中、结算）
+  --     就在战场这张雪山图上试（G.battleRange，init.server.lua 建图以后算：同样每人一条靶道、靶车、靶机）；正在打一局的时候
+  --     （两头基地出电脑车，靶道就在基地边上）才退回训练场区块（那时候才建）；一局要开打了，在这张图上试驾的人回机库（下面 matchFound）
+  --   · 战场不是雪山：训练场区块（MapRange）
+  local function snowMapFree()
+    local R0 = G.round
+    return not (R0 and (R0.phase == "prep" or R0.phase == "battle"))
+  end
+  -- 战场是不是雪山图（开服时图还没定：只剩雪山这一张就算是——马上就定成它）
+  local function battleSnow()
+    if G.placeRole == "range" then return false end
+    local id = G.mapId
+    if not id and G.Map.ids and #G.Map.ids == 1 then id = G.Map.ids[1] end
+    return id ~= nil and id == (Config.RangeMap or "snow")
+  end
+  G.testBattleSnow = battleSnow
+  local function chooseRM()   -- 靶场、哪一种（"range" 训练场服务器 / "battle" 战场的雪山图 / "zone" 训练场区块）、好了没有
+    if G.placeRole == "range" then return G.testRange or RangeMap, "range", G.testRange ~= nil and G.rangeReady == true end
+    if battleSnow() and snowMapFree() then return G.battleRange or RangeMap, "battle", G.battleRange ~= nil and G.worldReady == true end
+    return RangeMap, "zone", G.rangeReady == true
+  end
+  G.testWhere = function() local _, w, ok = chooseRM() return w, ok end   -- 测试用
+  local function RM(s) return (s and s.rm) or G.testRange or RangeMap end
+  -- 两个人几乎同时点试驾（用户 11-28「如果这个游戏里有两个人同时选择开始试驾怎么办」）：靶道号原来在点的那一刻算、人生出来（零点几秒，
+  --   远处还要等流式加载几秒）以后才登记进 tests——这中间第二个人点，两个人分到同一条靶道，两辆车生在一起。现在点的那一刻先占着（reserved），
+  --   登记进 tests 就放开；没生出来（出生失败、掉线）的 30 秒后不算
+  local reserved = {}   -- [P] = { i = 靶道号, t = 什么时候占的 }
   local function testIndex(P)
     local used = {}
     for q, s in pairs(tests) do if q ~= P and s.idx then used[s.idx] = true end end
+    local t = now()
+    for q, r in pairs(reserved) do
+      if q ~= P and t - r.t < 30 and q.pl and q.pl.Parent then used[r.i] = true elseif t - r.t >= 30 or not (q.pl and q.pl.Parent) then reserved[q] = nil end
+    end
     for i = 0, 63 do if not used[i] then return i end end
     return 0
   end
-  local function testSpot(idx)
-    return RangeMap.lane(idx % RangeMap.LANES + 1)
+  G.testReserved = function() return reserved end   -- 测试用
+  -- 第 idx 个在试驾的人的车位：靶道够分就一人一条；比靶道还多（同一个服务器里八个以上同时开坦克试驾）的，在同一条靶道里往旁边挪开
+  --   （雪山训练场 SnowRange 有 16 条：两头基地各一排）
+  local function testSpot(rm, idx)
+    local n = rm.LANES
+    local p, d = rm.lane(idx % n + 1)
+    local row = (idx // n) % 3
+    if row > 0 and rm.LANE_W then
+      local right = Vector3.new(-d.Z, 0, d.X)
+      local q = p + right * (((row == 1) and 0.3 or -0.3) * rm.LANE_W)
+      p = Vector3.new(q.X, G.Map.height(q.X, q.Z), q.Z)
+    end
+    return p, d
   end
   local function pick(list, i, get)
     for k = 0, #list - 1 do
@@ -757,6 +892,7 @@ function Tech.init(G)
     if not s then return end
     tests[P] = nil
     P.inTest = nil
+    pcall(function() P.pl:SetAttribute("TestDriveAt", nil) end)   -- 试驾完了：客户端回到这一局的钟点（DayNight 的 testDay）
     for _, d in pairs(s.dummies) do if d.alive then pcall(G.removeEnt, d) end end
     for _, d in pairs(s.drones) do if d.alive then pcall(G.removeEnt, d) end end
     if s.veh and s.veh.alive and s.veh.driver ~= P then pcall(G.removeEnt, s.veh) end
@@ -789,9 +925,17 @@ function Tech.init(G)
   local function droneAt(s, i, c, r, h, v, heli)
     local id = pick(heli and DRONE_HELI or DRONE_JET, i, AD.get)
     if not id or not G.spawnAircraftAir then return end
+    -- 雪山上的训练场（SnowRange）：圈收进河谷里（半径最多 SKY_R 米、圈心挪到河谷中线），飞得比圈上最高的地形高——两边七八百米的雪山
+    local rm = RM(s)
+    if rm.SKY_R then
+      r = math.min(r, rm.SKY_R)
+      if rm.skyCenter then c = rm.skyCenter(c) end
+    end
     local R = r * M
+    local hY = h * M
+    if rm.skyAlt then hY = rm.skyAlt(c, R, hY) end
     local a = (i * 2.1) % (2 * math.pi)
-    local p = Vector3.new(c.X + math.cos(a) * R, G.Map.height(c.X, c.Z) + h * M, c.Z + math.sin(a) * R)
+    local p = Vector3.new(c.X + math.cos(a) * R, G.Map.height(c.X, c.Z) + hY, c.Z + math.sin(a) * R)
     local tang = Vector3.new(-math.sin(a), 0, math.cos(a))
     local ok, e = pcall(G.spawnAircraftAir, s.foe, id, CFrame.lookAt(p, p + tang), nil, nil, nil, v * M)
     if not ok or not e then return end
@@ -834,54 +978,153 @@ function Tech.init(G)
       end
     end
   end)
-  G.ACT.testDrive = function(P, key)
+  -- 靶场还没好（开服头一会儿雪山图还在生成、训练场区块还在后台建）：记下来，好了自动接着试（不用再点一次；一个人只等一辆，再点换成新点的）
+  local testWait = {}   -- [P] = 要试的那一辆
+  local function testLater(P, key)
+    local first = testWait[P] == nil
+    testWait[P] = key
+    if not first then return end
+    task.spawn(function()
+      local t0 = now()
+      while now() - t0 < 180 do
+        task.wait(0.5)
+        if G.P[P.pl] ~= P or not testWait[P] then break end
+        local _, w, ok = chooseRM()
+        if ok then break end
+        if w == "zone" and G.ensureRange then G.ensureRange() end   -- 等雪山图的时候这张图开打了：退回训练场区块（这时候才建）
+      end
+      local k = testWait[P]
+      testWait[P] = nil
+      if k and G.P[P.pl] == P and not P.alive and not (G.inMatch and G.inMatch(P)) then
+        local _, _, ok = chooseRM()
+        if ok then G.ACT.testDrive(P, k) end
+      end
+    end)
+  end
+  G.testWaiting = function(P) return testWait[P] end   -- 测试用
+  -- 战场这张雪山图要开打一局了（匹配到了）：在这张图上试驾的人回机库——靶道就在两头基地边上，电脑车、出击的人都从那儿出来
+  --   （同长按 H 回机库：车、靶车、靶机收走，不算阵亡，马上能再点试驾——那时候这张图在打，退回训练场区块）
+  local function testEndBack(P)
+    local s = tests[P]
+    if not s then return end
+    local e, char = s.veh, P.char
+    P.char, P.alive, P.vehicle = nil, false, nil   -- 先断开：角色的 Died 不算阵亡（Round.lua onDied 只认 P.char）
+    if e and P.remote == e then P.remote = nil end
+    P.canDeployAt = now()
+    P.dmgLog = {}
+    testClean(P)
+    if e and e.alive then pcall(G.removeEnt, e) end
+    if char and char.Parent then char:Destroy() end
+    pcall(function() P.pl.Character = nil end)
+    G.msg(P.pl, "info", "tree.testMatch")
+    if G.pushOne then G.pushOne(P) end
+  end
+  G.on("matchFound", function()
+    for Q, s in pairs(tests) do
+      if s.where == "battle" then G.try("试驾让出雪山图", testEndBack, Q) end
+    end
+  end)
+  G.on("left", function(P) testWait[P] = nil end)
+  local function testDriveNow(P, key)
     local it = type(key) == "string" and TT.byKey[key]
     if not it or P.alive or G.pve or not G.ACT.deploy then return end
+    -- 局内（这一局算他的、准备 / 战斗阶段：机库是局内选车页，Round.lua G.inMatch）不能试驾，同战雷的出击页：TechUI 在局内选车页藏了「试驾」、
+    --   科技树也不开，服务器这里也拦——原来只藏了按钮，客户端直接发 testDrive 照样能半路去训练场（试驾不看兵力、出生点：Round.lua deploy 的 P.testDeploy）
+    if G.inMatch and G.inMatch(P) then return end
     if now() < (P.canDeployAt or 0) then G.msg(P.pl, "info", "tree.waitDeploy", math.ceil((P.canDeployAt or 0) - now())) return end
     local air = it.branch == "air" or it.branch == "heli"
     local heli = it.branch == "heli"
-    if not G.rangeReady then G.msg(P.pl, "info", "tree.rangeBusy") return end   -- 训练场还在后台建（开服头一会儿）
+    local tl, tf = treeLoadOf(P, key)   -- 试驾也按机库里存的挂载、内油（整备；没存过是 nil：第一套预设、满内油）
+    -- 有训练场服务器（Places.lua）：传送过去试（带着这一辆，到了自动坐进去）；传不过去就在本服务器试（下面 chooseRM 挑在哪）
+    if G.teleport and G.placeFor and G.placeFor("range") then
+      local function here()   -- 传送没成功：本服务器的靶场好了就接着试（不用再点一次）
+        G.placeTpOffFor = G.placeTpOffFor or {}
+        G.placeTpOffFor[P.pl] = true
+        G.msg(P.pl, "info", "place.rangeHere")
+        local _, where0, ok0 = chooseRM()
+        if ok0 then
+          if G.P[P.pl] == P and not P.alive then testDriveNow(P, key) end
+        else
+          if where0 == "zone" and G.ensureRange then G.ensureRange() end
+          testLater(P, key)
+        end
+      end
+      if not (G.placeTpOffFor and G.placeTpOffFor[P.pl]) and G.teleport(P, "range", { td = key }, here) then return end
+    end
+    local rm, where, ready = chooseRM()
+    if not ready then   -- 开服头一会儿：雪山图还在生成 / 训练场区块还在后台建——好了自动接着试
+      if where == "zone" and G.ensureRange then G.ensureRange() end   -- 战场这张雪山图上正在打一局：这时候才建训练场区块
+      G.msg(P.pl, "info", (where == "zone") and "tree.rangeBusy" or "tree.snowBusy")
+      testLater(P, key)
+      return
+    end
+    testWait[P] = nil
+    if where == "zone" and battleSnow() then G.msg(P.pl, "info", "tree.rangeMatch") end   -- 雪山图上正在打一局：这次在训练场区块试
     local idx = testIndex(P)
-    -- 出车的地方（训练场里）：车在第 idx 条靶道的射击线上、飞机在跑道东头、直升机在直升机坪
+    reserved[P] = { i = idx, t = now() }   -- 先占着（见 testIndex）
+    -- 出车的地方：车在第 idx 条靶道的射击线上、飞机在跑道东头、直升机在直升机坪
     local spawnAt, spawnDir
-    if heli then spawnAt, spawnDir = RangeMap.heliPad(idx)
-    elseif air then spawnAt, spawnDir = RangeMap.runwayStart(idx)
-    else spawnAt, spawnDir = testSpot(idx) end
+    if heli then spawnAt, spawnDir = rm.heliPad(idx)
+    elseif air then spawnAt, spawnDir = rm.runwayStart(idx)
+    else spawnAt, spawnDir = testSpot(rm, idx) end
+    local all = {}   -- 试驾：改装全装上（下面 applyFx）
+    for _, m in ipairs(WM.list(it)) do all[m.key] = true end
+    local fx = WM.fx(it, all)
+    -- 跑道上滑不起来的固定翼直接在空中出生（用户 11-27「飞机试驾不了」：满油满弹的轰-6K、B-2 推满油门照样冲出训练场 3600 格的跑道，
+    --   B-2 冲到训练场铺的地形外面才离地）。不按型号列名单：按飞行物理静态估一下离地要滑多远（AirDefs.takeoffRun，照客户端 Fly.lua 地上那段
+    --   推满油门、到抬头速度拉杆；满油、默认挂载、改装全装的推力），比起飞位往西剩下的跑道（RangeMap.runwayLeft）的九成五还长
+    --   （留一点：拉杆晚一两秒也不冲出去）就不摆在跑道上，同下面「摆不到跑道上」那条在空中出来。估不出来的（没有飞行物理）照旧在跑道上
+    local sky = false
+    if air and not heli then
+      local okR, run, lifted = pcall(AD.takeoffRun, AD.get(it.play), { treeKey = it.key, thrK = fx.thr, h = spawnAt.Y })
+      if okR and run and (not lifted or run > rm.runwayLeft(idx) * 0.95) then sky = true end
+    end
     local function go()
       if not P.alive or not P.char then return end
       testClean(P)
-      local s = { P = P, idx = idx, dummies = {}, drones = {}, foe = (P.team == "atk") and "def" or "atk", air = air }
-      -- 流式加载：先请服务器把训练场那一片送过去（人在战场那边出生的，十万格外的地形、零件这时还没到客户端）
-      if G.streamAround then G.streamAround(P.pl, spawnAt, 8) end
-      if not P.alive or not P.char then return end
-      local e
+      local s = { P = P, idx = idx, dummies = {}, drones = {}, foe = (P.team == "atk") and "def" or "atk", air = air, rm = rm, where = where }
+      local d = air and AD.get(it.play)
+      local skyAt, skyV   -- 空中出生的位置、速度
       if air then
         -- 飞机、直升机：靶区在挡弹墙北面（空中靶区，MapRange.AIRTGT），朝北摆靶
-        s.base, s.dir = RangeMap.airTarget(), Vector3.new(0, 0, -1)
-        local d = AD.get(it.play)
+        s.base, s.dir = rm.airTarget(), Vector3.new(0, 0, -1)
+        -- 空中出生（上面估的跑道上滑不起来 sky、下面摆不到跑道 / 直升机坪上的兜底）：朝北、带 0.8 倍军推最大速度（客户端 Fly.lua 空中出发也按这个）；
+        --   固定翼往南退到离靶区中心 RUNIN 秒航程的地方、朝北进场——原来在靶区中心正上方出来：地面靶在正前方 0～1460 格，1200 格高、
+        --   600 格 / 秒平飞投炸弹要提前 5000 多格松手，一出来就已经飞过了靶子，轰炸机掉头半径又有好几公里；现在轰-6K 出来九秒多才到投弹点。
+        --   直升机照旧在靶区上方 140 格悬停出来
+        skyV = heli and 0 or (((d and d.vMil) or 200) * 0.8)
+        local b0 = s.base - s.dir * math.min(skyV * RUNIN, 12000)
+        skyAt = Vector3.new(b0.X, G.Map.height(b0.X, b0.Z) + (heli and 140 or (W.airSpawnH or 1200)), b0.Z)
+      end
+      -- 流式加载：先请服务器把出生那一片送过去（人在战场那边出生的，十万格外的地形、零件这时还没到客户端）——空中出生的送空中那一片
+      --   （原来一直送跑道东头，离空中出生的地方一万多格）；无人机也一样：画面是无人机那边，操作员被钉在原地（Air.lua seat），不会掉下去
+      if G.streamAround then G.streamAround(P.pl, sky and skyAt or spawnAt, 8) end
+      if not P.alive or not P.char then return end
+      local e
+      local aloft = false   -- 在空中出生的（sky、兜底）
+      if air then
         local pos = Vector3.new(spawnAt.X, G.Map.height(spawnAt.X, spawnAt.Z) + ((d and d.gearH) or 5), spawnAt.Z)
-        if G.spawnAircraft then
-          local okS, ee = pcall(G.spawnAircraft, P.team, it.play, CFrame.lookAt(pos, pos + spawnDir), nil, P, nil)
+        if G.spawnAircraft and not sky then
+          local okS, ee = pcall(G.spawnAircraft, P.team, it.play, CFrame.lookAt(pos, pos + spawnDir), tl, P, tf)
           if okS then e = ee end
         end
-        if not e and G.spawnAircraftAir then   -- 摆不到跑道上：在靶区上空出来
-          local p2 = s.base + Vector3.new(0, G.Map.height(s.base.X, s.base.Z) + (heli and 140 or (W.airSpawnH or 1200)), 0)
-          e = G.spawnAircraftAir(P.team, it.play, CFrame.lookAt(p2, p2 + s.dir), nil, P, nil, heli and 0 or (((d and d.vMil) or 200) * 0.8))
+        if not e and G.spawnAircraftAir then   -- 跑道上滑不起来（sky）、摆不到跑道 / 直升机坪上：在空中出来
+          e = G.spawnAircraftAir(P.team, it.play, CFrame.lookAt(skyAt, skyAt + s.dir), tl, P, tf, skyV)
+          aloft = e ~= nil
         end
       else
         s.base, s.dir = spawnAt, spawnDir
         e = G.spawnGroundVeh(P.team, it.play, CFrame.lookAt(s.base, s.base + s.dir), false, P, nil)
       end
-      if not e then return end
+      if not e then reserved[P] = nil return end
       tests[P] = s
+      reserved[P] = nil   -- 登记进 tests 了：不用再占
       P.inTest = true
       s.veh = e
       e.testDrive, e.noScore, e.treeKey = true, true, key
       e.model:SetAttribute("TreeKey", key)
       e.model:SetAttribute("TestDrive", true)
-      local all = {}
-      for _, m in ipairs(WM.list(it)) do all[m.key] = true end
-      applyFx(e, air, WM.fx(it, all), nil)   -- 试驾：改装全装上
+      applyFx(e, air, WM.fx(it, all), nil)   -- 试驾：改装全装上（all 在上面）
       local right = Vector3.new(-s.dir.Z, 0, s.dir.X)
       local function at(fwd, side) return s.base + s.dir * (fwd * M) + right * (side * M) end
       if air then
@@ -894,19 +1137,52 @@ function Tech.init(G)
           dummyAt(s, i, Vector3.new(p.X, G.Map.height(p.X, p.Z), p.Z), s.dir, nil)
         end
       else
-        for i, r in ipairs(RANGE) do
-          local p = at(r[1], r[2])
-          dummyAt(s, i, Vector3.new(p.X, G.Map.height(p.X, p.Z), p.Z), -s.dir, r[3])
+        -- 雪山训练场：按地形挑好、看得见的位置（同一条靶道挤了两个人的，往旁边挪开的那个照原来的偏移摆，不跟第一个人的靶车摆在一处）
+        local tg = rm.targets and (idx < rm.LANES) and rm.targets(idx % rm.LANES + 1, RANGE)
+        if tg then
+          for _, t in ipairs(tg) do dummyAt(s, t.k, t.pos, -s.dir, t.swing) end
+        else
+          for i, r in ipairs(RANGE) do
+            local p = at(r[1], r[2])
+            dummyAt(s, i, Vector3.new(p.X, G.Map.height(p.X, p.Z), p.Z), -s.dir, r[3])
+          end
         end
         for i, k in ipairs(SKY) do droneAt(s, i, at(k[1], k[2]), k[3], k[4], k[5], k[6]) end
       end
       P.char:PivotTo(e.root.CFrame * CFrame.new(0, 2, 0))
       if G.ACT.enterVeh then G.ACT.enterVeh(P, e.id) end
-      G.msg(P.pl, "info", air and "tree.testOnAir" or "tree.testOn", it.name)
+      -- 无人机：人拿着平板站着遥控（Air.lua seat 不挪人、把人钉住）——操作员挪到起飞位旁边、跑道南边的草地上（MapRange.runwaySide），面朝跑道：
+      --   空中出生的别留在天上（收起平板就掉下来）；在跑道上出生的也别站在起飞位上（上面 PivotTo 到了机身上：飞机滑走以后人还钉在跑道上，
+      --   前面几个起飞位的飞机滑跑正好从他身上穿过去）
+      if e.def and e.def.drone and P.remote == e and P.char then
+        local op = rm.runwaySide(idx) + Vector3.new(0, 3, 0)
+        P.char:PivotTo(CFrame.lookAt(op, op + Vector3.new(0, 0, -1)))
+      end
+      -- 提示在哪出来：空中出生分两种原因——估出来跑道上滑不起来（sky：testOnSky）、摆不到跑道 / 直升机坪上的兜底（testInAir；原来兜底也说
+      --   「满油满弹滑不起来」）；直升机停在直升机坪上（testOnPad；原来和固定翼一样说「在跑道上，推油门起飞」）
+      local msg = (where ~= "zone") and "tree.testOnSnow" or "tree.testOn"   -- 雪山图上：靶车按地形摆，多在几百米内（SnowRange）
+      if aloft then msg = sky and "tree.testOnSky" or "tree.testInAir"
+      elseif heli then msg = "tree.testOnPad"
+      elseif air then msg = "tree.testOnAir" end
+      G.msg(P.pl, "info", msg, it.name)
     end
     P.testDeploy = true   -- Round.lua deploy：试驾不受出生点 / 准备阶段 / 兵力限制（用户 11-26「训练场目前没发试驾飞机了」）
+    -- 人直接生在训练场出车的地方（11-28：训练场开服就建，战场的图还没定、没有出生点时主界面也能试驾；原来先生在战场的基地、再挪过来）
+    P.testSpawnCF = CFrame.new(spawnAt + Vector3.new(0, 4, 0))
+    -- 客户端 DayNight：试驾一直是白天（用户 11-28 夜「然后训练场改成持续百天吧」）——人先生出来、车后到，这一下也按白天算
+    --   （不然夜里出生自动打开夜视仪，坐进车又「天亮了」收起来）；收车时（testClean）去掉，没出成车的 15 秒后不算
+    pcall(function() P.pl:SetAttribute("TestDriveAt", workspace:GetServerTimeNow()) end)
     G.ACT.deploy(P, "crew", air and "baseAir" or "base", go)
-    P.testDeploy = nil
+    P.testDeploy, P.testSpawnCF = nil, nil
+  end
+  -- 同一个人一次只走一趟：雪山图上的靶道第一次用到要按地形现算（SnowRange，会等几帧）、出车 LoadCharacter 也要等——
+  --   这中间又点了一下、或者靶场好了自动接着试（testLater）撞上，都不理（不然出两次车、占两条靶道）
+  G.ACT.testDrive = function(P, key)
+    if P.testBusy and now() - P.testBusy < 10 then return end
+    P.testBusy = now()
+    local ok, err = pcall(testDriveNow, P, key)
+    P.testBusy = nil
+    if not ok then error(err, 0) end
   end
   -- 试驾下车 / 在试驾场被打掉：回机库不算阵亡，不用等重生倒计时（战雷：试驾完马上能再试驾、能出击）——
   --   Round 在阵亡时记的 canDeployAt 晚一帧清掉（同一帧里 Round 的阵亡处理可能排在后面）
@@ -970,7 +1246,9 @@ function Tech.init(G)
       -- 飞机（用户 11-25「召唤飞机就从机场跑道开始 然后自己起飞 包括回跑道降落补给也做出来」）：不再空中出生（原来街机在机场上空、
       --   历史 / 全真退后 1500 格再高一半，C 11-25 ⑫）——停在自己机场的跑道上（Depots.lua runwayPads：顺着跑道、机头朝起飞方向），
       --   起落架放着、发动机慢车，自己推油门滑跑起飞；落回自己的跑道停稳就加油、补弹、维修（Air.lua 落地补给）
-      okS, e = pcall(function() return G.padSpawnAt and G.padSpawnAt(P, p, nil, vid) end)
+      --   挂载、内油按机库里存的（整备；没存过是 nil：Air.lua 按第一套预设、满内油）
+      local tl, tf = treeLoadOf(P, key)
+      okS, e = pcall(function() return G.padSpawnAt and G.padSpawnAt(P, p, tl, vid, tf) end)
       P.treeSpawn, P.wtKey = nil, nil
       if not okS then warn("[科技树] 出击出错：" .. tostring(e)) e = nil end
       if not e then return end

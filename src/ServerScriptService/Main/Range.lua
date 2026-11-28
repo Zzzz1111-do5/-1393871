@@ -1,6 +1,6 @@
 -- 全面大战场——训练场（服务器）：照 MapRange 铺地形、摆靶场设施（区块 Zones.RANGE，离战场十万格，见 Zones.lua）
 --   用户 11-26 晚：「把训练场单独做一张地图吧」「目前游戏里的几个地图是连起来的 不行」——试驾（Tech.lua）都在这里，不再在战场边上打靶。
---   开服时 World.build 建完战场以后调 Range.build（后台慢慢建，不耽误战场开局）：
+--   开服就调 Range.build（init.server.lua：跟投票、建战场同时走，后台慢慢建，不耽误战场开局；11-28 起不再等战场建完）：
 --   ① 靶场那一片的平地（FillBlock 一块 2048 格见方、两层体素），靶道土路、跑道两边的土、几片深草盖在最上面一层
 --   ② 挡弹土墙按高度逐列写体素（World.writeChunk：Map 的高度、材质函数按区块分派，训练场的点问 MapRange）
 --   ③ 设施：射击线（每条靶道一块水泥坪、靶道号）、距离牌（300 ~ 2000 米）、靶道分界杆、指挥塔、旗杆、探照灯；
@@ -43,7 +43,7 @@ local function board(W, f, cf, w, h, text, color, face)
   t.Size = UDim2.fromScale(1, 1)
   t.BackgroundTransparency = 1
   t.TextScaled = true
-  t.Font = Enum.Font.BuilderSansExtraBold
+  t.Font = Enum.Font.BuilderSansBold
   t.TextColor3 = color or COL.white
   t.Text = text
   t.Parent = sg
@@ -52,7 +52,8 @@ end
 
 ---------------------------------------------------------------- 地形
 
-local function grassMat() return Map.GRASS and MAT.Grass or MAT.LeafyGrass end
+-- 训练场自己的草地（不长草叶，同 World.lua 写训练场那几块的 GRASS = false）：开服就建，那时候战场还没定是哪张图（Map.GRASS 还不是那张图的）
+local function grassMat() return MAT.LeafyGrass end
 
 -- 一块平地（世界坐标 x0, z0 起、边长 n）
 local function flatTile(T, x0, z0, n)
@@ -191,7 +192,8 @@ function Range.build(World, G, root)
   local f = folder("Range", root or workspace)
   pcall(function() f:SetAttribute("Zone", "range") end)
   G.rangeFolder = f
-  local noTerrain = G.rangeTerrainOff == true   -- 模拟器（tools/mock/common.lua）：别的测试用不着训练场的地形
+  -- 模拟器（tools/mock/common.lua）：别的测试用不着训练场的地形——开服就建了（11-28），测试台在跑服务器脚本以前给 Workspace 设 RangeTerrainOff
+  local noTerrain = G.rangeTerrainOff == true or workspace:GetAttribute("RangeTerrainOff") == true
   local t0 = os.clock()
   local function pace(budget)
     if os.clock() - t0 > (budget or 0.012) then

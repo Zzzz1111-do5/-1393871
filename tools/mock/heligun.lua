@@ -36,10 +36,13 @@ me:SetAttribute("Side", side)
 G.pushOne(P)
 R.run(1)
 local C = T.C
+G.allowInfantry = true   -- 先当步兵出生，再坐进测试放的直升机（11-25 起只开载具：同 heli.lua、wtcrisp.lua）
 if C.menuShown and C.menuShown() then C.menuEnter() end
 T.runUntil(function() return G.round.phase == "battle" end, 90)
-T.act("deploy", "rifle", (side == "def") and "camp" or "fleet")
+T.actAs(me, "deploy", "rifle", "base")
 R.run(2)
+check(P.alive and me.Character ~= nil, "出生了")
+if not me.Character then T.summary() return end
 print("① 生成 " .. AIR .. "（原模型 " .. IKEY .. "）、坐上")
 local hrp = me.Character and me.Character:FindFirstChild("HumanoidRootPart")
 local hp = hrp and hrp.Position or V3(0, 20, 0)
@@ -81,9 +84,9 @@ if y0 then
   check(math.abs(y1.Y - y0.Y) < 0.05, "炮塔座不跟着俯仰")
 end
 print("③ 升到空中、往下看：炮管压下去")
-T.key(Enum.KeyCode.E, true)   -- 提总距升空（停在地上时瞄准点就在炮口跟前，压不下去）
+T.key(Enum.KeyCode.W, true)   -- 提总距升空（停在地上时瞄准点就在炮口跟前，压不下去；11-28 起同战雷 W 升，原来是 E）
 T.runUntil(function() return not fst.ground and fst.cf.Position.Y > pos.Y + 40 end, 20)
-T.key(Enum.KeyCode.E, false)
+T.key(Enum.KeyCode.W, false)
 local g1b = rel(gun[1])
 fst.camPitch = -0.7
 R.run(1.5)

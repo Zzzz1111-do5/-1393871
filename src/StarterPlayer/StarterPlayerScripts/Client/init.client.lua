@@ -30,10 +30,47 @@ local LocalizationService = game:GetService("LocalizationService")
 local Lang = require(RS:WaitForChild("Lang"))
 local G = { Config = require(RS:WaitForChild("Config")), Lang = Lang, Map = require(RS:WaitForChild("Map")), R = {}, S = nil }
 G.Theme = require(RS:WaitForChild("Theme"))   -- 全游戏统一外观（颜色、字体、字号）：各界面从 G.Theme 取，规范在 docs/style.md
-do   -- 语言：按系统语言，zh 开头中文、其余英文（界面上能切）
+do   -- 语言：按系统语言挑（Lang.pick：简中、繁中、英、日、韩、俄、德、法、西、葡；别的英文），设置里能换
   local ok, id = pcall(function() return LocalizationService.RobloxLocaleId end)
   G.lang = Lang.pick(ok and id or "en")
+  G.langSys = G.lang   -- 设置里选「跟随系统」时回到这一种
 end
+-- 代码里的中英对照（11-28 多语言）：G.L(中文, 英文) 按现在的语言给——中文、英文原样，繁中、日韩俄德法西葡查译文包（Lang.pair）；
+--   G.isZh()：现在是不是中文（简 / 繁），排版上中文、西文分开处理的地方用
+function G.L(zh, en) return Lang.pair(G.lang, zh, en) end
+function G.isZh() return Lang.isZh(G.lang) end
+-- 多语言兜底（11-28）：德、俄、法、西、葡、日、韩的译文常比中英文长——界面上放不下的字自动缩小（TextScaled + 最大字号 = 原来的字号，
+--   放得下就是原样）；中文、英文界面不动。只管有大小的普通标签：零大小 / 自动大小 / 截断的、头顶牌子里的不碰；缩过一次就一直按「放得下」排
+task.spawn(function()
+  local me = game:GetService("Players").LocalPlayer
+  local pg = me and me:WaitForChild("PlayerGui", 30)
+  if not pg then return end
+  local function fit(o)
+    if G.lang == "en" or Lang.isZh(G.lang) then return end
+    if not (o:IsA("TextLabel") or o:IsA("TextButton")) then return end
+    local okF = pcall(function() return o.TextFits end)   -- 读不到（测试台）就不管
+    if not okF or o.TextScaled or o.AutomaticSize ~= Enum.AutomaticSize.None or o.TextTruncate ~= Enum.TextTruncate.None then return end
+    if o:FindFirstChildOfClass("UITextSizeConstraint") or o:FindFirstAncestorOfClass("BillboardGui") then return end
+    local done = false
+    local function check()
+      if done or o.TextScaled or o.Text == "" or o.TextFits ~= false then return end
+      local a = o.AbsoluteSize
+      if a.X < 24 or a.Y < 8 then return end
+      done = true
+      local c = Instance.new("UITextSizeConstraint")
+      c.MaxTextSize = math.max(1, math.floor(o.TextSize + 0.5))
+      c.MinTextSize = math.max(7, math.floor(o.TextSize * 0.6))
+      c.Parent = o
+      o.TextScaled = true
+    end
+    o:GetPropertyChangedSignal("TextFits"):Connect(check)
+    o:GetPropertyChangedSignal("Text"):Connect(function() task.defer(check) end)
+    o:GetPropertyChangedSignal("AbsoluteSize"):Connect(function() task.defer(check) end)
+    task.defer(check)
+  end
+  pg.DescendantAdded:Connect(fit)
+  for _, d in ipairs(pg:GetDescendants()) do fit(d) end
+end)
 local Remotes = RS:WaitForChild("Remotes")
 for _, name in ipairs({ "State", "Act", "Shoot", "Msg", "Fx", "Drive", "Err", "Board" }) do
   G.R[name] = Remotes:WaitForChild(name)
@@ -90,7 +127,7 @@ end })
 -- 一个模块初始化出错、或者脚本没换全少了一个模块，不能把后面的都卡死（用户 11-20：deploy 进不去——原来出一个错就停在那里，部署界面都起不来）：
 --   每个模块单独 pcall；等不到的模块等 10 秒就跳过；出的错打到输出窗口，等界面起来以后也显示在屏幕上方的红字里
 local initErrs = {}
-for _, name in ipairs({ "Stream", "FarLod", "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "SnowPeaks", "SnowLook", "SnowClouds", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "KillFx", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "WreckFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "TechUI", "WtAmmo", "WtSkin", "WtVoice", "WtComms", "WtCam", "Settings", "ArtyView", "Tracks", "WtVfx", "WtMap", "XrayOwn", "WtAir", "AirHud", "AirAudio", "Bombsight", "Radar", "WtFlight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
+for _, name in ipairs({ "Stream", "FarLod", "HudArt", "GunKit", "Fx", "VehCam", "MapUI", "UI", "Faction", "Menu", "MapPick", "Play", "View", "Soldier", "Drive", "Ride", "Hatch", "Fly", "ShipView", "Sail", "Hangar", "Depot", "Night", "DayNight", "Chute", "Tablet", "TacPad", "FortView", "Gunner", "AaFcs", "Optics", "FPSView", "GearView", "ScopePip", "Scope", "Scenery", "SnowPeaks", "SnowLook", "SnowClouds", "Hud", "Operation", "Coach", "AirFx", "Nuke", "MslCam", "Juice", "KillFx", "Warfx", "VehHud", "Bodycam", "Nade", "ArmorFx", "WreckFx", "Garage", "TankHud", "WtHud", "WtTank", "WtBattle", "TechUI", "WtAmmo", "WtSkin", "Workshop", "WtVoice", "WtComms", "WtCam", "Settings", "ArtyView", "Tracks", "WtVfx", "WtMap", "WtSpawn", "LoadoutWin", "CoinShop", "XrayOwn", "WtAir", "AirHud", "AirAudio", "Bombsight", "Radar", "WtFlight", "Marks", "Gunsmith", "Interior", "Downed", "Shock", "DeathFx", "Mantle", "SquadHud", "Coins", "Perf" }) do
   local mod = script:WaitForChild(name, 10)
   if not mod then
     table.insert(initErrs, "缺少模块 " .. name .. "（脚本没换全？）")
@@ -136,6 +173,7 @@ local steps = { { "drive", function(dt) G.stepDrive(dt) end }, { "fly", function
   { "interior", function(dt) if G.stepInterior then G.stepInterior(dt) end end },   -- 载具内饰：要用 View 这一帧算好的车体、炮塔姿态，镜头最后定
   { "ride", function(dt) if G.stepRide then G.stepRide(dt) end end },   -- 坐在别人开的车后面（Ride.lua）：镜头要用 View 这一帧摆好的车
   { "hatch", function(dt) if G.stepHatches then G.stepHatches(dt) end end },   -- 舱盖、车门开合，车长探身，上车的小人（Hatch.lua）：跟着 View 这一帧摆好的车
+  { "xray", function(dt) if G.stepOwnXray then G.stepOwnXray(dt) end end },   -- 按住 X 透视自己的车（XrayOwn.lua）：零件跟 View 这一帧摆好的车（不晚一帧）
   { "play", function(dt) G.stepPlay(dt) end },
   { "fx", function(dt) G.stepFx(dt) end }, { "forts", function(dt) if G.stepForts then G.stepForts(dt) end end },
   { "gunner", function(dt) if G.stepGunner then G.stepGunner(dt) end end },

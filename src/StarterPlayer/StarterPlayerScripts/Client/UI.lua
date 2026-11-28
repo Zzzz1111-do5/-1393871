@@ -65,7 +65,7 @@ function UI.init(G)
     l.Text = text or ""
     l.TextSize = ts or 16
     l.TextColor3 = color or TEXT
-    l.Font = font or Enum.Font.BuilderSansMedium
+    l.Font = font or Enum.Font.BuilderSans
     l.TextXAlignment = align or Enum.TextXAlignment.Center
     l.TextWrapped = true
     l.Parent = parent
@@ -82,7 +82,7 @@ function UI.init(G)
     b.Text = text or ""
     b.TextColor3 = TEXT
     b.TextSize = 16
-    b.Font = Enum.Font.BuilderSansBold
+    b.Font = Enum.Font.BuilderSansMedium
     b.AutoButtonColor = true
     b.Parent = parent
     round(b, 8)
@@ -99,10 +99,189 @@ function UI.init(G)
         bg.BackgroundColor3, bg.BackgroundTransparency = LINE, 0.86
       end
     end
-    if o.name then o.name.Font, o.name.TextColor3 = Enum.Font.BuilderSansMedium, TEXT end
+    if o.name then o.name.Font, o.name.TextColor3 = Enum.Font.BuilderSans, TEXT end
   end
   local function hpColor(k) return RGB(232, 84, 72):Lerp(TEXT, math.clamp(k, 0, 1)) end   -- 满血白、快没了红
   G.ui = { frame = frame, round = round, stroke = stroke, label = label, button = button, flatPanel = flatPanel, hpColor = hpColor }
+
+  ---------------------------------------------------------------- 界面出现的短缓动（各模块共用）
+  -- 用户 11-27「把各种动画效果做出丝滑感」：面板原来是 Visible 一下子开、一下子关。
+  --   G.uiShow(界面, true)：马上显示，同时自己挂的 UIScale 从 0.96 弹到 1（0.18 秒，Quart Out）——只动比例、不动位置和透明度，
+  --     别的代码照旧摆位置、改颜色，不打架；界面自己已经有 UIScale（手机缩放……）就不加，只显示。正在关（opt.out 缩到半路）又打开：从现在的大小回到 1
+  --   G.uiShow(界面, false)：马上藏（按住看的、关窗口这些不拖泥带水）；opt.out = true 时先缩到 0.97（0.18 秒）再藏
+  --   G.uiPop(界面, 从多大, 慢)：已经显示着的（命中结果、新的一行）从 1.07 之类缩回 1（0.12 秒）；慢 = true 时按打开面板的 0.18 秒 Quart Out。
+  --     界面上有别人的 UIScale（WtTank 的 barScale 这种每帧写的）弹不了：返回 false、Studio 里提醒一次——这种改动 Position，或者外面包一层没有 UIScale 的框
+  --   时长、缓动照 docs/style.md「动效」（workshop 的 Theme.T / Theme.EASE：界面上一律 Out、不用 In，退场 out 0.18、悬停 hover 0.12）：
+  --     Theme.T 进了主分支就直接用它的数；按住 Tab 看的战况表比面板（panel 0.28）快，0.18
+  --   系统打开「减少动态效果」（GuiService.ReducedMotionEnabled）就都不动。准星、命中标记、报错红字不用这个
+  do
+    local TweenService = game:GetService("TweenService")
+    local GuiService = game:GetService("GuiService")
+    local function reduced()
+      local ok, v = pcall(function() return GuiService.ReducedMotionEnabled end)
+      return ok and v == true
+    end
+    G.reducedMotion = reduced
+    local TT = (TH and type(TH.T) == "table") and TH.T or {}
+    local IN_T = TweenInfo.new(0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    local OUT_T = TweenInfo.new(TT.out or 0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+    local POP_T = TweenInfo.new(TT.hover or 0.12, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+    local own = setmetatable({}, { __mode = "k" })   -- [界面] = { sc = 自己挂的 UIScale, tok = 第几次（关的动画结束时还是这一次才藏）}
+    -- 界面上有没有别人的 UIScale（mine 是自己挂的那个）：每次都查——以后别的模块再给它加一个，两个 UIScale 会乘在一起
+    local function foreign(obj, mine)
+      for _, c in ipairs(obj:GetChildren()) do
+        if c ~= mine and c:IsA("UIScale") then return true end
+      end
+      return false
+    end
+    local function scaleOf(obj)
+      local e = own[obj]
+      if e and e.sc and e.sc.Parent == obj then
+        if not foreign(obj, e.sc) then return e end
+        e.sc:Destroy()   -- 别人后来也挂了一个：让给它
+        own[obj] = nil
+        return nil
+      end
+      if foreign(obj, nil) then return nil end   -- 界面自己有 UIScale：不叠第二个
+      local sc = Instance.new("UIScale")
+      sc.Name = "EaseScale"
+      sc.Parent = obj
+      e = { sc = sc, tok = 0 }
+      own[obj] = e
+      return e
+    end
+    local warned = setmetatable({}, { __mode = "k" })
+    local function cantScale(obj)
+      if warned[obj] then return end
+      warned[obj] = true
+      local okS, studio = pcall(function() return game:GetService("RunService"):IsStudio() end)
+      if okS and studio then warn("G.uiPop / uiShow：" .. obj:GetFullName() .. " 上有别的 UIScale，没法弹（改动 Position，或者外面包一层没有 UIScale 的框）") end
+    end
+    function G.uiShow(obj, on, opt)
+      if not obj then return end
+      local e = own[obj]
+      if e then e.tok += 1 end   -- 关到一半的那次作废（不藏了）
+      if on then
+        local was = obj.Visible
+        obj.Visible = true
+        if was and not (opt and opt.again) then   -- 本来就开着：不重弹；关到一半（缩到 0.97 的路上）又打开：回到 1
+          if e and e.sc.Parent == obj and e.sc.Scale ~= 1 then
+            if reduced() then e.sc.Scale = 1 else TweenService:Create(e.sc, IN_T, { Scale = 1 }):Play() end
+          end
+          return
+        end
+        if reduced() then
+          if e and e.sc.Parent then e.sc.Scale = 1 end
+          return
+        end
+        e = scaleOf(obj)
+        if not e then cantScale(obj) return end
+        e.sc.Scale = (opt and opt.from) or 0.96
+        TweenService:Create(e.sc, IN_T, { Scale = 1 }):Play()
+      else
+        if not obj.Visible then return end
+        if not (opt and opt.out) or reduced() or not (e and e.sc.Parent) then
+          obj.Visible = false
+          if e and e.sc.Parent then e.sc.Scale = 1 end
+          return
+        end
+        local tok = e.tok
+        TweenService:Create(e.sc, OUT_T, { Scale = 0.97 }):Play()
+        task.delay(OUT_T.Time, function()
+          if e.tok ~= tok then return end   -- 中间又打开了
+          obj.Visible = false
+          e.sc.Scale = 1
+        end)
+      end
+    end
+    function G.uiPop(obj, from, slow)
+      if not obj or reduced() then return false end
+      local e = scaleOf(obj)
+      if not e then cantScale(obj) return false end
+      e.tok += 1
+      e.sc.Scale = from or 1.07
+      TweenService:Create(e.sc, slow and IN_T or POP_T, { Scale = 1 }):Play()
+      return true
+    end
+    -- 镜头硬切的地方（机库出击进战场、退瞄准镜、收望远镜）盖一下黑再淡开：G.sceneFade(hold, fade, opt)
+    --   · hold 秒全黑（把加载、阴影重画那一顿藏在黑里）。hold > 0 的到点以后还要等连着两帧顺（dt < 1/22，出生那一帧卡 200 毫秒别把黑和淡开的头几帧一起吃掉）、
+    --     opt.ready() 给了也要它成立（比如出击：镜头真到了车上 G.drive / G.fly / G.sail），最多再等 opt.maxWait（默认 0.8）秒
+    --   · 再 fade 秒淡开（Quad Out）；opt.from：从多黑开始（默认 0 全黑；来回切的退镜、收望远镜从半黑淡一下，不闪全黑）
+    --   · 又来一次：上一次的补间停掉、从这一次接着（原来第二次只把黑设回去，上一次没跑完的补间下一帧又把它写回去）；
+    --     上一次还盖着黑在等（出击等镜头到车上）：两边的条件都要满足、淡开取长的（半路一下退镜不把出击的黑冲掉）
+    --   · 「减少动态效果」照样淡（淡入淡出就是它推荐用来替代运动的，DeathFx 也是这样），只是淡开不超过 0.15 秒
+    --   盖在界面上面、不挡鼠标
+    local fadeGui = Instance.new("ScreenGui")
+    fadeGui.Name = "SceneFade"
+    fadeGui.ResetOnSpawn = false
+    fadeGui.IgnoreGuiInset = true
+    fadeGui.DisplayOrder = 42   -- 阵亡黑幕（DeathFx 41）上面、性能面板（60）下面
+    fadeGui.Enabled = false
+    fadeGui.Parent = gui.Parent
+    local fadeF = Instance.new("Frame")
+    fadeF.Name = "Black"
+    fadeF.Size = UDim2.fromScale(1, 1)
+    fadeF.BackgroundColor3 = Color3.new(0, 0, 0)
+    fadeF.BackgroundTransparency = 1
+    fadeF.BorderSizePixel = 0
+    fadeF.Active = false
+    fadeF.Parent = fadeGui
+    local fadeTok, fadeTw, pend = 0, nil, nil   -- pend：盖着黑、还没开始淡开的这一次
+    local function startFade(p)
+      pend = nil
+      if fadeTw then fadeTw:Cancel() end
+      fadeTw = TweenService:Create(fadeF, TweenInfo.new(p.fade, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 })
+      fadeTw:Play()
+      task.delay(p.fade, function()
+        if fadeTok ~= p.tok then return end
+        fadeTw = nil
+        fadeGui.Enabled = false
+        fadeF.BackgroundTransparency = 1
+      end)
+    end
+    G.frameConn("SceneFade", function(dt)
+      local p = pend
+      if not p then return end
+      local now = os.clock()
+      if now < p.holdEnd then return end
+      local ok = true
+      if p.settle then
+        if (dt or 0) < 1 / 22 then p.smooth += 1 else p.smooth = 0 end   -- 锁 30 帧的手机一帧 33 毫秒也算顺；出生卡的那一下几百毫秒
+        ok = p.smooth >= 2
+      end
+      if ok and p.ready then
+        local okR, r = pcall(p.ready)
+        ok = (not okR) or r == true   -- ready 自己出错就不等了
+      end
+      if ok or now >= p.deadline then startFade(p) end
+    end)
+    function G.sceneFade(hold, fade, opt)
+      fadeTok += 1
+      if fadeTw then fadeTw:Cancel() fadeTw = nil end
+      hold, fade = math.max(0, hold or 0.12), math.max(0.05, fade or 0.25)
+      if reduced() then fade = math.min(fade, 0.15) end
+      local from = math.clamp((opt and opt.from) or 0, 0, 0.95)
+      if fadeGui.Enabled and fadeF.BackgroundTransparency < from then from = fadeF.BackgroundTransparency end   -- 还盖着更黑的（出击的黑没淡开）：别一下子变亮
+      fadeF.BackgroundTransparency = from
+      fadeGui.Enabled = true
+      local settle = hold > 0
+      if opt and opt.settle ~= nil then settle = opt.settle == true end
+      local now = os.clock()
+      local p = { tok = fadeTok, holdEnd = now + hold, fade = fade, settle = settle, smooth = 0, ready = opt and opt.ready }
+      p.deadline = p.holdEnd + ((opt and opt.maxWait) or 0.8)
+      local old = pend
+      if old then
+        p.holdEnd, p.deadline, p.fade = math.max(p.holdEnd, old.holdEnd), math.max(p.deadline, old.deadline), math.max(p.fade, old.fade)
+        p.settle = p.settle or old.settle
+        if old.ready then
+          local r1, r2 = old.ready, p.ready
+          p.ready = r2 and function() return r1() == true and r2() == true end or r1
+        end
+      end
+      pend = p
+    end
+    G.sceneFadeState = function() return { on = fadeGui.Enabled, tr = fadeF.BackgroundTransparency, waiting = pend ~= nil } end   -- 测试用
+  end
 
   local function teamColor(t)   -- 征服模式的中立据点（owner = "none"）：灰
     -- 队伍的颜色按看的人算：自己这一边绿、对面红、中立灰（统一外观 docs/style.md，不再攻方一律红、守方一律绿）
@@ -116,7 +295,7 @@ function UI.init(G)
 
   ---------------------------------------------------------------- 出错红条、开服进度
 
-  local errBar = label(gui, "", UDim2.new(1, -40, 0, 0), UDim2.new(0.5, 0, 0, 6), 14, RGB(255, 220, 220), Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0))
+  local errBar = label(gui, "", UDim2.new(1, -40, 0, 0), UDim2.new(0.5, 0, 0, 6), 14, RGB(255, 220, 220), Enum.Font.BuilderSans, Vector2.new(0.5, 0))
   errBar.AutomaticSize = Enum.AutomaticSize.Y
   errBar.BackgroundColor3 = RGB(150, 30, 30)
   errBar.BackgroundTransparency = 0.15
@@ -132,7 +311,7 @@ function UI.init(G)
 
   local loading = frame(gui, UDim2.fromScale(1, 1), nil, RGB(10, 14, 18), 0)
   loading.ZIndex = 40
-  local loadText = label(loading, "", UDim2.new(1, 0, 0, 40), UDim2.fromScale(0, 0.5), 22, TEXT, Enum.Font.BuilderSansBold)
+  local loadText = label(loading, "", UDim2.new(1, 0, 0, 40), UDim2.fromScale(0, 0.5), 22, TEXT, Enum.Font.BuilderSansMedium)
   loadText.ZIndex = 41
 
   ---------------------------------------------------------------- 部署界面
@@ -171,13 +350,13 @@ function UI.init(G)
     b.Text = ""
     b.TextSize = mobile and 16 or 19
     b.TextColor3 = RGB(10, 10, 12)
-    b.Font = Enum.Font.BuilderSansBold
+    b.Font = Enum.Font.BuilderSansMedium
     b.TextXAlignment = Enum.TextXAlignment.Left
     b.Parent = parent
     local pad = Instance.new("UIPadding")
     pad.PaddingLeft = UDim.new(0, 22)
     pad.Parent = b
-    local k = txt(b, "", UDim2.fromOffset(60, 20), UDim2.new(1, -18, 0.5, 0), 11, RGB(120, 120, 124), Enum.Font.BuilderSansMedium, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+    local k = txt(b, "", UDim2.fromOffset(60, 20), UDim2.new(1, -18, 0.5, 0), 11, RGB(120, 120, 124), Enum.Font.BuilderSans, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
     return b, b, k
   end
   -- 只有字的按钮（页签、换阵营、语言）
@@ -188,7 +367,7 @@ function UI.init(G)
     b.Text = s
     b.TextSize = ts or 13
     b.TextColor3 = DIM
-    b.Font = Enum.Font.BuilderSansMedium
+    b.Font = Enum.Font.BuilderSans
     b.TextXAlignment = align or Enum.TextXAlignment.Left
     b.AutoButtonColor = false
     b.Parent = parent
@@ -218,7 +397,7 @@ function UI.init(G)
   local tabs = {}
   for i, pg in ipairs({ "kit", "spawn" }) do
     local b = link(deploy, "", UDim2.fromOffset(mobile and 70 or 92, 26), UDim2.fromOffset(M0 + (i - 1) * (mobile and 80 or 104), topY), mobile and 14 or 16)
-    b.Font = Enum.Font.BuilderSansBold
+    b.Font = Enum.Font.BuilderSansMedium
     local u = hair(b, UDim2.new(0, 22, 0, 2), UDim2.new(0, 0, 1, 2), 0)
     tabs[pg] = { b = b, u = u }
   end
@@ -236,16 +415,16 @@ function UI.init(G)
   ------------------------------------ 装备页
   local infoY = topY + (mobile and 40 or 66)
   local facDot = frame(kitPage, UDim2.fromOffset(6, 6), UDim2.fromOffset(M0, infoY + 5), WHITE, 0)
-  local facLine = txt(kitPage, "", UDim2.fromOffset(360, 16), UDim2.fromOffset(M0 + 14, infoY), 12, DIM, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
-  local bigName = txt(kitPage, "", UDim2.fromOffset(mobile and 360 or 520, mobile and 34 or 50), UDim2.fromOffset(M0 - 2, infoY + 20), mobile and 28 or 42, WHITE, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
-  local bigDesc = txt(kitPage, "", UDim2.fromOffset(mobile and 360 or 460, 18), UDim2.fromOffset(M0, infoY + (mobile and 56 or 76)), 13, DIM, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local facLine = txt(kitPage, "", UDim2.fromOffset(360, 16), UDim2.fromOffset(M0 + 14, infoY), 12, DIM, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
+  local bigName = txt(kitPage, "", UDim2.fromOffset(mobile and 360 or 520, mobile and 34 or 50), UDim2.fromOffset(M0 - 2, infoY + 20), mobile and 28 or 42, WHITE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local bigDesc = txt(kitPage, "", UDim2.fromOffset(mobile and 360 or 460, 18), UDim2.fromOffset(M0, infoY + (mobile and 56 or 76)), 13, DIM, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
   local stats = {}
   for k = 1, 4 do
     local y = infoY + (mobile and 84 or 112) + (k - 1) * 24
-    local a = txt(kitPage, "", UDim2.fromOffset(80, 16), UDim2.fromOffset(M0, y), 11, DIM, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+    local a = txt(kitPage, "", UDim2.fromOffset(80, 16), UDim2.fromOffset(M0, y), 11, DIM, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
     local bg = hair(kitPage, UDim2.fromOffset(180, 2), UDim2.fromOffset(M0 + 86, y + 7), 0.86)
     local fill = frame(bg, UDim2.fromScale(0.5, 1), nil, WHITE, 0.05)
-    local v = txt(kitPage, "", UDim2.fromOffset(84, 16), UDim2.fromOffset(M0 + 274, y), 11, WHITE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+    local v = txt(kitPage, "", UDim2.fromOffset(84, 16), UDim2.fromOffset(M0 + 274, y), 11, WHITE, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
     stats[k] = { a = a, bg = bg, fill = fill, v = v }
     a.Visible, bg.Visible, v.Visible = not mobile, not mobile, not mobile
   end
@@ -255,12 +434,12 @@ function UI.init(G)
   local gsBtn = Instance.new("TextButton")
   gsBtn.Size, gsBtn.Position = UDim2.fromOffset(mobile and 110 or 132, mobile and 30 or 34), UDim2.fromOffset(M0, gsY)
   gsBtn.BackgroundColor3, gsBtn.BackgroundTransparency, gsBtn.BorderSizePixel, gsBtn.AutoButtonColor = RGB(206, 255, 72), 0, 0, true
-  gsBtn.Font, gsBtn.TextSize, gsBtn.TextColor3, gsBtn.Text = Enum.Font.BuilderSansExtraBold, mobile and 13 or 14, RGB(18, 22, 8), ""
+  gsBtn.Font, gsBtn.TextSize, gsBtn.TextColor3, gsBtn.Text = Enum.Font.BuilderSansBold, mobile and 13 or 14, RGB(18, 22, 8), ""
   gsBtn.Visible = false
   gsBtn.Parent = kitPage
-  local gsLine = txt(kitPage, "", UDim2.fromOffset(mobile and 230 or 340, 16), UDim2.fromOffset(M0 + (mobile and 120 or 144), gsY + (mobile and 7 or 9)), 11, DIM, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local gsLine = txt(kitPage, "", UDim2.fromOffset(mobile and 230 or 340, 16), UDim2.fromOffset(M0 + (mobile and 120 or 144), gsY + (mobile and 7 or 9)), 11, DIM, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
   gsLine.Visible = false
-  local gsLv = txt(kitPage, "", UDim2.fromOffset(120, 14), UDim2.fromOffset(M0, gsY + (mobile and 34 or 40)), 10, FAINT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local gsLv = txt(kitPage, "", UDim2.fromOffset(120, 14), UDim2.fromOffset(M0, gsY + (mobile and 34 or 40)), 10, FAINT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   gsLv.Visible = false
 
   gsBtn.Activated:Connect(function()
@@ -290,7 +469,7 @@ function UI.init(G)
   local cards = {}
   local picker = frame(kitPage, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
   picker.Visible = false
-  local pickHead = txt(picker, "", UDim2.fromOffset(300, 16), UDim2.new(0, M0, 1, slotY - SH - 14 - (mobile and 70 or 104) - 22), 12, DIM, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local pickHead = txt(picker, "", UDim2.fromOffset(300, 16), UDim2.new(0, M0, 1, slotY - SH - 14 - (mobile and 70 or 104) - 22), 12, DIM, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   local pickCards = {}
   local function newCard(parent, w, h)
     local b = Instance.new("TextButton")
@@ -315,10 +494,10 @@ function UI.init(G)
     vp.LightColor = RGB(255, 250, 242)
     vp.LightDirection = Vector3.new(-0.35, -1, -0.55)
     vp.Parent = b
-    local idx = txt(b, "", UDim2.fromOffset(40, 14), UDim2.fromOffset(10, 7), 10, FAINT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
-    local cat = txt(b, "", UDim2.fromOffset(w - 50, 14), UDim2.new(1, -10, 0, 7), 10, FAINT, Enum.Font.BuilderSansMedium, Vector2.new(1, 0), Enum.TextXAlignment.Right)
-    local nm = txt(b, "", UDim2.new(1, -60, 0, 16), UDim2.new(0, 10, 1, -(mobile and 20 or 24)), mobile and 11 or 13, WHITE, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
-    local cnt = txt(b, "", UDim2.fromOffset(50, 18), UDim2.new(1, -10, 1, -(mobile and 21 or 26)), mobile and 13 or 16, WHITE, Enum.Font.BuilderSansBold, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+    local idx = txt(b, "", UDim2.fromOffset(40, 14), UDim2.fromOffset(10, 7), 10, FAINT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+    local cat = txt(b, "", UDim2.fromOffset(w - 50, 14), UDim2.new(1, -10, 0, 7), 10, FAINT, Enum.Font.BuilderSans, Vector2.new(1, 0), Enum.TextXAlignment.Right)
+    local nm = txt(b, "", UDim2.new(1, -60, 0, 16), UDim2.new(0, 10, 1, -(mobile and 20 or 24)), mobile and 11 or 13, WHITE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+    local cnt = txt(b, "", UDim2.fromOffset(50, 18), UDim2.new(1, -10, 1, -(mobile and 21 or 26)), mobile and 13 or 16, WHITE, Enum.Font.BuilderSansMedium, Vector2.new(1, 0), Enum.TextXAlignment.Right)
     local bar = frame(b, UDim2.new(1, 0, 0, 2), nil, WHITE, 1)   -- 选中的那格顶上一道白线
     return { b = b, st = st, vp = vp, idx = idx, cat = cat, nm = nm, cnt = cnt, bar = bar, item = nil, wait = false }
   end
@@ -348,7 +527,7 @@ function UI.init(G)
   roleLay.SortOrder = Enum.SortOrder.LayoutOrder
   roleLay.VerticalAlignment = Enum.VerticalAlignment.Center
   roleLay.Parent = roleRow
-  local roleHead = txt(roleRow, "", UDim2.fromOffset(mobile and 34 or 44, 16), nil, 11, FAINT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local roleHead = txt(roleRow, "", UDim2.fromOffset(mobile and 34 or 44, 16), nil, 11, FAINT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   roleHead.LayoutOrder = 0
   local roleBtns = {}
   for i, r in ipairs(Config.RoleKits or {}) do
@@ -369,7 +548,7 @@ function UI.init(G)
   -- 主按钮：选择生成点
   local CW, CH = mobile and 200 or 270, mobile and 48 or 62
   local goSpawn, goSpawnT, goSpawnK = mainButton(kitPage, UDim2.fromOffset(CW, CH), UDim2.new(1, -M0, 1, slotY), Vector2.new(1, 1))
-  local phaseText = txt(deploy, "", UDim2.fromOffset(360, 16), UDim2.new(1, -M0, 1, slotY - CH - 12), 12, DIM, Enum.Font.BuilderSansMedium, Vector2.new(1, 1), Enum.TextXAlignment.Right)
+  local phaseText = txt(deploy, "", UDim2.fromOffset(360, 16), UDim2.new(1, -M0, 1, slotY - CH - 12), 12, DIM, Enum.Font.BuilderSans, Vector2.new(1, 1), Enum.TextXAlignment.Right)
 
   -- 数量（消耗品：弹匣 + 备弹）
   local function countOf(id)
@@ -438,7 +617,7 @@ function UI.init(G)
   ------------------------------------ 生成点页
   local listW = mobile and 230 or 340
   local listY = topY + (mobile and 40 or 66)
-  local listHead = txt(spawnPage, "", UDim2.fromOffset(listW, 16), UDim2.fromOffset(M0, listY), 12, DIM, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local listHead = txt(spawnPage, "", UDim2.fromOffset(listW, 16), UDim2.fromOffset(M0, listY), 12, DIM, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   local list = Instance.new("ScrollingFrame")
   list.Size = UDim2.new(0, listW, 1, -(listY + 24) - (mobile and 80 or 150))
   list.Position = UDim2.fromOffset(M0, listY + 24)
@@ -463,10 +642,10 @@ function UI.init(G)
   local spawnLayer = nil
   local spawnBtns = {}
   -- 装备一行 + 改装备
-  local kitLine = txt(spawnPage, "", UDim2.fromOffset(mobile and 300 or 520, 16), UDim2.new(0, M0, 1, slotY - 44), 12, DIM, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local kitLine = txt(spawnPage, "", UDim2.fromOffset(mobile and 300 or 520, 16), UDim2.new(0, M0, 1, slotY - 44), 12, DIM, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
   local editKit = link(spawnPage, "", UDim2.fromOffset(160, 18), UDim2.new(0, M0, 1, slotY), 12, Vector2.new(0, 1))
   editKit.TextColor3 = WHITE
-  editKit.Font = Enum.Font.BuilderSansBold
+  editKit.Font = Enum.Font.BuilderSansMedium
   -- 主按钮：出击
   local deployBtn, deployBtnT, deployBtnK = mainButton(spawnPage, UDim2.fromOffset(CW, CH), UDim2.new(1, -M0, 1, slotY), Vector2.new(1, 1))
 
@@ -565,8 +744,8 @@ function UI.init(G)
       row.Text = ""
       row.Parent = list
       frame(row, UDim2.new(0, 2, 1, 0), nil, WHITE, chosen and 0 or 1)
-      txt(row, spawnName(s), UDim2.new(1, -110, 1, 0), UDim2.fromOffset(14, 0), mobile and 12 or 14, s.ok and WHITE or FAINT, chosen and Enum.Font.BuilderSansBold or Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
-      local tag = txt(row, s.ok and (s.rec and T("deploy.rec") or "") or T("deploy.blocked"), UDim2.fromOffset(90, 16), UDim2.new(1, -12, 0.5, 0), 11, FAINT, Enum.Font.BuilderSansBold, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
+      txt(row, spawnName(s), UDim2.new(1, -110, 1, 0), UDim2.fromOffset(14, 0), mobile and 12 or 14, s.ok and WHITE or FAINT, chosen and Enum.Font.BuilderSansMedium or Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
+      local tag = txt(row, s.ok and (s.rec and T("deploy.rec") or "") or T("deploy.blocked"), UDim2.fromOffset(90, 16), UDim2.new(1, -12, 0.5, 0), 11, FAINT, Enum.Font.BuilderSansMedium, Vector2.new(1, 0.5), Enum.TextXAlignment.Right)
       if s.ok and s.rec then tag.TextColor3 = teamColor(S.team or "atk"):Lerp(WHITE, 0.3) end   -- 推荐：离当前目标最近
       row.Activated:Connect(pick)
       table.insert(spawnBtns, row)
@@ -590,7 +769,7 @@ function UI.init(G)
         st.Transparency = 0.3
         st.Parent = b
         if chosen then
-          local tip = label(spawnLayer, spawnName(s), UDim2.fromOffset(160, 16), UDim2.new(u, 0, v, 12), 12, WHITE, Enum.Font.BuilderSansBold, Vector2.new(0.5, 0))
+          local tip = label(spawnLayer, spawnName(s), UDim2.fromOffset(160, 16), UDim2.new(u, 0, v, 12), 12, WHITE, Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0))
           tip.ZIndex = 8
           tip.TextStrokeTransparency = 0.4
           table.insert(spawnBtns, tip)
@@ -671,7 +850,7 @@ function UI.init(G)
       t.u.BackgroundTransparency = (pg == page) and 0 or 1
       t.u.BackgroundColor3 = WHITE
     end
-    langBtn.Text = T("ui.lang")
+    langBtn.Text = G.Lang.nameOf(G.lang) .. "  ▸"
     sideBtn.Text = T("ui.switchSide")
     menuBtn.Text = T("menu.open")
     -- 阵营一行
@@ -720,7 +899,7 @@ function UI.init(G)
     for id, rb in pairs(roleBtns) do
       rb.b.Text = T("kitrole." .. id)
       rb.b.TextColor3 = (id == cur) and WHITE or DIM
-      rb.b.Font = (id == cur) and Enum.Font.BuilderSansBold or Enum.Font.BuilderSansMedium
+      rb.b.Font = (id == cur) and Enum.Font.BuilderSansMedium or Enum.Font.BuilderSans
       rb.u.BackgroundTransparency = (id == cur) and 0 or 1
     end
     -- 标题、说明、数据、大图：看的那一格
@@ -806,8 +985,9 @@ function UI.init(G)
     if c then pcall(function() m:PivotTo(CFrame.new(c) * CFrame.Angles(0, math.sin(os.clock() * 0.5) * 0.3, 0)) end) end
   end)
 
-  langBtn.Activated:Connect(function()
-    G.lang = (G.lang == "zh") and "en" or "zh"
+  langBtn.Activated:Connect(function()   -- 11-28 多语言：按 Lang.LIST 的顺序换下一种（十种）
+    G.lang = G.Lang.nextOf(G.lang)
+    if G.setPref then G.setPref("lang", G.lang) end   -- 记进设置（存档；设置页的下拉框也跟着）
     G.refresh()
   end)
 
@@ -817,18 +997,18 @@ function UI.init(G)
   hud.Name = "Hud"
   local topBar = frame(hud, UDim2.fromOffset(460, 74), UDim2.new(0.5, 0, 0, 8), PANEL, 0.35, Vector2.new(0.5, 0))
   round(topBar, 10)
-  local timer = label(topBar, "", UDim2.new(1, 0, 0, 24), UDim2.fromOffset(0, 4), 20, TEXT, Enum.Font.BuilderSansExtraBold)
+  local timer = label(topBar, "", UDim2.new(1, 0, 0, 24), UDim2.fromOffset(0, 4), 20, TEXT, Enum.Font.BuilderSansBold)
   local chips = {}
   for i, p in ipairs(Map.POINTS) do
     local c = frame(topBar, UDim2.fromOffset(80, 38), UDim2.fromOffset(10 + (i - 1) * 89, 30), RGB(30, 40, 60), 0.05)
     round(c, 6)
-    local l = label(c, p.id, UDim2.new(0, 26, 1, 0), UDim2.fromOffset(4, 0), 20, Color3.new(1, 1, 1), Enum.Font.BuilderSansExtraBold)
-    local n = label(c, "", UDim2.new(1, -32, 0, 18), UDim2.fromOffset(30, 3), 12, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+    local l = label(c, p.id, UDim2.new(0, 26, 1, 0), UDim2.fromOffset(4, 0), 20, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold)
+    local n = label(c, "", UDim2.new(1, -32, 0, 18), UDim2.fromOffset(30, 3), 12, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
     local barBg = frame(c, UDim2.new(1, -36, 0, 5), UDim2.new(0, 30, 1, -10), RGB(0, 0, 0), 0.5)
     local bar = frame(barBg, UDim2.fromScale(0, 1), nil, Config.Teams.atk.color, 0)
     chips[p.id] = { f = c, l = l, n = n, bar = bar }
   end
-  local counts = label(hud, "", UDim2.fromOffset(240, 20), UDim2.new(0.5, 0, 0, 84), 14, TEXT, Enum.Font.BuilderSansBold, Vector2.new(0.5, 0))
+  local counts = label(hud, "", UDim2.fromOffset(240, 20), UDim2.new(0.5, 0, 0, 84), 14, TEXT, Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0))
   counts.TextStrokeTransparency = 0.5
 
   -- 血条
@@ -836,8 +1016,8 @@ function UI.init(G)
   round(hpBg, 4)
   local hpBar = frame(hpBg, UDim2.fromScale(1, 1), nil, RGB(90, 210, 110), 0)
   round(hpBar, 4)
-  local hpText = label(hpBg, "", UDim2.fromScale(1, 1), nil, 12, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold)
-  local roleText = label(hud, "", UDim2.fromOffset(260, 18), UDim2.new(0, 20, 1, -62), 14, TEXT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local hpText = label(hpBg, "", UDim2.fromScale(1, 1), nil, 12, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium)
+  local roleText = label(hud, "", UDim2.fromOffset(260, 18), UDim2.new(0, 20, 1, -62), 14, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   roleText.TextStrokeTransparency = 0.5
   local help = label(hud, "", UDim2.new(0.6, 0, 0, 16), UDim2.new(0.5, 0, 1, -18), 12, MUTE, Enum.Font.BuilderSans, Vector2.new(0.5, 0))
   help.TextStrokeTransparency = 0.6
@@ -862,7 +1042,7 @@ function UI.init(G)
 
   ---------------------------------------------------------------- 消息
 
-  local center = label(gui, "", UDim2.new(0.8, 0, 0, 40), UDim2.new(0.5, 0, 0.44, 0), 24, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, Vector2.new(0.5, 0.5))
+  local center = label(gui, "", UDim2.new(0.8, 0, 0, 40), UDim2.new(0.5, 0, 0.44, 0), 24, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0.5))
   center.TextStrokeTransparency = 0.3
   center.ZIndex = 30
   local centerT = 0
@@ -884,7 +1064,7 @@ function UI.init(G)
   local KIND_COL = { good = TH.C.GOOD, bad = TH.C.BAD, info = TH.C.MUTE, kill = TH.C.WARN }
   function G.toast(text, kind)
     order += 1
-    local l = label(toasts, text, UDim2.fromOffset(420, 28), nil, 14, TEXT, Enum.Font.BuilderSansMedium)
+    local l = label(toasts, text, UDim2.fromOffset(420, 28), nil, 14, TEXT, Enum.Font.BuilderSans)
     l.BackgroundColor3 = RGB(6, 8, 10)
     l.BackgroundTransparency = 0.2
     l.LayoutOrder = order
@@ -899,7 +1079,7 @@ function UI.init(G)
   end
   local function feedAdd(text)
     order += 1
-    local l = label(feed, text, UDim2.fromOffset(340, 22), nil, 14, Color3.new(1, 1, 1), Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Right)
+    local l = label(feed, text, UDim2.fromOffset(340, 22), nil, 14, Color3.new(1, 1, 1), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Right)
     l.TextStrokeTransparency = 0.4
     l.LayoutOrder = order
     local kids = {}
@@ -956,7 +1136,7 @@ function UI.init(G)
   board.Visible = false
   board.ZIndex = 20
   stroke(board, LINE, 1, 0.88)
-  local boardTitle = label(board, "", UDim2.new(1, -48, 0, 40), UDim2.fromOffset(24, 8), 16, TEXT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+  local boardTitle = label(board, "", UDim2.new(1, -48, 0, 40), UDim2.fromOffset(24, 8), 16, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
   boardTitle.ZIndex = 21
   local cols = {}
   for i, t in ipairs({ "atk", "def" }) do
@@ -964,7 +1144,7 @@ function UI.init(G)
     c.ZIndex = 21
     local tl = frame(c, UDim2.new(1, 0, 0, 2), nil, teamColor(t), 0)   -- 顶上一道队色细线
     tl.ZIndex = 22
-    local h = label(c, "", UDim2.new(1, 0, 0, 28), UDim2.fromOffset(0, 6), 14, TEXT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
+    local h = label(c, "", UDim2.new(1, 0, 0, 28), UDim2.fromOffset(0, 6), 14, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
     h.ZIndex = 22
     local list = Instance.new("Frame")
     list.BackgroundTransparency = 1
@@ -978,8 +1158,11 @@ function UI.init(G)
     cols[t] = { head = h, list = list }
   end
   local boardData = {}
+  local drawnData, drawnLang = nil, nil   -- 上次画的是哪一份数据、哪种语言：按 Tab 打开时数据没变就不再整张重建（几十行、上百个字）
   function G.onBoard(d) boardData = d or {} if board.Visible then G.drawBoard() end end
   function G.drawBoard()
+    if drawnData == boardData and drawnLang == G.lang then return end
+    drawnData, drawnLang = boardData, G.lang
     boardTitle.Text = T("ui.scoreboard")
     for t, c in pairs(cols) do
       for _, k in ipairs(c.list:GetChildren()) do if k:IsA("Frame") then k:Destroy() end end
@@ -991,7 +1174,7 @@ function UI.init(G)
       hdr.LayoutOrder = 0
       hdr.ZIndex = 22
       for k, txt in ipairs({ "", T("ui.kills"), T("ui.deaths"), T("ui.captures"), T("ui.score") }) do
-        local l = label(hdr, txt, UDim2.new(k == 1 and 0.44 or 0.14, 0, 1, 0), UDim2.new(k == 1 and 0 or (0.44 + (k - 2) * 0.14), 0, 0, 0), 10, MUTE, Enum.Font.BuilderSansMedium)
+        local l = label(hdr, txt, UDim2.new(k == 1 and 0.44 or 0.14, 0, 1, 0), UDim2.new(k == 1 and 0 or (0.44 + (k - 2) * 0.14), 0, 0, 0), 10, MUTE, Enum.Font.BuilderSans)
         l.ZIndex = 23
       end
       for i, e in ipairs(rows) do
@@ -1002,7 +1185,7 @@ function UI.init(G)
         local nm = e.n .. (e.bot and (" " .. T("ui.bot")) or "")
         for k, txt in ipairs({ nm, tostring(e.k or 0), tostring(e.d or 0), tostring(e.c or 0), tostring(e.s or 0) }) do
           local l = label(r, txt, UDim2.new(k == 1 and 0.44 or 0.14, 0, 1, 0), UDim2.new(k == 1 and 0 or (0.44 + (k - 2) * 0.14), 0, 0, 0), 12, TEXT,
-            Enum.Font.BuilderSansMedium, nil, k == 1 and Enum.TextXAlignment.Left or Enum.TextXAlignment.Center)
+            Enum.Font.BuilderSans, nil, k == 1 and Enum.TextXAlignment.Left or Enum.TextXAlignment.Center)
           l.ZIndex = 23
           l.TextTruncate = Enum.TextTruncate.AtEnd
         end
@@ -1011,23 +1194,26 @@ function UI.init(G)
   end
   UIS.InputBegan:Connect(function(io, gp)
     if io.KeyCode == Enum.KeyCode.Tab then
-      board.Visible = true
-      G.drawBoard()
+      G.drawBoard()   -- 先画好再弹出来（同一帧）
+      G.uiShow(board, true)
     end
     G.boardShown = function() return board.Visible end
   end)
   UIS.InputEnded:Connect(function(io)
-    if io.KeyCode == Enum.KeyCode.Tab then board.Visible = false end
+    if io.KeyCode == Enum.KeyCode.Tab then G.uiShow(board, false) end
   end)
   local boardBtn = button(hud, "≡", UDim2.fromOffset(36, 36), UDim2.new(0, 16, 0, 70), RGB(8, 10, 12))   -- 顶栏下面：左上角是 Roblox 自带的菜单、聊天按钮
   boardBtn.BackgroundTransparency = 0.5
   boardBtn.TextColor3 = RGB(200, 206, 210)
   for _, c in ipairs(boardBtn:GetChildren()) do if c:IsA("UICorner") then c:Destroy() end end   -- 直角，跟新界面一样
   boardBtn.TextSize = 22
-  boardBtn.Activated:Connect(function()
-    board.Visible = not board.Visible
-    if board.Visible then G.drawBoard() end
-  end)
+  -- 开 / 关战况表（v 不给就是切换）：左上「≡」、局内出击页的「数据统计」（WtSpawn.lua）
+  function G.boardToggle(v)
+    if v == nil then v = not board.Visible end
+    if v then G.drawBoard() end
+    G.uiShow(board, v)
+  end
+  boardBtn.Activated:Connect(function() G.boardToggle() end)
 
   ---------------------------------------------------------------- 结算
 
@@ -1037,21 +1223,21 @@ function UI.init(G)
   results.ZIndex = 25
   stroke(results, LINE, 1, 0.88)
   local resLine = frame(results, UDim2.new(1, 0, 0, 2), nil, LINE, 0)
-  local resCap = label(results, "", UDim2.new(1, -56, 0, 16), UDim2.fromOffset(28, 22), 11, MUTE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
-  local resTitle = label(results, "", UDim2.new(1, -56, 0, 42), UDim2.fromOffset(28, 40), 34, TEXT, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left)
-  local resSub = label(results, "", UDim2.new(1, -56, 0, 20), UDim2.fromOffset(28, 86), 14, MUTE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local resCap = label(results, "", UDim2.new(1, -56, 0, 16), UDim2.fromOffset(28, 22), 11, MUTE, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
+  local resTitle = label(results, "", UDim2.new(1, -56, 0, 42), UDim2.fromOffset(28, 40), 34, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local resSub = label(results, "", UDim2.new(1, -56, 0, 20), UDim2.fromOffset(28, 86), 14, MUTE, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
   local resNums = {}
   for i, k in ipairs({ "ui.kills", "ui.deaths", "ui.captures", "ui.score" }) do
     local x = 28 + (i - 1) * 146
     resNums[i] = {
       k = k,
-      n = label(results, "0", UDim2.fromOffset(130, 38), UDim2.fromOffset(x, 124), 30, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left),
-      c = label(results, "", UDim2.fromOffset(130, 14), UDim2.fromOffset(x, 164), 11, MUTE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left),
+      n = label(results, "0", UDim2.fromOffset(130, 38), UDim2.fromOffset(x, 124), 30, TEXT, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left),
+      c = label(results, "", UDim2.fromOffset(130, 14), UDim2.fromOffset(x, 164), 11, MUTE, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left),
     }
   end
   local resSep = frame(results, UDim2.new(1, -56, 0, 1), UDim2.fromOffset(28, 196), LINE, 0.88)
-  local resXp = label(results, "", UDim2.new(1, -56, 0, 20), UDim2.fromOffset(28, 208), 14, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
-  local resNext = label(results, "", UDim2.new(1, -56, 0, 18), UDim2.new(0, 28, 1, -40), 12, MUTE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local resXp = label(results, "", UDim2.new(1, -56, 0, 20), UDim2.fromOffset(28, 208), 14, TEXT, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
+  local resNext = label(results, "", UDim2.new(1, -56, 0, 18), UDim2.new(0, 28, 1, -40), 12, MUTE, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
   for _, x in ipairs({ resLine, resCap, resTitle, resSub, resSep, resXp, resNext }) do x.ZIndex = 26 end
   for _, r in ipairs(resNums) do r.n.ZIndex, r.c.ZIndex = 26, 26 end
   if mobile then   -- 手机横屏（844 × 390）：缩一点，别盖住触屏按钮
@@ -1149,7 +1335,8 @@ function UI.init(G)
     -- 鼠标指针：游戏里锁在屏幕中间时（第一人称、肩后瞄准、开车开飞机开船、操作工事）不画——准星是自己画的；开着菜单时画出来
     if not G.mobile then
       local menu = G.menuOpen()
-      local locked = not menu and (UIS.MouseBehavior == Enum.MouseBehavior.LockCenter or (G.fpActive and not drv) or drv ~= nil)
+      local xr = G.ownXrayOn ~= nil and G.ownXrayOn() and G.ownXrayPtr == true   -- 按住 X 透视自己的车、再按住 Alt：鼠标放开了（Drive.lua），画出指针去指部件
+      local locked = not menu and not xr and (UIS.MouseBehavior == Enum.MouseBehavior.LockCenter or (G.fpActive and not drv) or drv ~= nil)
       if UIS.MouseIconEnabled == locked then UIS.MouseIconEnabled = not locked end
       if menu and UIS.MouseBehavior == Enum.MouseBehavior.LockCenter then UIS.MouseBehavior = Enum.MouseBehavior.Default end
     end

@@ -524,6 +524,27 @@ function WtMatch.init(G)
   G.ACT.matchJoin = function(P, key)
     local R = G.round
     if not R or type(key) ~= "string" then return end
+    -- 训练场服务器（Places.lua）不打对战：「开战」传送到想打的那张图的服务器（没选过、那张图没有自己的地点：回起始服务器），到了自动排上
+    if G.placeRole == "range" and G.teleport and G.placeFor then
+      local want = P.wantMap
+      local role = (want and G.placeFor(want)) and want or (G.placeFor(P.cameFrom or "") and P.cameFrom) or "all"
+      if G.placeFor(role) and G.teleport(P, role, { battle = key }) then return end
+      G.msg(P.pl, "bad", "place.noBattle")
+      return
+    end
+    -- 这个服务器的图还没定 / 还在建（用户 11-28 晚「然后目前没法切地图」：不再进来二十秒就替人定图，init.server.lua）：
+    --   点「开战」= 投自己在「这一局」那块选过的那张（没选过：默认那张），先排上；图建好、开局（匹配中）时接着倒计时（下面 roundStart）
+    if R.phase == "boot" then
+      if not G.mapId and G.voteMap then   -- 先投图（这辆车排不上也照样开图：Tech.lua 自己说为什么排不上）
+        local want = (G.mapVotes and G.mapVotes[P.pl]) or P.wantMap or (Config.MapDefault or "snow")
+        if not G.voteMap(P.pl, want) then G.voteMap(P.pl, Config.MapDefault or "snow") end
+      end
+      if G.treeCanQueue and not G.treeCanQueue(P, key) then G.pushAll() return end
+      P.queued = key
+      G.msg(P.pl, "info", "map.buildThenMatch", { k = "map." .. tostring(G.mapId or (G.mapVotes and G.mapVotes[P.pl]) or Config.MapDefault or "snow") .. ".name" })
+      G.pushAll()
+      return
+    end
     if R.phase ~= "queue" then   -- 已经在打（准备 / 战斗）：进局、出选车界面（同战雷：「加入战斗」以后在局里选车）
       if P.testDeploy then if G.ACT.deployVeh then G.ACT.deployVeh(P, key) end return end
       if G.treeCanQueue and not G.treeCanQueue(P, key) then return end
@@ -563,11 +584,24 @@ function WtMatch.init(G)
       P.queued = nil
       P.pickPref = key
       enterMatch(P)
+      -- 用户 11-28 晚「点加入战斗就进入地图里面等着吧 等倒计时结束就开战」（同战雷）：不再先出局内选车页、再点「出击」——
+      --   直接坐进机库里点的那一辆出现在自己基地，准备阶段车开不了、炮打不了（客户端 G.wtHold、服务器 Armor.lua 开火只在开战以后），
+      --   屏幕正中倒计时（WtBattle.lua），倒计时完开战。出不来的（SP、阵容）照旧停在局内选车页
+      if key and G.ACT.deployVeh then
+        task.spawn(function() G.try("开局出击", G.ACT.deployVeh, P, key) end)
+      end
     end
     if G.treeRoundBr then pcall(G.treeRoundBr) end
     -- 不再在屏幕正中写「匹配完成：进入战斗（人不够的位置由人机补上）」（用户 11-26「把那串字去掉太难看」）：机库的主按钮变成「出击」就说明了
   end)
   G.on("left", function(P) P.queued = nil end)
+  -- 开局（匹配中）时已经有人排着（图还在建的时候点了「开战」）：接着起算匹配的倒计时（原来只在点开战那一下起算，开局又清掉了）
+  G.on("roundStart", function()
+    local R = G.round
+    if R and R.phase == "queue" and #queuedList() > 0 and not R.queueEnds then
+      R.queueEnds = now() + (MC.wait or 60)
+    end
+  end)
   -- 这一队这一局真打的人（匹配进来的、半路加入的；坐在车里的、活着的也算）——电脑补到 teamSize 时扣掉他们（AIVeh.lua）
   function G.matchPlayers(team)
     local R = G.round

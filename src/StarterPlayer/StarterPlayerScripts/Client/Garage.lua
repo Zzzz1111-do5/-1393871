@@ -61,8 +61,8 @@ function Garage.init(G)
   floor.Parent = world
 
   local function square(x) for _, c in ipairs(x:GetChildren()) do if c:IsA("UICorner") then c:Destroy() end end return x end
-  local title = ui.label(bg, "", UDim2.fromOffset(640, 30), UD2(0.5, 0, 0, 24), 24, TEXT, Enum.Font.BuilderSansExtraBold, Vector2.new(0.5, 0))
-  local sub = ui.label(bg, T("gar.sub"), UDim2.fromOffset(640, 18), UD2(0.5, 0, 0, 58), 13, MUTE, Enum.Font.BuilderSansMedium, Vector2.new(0.5, 0))
+  local title = ui.label(bg, "", UDim2.fromOffset(640, 30), UD2(0.5, 0, 0, 24), 24, TEXT, Enum.Font.BuilderSansBold, Vector2.new(0.5, 0))
+  local sub = ui.label(bg, T("gar.sub"), UDim2.fromOffset(640, 18), UD2(0.5, 0, 0, 58), 13, MUTE, Enum.Font.BuilderSans, Vector2.new(0.5, 0))
   -- 左边：三个改装位
   local left = ui.frame(bg, UDim2.fromOffset(330, 470), UD2(0, 36, 0.5, 0), RGB(0, 0, 0), 1, Vector2.new(0, 0.5))
   local lay = Instance.new("UIListLayout")
@@ -72,14 +72,14 @@ function Garage.init(G)
   -- 右下：说明
   local info = ui.frame(bg, UDim2.fromOffset(380, 150), UD2(1, -36, 1, -100), RGB(10, 12, 14), 0.12, Vector2.new(1, 1))
   ui.stroke(info, RGB(255, 255, 255), 1, 0.88)
-  local infoT = ui.label(info, "", UD2(1, -28, 0, 22), UDim2.fromOffset(14, 12), 16, TEXT, Enum.Font.BuilderSansBold)
+  local infoT = ui.label(info, "", UD2(1, -28, 0, 22), UDim2.fromOffset(14, 12), 16, TEXT, Enum.Font.BuilderSansMedium)
   local infoD = ui.label(info, "", UD2(1, -28, 0, 78), UDim2.fromOffset(14, 40), 13, RGB(196, 204, 206), Enum.Font.BuilderSans)
   infoD.TextWrapped, infoD.TextYAlignment = true, Enum.TextYAlignment.Top
-  local infoS = ui.label(info, "", UD2(1, -28, 0, 18), UD2(0, 14, 1, -28), 13, ACC, Enum.Font.BuilderSansBold)
+  local infoS = ui.label(info, "", UD2(1, -28, 0, 18), UD2(0, 14, 1, -28), 13, ACC, Enum.Font.BuilderSansMedium)
   local backBtn = square(ui.button(bg, T("gar.back"), UDim2.fromOffset(150, 44), UD2(1, -236, 1, -36), RGB(30, 34, 38), Vector2.new(1, 1)))
   local goBtn = square(ui.button(bg, T("gar.spawn"), UDim2.fromOffset(180, 44), UD2(1, -36, 1, -36), RGB(52, 150, 78), Vector2.new(1, 1)))
   goBtn.Name, backBtn.Name = "GarageGo", "GarageBack"
-  goBtn.Font, backBtn.Font = Enum.Font.BuilderSansExtraBold, Enum.Font.BuilderSansBold
+  goBtn.Font, backBtn.Font = Enum.Font.BuilderSansBold, Enum.Font.BuilderSansMedium
   goBtn.TextSize, backBtn.TextSize = 17, 15
   ui.stroke(backBtn, RGB(255, 255, 255), 1, 0.8)
   local spots = ui.frame(bg, UDim2.fromScale(1, 1), nil, RGB(0, 0, 0), 1)
@@ -174,8 +174,8 @@ function Garage.init(G)
     b.LayoutOrder = order
     b.AutoButtonColor = true
     ui.stroke(b, RGB(255, 255, 255), 1, 0.88)
-    local t1 = ui.label(b, text, UD2(1, -24, 0, 20), UDim2.fromOffset(12, 8), 15, TEXT, Enum.Font.BuilderSansBold)
-    local t2 = ui.label(b, sub2 or "", UD2(1, -24, 0, 16), UDim2.fromOffset(12, h - 24), 12, ACC, Enum.Font.BuilderSansMedium)
+    local t1 = ui.label(b, text, UD2(1, -24, 0, 20), UDim2.fromOffset(12, 8), 15, TEXT, Enum.Font.BuilderSansMedium)
+    local t2 = ui.label(b, sub2 or "", UD2(1, -24, 0, 16), UDim2.fromOffset(12, h - 24), 12, ACC, Enum.Font.BuilderSans)
     t1.TextXAlignment, t2.TextXAlignment = Enum.TextXAlignment.Left, Enum.TextXAlignment.Left
     table.insert(cards, b)
     return b, t1, t2

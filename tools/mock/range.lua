@@ -3,10 +3,11 @@
 --   ① 地图函数按区块分派（Map.lua zoneWrap）：训练场里的高度、材质是训练场的（平地 12、挡弹墙鼓起来），战场里的照旧
 --   ② 训练场建好（G.rangeReady）：地形写了（平地 FillBlock、挡弹墙逐列写体素）、设施都在（8 条靶道、距离牌、跑道、直升机坪、靶区）
 --   ③ 坦克试驾：车在训练场第 1 条靶道的射击线上，七辆靶车在这条靶道 300～2000 米，三架靶机在训练场上空；第二个人用第 2 条靶道
---   ④ 飞机试驾：停在训练场跑道东头；在训练场里飞不算出界，飞出训练场作战区按训练场中心掉头（不往战场飞）
+--   ④ 飞机试驾：停在训练场跑道东头；在训练场里飞不算出界，飞出训练场作战区按训练场中心算出界、开始读秒
 --   ⑤ 大厅（主菜单、机库厂房、机库停机坪）离战场、训练场都几万格
---   ⑥ 镜头在训练场：远处那圈平地换成训练场的草地、在训练场平地的高度；回战场换回来
+--   ⑥ 镜头在训练场：远处那圈平地换成训练场的草地、在训练场平地的高度；回机库沉在场景最低的零件底下；回战场换回来
 local T = dofile(MOCK_DIR .. "/common.lua")
+pcall(function() io.stdout:setvbuf("line") end)   -- 跑得久：一行一行写出来（重定向到文件时也看得见进度）
 local R, V3, CF, Enum = T.R, T.V3, T.CF, T.Enum
 local check = T.check
 
@@ -135,7 +136,7 @@ T.remoteAs(me, "Drive", { op = "exit", hangar = true })
 T.runUntil(function() return not P.alive end, 15)
 R.run(9)
 
-print("④ 飞机试驾：训练场跑道，出界按训练场中心掉头")
+print("④ 飞机试驾：训练场跑道，出界按训练场中心读秒")
 T.act("testDrive", "cn_j6")
 T.runUntil(function() return P.alive and P.vehicle ~= nil and P.vehicle.air end, 20)
 local ea = P.vehicle
@@ -164,9 +165,9 @@ if ea and st then
   check(st.oob == false, "在训练场上空飞：不算出界（原来离战场中心十万格，一直当出界往回拽）")
   place(RM.X + Zones.RANGE.PLAY + 600, RM.Z, V3(1, 0, 0))
   R.run(0.5)
-  local yaw = st.aimYaw or 0
-  local aim = V3(-math.sin(yaw), 0, -math.cos(yaw))
-  check(st.oob == true and aim.X < -0.9, string.format("飞出训练场作战区：掉头朝训练场中心（准心朝 %.2f, %.2f）", aim.X, aim.Z))
+  -- 用户 11-27「超出战场区域开始读秒吧 读完了自动炸」：出界不再自动掉头，按训练场的作战区读秒（读完判毁见 tools/mock/bounds.lua）
+  local left = ea.model:GetAttribute("Oob")
+  check(st.oob == true and left ~= nil and left <= 10, "飞出训练场作战区：按训练场中心算出界、开始读秒（剩 " .. tostring(left) .. " 秒）")
   check(ea.alive and Zones.of(ea.root.CFrame.Position.X, ea.root.CFrame.Position.Z) == "range", "服务器认（没当成飞出地图拉回去）")
 end
 T.remoteAs(me, "Drive", { op = "exit", hangar = true })
@@ -196,8 +197,37 @@ local function camZone()
 end
 T.runUntil(function() return camZone() == "lobby" end, 10)
 R.run(0.3)
-local y3 = tilesAt()
-check(y3 and math.abs(y3 - 899.5) < 0.01, string.format("回机库（大厅）：远处平地托在场景脚下（%s 格高）", tostring(y3)))
+-- 大厅那圈平地沉在场景的地面底下（Scenery.lua；原来顶面正好 900，和厂房地面抢深度）：不抄 Scenery 里的数，
+--   照 tools/mock/hangarzfight.lua 的查法——露着的那几块的顶面低于镜头所在那处场景（厂房 / 停机坪）最低的零件底面
+local y3, _, n3 = tilesAt()
+local top3 = nil
+local oc3 = R.workspace:FindFirstChild("Ocean")
+for _, p in ipairs(oc3 and oc3:GetChildren() or {}) do
+  local y = p.CFrame.Position.Y
+  if y > -1000 then top3 = math.max(top3 or -1e18, y + p.Size.Y / 2) end
+end
+local function meshed(p)
+  for _, c in ipairs(p:GetChildren()) do
+    local k = c.ClassName
+    if k == "SpecialMesh" or k == "BlockMesh" or k == "CylinderMesh" or k == "FileMesh" then return true end
+  end
+  return false
+end
+-- 厂房：所有零件（停进来的车是子 Model，不算）；停机坪：水泥坪、外圈那块地（远处那道山本来就插在地里，同 hangarzfight ②）
+local hall = R.workspace:FindFirstChild("HangarStage")
+local stage = hall or R.workspace:FindFirstChild("HangarApron")
+local low, nParts = nil, 0
+for _, p in ipairs(stage and stage:GetChildren() or {}) do
+  if p.ClassName == "Part" and p.Transparency < 0.999 and not meshed(p) and (hall or p.Name == "Field" or p.Name == "Apron") then
+    local _, y, _, _, _, _, r10, r11, r12 = p.CFrame:GetComponents()
+    local s = p.Size
+    low = math.min(low or 1e18, y - (math.abs(r10) * s.X + math.abs(r11) * s.Y + math.abs(r12) * s.Z) / 2)
+    nParts = nParts + 1
+  end
+end
+check(y3 ~= nil and n3 > 0 and top3 ~= nil and low ~= nil and top3 < low - 0.5,
+  string.format("回机库（大厅）：远处平地顶面 %s 在%s最低的零件底面（%s，%d 个零件）底下", tostring(top3), stage and stage.Name or "（没找到场景）",
+    low and string.format("%.2f", low) or "?", nParts))
 -- 回战场：当步兵在自己基地出生（战雷模式默认不让步行：这里放开）
 R.run(9)
 G.allowInfantry = true

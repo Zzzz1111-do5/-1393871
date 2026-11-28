@@ -10,7 +10,7 @@ function WtCam.init(G)
   local me = Players.LocalPlayer
   local RGB, UD2, V3 = Color3.fromRGB, UDim2.new, Vector3.new
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local BOLD = Enum.Font.BuilderSansBold
+  local BOLD = Enum.Font.BuilderSansMedium
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "WtCam"

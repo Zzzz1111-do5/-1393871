@@ -33,7 +33,7 @@ function WtFlight.init(G)
   local TXT, LAB = TH.C.TEXT, TH.C.MUTE   -- 左上：数白、标签灰白
   local RED, ORG, WHITE = TH.C.BAD, TH.C.WARN, Color3.new(1, 1, 1)
   local INK = RGB(0, 0, 0)
-  local MONO, SANS = Enum.Font.RobotoMono, Enum.Font.BuilderSansMedium
+  local MONO, SANS = Enum.Font.RobotoMono, Enum.Font.BuilderSans
   G.wtFlightOn = true
 
   local gui = Instance.new("ScreenGui")
@@ -150,6 +150,17 @@ function WtFlight.init(G)
   local smallC, smallS = ringOf(gui, 26, WHITE, 1.6)
   smallC.Name = "SeekerHead"
   smallC.Visible = false
+  -- 雷达近战模式的扫描区（Radar.lua 的 G.radarAcmZone，机体坐标）：竖扫两条竖线、平显视场 / 可挪一个框、瞄准线 / 头盔一个小圈
+  local acmZ = frame(gui, UDim2.fromScale(1, 1), UD2(), INK, 1)
+  acmZ.Name = "WtAcmZone"
+  acmZ.Visible = false
+  local acmSeg = {}
+  for i = 1, 4 do
+    acmSeg[i] = seg(acmZ, HUD, 1.4)
+    acmSeg[i].Name = "AcmEdge"
+  end
+  local acmRing = ringOf(acmZ, 20, HUD, 1.4)
+  acmRing.Name = "AcmRing"
 
   ---------------------------------------------------------------- 锁定框（雷达 / 导引头跟踪着的目标）
   local box = frame(gui, UDim2.fromOffset(30, 30), UD2(), INK, 1, V2(0.5, 0.5))
@@ -170,14 +181,14 @@ function WtFlight.init(G)
   local aspLine = frame(asp, UDim2.fromOffset(1.6, 11), UD2(0.5, 0, 0.5, 0), HUD, 0, V2(0.5, 0))
   aspLine.Name = "AspectLine"
   local tracks = setmetatable({}, { __mode = "k" })
-  local function velOf(em, p, t)   -- 目标的速度：两帧位置差平滑（服务器不发速度）
+  local function velOf(em, p, t)   -- 目标的速度（服务器不发速度）：只在服务器真挪了它时按两次挪之间的时间算、按时间平滑（View.lua G.velTrack）
     local r = tracks[em]
-    if not r then tracks[em] = { p = p, t = t, v = V() } return V() end
-    if t - r.t > 1e-3 then
-      local raw = (p - r.p) / (t - r.t)
-      if raw.Magnitude < 3000 then r.v = r.v:Lerp(raw, math.min(1, (t - r.t) * 5)) end
-      r.p, r.t = p, t
+    if not r then
+      r = {}
+      tracks[em] = r
     end
+    if G.velTrack then return G.velTrack(r, p, t, 3000) end
+    r.p, r.t, r.v = p, t, r.v or V()
     return r.v
   end
 
@@ -358,32 +369,90 @@ function WtFlight.init(G)
     local w = info.w
     local missile = w and (w.kind == "aam" or w.kind == "agm") and (w.cone or 0) > 0
     if missile and bon and not st.eo and not st.bsight then
-      local locked = lk and lk.on and lk.locked
+      local sk = info.seek   -- 空空弹的导引头（Fly.lua，用户 11-28 夜「锁定圈貌似比战雷小」）
+      local locked = (sk and sk.state == "lock") or (not sk and lk and lk.on and lk.locked)
       local col = locked and RED or WHITE
       local r0 = px(w.cone) * 2
-      bigC.Size, bigC.Position, bigC.Visible = UDim2.fromOffset(r0, r0), bp, true
+      -- 大圈：导引头能转到的范围（万向架）；旧式不能离轴的红外弹只有一个圈（战雷的 AIM-9B 那样）
+      bigC.Size, bigC.Position, bigC.Visible = UDim2.fromOffset(r0, r0), bp, not (sk and sk.caged)
       bigS.Color = col
-      -- 小圈：导引头看着哪——没目标在大圈中心；追踪 / 锁定时滑到目标上（红外的从机头滑过去，雷达弹锁着就在目标上）
-      local sp = bp
-      if lk and lk.on and lk.p then
-        local kk = locked and 1 or clamp(lk.k or 0, 0, 1)
-        sp = bp:Lerp(lk.p, (lk.seeker == "ir") and kk or (locked and 1 or 0))
+      if sk then
+        -- 小圈：导引头的截获圈（战雷截图里约屏幕高的 8～9%：按 3.4°，放大镜头跟着变大），画在导引头指着的地方——
+        --   红外弹没锁上时在机头前（随动雷达在雷达锁着的那架上、有头盔的在看着的方向），锁上了跟着目标；雷达弹雷达锁着谁就在谁身上
+        local d0 = math.max(px(sk.r) * 2, 28)
+        smallC.Position, smallC.Visible = sk.on and sk.p or bp, true
+        smallC.Size = UDim2.fromOffset(d0, d0)
+        smallS.Color = col
+        smallS.Thickness = (sk.state == "acq") and 2.2 or 1.6   -- 截获中描粗一点（嗡嗡变响的那一下看得见）
+      else
+        -- 空地弹：小圈看着哪——没目标在大圈中心；锁着滑到目标上
+        local sp = bp
+        if lk and lk.on and lk.p then
+          local kk = locked and 1 or clamp(lk.k or 0, 0, 1)
+          sp = bp:Lerp(lk.p, (lk.seeker == "ir") and kk or (locked and 1 or 0))
+        end
+        smallC.Position, smallC.Visible = sp, true
+        smallC.Size = UDim2.fromOffset(locked and 22 or 26, locked and 22 or 26)
+        smallS.Color = col
+        smallS.Thickness = 1.6
       end
-      smallC.Position, smallC.Visible = sp, true
-      smallC.Size = UDim2.fromOffset(locked and 22 or 26, locked and 22 or 26)
-      smallS.Color = col
     else
       bigC.Visible, smallC.Visible = false, false
     end
+    -- 雷达近战模式的扫描区：按机体坐标的角度投到画面上（离机头 800 格的那个面）；竖扫的上头（+50°）多半在画面外，线照样画（屏幕边上截断）
+    local zA = G.radarAcmZone and G.radarAcmZone()
+    if zA and not st.eo and not st.bsight then
+      local function at(a, e)
+        local ca, ce = math.cos(rad(a)), math.cos(rad(e))
+        local dir = cf:VectorToWorldSpace(V(math.sin(rad(a)) * ce, math.sin(rad(e)), -ca * ce))
+        local _, _, sp = proj(pos + dir * 800)
+        return sp.X, sp.Y, sp.Z > 1
+      end
+      local okAll = true
+      if zA.fixed or zA.head then
+        local x, y, on = at(zA.cAz, zA.cEl)
+        local r0 = math.max(px(math.max(zA.A, zA.H, zA.beam or 2)) * 2, 12)
+        acmRing.Position, acmRing.Size, acmRing.Visible = UDim2.fromOffset(x, y), UDim2.fromOffset(r0, r0), on
+        for _, s2 in ipairs(acmSeg) do s2.Visible = false end
+        okAll = on
+      else
+        acmRing.Visible = false
+        local a0, a1, e0, e1 = zA.cAz - zA.A, zA.cAz + zA.A, zA.cEl - zA.H, zA.cEl + zA.H
+        local x00, y00, o1 = at(a0, e0)
+        local x10, y10, o2 = at(a1, e0)
+        local x01, y01, o3 = at(a0, e1)
+        local x11, y11, o4 = at(a1, e1)
+        okAll = o1 and o2 and o3 and o4
+        if okAll then
+          setSeg(acmSeg[1], x00, y00, x01, y01)   -- 左边
+          setSeg(acmSeg[2], x10, y10, x11, y11)   -- 右边
+          if zA.vert then   -- 竖扫只画两条竖线
+            acmSeg[3].Visible, acmSeg[4].Visible = false, false
+          else
+            setSeg(acmSeg[3], x01, y01, x11, y11)
+            setSeg(acmSeg[4], x00, y00, x10, y10)
+          end
+        else
+          for _, s2 in ipairs(acmSeg) do s2.Visible = false end
+        end
+      end
+      acmZ.Visible = okAll
+    else
+      acmZ.Visible = false
+    end
 
-    -- ③ 锁定框：距离、接近速度、高度差、目标往哪飞
-    local tgt = st.lock
-    if lk and lk.on and lk.p and tgt and not st.eo and not st.bsight then
+    -- ③ 锁定框：距离、接近速度、高度差、目标往哪飞（选的弹没锁、雷达 STT 锁着的也画：雷达锁定跟所选武器无关）
+    local tgt, blk = st.lock, lk
+    if not (blk and blk.on and blk.p and tgt) and st.rdLock and not st.rdLock.mem and st.rdLock.p then
+      local rp, ron = proj(st.rdLock.p)
+      if ron then blk, tgt = { on = true, p = rp, dist = st.rdLock.dist }, st.rdLock end
+    end
+    if blk and blk.on and blk.p and tgt and not st.eo and not st.bsight then
       box.Visible = true
-      box.Position = lk.p
-      local m = (lk.dist or 0) / AD.M
+      box.Position = blk.p
+      local m = (blk.dist or 0) / AD.M
       bDist.Text = (m >= 1000) and string.format("%.1f km", m / 1000) or string.format("%d m", math.floor(m + 0.5))
-      bVc.Text = lk.vc and string.format("%d m/s", math.floor(lk.vc + 0.5)) or ""
+      bVc.Text = blk.vc and string.format("%d m/s", math.floor(blk.vc + 0.5)) or ""
       local em = tgt.em
       local root = em and em.Parent and em:FindFirstChild("Root")
       if root then
@@ -429,7 +498,7 @@ function WtFlight.init(G)
         mk.l.TextColor3 = CARD[hh] and HUD or TXT
       end
     end
-    local contacts = G.radarContacts and G.radarContacts() or {}
+    local contacts = G.airRadarContacts and G.airRadarContacts() or {}   -- Radar.lua（Hud.lua 的 G.radarContacts 是小地图那份）
     local ni = 0
     for _, c in ipairs(contacts) do
       if ni < #tapeTri and math.abs(c.az) < TAPE_DEG then
@@ -438,7 +507,7 @@ function WtFlight.init(G)
         tr.f.Position = UDim2.fromOffset(TAPE_W / 2 + c.az / TAPE_DEG * (TAPE_W / 2), 26)
         tr.f.Rotation = c.locked and 0 or 45
         tr.f.Size = c.locked and UDim2.fromOffset(9, 9) or UDim2.fromOffset(6, 6)
-        tr.f.BackgroundTransparency = c.locked and 1 or 0
+        tr.f.BackgroundTransparency = c.locked and 1 or (c.friend and 0.65 or 0)   -- 敌我识别认出的友机：淡一点（Radar.lua contacts.friend）
         tr.s.Transparency = c.locked and 0 or 1
         tr.f.Visible = true
       end
@@ -474,8 +543,8 @@ function WtFlight.init(G)
     for _, em in ipairs(ents and ents:GetChildren() or {}) do
       if ti >= #rwrTags then break end
       local mdl = em:GetAttribute("Model")
-      local dd = mdl and AD.D[mdl]
-      local rd = dd and dd.radar
+      -- 敌机的雷达按它的科技树版本取（Radars.lua：F-16A 是 APG-66、苏-30SM 是 N011M），不是只看型号
+      local rd = mdl and AD.radarOf and AD.radarOf(mdl, em:GetAttribute("TreeKey"))
       local root = em:FindFirstChild("Root")
       if rd and root and em ~= st.em and em:GetAttribute("Team") ~= side and em:GetAttribute("Kind") == "air" and (em:GetAttribute("Hp") or 1) > 0 then
         local rc = root.CFrame
@@ -485,14 +554,16 @@ function WtFlight.init(G)
         local th = id and threats[id]
         local locking = th and th.lock and t < th.lock
         local l = rc:VectorToObjectSpace(to / math.max(dist, 1))
-        local inScan = dist <= rd.range and math.abs(deg(math.atan2(l.X, -l.Z))) <= rd.az and math.abs(deg(math.asin(clamp(l.Y, -1, 1)))) <= rd.el
+        -- 扫到我：在它的量程里、它默认扫描方式的方位宽度里（第 4 步以前没有扫描中心；不然苏-35S 的 ±120° 万向架一下子全扫得到）、俯仰万向架里
+        local elT = deg(math.asin(clamp(l.Y, -1, 1)))
+        local inScan = dist <= rd.range and math.abs(deg(math.atan2(l.X, -l.Z))) <= (AD.Radars and AD.Radars.half(rd) or rd.az) and elT <= rd.elU and elT >= -rd.elD
         if inScan or locking then
           ti += 1
           local rel = -to
           local bearing = math.atan2(rel.X, -rel.Z) - myYaw
           local missileHere = mslOn and (W.mslBy == id)
           local rr = R0 * (missileHere and 0.42 or (locking and 0.6 or 0.8))
-          local code = string.upper(string.sub(mdl, 1, 4))
+          local code = rd.rwr or string.upper(string.sub(mdl, 1, 4))   -- 告警器代号（Radars.lua 的 rwr：米格-29 写 29，不再是型号前四个字母 MIG2）
           if missileHere then
             place(ti, bearing, rr, ((t * 4) % 1 < 0.6) and "MSL" or "", RED, "solid")
           elseif locking then
@@ -519,9 +590,12 @@ function WtFlight.init(G)
     if w and info.wid then
       selW.Text = T("wt.selW", T("aw." .. info.wid), T("air.k." .. (w.kind or "agm")))
       if w.kind == "aam" or (w.kind == "agm" and (w.cone or 0) > 0) then
-        local stt = (lk and lk.on) and (lk.locked and "wt.seekLock" or "wt.seekTrack") or "wt.seekOn"
+        local sk = info.seek
+        local stt
+        if sk then stt = (sk.state == "lock") and "wt.seekLock" or ((sk.state == "acq") and "wt.seekTrack" or "wt.seekOn")
+        else stt = (lk and lk.on) and (lk.locked and "wt.seekLock" or "wt.seekTrack") or "wt.seekOn" end
         selS.Text = T("wt.seeker", T(stt))
-        selS.TextColor3 = (lk and lk.on and lk.locked) and RED or TXT
+        selS.TextColor3 = (stt == "wt.seekLock") and RED or TXT
       else
         selS.Text = ""
       end

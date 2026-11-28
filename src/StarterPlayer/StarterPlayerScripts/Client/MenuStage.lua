@@ -68,7 +68,7 @@ local function soldier(parent, at, team)
   P("Cummerbund", V(2.12, 0.7, 1.3), CF(0, 3.62, 0), gear, Enum.Material.Fabric)
   for i = -1, 1 do
     P("MagPouch", V(0.46, 0.66, 0.3), CF(i * 0.52, 3.72, -0.86), gear:Lerp(Color3.new(0, 0, 0), 0.12), Enum.Material.Fabric)
-    P("MagFlap", V(0.48, 0.12, 0.34), CF(i * 0.52, 4.08, -0.87), gear:Lerp(Color3.new(0, 0, 0), 0.22), Enum.Material.Fabric)
+    P("MagFlap", V(0.48, 0.12, 0.34), CF(i * 0.52, 4.11, -0.87), gear:Lerp(Color3.new(0, 0, 0), 0.22), Enum.Material.Fabric)   -- 盖在包口上（原来往下插进包里 0.03，前面、两侧和包的面贴着）
   end
   P("Radio", V(0.5, 0.9, 0.4), CF(-0.62, 4.3, 0.98), DARK, Enum.Material.Plastic)
   P("Antenna", V(0.06, 1.6, 0.06), CF(-0.75, 5.4, 1.05) * CFrame.Angles(math.rad(-8), 0, math.rad(6)), DARK, Enum.Material.Metal)
@@ -84,7 +84,7 @@ local function soldier(parent, at, team)
   sm.Parent = shell
   H("HelmetRim", V(1.5, 0.14, 1.6), CF(0, 0.1, 0.04), helm:Lerp(Color3.new(0, 0, 0), 0.3), Enum.Material.Fabric)
   for _, sx in ipairs({ -1, 1 }) do
-    H("Rail", V(0.1, 0.18, 0.8), CF(sx * 0.74, 0.32, 0.05), DARK, Enum.Material.Metal)
+    H("Rail", V(0.1, 0.18, 0.8), CF(sx * 0.74, 0.38, 0.05), DARK, Enum.Material.Metal)   -- 在耳罩上面（原来侧面和耳罩侧面贴着）
     H("EarCup", V(0.26, 0.6, 0.5), CF(sx * 0.66, -0.02, 0.05), RGB(52, 56, 46), Enum.Material.Plastic)
   end
   H("NVGMount", V(0.36, 0.26, 0.18), CF(0, 0.42, -0.78), DARK, Enum.Material.Metal)
@@ -92,7 +92,7 @@ local function soldier(parent, at, team)
   for _, sx in ipairs({ -1, 1 }) do
     local tube = H("NVGTube", V(0.34, 0.26, 0.26), CF(sx * 0.2, 0.03, -1.04) * CFrame.Angles(0, math.rad(90), 0), RGB(24, 26, 28), Enum.Material.Metal, nil)
     tube.Shape = Enum.PartType.Cylinder
-    local lens = H("NVGLens", V(0.04, 0.2, 0.2), CF(sx * 0.2, 0.03, -1.18) * CFrame.Angles(0, math.rad(90), 0), RGB(40, 120, 70), Enum.Material.Neon)
+    local lens = H("NVGLens", V(0.04, 0.2, 0.2), CF(sx * 0.2, 0.03, -1.24) * CFrame.Angles(0, math.rad(90), 0), RGB(40, 120, 70), Enum.Material.Neon)   -- 镜片在镜筒口外面（原来缩在筒里 0.01，和筒口抢深度）
     lens.Shape = Enum.PartType.Cylinder
     lens.Transparency = 0.35
   end
@@ -106,8 +106,8 @@ local function soldier(parent, at, team)
     local elbow = (sh + hand) / 2 + V(s[2] * 0.42, -0.5, 0.2)
     L("UpperArm", sh, elbow, 0.86, U[1], Enum.Material.Fabric)
     L("Forearm", elbow, hand, 0.8, U[1], Enum.Material.Fabric)
-    P("Glove", V(0.62, 0.62, 0.62), CF(hand), RGB(30, 30, 30), Enum.Material.Leather)
-    P("ShoulderPad", V(0.95, 0.4, 1.05), CF(sh + V(0, 0.15, 0)), gear, Enum.Material.Fabric)
+    P("Glove", V(0.7, 0.7, 0.7), CF(hand), RGB(30, 30, 30), Enum.Material.Leather)   -- 原来 0.62：右手套底面和胸前插板底面只差 0.035
+    P("ShoulderPad", V(0.95, 0.4, 1.15), CF(sh + V(0, 0.15, 0)), gear, Enum.Material.Fabric)   -- 前后比上身各宽 0.075（原来 0.025）
   end
   -- 枪：右手到左手的方向，枪口朝前下方
   local grip = at * CF(hands.R)
@@ -217,7 +217,7 @@ local function build(team)
     return f
   end
   fire(CF(-6, 0.5, -4), 9, 6, 26)
-  fire(CF(12, 2.4, 13), 6, 4, 16)
+  fire(CF(12, 2.5, 13), 6, 4, 16)   -- 火堆块顶面比车身顶高 0.1（原来正好齐平）
   fire(CF(6, 0.5, 33), 12, 10, 30)
   -- 冷色的轮廓光：左后方一点蓝灰，把人从暗背景里勾出来
   do

@@ -1,0 +1,169 @@
+ · drag ΔCD0 +⟫ · 抗力 ΔCD0 +⟫ · 항력 ΔCD0 +⟫ · сопротивление ΔCD0 +⟫ · Widerstand ΔCD0 +⟫ · traînée ΔCD0 +⟫ · resistencia ΔCD0 +⟫ · arrasto ΔCD0 +
+ · instant. ⟫ · 瞬間旋回 ⟫ · 순간 선회 ⟫ · мгновенный ⟫ · momentan ⟫ · instantané ⟫ · instantáneo ⟫ · instantânea
+ · loading ⟫ · 翼面荷重 ⟫ · 익면 하중 ⟫ · нагрузка ⟫ · Flächenbelastung ⟫ · charge alaire ⟫ · carga alar ⟫ · carga alar
+ · no vehicles⟫ · このランクの車両なし⟫ · 이 등급 차량 없음⟫ · нет техники⟫ · keine Fahrzeuge⟫ · aucun véhicule⟫ · sin vehículos⟫ · sem veículos
+ · roll ⟫ · 最大ロール ⟫ · 최대 롤 ⟫ · крен ⟫ · Rollen ⟫ · roulis ⟫ · alabeo ⟫ · rolagem
+ · stall AoA ⟫ · 失速迎角 ⟫ · 실속 받음각 ⟫ · УА сваливания ⟫ · Abriss-AoA ⟫ · incidence de décrochage ⟫ · AoA de pérdida ⟫ · AoA de estol
+ · stores ⟫ · 外部搭載 ⟫ · 외부 장착 ⟫ · подвески ⟫ · Lasten ⟫ · emports ⟫ · cargas ⟫ · cargas
+ · thrust vectoring⟫ · 推力偏向⟫ · 추력 편향⟫ · УВТ⟫ · Schubvektorsteuerung⟫ · poussée vectorielle⟫ · empuje vectorial⟫ · vetorização de empuxo
+ · wave ⟫ · 造波抗力ピーク ⟫ · 조파 항력 정점 ⟫ · волновое ⟫ · Wellenwiderstand ⟫ · onde ⟫ · onda ⟫ · onda
+'s model & stats⟫ のモデルと性能⟫의 모델과 성능⟫: модель и характеристики⟫: Modell & Werte⟫ : modèle et caractéristiques⟫: modelo y datos⟫: modelo e dados
+(pen at 0 / 500 / 1000 / 2000 m)⟫（貫徹：0 / 500 / 1000 / 2000 m）⟫(관통: 0 / 500 / 1000 / 2000 m)⟫(пробитие на 0 / 500 / 1000 / 2000 м)⟫(Durchschlag auf 0 / 500 / 1000 / 2000 m)⟫(pénétration à 0 / 500 / 1000 / 2000 m)⟫(penetración a 0 / 500 / 1000 / 2000 m)⟫(penetração a 0 / 500 / 1000 / 2000 m)
+, int. fuel ⟫、機内燃料 ⟫, 내부 연료 ⟫, внутр. топливо ⟫, int. Kraftstoff ⟫, carb. interne ⟫, comb. interno ⟫, comb. interno
+; gun, ammo, armour and mobility are its own⟫；砲・弾・装甲・機動性は本車のもの⟫; 포, 탄, 장갑, 기동성은 이 차량 것⟫; орудие, снаряды, броня и подвижность — свои⟫; Kanone, Munition, Panzerung und Mobilität sind eigene⟫ ; canon, munitions, blindage et mobilité sont les siens⟫; cañón, munición, blindaje y movilidad son propios⟫; canhão, munição, blindagem e mobilidade são próprios
+AIRCRAFT⟫航空機⟫항공기⟫АВИАЦИЯ⟫FLUGZEUGE⟫AVIONS⟫AVIONES⟫AVIÕES
+Above battle BR⟫戦闘 BR 超過⟫전투 BR 초과⟫Выше БР боя⟫Über Gefechts-BR⟫Au-dessus du BR de la bataille⟫Por encima del BR de la batalla⟫Acima do BR da batalha
+Add to lineup⟫出撃編成に追加⟫출격 편성에 추가⟫Добавить в состав⟫Zur Aufstellung hinzufügen⟫Ajouter à l'équipe⟫Añadir a la alineación⟫Adicionar à escalação
+Aircraft ⟫航空機 ⟫항공기 ⟫Авиация ⟫Flugzeuge ⟫Aéronefs ⟫Aeronaves ⟫Aeronaves
+Aircraft: no armor zones, shape only⟫航空機：装甲区分なし、形状のみ⟫항공기: 장갑 구역 없음, 형태만⟫Самолёт: зон брони нет, только форма⟫Flugzeug: keine Panzerzonen, nur Form⟫Aéronef : pas de zones de blindage, forme seulement⟫Aeronave: sin zonas de blindaje, solo forma⟫Aeronave: sem zonas de blindagem, só a forma
+Arcade⟫アーケード⟫아케이드⟫Аркада⟫Arcade⟫Arcade⟫Arcade⟫Arcade
+Armor (mm: vs KE / vs HEAT)⟫装甲（mm：対 KE / 対 HEAT）⟫장갑(mm: 대 KE / 대 HEAT)⟫Броня (мм: от КЭ / от КС)⟫Panzerung (mm: gg. KE / gg. HEAT)⟫Blindage (mm : contre KE / contre HEAT)⟫Blindaje (mm: contra KE / contra HEAT)⟫Blindagem (mm: contra KE / contra HEAT)
+At most two aircraft in the lineup⟫出撃編成の航空機は最大 2 機⟫출격 편성의 항공기는 최대 2대⟫В составе не больше двух самолётов⟫Höchstens zwei Flugzeuge in der Aufstellung⟫Au plus deux aéronefs dans l'équipe⟫Como máximo dos aeronaves en la alineación⟫No máximo duas aeronaves na escalação
+BR ⟫BR ⟫BR ⟫БР ⟫⟫⟫⟫
+Bottom right: vote for the next map (decided by votes during preparation). To switch nation, click the flag at the top left to open the tech tree and pick a flag there. SPECTATE watches teammates.⟫右下で次のマップに投票（準備段階の投票数で決定）。国を変えるには左上の国旗で技術ツリーを開き、そこで国旗を選ぶ。「観戦」で味方を見る。⟫오른쪽 아래에서 다음 맵 투표(준비 단계 득표로 결정). 국가를 바꾸려면 왼쪽 위 국기로 기술 트리를 열고 거기서 국기를 고르세요. 「관전」으로 아군 관전.⟫Справа внизу голосуйте за следующую карту (решается голосами в подготовке). Чтобы сменить нацию, нажмите флаг слева вверху, откройте дерево и выберите флаг там. НАБЛЮДАТЬ — смотреть за союзниками.⟫Unten rechts für die nächste Karte abstimmen (entschieden durch Stimmen in der Vorbereitung). Nation wechseln: oben links auf die Flagge klicken, Technologiebaum öffnen und dort eine Flagge wählen. ZUSCHAUEN beobachtet Teammitglieder.⟫En bas à droite : votez pour la carte suivante (décidée par les votes pendant la préparation). Pour changer de nation, cliquez sur le drapeau en haut à gauche, ouvrez l'arbre et choisissez-y un drapeau. OBSERVER regarde les alliés.⟫Abajo a la derecha: vota el siguiente mapa (se decide por votos durante la preparación). Para cambiar de nación, pulsa la bandera de arriba a la izquierda, abre el árbol y elige allí una bandera. OBSERVAR mira a los compañeros.⟫Embaixo à direita: vote no próximo mapa (decidido pelos votos na preparação). Para trocar de nação, clique na bandeira no canto superior esquerdo, abra a árvore e escolha uma bandeira lá. ASSISTIR acompanha os aliados.
+Buy (⟫購入 (⟫구매 (⟫Купить (⟫Kaufen (⟫Acheter (⟫Comprar (⟫Comprar (
+CD0 ⟫ゼロ揚力抗力 ⟫무양력 항력 ⟫CD0 ⟫⟫⟫⟫
+CLmax ⟫最大揚力係数 ⟫최대 양력 계수 ⟫Cy max ⟫⟫⟫⟫
+CREW⟫乗員⟫승무원⟫ЭКИПАЖ⟫BESATZUNG⟫ÉQUIPAGE⟫TRIPULACIÓN⟫TRIPULAÇÃO
+CREW SKILLS⟫乗員スキル⟫승무원 스킬⟫НАВЫКИ ЭКИПАЖА⟫BESATZUNGSFERTIGKEITEN⟫COMPÉTENCES⟫HABILIDADES⟫HABILIDADES
+CREW spends crew skill points; the gear opens modifications, the shells open the ammo loadout, "i" shows stats and armor; TEST DRIVE is on the right.⟫「乗員スキル」で乗員にポイントを振る。歯車は改修、砲弾は弾薬構成、「i」は性能と装甲。右の「試乗」で走らせる。⟫「승무원 스킬」에서 포인트 분배. 톱니바퀴는 개조, 포탄은 탄약 구성, 「i」는 성능과 장갑. 오른쪽 「시승」으로 몰아보기.⟫НАВЫКИ ЭКИПАЖА — распределить очки; шестерёнка — модификации, снаряды — боекомплект, «i» — характеристики и броня; ТЕСТ-ДРАЙВ — справа.⟫BESATZUNG verteilt Fertigkeitspunkte; das Zahnrad öffnet Modifikationen, die Granaten die Munitionsbeladung, „i“ zeigt Werte und Panzerung; TESTFAHRT ist rechts.⟫ÉQUIPAGE dépense les points de compétence ; l'engrenage ouvre les modifications, les obus le chargement, « i » les caractéristiques et le blindage ; ESSAI est à droite.⟫TRIPULACIÓN gasta puntos de habilidad; el engranaje abre las modificaciones, los proyectiles la carga de munición, «i» muestra datos y blindaje; PRUEBA está a la derecha.⟫TRIPULAÇÃO gasta pontos de habilidade; a engrenagem abre as modificações, os projéteis a carga de munição, "i" mostra dados e blindagem; TESTE fica à direita.
+CREW · ⟫乗員 · ⟫승무원 · ⟫ЭКИПАЖ · ⟫BESATZUNG · ⟫ÉQUIPAGE · ⟫TRIPULACIÓN · ⟫TRIPULAÇÃO ·
+Can research⟫研究可能⟫연구 가능⟫Можно исследовать⟫Erforschbar⟫Recherche possible⟫Se puede investigar⟫Pode pesquisar
+Click to research · ⟫クリックで研究 · ⟫클릭해서 연구 · ⟫Нажмите, чтобы исследовать · ⟫Klicken zum Erforschen · ⟫Cliquez pour rechercher · ⟫Clic para investigar · ⟫Clique para pesquisar ·
+Coins +⟫コイン +⟫코인 +⟫Монеты +⟫Münzen +⟫Pièces +⟫Monedas +⟫Moedas +
+Combat weight ⟫戦闘重量 ⟫전투 중량 ⟫Боевая масса ⟫Gefechtsgewicht ⟫Masse au combat ⟫Peso en combate ⟫Peso de combate
+Cost ⟫価格 ⟫가격 ⟫Цена ⟫Preis ⟫Coût ⟫Precio ⟫Preço
+Crew XP +⟫乗員経験値 +⟫승무원 경험치 +⟫Опыт экипажа +⟫Besatzungs-EP +⟫XP d'équipage +⟫XP de tripulación +⟫XP da tripulação +
+Crew level ⟫乗員レベル ⟫승무원 레벨 ⟫Уровень экипажа ⟫Besatzungsstufe ⟫Niveau d'équipage ⟫Nivel de tripulación ⟫Nível da tripulação
+Current loadout⟫現在の兵装⟫현재 무장⟫Текущий вариант⟫Aktuelle Bewaffnung⟫Armement actuel⟫Armamento actual⟫Armamento atual
+Drag on empty space to orbit the vehicle, wheel to zoom; HIDE UI hides the interface. Press F1 in a vehicle for all keys.⟫空いている所をドラッグで車両を回し、ホイールでズーム。「UI 非表示」でインターフェースを隠す。車内で F1 を押すと全キー。⟫빈 곳을 드래그해 차량을 돌리고 휠로 줌. 「UI 숨기기」로 인터페이스 숨김. 차량 안에서 F1을 누르면 모든 키.⟫Тяните по пустому месту, чтобы вращать машину, колесо — зум; СКРЫТЬ ИНТЕРФЕЙС убирает интерфейс. В машине F1 — все клавиши.⟫Auf freier Fläche ziehen, um das Fahrzeug zu drehen, Rad zum Zoomen; UI AUSBLENDEN versteckt die Oberfläche. Im Fahrzeug F1 für alle Tasten.⟫Glissez sur un espace vide pour tourner autour du véhicule, molette pour zoomer ; MASQUER L'INTERFACE la cache. Dans un véhicule, F1 affiche toutes les touches.⟫Arrastra en un espacio vacío para girar el vehículo, rueda para zoom; OCULTAR INTERFAZ la esconde. En un vehículo, F1 muestra todas las teclas.⟫Arraste num espaço vazio para girar o veículo, roda para zoom; OCULTAR INTERFACE a esconde. Num veículo, F1 mostra todas as teclas.
+Drag to rotate, wheel to zoom · color = armor at that spot⟫ドラッグで回転、ホイールでズーム · 色はその部分の装甲厚⟫드래그로 회전, 휠로 줌 · 색은 그 부분의 장갑 두께⟫Тяните для поворота, колесо — зум · цвет = броня в этом месте⟫Ziehen zum Drehen, Rad zum Zoomen · Farbe = Panzerung an dieser Stelle⟫Glissez pour tourner, molette pour zoomer · couleur = blindage à cet endroit⟫Arrastra para girar, rueda para zoom · color = blindaje en ese punto⟫Arraste para girar, roda para zoom · cor = blindagem naquele ponto
+Elevation ⟫俯仰角 ⟫고각 ⟫Угол возвышения ⟫Höhenrichtbereich ⟫Site ⟫Elevación ⟫Elevação
+Family model: ⟫同系列のモデル：⟫동계열 모델: ⟫Модель семейства: ⟫Familienmodell: ⟫Modèle de la famille : ⟫Modelo de la familia: ⟫Modelo da família:
+Flight physics⟫飛行物理⟫비행 물리⟫Физика полёта⟫Flugphysik⟫Physique de vol⟫Física de vuelo⟫Física de voo
+Free RP ⟫フリー研究ポイント ⟫자유 연구 포인트 ⟫Свободные ОИ ⟫Freie FP ⟫PR libres ⟫PI libres ⟫PP livres
+G limits ⟫G 制限 ⟫G 제한 ⟫Перегрузки ⟫G-Grenzen ⟫Limites de g ⟫Límites de g ⟫Limites de g
+Ground · ⟫陸戦 · ⟫지상전 · ⟫Наземный · ⟫Boden · ⟫Terrestre · ⟫Terrestre · ⟫Terrestre ·
+Help⟫ヘルプ⟫도움말⟫Помощь⟫Hilfe⟫Aide⟫Ayuda⟫Ajuda
+Hide UI⟫UI 非表示⟫UI 숨기기⟫Скрыть интерфейс⟫UI ausblenden⟫Masquer l'interface⟫Ocultar interfaz⟫Ocultar interface
+Hull front⟫車体正面⟫차체 정면⟫Лоб корпуса⟫Wannenfront⟫Avant de caisse⟫Frontal del casco⟫Frente do casco
+Hull rear⟫車体後面⟫차체 후면⟫Корма корпуса⟫Wannenheck⟫Arrière de caisse⟫Trasera del casco⟫Traseira do casco
+Hull side⟫車体側面⟫차체 측면⟫Борт корпуса⟫Wannenseite⟫Flanc de caisse⟫Lateral del casco⟫Lateral do casco
+Inertia ⟫慣性モーメント ⟫관성 모멘트 ⟫Момент инерции ⟫Trägheit ⟫Inertie ⟫Inercia ⟫Inércia
+Installed⟫装着済み⟫장착됨⟫Установлено⟫Eingebaut⟫Installé⟫Instalado⟫Instalado
+Installed ⟫装着済み ⟫장착됨 ⟫Установлено ⟫Eingebaut ⟫Installé ⟫Instalado ⟫Instalado
+Internal fuel ⟫機内燃料 ⟫내부 연료 ⟫Внутреннее топливо ⟫Interner Kraftstoff ⟫Carburant interne ⟫Combustible interno ⟫Combustível interno
+Leave battle⟫戦闘を離脱⟫전투 이탈⟫Покинуть бой⟫Gefecht verlassen⟫Quitter la bataille⟫Abandonar la batalla⟫Sair da batalha
+Level ⟫レベル ⟫레벨 ⟫Уровень ⟫Stufe ⟫Niveau ⟫Nivel ⟫Nível
+Lineup BR ⟫編成 BR ⟫편성 BR ⟫БР состава ⟫Aufstellungs-BR ⟫BR de l'équipe ⟫BR de la alineación ⟫BR da escalação
+Lineup full (5)⟫出撃編成が満杯（5 両）⟫출격 편성 가득 참(5대)⟫Состав заполнен (5)⟫Aufstellung voll (5)⟫Équipe complète (5)⟫Alineación llena (5)⟫Escalação cheia (5)
+Lineup is empty⟫出撃編成が空⟫출격 편성이 비어 있음⟫Состав пуст⟫Aufstellung ist leer⟫L'équipe est vide⟫La alineación está vacía⟫A escalação está vazia
+Locked⟫ロック中⟫잠김⟫Закрыто⟫Gesperrt⟫Verrouillé⟫Bloqueado⟫Bloqueado
+Locked · ⟫ロック中 · ⟫잠김 · ⟫Закрыто · ⟫Gesperrt · ⟫Verrouillé · ⟫Bloqueado · ⟫Bloqueado ·
+Locked · research ⟫未解放 · あと ⟫잠김 · 앞으로 ⟫Закрыто · исследуйте ещё ⟫Gesperrt · erforsche ⟫Verrouillé · recherchez ⟫Bloqueado · investiga ⟫Bloqueado · pesquise
+MAIN MENU⟫メインメニュー⟫메인 메뉴⟫ГЛАВНОЕ МЕНЮ⟫HAUPTMENÜ⟫MENU PRINCIPAL⟫MENÚ PRINCIPAL⟫MENU PRINCIPAL
+Matching ⟫マッチング中 ⟫매칭 중 ⟫Подбор ⟫Suche ⟫Recherche ⟫Emparejando ⟫Procurando
+Matchmaking ⟫マッチング中 ⟫매칭 중 ⟫Поиск боя ⟫Matchmaking ⟫Recherche de partie ⟫Buscando partida ⟫Procurando partida
+Max⟫最大⟫최대⟫Макс.⟫Max.⟫Max⟫Máx.⟫Máx.
+Max speed (AB) ⟫最高速度（AB）⟫최고 속도(AB)⟫Макс. скорость (форсаж) ⟫Höchstgeschw. (NB) ⟫Vitesse max. (PC) ⟫Velocidad máx. (PC) ⟫Velocidade máx. (PC)
+Max speed (mil) ⟫最高速度（ミリタリー）⟫최고 속도(군용)⟫Макс. скорость (максимал) ⟫Höchstgeschw. (Militär) ⟫Vitesse max. (sec) ⟫Velocidad máx. (militar) ⟫Velocidade máx. (militar)
+Model borrowed from ⟫同系列から借用したモデル：⟫동계열에서 빌린 모델: ⟫Модель взята у ⟫Modell geliehen von ⟫Modèle emprunté à ⟫Modelo tomado de ⟫Modelo emprestado de
+Model from ⟫同系列のモデル：⟫동계열 모델: ⟫Модель от ⟫Modell von ⟫Modèle de ⟫Modelo de ⟫Modelo de
+Modifications⟫改修⟫개조⟫Модификации⟫Modifikationen⟫Modifications⟫Modificaciones⟫Modificações
+Modifications ⟫改修 ⟫개조 ⟫Модификации ⟫Modifikationen ⟫Modifications ⟫Modificaciones ⟫Modificações
+Modifications (⟫改修 (⟫개조 (⟫Модификации (⟫Modifikationen (⟫Modifications (⟫Modificaciones (⟫Modificações (
+Mods ⟫改修 ⟫개조 ⟫Мод. ⟫Mods ⟫Modifs ⟫Mods ⟫Mods
+No model yet: model & stats from ⟫専用モデル未実装：モデルと性能は次から借用 ⟫전용 모델 없음: 모델과 성능은 다음에서 빌림 ⟫Своей модели пока нет: модель и данные от ⟫Noch kein eigenes Modell: Modell & Werte von ⟫Pas encore de modèle : modèle et données de ⟫Aún sin modelo propio: modelo y datos de ⟫Ainda sem modelo próprio: modelo e dados de
+No model yet: uses ⟫専用モデル未実装：使用中 ⟫전용 모델 없음: 사용 중 ⟫Своей модели пока нет: используется ⟫Noch kein eigenes Modell: nutzt ⟫Pas encore de modèle : utilise ⟫Aún sin modelo propio: usa ⟫Ainda sem modelo próprio: usa
+No vehicles with original models in this tree yet⟫このツリーにはまだオリジナルモデルの車両がない⟫이 트리에는 아직 원본 모델 차량이 없음⟫В этом дереве пока нет техники с оригинальными моделями⟫In diesem Baum gibt es noch keine Fahrzeuge mit Originalmodellen⟫Pas encore de véhicule à modèle original dans cet arbre⟫Aún no hay vehículos con modelos originales en este árbol⟫Ainda não há veículos com modelos originais nesta árvore
+Not enough coins (⟫コインが足りない (⟫코인이 모자람 (⟫Мало монет (⟫Nicht genug Münzen (⟫Pas assez de pièces (⟫Monedas insuficientes (⟫Moedas insuficientes (
+Open RESEARCH and add owned vehicles⟫「研究」を開き、所有車両を追加⟫「연구」를 열고 보유 차량 추가⟫Откройте ИССЛЕДОВАНИЕ и добавьте свою технику⟫FORSCHUNG öffnen und eigene Fahrzeuge hinzufügen⟫Ouvrez RECHERCHE et ajoutez vos véhicules⟫Abre INVESTIGACIÓN y añade tus vehículos⟫Abra PESQUISA e adicione seus veículos
+Owned⟫所有⟫보유⟫Есть⟫Im Besitz⟫Possédé⟫En propiedad⟫Possuído
+Performance⟫性能⟫성능⟫Характеристики⟫Leistung⟫Performances⟫Prestaciones⟫Desempenho
+Pick a slot, then press TO BATTLE: you spawn inside it at your base. Lose it and you come back here.⟫枠を選んで「出撃」：基地でその中に出現する。失うとここに戻る。⟫슬롯을 고르고 「출격」: 기지에서 그 안에 생성. 잃으면 여기로 돌아옴.⟫Выберите слот и нажмите В БОЙ: вы появитесь в нём на базе. Потеряете — вернётесь сюда.⟫Platz wählen, dann INS GEFECHT: Du spawnst darin an deiner Basis. Verlierst du es, kommst du hierher zurück.⟫Choisissez un emplacement puis AU COMBAT : vous apparaissez dedans à votre base. Perdez-le et vous revenez ici.⟫Elige una casilla y pulsa A LA BATALLA: apareces dentro en tu base. Si lo pierdes, vuelves aquí.⟫Escolha um espaço e aperte PARA A BATALHA: você surge dentro dele na sua base. Se perdê-lo, volta para cá.
+Points ⟫ポイント ⟫포인트 ⟫Очки ⟫Punkte ⟫Points ⟫Puntos ⟫Pontos
+Preparing ⟫準備中 ⟫준비 중 ⟫Подготовка ⟫Vorbereitung ⟫Préparation ⟫Preparación ⟫Preparação
+Press TO BATTLE to queue⟫「出撃」でマッチング開始⟫「출격」으로 매칭 시작⟫Нажмите В БОЙ, чтобы встать в очередь⟫INS GEFECHT drücken, um zu suchen⟫Appuyez sur AU COMBAT pour rejoindre la file⟫Pulsa A LA BATALLA para buscar partida⟫Aperte PARA A BATALHA para entrar na fila
+RESEARCH opens the tech tree: earn research points in battle, buy researched vehicles with coins, then add them to your lineup (up to 5).⟫「研究」で技術ツリーを開く：戦闘で研究ポイントを稼ぎ、研究した車両をコインで買い、出撃編成に加える（最大 5 両）。⟫「연구」로 기술 트리 열기: 전투에서 연구 포인트를 벌고, 연구한 차량을 코인으로 사서 출격 편성에 추가(최대 5대).⟫ИССЛЕДОВАНИЕ открывает дерево: зарабатывайте очки исследования в бою, покупайте исследованную технику за монеты и добавляйте её в состав (до 5).⟫FORSCHUNG öffnet den Technologiebaum: Verdiene Forschungspunkte im Gefecht, kaufe erforschte Fahrzeuge mit Münzen und füge sie deiner Aufstellung hinzu (bis zu 5).⟫RECHERCHE ouvre l'arbre technologique : gagnez des points de recherche au combat, achetez les véhicules recherchés avec des pièces, puis ajoutez-les à votre équipe (jusqu'à 5).⟫INVESTIGACIÓN abre el árbol: gana puntos de investigación en batalla, compra los vehículos investigados con monedas y añádelos a tu alineación (hasta 5).⟫PESQUISA abre a árvore: ganhe pontos de pesquisa em batalha, compre os veículos pesquisados com moedas e adicione-os à escalação (até 5).
+RP ⟫研究ポイント ⟫연구 포인트 ⟫ОИ ⟫FP ⟫PR ⟫PI ⟫PP
+RP +⟫研究ポイント +⟫연구 포인트 +⟫ОИ +⟫FP +⟫PR +⟫PI +⟫PP +
+Rank ⟫ランク ⟫등급 ⟫Ранг ⟫Rang ⟫Rang ⟫Rango ⟫Patente
+Realistic⟫リアリスティック⟫리얼리스틱⟫Реалистичный⟫Realistisch⟫Réaliste⟫Realista⟫Realista
+Remove from lineup⟫出撃編成から外す⟫출격 편성에서 제거⟫Убрать из состава⟫Aus der Aufstellung entfernen⟫Retirer de l'équipe⟫Quitar de la alineación⟫Remover da escalação
+Research⟫研究⟫연구⟫Исследовать⟫Erforschen⟫Rechercher⟫Investigar⟫Pesquisar
+Research a vehicle first⟫先に車両を研究⟫먼저 차량을 연구하세요⟫Сначала исследуйте машину⟫Erforsche zuerst ein Fahrzeug⟫Recherchez d'abord un véhicule⟫Investiga primero un vehículo⟫Pesquise antes um veículo
+Research points this vehicle earns go to the selected modification (or the next one in order); researched mods install automatically. Two per tier unlock the next tier.⟫この車両が稼いだ研究ポイントは選択中の改修（なければ順番どおり）に入り、研究した改修は自動で装着。各段階 2 つで次の段階を解放。⟫이 차량이 번 연구 포인트는 선택한 개조(없으면 순서대로)에 들어가고, 연구된 개조는 자동 장착. 단계마다 2개를 연구하면 다음 단계 해금.⟫Очки исследования этой машины идут в выбранную модификацию (или следующую по порядку); исследованные ставятся сами. Две на уровень открывают следующий.⟫Forschungspunkte dieses Fahrzeugs gehen an die gewählte Modifikation (oder die nächste in der Reihe); erforschte werden automatisch eingebaut. Zwei pro Stufe schalten die nächste frei.⟫Les points de recherche gagnés par ce véhicule vont à la modification choisie (ou à la suivante) ; les modifications recherchées s'installent seules. Deux par palier débloquent le suivant.⟫Los puntos de investigación de este vehículo van a la modificación elegida (o a la siguiente); las investigadas se instalan solas. Dos por nivel desbloquean el siguiente.⟫Os pontos de pesquisa deste veículo vão para a modificação escolhida (ou a próxima); as pesquisadas são instaladas sozinhas. Duas por nível liberam o seguinte.
+Research vehicles⟫車両を研究⟫차량 연구⟫Исследование техники⟫Fahrzeuge erforschen⟫Rechercher des véhicules⟫Investigar vehículos⟫Pesquisar veículos
+Researched⟫研究済み⟫연구 완료⟫Исследовано⟫Erforscht⟫Recherché⟫Investigado⟫Pesquisado
+Researching⟫研究中⟫연구 중⟫Исследуется⟫In Forschung⟫En recherche⟫Investigando⟫Pesquisando
+Researching ⟫研究中 ⟫연구 중 ⟫Исследуется ⟫In Forschung ⟫En recherche ⟫Investigando ⟫Pesquisando
+Roof⟫天板⟫천장⟫Крыша⟫Dach⟫Toit⟫Techo⟫Teto
+SHOW INTERFACE⟫UI を表示⟫UI 표시⟫ПОКАЗАТЬ ИНТЕРФЕЙС⟫UI ANZEIGEN⟫AFFICHER L'INTERFACE⟫MOSTRAR INTERFAZ⟫MOSTRAR INTERFACE
+SPECTATE⟫観戦⟫관전⟫НАБЛЮДАТЬ⟫ZUSCHAUEN⟫OBSERVER⟫OBSERVAR⟫ASSISTIR
+Select a vehicle to research, buy, add to the lineup or test drive⟫車両を選んで研究・購入・編成追加・試乗⟫차량을 골라 연구·구매·편성 추가·시승⟫Выберите машину, чтобы исследовать, купить, добавить в состав или испытать⟫Wähle ein Fahrzeug zum Erforschen, Kaufen, Aufstellen oder Probefahren⟫Choisissez un véhicule pour le rechercher, l'acheter, l'ajouter à l'équipe ou l'essayer⟫Elige un vehículo para investigarlo, comprarlo, añadirlo o probarlo⟫Escolha um veículo para pesquisar, comprar, adicionar ou testar
+Settings (codes here)⟫設定（コードはここ）⟫설정(코드는 여기)⟫Настройки (коды здесь)⟫Einstellungen (Codes hier)⟫Paramètres (codes ici)⟫Ajustes (códigos aquí)⟫Configurações (códigos aqui)
+Slot ⟫編成 ⟫편성 ⟫Слот ⟫Platz ⟫Emplacement ⟫Casilla ⟫Espaço
+Stall speed ⟫失速速度 ⟫실속 속도 ⟫Скорость сваливания ⟫Abrissgeschwindigkeit ⟫Vitesse de décrochage ⟫Velocidad de pérdida ⟫Velocidade de estol
+Stand-in model: ⟫代用モデル：⟫대체 모델: ⟫Временная модель: ⟫Platzhaltermodell: ⟫Modèle provisoire : ⟫Modelo provisional: ⟫Modelo provisório:
+Static margin ⟫静安定余裕 ⟫정적 안정 여유 ⟫Запас устойчивости ⟫Stabilitätsmaß ⟫Marge statique ⟫Margen estático ⟫Margem estática
+Stats · armor⟫性能 · 装甲⟫성능 · 장갑⟫Характеристики · броня⟫Werte · Panzerung⟫Caractéristiques · blindage⟫Datos · blindaje⟫Dados · blindagem
+Sustained turn ⟫持続旋回 ⟫지속 선회 ⟫Установившийся вираж ⟫Dauerkurve ⟫Virage soutenu ⟫Viraje sostenido ⟫Curva sustentada
+TANKS⟫戦車⟫전차⟫ТАНКИ⟫PANZER⟫CHARS⟫TANQUES⟫TANQUES
+TO BATTLE⟫出撃⟫출격⟫В БОЙ⟫INS GEFECHT⟫AU COMBAT⟫A LA BATALLA⟫PARA A BATALHA
+Tech tree⟫技術ツリー⟫기술 트리⟫Дерево развития⟫Technologiebaum⟫Arbre technologique⟫Árbol tecnológico⟫Árvore tecnológica
+Test drive⟫試乗⟫시승⟫Тест-драйв⟫Testfahrt⟫Essai⟫Prueba⟫Teste
+The first vehicle is free during preparation; after that deploying costs spawn points (SP) earned in battle. Each vehicle has one backup.⟫準備段階の最初の 1 両は無料。その後の出撃には戦闘で稼ぐ出撃ポイント（SP）が必要。各車両に予備 1 回。⟫준비 단계의 첫 차량은 무료. 그 뒤 출격에는 전투에서 버는 출격 포인트(SP)가 필요. 차량마다 예비 1회.⟫Первая машина в подготовке бесплатна; дальше вывод стоит очков возрождения (ОВ), заработанных в бою. У каждой машины один запасной выход.⟫Das erste Fahrzeug ist in der Vorbereitung gratis; danach kostet das Einsetzen Spawnpunkte (SP), die im Gefecht verdient werden. Jedes Fahrzeug hat eine Reserve.⟫Le premier véhicule est gratuit pendant la préparation ; ensuite, déployer coûte des points d'apparition (PA) gagnés au combat. Chaque véhicule a une réserve.⟫El primer vehículo es gratis durante la preparación; después, desplegar cuesta puntos de aparición (SP) ganados en batalla. Cada vehículo tiene una reserva.⟫O primeiro veículo é grátis na preparação; depois, implantar custa pontos de surgimento (SP) ganhos em batalha. Cada veículo tem uma reserva.
+Thrust ⟫推力 ⟫추력 ⟫Тяга ⟫Schub ⟫Poussée ⟫Empuje ⟫Empuxo
+Time left ⟫残り時間 ⟫남은 시간 ⟫Осталось ⟫Verbleibend ⟫Temps restant ⟫Tiempo restante ⟫Tempo restante
+Top speed ⟫最高速度 ⟫최고 속도 ⟫Макс. скорость ⟫Höchstgeschwindigkeit ⟫Vitesse max. ⟫Velocidad máx. ⟫Velocidade máx.
+Traverse ⟫旋回範囲 ⟫선회 범위 ⟫Наведение по горизонту ⟫Seitenrichtbereich ⟫Débattement ⟫Giro ⟫Giro
+Turret rear⟫砲塔後面⟫포탑 후면⟫Корма башни⟫Turmheck⟫Arrière de tourelle⟫Trasera de torreta⟫Traseira da torre
+Turret side⟫砲塔側面⟫포탑 측면⟫Борт башни⟫Turmseite⟫Flanc de tourelle⟫Lateral de torreta⟫Lateral da torre
+Turret traverse ⟫砲塔旋回速度 ⟫포탑 선회 속도 ⟫Скорость поворота башни ⟫Turmschwenkgeschwindigkeit ⟫Rotation de tourelle ⟫Giro de torreta ⟫Giro da torre
+Used up⟫使い切った⟫모두 사용함⟫Израсходовано⟫Aufgebraucht⟫Épuisé⟫Agotado⟫Esgotado
+Weapons⟫武装⟫무장⟫Вооружение⟫Bewaffnung⟫Armement⟫Armamento⟫Armamento
+Wing area ⟫翼面積 ⟫날개 면적 ⟫Площадь крыла ⟫Flügelfläche ⟫Surface alaire ⟫Superficie alar ⟫Área da asa
+XP ⟫経験値 ⟫경험치 ⟫Опыт ⟫EP ⟫XP ⟫XP ⟫XP
+family model⟫同系列モデル⟫동계열 모델⟫модель семейства⟫Familienmodell⟫modèle de la famille⟫modelo de la familia⟫modelo da família
+fly-by-wire⟫フライ・バイ・ワイヤ⟫플라이 바이 와이어⟫ЭДСУ⟫Fly-by-Wire⟫commandes électriques⟫fly-by-wire⟫fly-by-wire
+free RP ⟫フリー研究ポイント ⟫자유 연구 포인트 ⟫свободные ОИ ⟫freie FP ⟫PR libres ⟫PI libres ⟫PP livres
+mechanical⟫機械式⟫기계식⟫механическое⟫mechanisch⟫mécaniques⟫mecánico⟫mecânico
+mechanical + CAS⟫機械式 + CAS⟫기계식 + CAS⟫механическое + САУ⟫mechanisch + CAS⟫mécaniques + CAS⟫mecánico + CAS⟫mecânico + CAS
+pen ⟫貫徹 ⟫관통 ⟫пробитие ⟫Durchschlag ⟫pén. ⟫pen. ⟫pen.
+points ⟫ポイント ⟫포인트 ⟫очки ⟫Punkte ⟫points ⟫puntos ⟫pontos
+stand-in⟫代用⟫대체⟫временная⟫Platzhalter⟫provisoire⟫provisional⟫provisório
+vs HEAT⟫対 HEAT⟫대 HEAT⟫от КС⟫gg. HEAT⟫contre HEAT⟫contra HEAT⟫contra HEAT
+vs KE⟫対 KE⟫대 KE⟫от КЭ⟫gg. KE⟫contre KE⟫contra KE⟫contra KE
+ · contested ⟫ · 争奪中 ⟫ · 쟁탈 중 ⟫ · оспаривается ⟫ · umkämpft ⟫ · disputé ⟫ · en disputa ⟫ · em disputa
+ · locked⟫ · 未開放⟫ · 미개방⟫ · закрыто⟫ · gesperrt⟫ · verrouillé⟫ · bloqueado⟫ · bloqueado
+%s  spawned %d · %d left⟫%s　出撃 %d 回 · 残り %d 回⟫%s  출격 %d회 · 남은 %d회⟫%s  выходов %d · осталось %d⟫%s  gespawnt %d · %d übrig⟫%s  sorties %d · %d restantes⟫%s  salidas %d · quedan %d⟫%s  surgiu %d · restam %d
+B / Esc to close⟫B / Esc で閉じる⟫B / Esc 닫기⟫B / Esc — закрыть⟫B / Esc zum Schließen⟫B / Échap pour fermer⟫B / Esc para cerrar⟫B / Esc para fechar
+BATTLE MAP⟫戦場マップ⟫전장 지도⟫КАРТА БОЯ⟫GEFECHTSKARTE⟫CARTE DE BATAILLE⟫MAPA DE BATALLA⟫MAPA DE BATALHA
+Battle⟫交戦中⟫교전 중⟫Бой⟫Gefecht⟫Combat⟫Batalla⟫Batalha
+Enemy⟫敵⟫적⟫Враг⟫Feind⟫Ennemi⟫Enemigo⟫Inimigo
+Ground · %s · %s\n%s left · SP %d⟫陸戦 · %s · %s\n残り %s · SP %d⟫지상전 · %s · %s\n남은 시간 %s · SP %d⟫Наземный · %s · %s\nосталось %s · ОВ %d⟫Boden · %s · %s\nnoch %s · SP %d⟫Terrestre · %s · %s\n%s restant · PA %d⟫Terrestre · %s · %s\nquedan %s · SP %d⟫Terrestre · %s · %s\nrestam %s · SP %d
+Neutral⟫中立⟫중립⟫Нейтральная⟫Neutral⟫Neutre⟫Neutral⟫Neutro
+No objectives⟫拠点なし⟫거점 없음⟫Нет целей⟫Keine Ziele⟫Aucun objectif⟫Sin objetivos⟫Sem objetivos
+Nothing spawned yet⟫まだ出撃していない⟫아직 출격하지 않음⟫Ещё ничего не выводили⟫Noch nichts gespawnt⟫Rien de déployé pour l'instant⟫Aún no has desplegado nada⟫Nada implantado ainda
+Ours⟫味方⟫아군⟫Наши⟫Eigene⟫Alliés⟫Nuestro⟫Nosso
+Preparation⟫準備段階⟫준비 단계⟫Подготовка⟫Vorbereitung⟫Préparation⟫Preparación⟫Preparação
+SPAWNED⟫出撃済み⟫출격한 차량⟫ВЫВЕДЕНО⟫GESPAWNT⟫DÉPLOYÉS⟫DESPLEGADOS⟫IMPLANTADOS
+  ·  time left ⟫  ·  残り時間 ⟫  ·  남은 시간 ⟫  ·  осталось ⟫  ·  verbleibend ⟫  ·  temps restant ⟫  ·  tiempo restante ⟫  ·  tempo restante
+ (respawns: %d)⟫ (再出撃回数：%d)⟫ (재출격 횟수: %d)⟫ (возрождений: %d)⟫ (Respawns: %d)⟫ (réapparitions : %d)⟫ (reapariciones: %d)⟫ (renascimentos: %d)
+ min)⟫ 分)⟫분)⟫ мин)⟫ min)⟫ min)⟫ min)⟫ min)
+Ammo: as loaded in the hangar⟫弾薬：格納庫での搭載どおり⟫탄약: 격납고에서 넣은 대로⟫Боекомплект: как в ангаре⟫Munition: wie im Hangar geladen⟫Munitions : comme chargées au hangar⟫Munición: como se cargó en el hangar⟫Munição: como carregada no hangar
+Enter join · Tab scores⟫Enter 参戦 · Tab 戦況⟫Enter 참전 · Tab 전황⟫Enter — в бой · Tab — счёт⟫Enter beitreten · Tab Punkte⟫Entrée rejoindre · Tab scores⟫Intro unirse · Tab marcador⟫Enter entrar · Tab placar
+Ground vehicle⟫地上車両⟫지상 차량⟫Наземная техника⟫Bodenfahrzeug⟫Véhicule terrestre⟫Vehículo terrestre⟫Veículo terrestre
+In battle⟫交戦中⟫교전 중⟫В бою⟫Im Gefecht⟫Au combat⟫En combate⟫Em combate
+Join battle!⟫戦闘に参加！⟫전투 참가!⟫В бой!⟫Ins Gefecht!⟫Rejoindre la bataille !⟫¡A la batalla!⟫Para a batalha!
+Loadout table… (all presets)⟫兵装表…（全プリセット）⟫무장표…(모든 프리셋)⟫Таблица вооружения… (все пресеты)⟫Bewaffnungstabelle… (alle Vorlagen)⟫Tableau d'armement… (tous les préréglages)⟫Tabla de armamento… (todos los preajustes)⟫Tabela de armamento… (todas as predefinições)
+Mission objective⟫任務目標⟫임무 목표⟫Цель задания⟫Missionsziel⟫Objectif de mission⟫Objetivo de la misión⟫Objetivo da missão
+Nothing to spawn⟫出撃できる車両がない⟫출격할 차량 없음⟫Некого выводить⟫Nichts zum Spawnen⟫Rien à déployer⟫Nada que desplegar⟫Nada para implantar
+Spectate⟫観戦⟫관전⟫Наблюдение⟫Zuschauen⟫Observer⟫Observar⟫Assistir
+Statistics⟫統計⟫통계⟫Статистика⟫Statistik⟫Statistiques⟫Estadísticas⟫Estatísticas
+Zone⟫拠点⟫거점⟫Зона⟫Zone⟫Zone⟫Zona⟫Zona
+enemy⟫敵⟫적⟫враг⟫Feind⟫ennemi⟫enemigo⟫inimigo
+neutral⟫中立⟫중립⟫нейтральная⟫neutral⟫neutre⟫neutral⟫neutro
+ours⟫味方⟫아군⟫наша⟫eigen⟫allié⟫nuestro⟫nosso
+☆ Capture and hold the zones⟫☆ 拠点を占領して守り抜け⟫☆ 거점을 점령하고 지켜라⟫☆ Захватите и удержите зоны⟫☆ Zonen einnehmen und halten⟫☆ Capturez et tenez les zones⟫☆ Captura y mantén las zonas⟫☆ Capture e segure as zonas
+☆ Support ground forces, win air superiority⟫☆ 地上部隊を支援し制空権を奪え⟫☆ 지상군을 지원하고 제공권을 장악하라⟫☆ Поддержите наземные силы, завоюйте господство в воздухе⟫☆ Bodentruppen unterstützen, Luftüberlegenheit erringen⟫☆ Soutenez les forces terrestres, gagnez la supériorité aérienne⟫☆ Apoya a las fuerzas terrestres, gana la superioridad aérea⟫☆ Apoie as forças terrestres, conquiste a superioridade aérea

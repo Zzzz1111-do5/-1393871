@@ -1,0 +1,129 @@
+TRK⟫履⟫궤⟫ГУС⟫KET⟫CHE⟫CAD⟫LAG
+BRL⟫身⟫신⟫СТВ⟫ROHR⟫TUBE⟫TUB⟫TUB
+BRC⟫尾⟫미⟫ЗАТ⟫VER⟫CUL⟫REC⟫CUL
+TRV⟫旋⟫선⟫ГН⟫SEI⟫ROT⟫GIR⟫GIR
+AMO⟫弾⟫탄⟫БК⟫MUN⟫MUN⟫MUN⟫MUN
+FUL⟫燃⟫연⟫ТОП⟫KST⟫CAR⟫COM⟫COM
+ KO⟫戦死⟫ 전사⟫ выбит⟫ ausgefallen⟫ HS⟫ KO⟫ KO
+ wounded⟫重傷⟫ 중상⟫ ранен⟫ verwundet⟫ blessé⟫ herido⟫ ferido
+ destroyed⟫破壊⟫ 파괴⟫ уничтожен⟫ zerstört⟫ détruit⟫ destruido⟫ destruído
+ damaged⟫損傷⟫ 손상⟫ повреждён⟫ beschädigt⟫ endommagé⟫ dañado⟫ danificado
+bustle ammo cooked off (blow-out panels)⟫砲塔後部弾薬が誘爆（ブローオフパネル）⟫포탑 후부 탄약 유폭(블로오프 패널)⟫детонация БК в нише башни (вышибные панели)⟫Munition im Turmheck durchgezündet (Ausblaspaneele)⟫munitions de nuque détonées (panneaux de surpression)⟫munición del nicho detonada (paneles de alivio)⟫munição do nicho detonou (painéis de alívio)
+set on fire⟫発火⟫발화⟫подожжён⟫in Brand gesetzt⟫incendié⟫incendiado⟫incendiado
+Target destroyed⟫撃破⟫격파⟫Цель уничтожена⟫Ziel zerstört⟫Cible détruite⟫Objetivo destruido⟫Alvo destruído
+Destroyed — ammo detonation⟫撃破 — 弾薬誘爆⟫격파 — 탄약 유폭⟫Уничтожен — детонация БК⟫Zerstört — Munitionsexplosion⟫Détruit — explosion des munitions⟫Destruido: detonación de munición⟫Destruído: detonação da munição
+DESTROYED — BURNED OUT⟫撃破 — 全焼⟫격파 — 전소⟫УНИЧТОЖЕН — СГОРЕЛ⟫ZERSTÖRT — AUSGEBRANNT⟫DÉTRUIT — CALCINÉ⟫DESTRUIDO: CALCINADO⟫DESTRUÍDO: INCENDIADO
+NON-PENETRATION⟫非貫通⟫비관통⟫НЕПРОБИТИЕ⟫KEIN DURCHSCHLAG⟫NON-PÉNÉTRATION⟫NO PENETRÓ⟫SEM PENETRAÇÃO
+armour {1} mm / penetration {2} mm⟫装甲 {1} mm / 貫徹 {2} mm⟫장갑 {1} mm / 관통 {2} mm⟫броня {1} мм / пробитие {2} мм⟫Panzerung {1} mm / Durchschlag {2} mm⟫blindage {1} mm / pénétration {2} mm⟫blindaje {1} mm / penetración {2} mm⟫blindagem {1} mm / penetração {2} mm
+METAL JET · pen {1} / eff {2} mm⟫金属噴流 · 貫徹 {1} / 等価 {2} mm⟫금속 제트 · 관통 {1} / 등가 {2} mm⟫МЕТАЛЛИЧЕСКАЯ СТРУЯ · пробитие {1} / экв. {2} мм⟫METALLSTRAHL · Durchschlag {1} / eff. {2} mm⟫JET MÉTALLIQUE · pén. {1} / eff. {2} mm⟫CHORRO METÁLICO · pen. {1} / ef. {2} mm⟫JATO METÁLICO · pen. {1} / ef. {2} mm
+SHAPED-CHARGE JET · pen {1} / eff {2} mm⟫成形炸薬噴流 · 貫徹 {1} / 等価 {2} mm⟫성형작약 제트 · 관통 {1} / 등가 {2} mm⟫КУМУЛЯТИВНАЯ СТРУЯ · пробитие {1} / экв. {2} мм⟫HOHLLADUNGSSTRAHL · Durchschlag {1} / eff. {2} mm⟫JET DE CHARGE CREUSE · pén. {1} / eff. {2} mm⟫CHORRO DE CARGA HUECA · pen. {1} / ef. {2} mm⟫JATO DE CARGA OCA · pen. {1} / ef. {2} mm
+APFSDS · rod erodes, goes deep · pen {1} / eff {2} mm⟫APFSDS · 弾芯が削れながら深く侵徹 · 貫徹 {1} / 等価 {2} mm⟫APFSDS · 관통자가 깎이며 깊이 파고듦 · 관통 {1} / 등가 {2} mm⟫БОПС · сердечник срабатывается и уходит глубоко · пробитие {1} / экв. {2} мм⟫APFSDS · Penetrator erodiert, dringt tief ein · Durchschlag {1} / eff. {2} mm⟫APFSDS · la flèche s'érode et s'enfonce · pén. {1} / eff. {2} mm⟫APFSDS · el penetrador se erosiona y entra hondo · pen. {1} / ef. {2} mm⟫APFSDS · o penetrador se desgasta e entra fundo · pen. {1} / ef. {2} mm
+APDS · pen {1} / eff {2} mm⟫APDS · 貫徹 {1} / 等価 {2} mm⟫APDS · 관통 {1} / 등가 {2} mm⟫ПОДКАЛИБЕРНЫЙ · пробитие {1} / экв. {2} мм⟫APDS · Durchschlag {1} / eff. {2} mm⟫APDS · pén. {1} / eff. {2} mm⟫APDS · pen. {1} / ef. {2} mm⟫APDS · pen. {1} / ef. {2} mm
+AP · armour plug, wide heavy spall · pen {1} / eff {2} mm⟫AP · 装甲の栓が押し込まれ、破片は広く重い · 貫徹 {1} / 等価 {2} mm⟫AP · 장갑 마개가 밀려들고 파편이 넓고 무거움 · 관통 {1} / 등가 {2} mm⟫БРОНЕБОЙНЫЙ · выбивает пробку, широкие тяжёлые осколки · пробитие {1} / экв. {2} мм⟫AP · Panzerpfropfen, breite schwere Splitter · Durchschlag {1} / eff. {2} mm⟫AP · bouchon de blindage, éclats larges et lourds · pén. {1} / eff. {2} mm⟫AP · tapón de blindaje, esquirlas anchas y pesadas · pen. {1} / ef. {2} mm⟫AP · tampão de blindagem, estilhaços largos e pesados · pen. {1} / ef. {2} mm
+APHE · delayed burst inside · pen {1} / eff {2} mm⟫APHE · 侵入後に遅延炸裂 · 貫徹 {1} / 等価 {2} mm⟫APHE · 관통 후 지연 폭발 · 관통 {1} / 등가 {2} mm⟫БРОНЕБОЙНЫЙ С ВВ · разрыв с замедлением внутри · пробитие {1} / экв. {2} мм⟫APHE · verzögerte Detonation im Inneren · Durchschlag {1} / eff. {2} mm⟫APHE · explosion retardée à l'intérieur · pén. {1} / eff. {2} mm⟫APHE · explosión retardada dentro · pen. {1} / ef. {2} mm⟫APHE · explosão retardada dentro · pen. {1} / ef. {2} mm
+AUTOCANNON AP · pen {1} / eff {2} mm⟫機関砲徹甲弾 · 貫徹 {1} / 等価 {2} mm⟫기관포 철갑탄 · 관통 {1} / 등가 {2} mm⟫БРОНЕБОЙНЫЙ АВТОПУШКИ · пробитие {1} / экв. {2} мм⟫MASCHINENKANONE AP · Durchschlag {1} / eff. {2} mm⟫AP DE CANON AUTO · pén. {1} / eff. {2} mm⟫AP DE CAÑÓN AUTOMÁTICO · pen. {1} / ef. {2} mm⟫AP DE CANHÃO AUTOMÁTICO · pen. {1} / ef. {2} mm
+HE · bursts outside · pen {1} / eff {2} mm⟫榴弾 · 車外で炸裂 · 貫徹 {1} / 等価 {2} mm⟫고폭탄 · 차량 밖에서 폭발 · 관통 {1} / 등가 {2} mm⟫ОФС · разрыв снаружи · пробитие {1} / экв. {2} мм⟫HE · detoniert außen · Durchschlag {1} / eff. {2} mm⟫HE · explose à l'extérieur · pén. {1} / eff. {2} mm⟫HE · explota fuera · pen. {1} / ef. {2} mm⟫HE · explode do lado de fora · pen. {1} / ef. {2} mm
+HESH · no hole, inner wall spalls · eq {1} / eff {2} mm⟫粘着榴弾 · 貫通せず内壁が剥離 · 等価量 {1} / 等価 {2} mm⟫점착 유탄 · 관통 없이 내벽이 박리 · 당량 {1} / 등가 {2} mm⟫БРОНЕБОЙНО-ФУГАСНЫЙ · без пробоя, откол с внутренней стенки · экв. {1} / {2} мм⟫HESH · kein Loch, Innenwand platzt ab · Äquiv. {1} / eff. {2} mm⟫HESH · pas de trou, écaillage intérieur · éq. {1} / eff. {2} mm⟫HESH · sin agujero, la pared interior se desconcha · eq. {1} / ef. {2} mm⟫HESH · sem furo, a parede interna lasca · eq. {1} / ef. {2} mm
+TANDEM HEAT · precursor first · pen {1} / eff {2} mm⟫タンデム HEAT · 前段が先に起爆 · 貫徹 {1} / 等価 {2} mm⟫탠덤 HEAT · 선행 탄두 먼저 기폭 · 관통 {1} / 등가 {2} mm⟫ТАНДЕМНЫЙ КУМУЛЯТИВНЫЙ · сначала лидирующий заряд · пробитие {1} / экв. {2} мм⟫TANDEM-HEAT · Vorladung zuerst · Durchschlag {1} / eff. {2} mm⟫HEAT TANDEM · précharge d'abord · pén. {1} / eff. {2} mm⟫HEAT TÁNDEM · primero la precarga · pen. {1} / ef. {2} mm⟫HEAT TANDEM · pré-carga primeiro · pen. {1} / ef. {2} mm
+ELV⟫俯⟫고⟫ВН⟫HÖH⟫ÉLÉ⟫ELV⟫ELV
+ON FIRE. Press Y to extinguish⟫火災発生。Y で消火⟫화재 발생. Y로 소화⟫ПОЖАР. Нажмите Y, чтобы потушить⟫BRAND. Y zum Löschen⟫EN FEU. Appuyez sur Y pour éteindre⟫EN LLAMAS. Pulsa Y para apagar⟫EM CHAMAS. Aperte Y para apagar
+Repairing {1}% (Y to cancel)⟫修理中 {1}%（Y で中止）⟫수리 중 {1}%(Y로 취소)⟫Ремонт {1}% (Y — отмена)⟫Reparatur {1} % (Y bricht ab)⟫Réparation {1} % (Y pour annuler)⟫Reparando {1}% (Y para cancelar)⟫Reparando {1}% (Y para cancelar)
+Parts damaged: press Y to repair⟫部品が損傷：Y で修理⟫부품 손상: Y로 수리⟫Есть повреждения: Y — ремонт⟫Teile beschädigt: Y zum Reparieren⟫Pièces endommagées : Y pour réparer⟫Piezas dañadas: pulsa Y para reparar⟫Peças danificadas: aperte Y para reparar
+Penetrated⟫貫通された⟫관통당함⟫Пробитие⟫Durchschlagen⟫Pénétré⟫Penetrado⟫Penetrado
+Fire spreading⟫延焼中⟫불길 확산⟫Пожар распространяется⟫Feuer breitet sich aus⟫L'incendie se propage⟫El fuego se extiende⟫O fogo se espalha
+Enemy shell ricocheted⟫敵弾が跳弾⟫적탄이 도탄됨⟫Снаряд врага срикошетил⟫Feindgranate abgeprallt⟫L'obus ennemi a ricoché⟫El proyectil enemigo rebotó⟫O projétil inimigo ricocheteou
+Armour held⟫装甲が防いだ⟫장갑이 막아냄⟫Броня выдержала⟫Panzerung hat gehalten⟫Le blindage a tenu⟫El blindaje aguantó⟫A blindagem aguentou
+Hit by blast⟫爆風を受けた⟫폭발에 맞음⟫Попадание взрывной волны⟫Von der Druckwelle getroffen⟫Touché par le souffle⟫Alcanzado por la onda expansiva⟫Atingido pela explosão
+{1} takes the {2} seat in {3} s⟫{1} が {3} 秒後に{2}の席を引き継ぐ⟫{1}이(가) {3}초 후 {2} 자리를 맡음⟫{1} займёт место «{2}» через {3} с⟫{1} übernimmt in {3} s den Platz: {2}⟫{1} prend le poste de {2} dans {3} s⟫{1} ocupará el puesto de {2} en {3} s⟫{1} assume o posto de {2} em {3} s
+{1} took the {2} seat⟫{1}が{2}の席を引き継いだ⟫{1}이(가) {2} 자리를 맡음⟫{1} занял место «{2}»⟫{1} hat den Platz übernommen: {2}⟫{1} a pris le poste de {2}⟫{1} ocupó el puesto de {2}⟫{1} assumiu o posto de {2}
+Fire is out⟫鎮火した⟫불이 꺼졌다⟫Пожар потушен⟫Feuer ist aus⟫Le feu est éteint⟫El fuego se apagó⟫O fogo apagou
+Burst penetrations ×{1}⟫連続貫通 ×{1}⟫연속 관통 ×{1}⟫Серия пробитий ×{1}⟫Serien-Durchschläge ×{1}⟫Pénétrations en rafale ×{1}⟫Penetraciones en ráfaga ×{1}⟫Penetrações em rajada ×{1}
+This vehicle has no night vision (day sight only)⟫この車両には暗視装置がない（昼間照準器のみ）⟫이 차량에는 야간 투시가 없음(주간 조준경만)⟫У этой машины нет ПНВ (только дневной прицел)⟫Dieses Fahrzeug hat keine Nachtsicht (nur Tagvisier)⟫Ce véhicule n'a pas de vision nocturne (viseur de jour seulement)⟫Este vehículo no tiene visión nocturna (solo mira diurna)⟫Este veículo não tem visão noturna (só mira diurna)
+AMMO FIRE! Press Y in {1}s⟫弾薬庫火災！{1} 秒以内に Y を押せ⟫탄약고 화재! {1}초 안에 Y를 눌러라⟫ПОЖАР БОЕУКЛАДКИ! Нажмите Y в течение {1} с⟫MUNITIONSBRAND! Drücke Y innerhalb von {1} s⟫INCENDIE DES MUNITIONS ! Appuyez sur Y dans les {1} s⟫¡FUEGO EN LA MUNICIÓN! Pulsa Y en {1} s⟫FOGO NA MUNIÇÃO! Aperte Y em {1} s
+Fire extinguished⟫消火成功⟫소화 성공⟫Пожар потушен⟫Feuer gelöscht⟫Incendie éteint⟫Fuego extinguido⟫Fogo extinto
+Repairs complete⟫修理完了⟫수리 완료⟫Ремонт завершён⟫Reparatur abgeschlossen⟫Réparations terminées⟫Reparación completa⟫Reparo concluído
+Nothing to repair⟫修理する部品はない⟫수리할 부품 없음⟫Нечего ремонтировать⟫Nichts zu reparieren⟫Rien à réparer⟫Nada que reparar⟫Nada para reparar
+Extinguisher recharging ({1} s)⟫消火器を再充填中（{1} 秒）⟫소화기 재충전 중({1}초)⟫Огнетушитель перезаряжается ({1} с)⟫Feuerlöscher lädt ({1} s)⟫Extincteur en recharge ({1} s)⟫Extintor recargándose ({1} s)⟫Extintor recarregando ({1} s)
+Main gun out: gunner KO or breech / barrel destroyed⟫主砲使用不可：砲手戦死、または砲尾 / 砲身破壊⟫주포 사용 불가: 포수 전사 또는 포미 / 포신 파괴⟫Орудие не работает: наводчик выбит или казённик / ствол уничтожены⟫Hauptgeschütz ausgefallen: Richtschütze ausgefallen oder Verschluss / Rohr zerstört⟫Canon hors service : tireur HS ou culasse / tube détruits⟫Cañón inutilizado: artillero KO o recámara / tubo destruidos⟫Canhão fora de ação: atirador KO ou culatra / tubo destruídos
+Repairing — main gun unavailable⟫修理中 — 主砲使用不可⟫수리 중 — 주포 사용 불가⟫Ремонт — орудие недоступно⟫Reparatur — Hauptgeschütz nicht verfügbar⟫Réparation — canon indisponible⟫Reparando: cañón no disponible⟫Reparando: canhão indisponível
+Crew {1} / {2}⟫乗員 {1} / {2}⟫승무원 {1} / {2}⟫Экипаж {1} / {2}⟫Besatzung {1} / {2}⟫Équipage {1} / {2}⟫Tripulación {1} / {2}⟫Tripulação {1} / {2}
+Estimating…⟫測距中…⟫측거 중…⟫Определение дальности…⟫Entfernung wird geschätzt…⟫Estimation…⟫Estimando…⟫Estimando…
+Mission: {1}⟫ミッション：{1}⟫임무: {1}⟫Задача: {1}⟫Mission: {1}⟫Mission : {1}⟫Misión: {1}⟫Missão: {1}
+Breakthrough (A to E, stage by stage)⟫突破（A から E まで段階ごとに）⟫돌파(A부터 E까지 단계별로)⟫Прорыв (от A до E, по этапам)⟫Durchbruch (A bis E, Abschnitt für Abschnitt)⟫Percée (de A à E, étape par étape)⟫Ruptura (de A a E, fase a fase)⟫Ruptura (de A a E, fase a fase)
+Domination (hold B, C, D)⟫制圧（B、C、D を保持）⟫제압(B, C, D 확보)⟫Превосходство (удержать B, C, D)⟫Vorherrschaft (B, C, D halten)⟫Domination (tenir B, C, D)⟫Dominación (mantén B, C, D)⟫Dominação (segure B, C, D)
+Conquest (capture C)⟫征服（C を占領）⟫정복(C 점령)⟫Завоевание (захватить C)⟫Eroberung (C einnehmen)⟫Conquête (capturer C)⟫Conquista (captura C)⟫Conquista (capture C)
+Camouflage · Decals⟫迷彩 · デカール⟫위장 · 데칼⟫Камуфляж · декали⟫Tarnung · Abziehbilder⟫Camouflage · décalcomanies⟫Camuflaje · calcomanías⟫Camuflagem · decalques
+Tactical number⟫戦術番号⟫전술 번호⟫Тактический номер⟫Taktische Nummer⟫Numéro tactique⟫Número táctico⟫Número tático
+Emblem: on⟫国籍マーク：オン⟫국적 마크: 켬⟫Эмблема: вкл⟫Emblem: an⟫Emblème : oui⟫Emblema: sí⟫Emblema: sim
+Emblem: off⟫国籍マーク：オフ⟫국적 마크: 끔⟫Эмблема: выкл⟫Emblem: aus⟫Emblème : non⟫Emblema: no⟫Emblema: não
+Part-built vehicles are repainted; imported models keep their texture and only get a tint⟫パーツ構成の車両は全体を塗り替え。取り込んだモデルは自前のテクスチャを保ち、色調だけを付ける⟫부품으로 만든 차량은 전체 재도색. 가져온 모델은 자체 텍스처를 유지하고 색조만 입힘⟫Машины из деталей перекрашиваются целиком; импортированные модели сохраняют свою текстуру и получают только оттенок⟫Aus Teilen gebaute Fahrzeuge werden umlackiert; importierte Modelle behalten ihre Textur und bekommen nur eine Tönung⟫Les véhicules en pièces sont repeints ; les modèles importés gardent leur texture et reçoivent seulement une teinte⟫Los vehículos de piezas se repintan; los modelos importados conservan su textura y solo reciben un tinte⟫Veículos feitos de peças são repintados; modelos importados mantêm sua textura e só ganham um tom
+DESTROYED⟫撃破された⟫격파됨⟫УНИЧТОЖЕН⟫ZERSTÖRT⟫DÉTRUIT⟫DESTRUIDO⟫DESTRUÍDO
+Spectate team⟫味方を観戦⟫아군 관전⟫Наблюдать за командой⟫Team zuschauen⟫Regarder l'équipe⟫Observar al equipo⟫Assistir à equipe
+Back to hangar⟫格納庫へ戻る⟫격납고로⟫В ангар⟫Zurück in den Hangar⟫Retour au hangar⟫Volver al hangar⟫Voltar ao hangar
+Spectating {1} (← → switch, Esc back)⟫観戦中：{1}（← → で切替、Esc で戻る）⟫관전 중: {1}(← → 전환, Esc 돌아가기)⟫Наблюдение: {1} (← → — сменить, Esc — назад)⟫Zuschauen: {1} (← → wechseln, Esc zurück)⟫Vous regardez {1} (← → changer, Échap retour)⟫Observando a {1} (← → cambiar, Esc volver)⟫Assistindo {1} (← → trocar, Esc voltar)
+No teammates to watch⟫観戦できる味方がいない⟫관전할 아군 없음⟫Некого смотреть⟫Keine Teammitglieder zum Zuschauen⟫Aucun allié à regarder⟫No hay compañeros que ver⟫Nenhum aliado para assistir
+Radio (press a number, O closes)⟫無線（数字で選択、O で閉じる）⟫무전(숫자로 선택, O 닫기)⟫Радио (выберите цифру, O — закрыть)⟫Funk (Zahl drücken, O schließt)⟫Radio (appuyez sur un chiffre, O ferme)⟫Radio (pulsa un número, O cierra)⟫Rádio (aperte um número, O fecha)
+Need support! {1}⟫支援求む！{1}⟫지원 요청! {1}⟫Нужна помощь! {1}⟫Brauche Unterstützung! {1}⟫Besoin de soutien ! {1}⟫¡Necesito apoyo! {1}⟫Preciso de apoio! {1}
+Follow me!⟫続け！⟫따라와!⟫За мной!⟫Mir nach!⟫Suivez-moi !⟫¡Seguidme!⟫Sigam-me!
+Roger!⟫了解！⟫알았다!⟫Принял!⟫Verstanden!⟫Reçu !⟫¡Recibido!⟫Entendido!
+Negative!⟫否定！⟫불가!⟫Отказ!⟫Negativ!⟫Négatif !⟫¡Negativo!⟫Negativo!
+Fall back!⟫後退！⟫후퇴!⟫Отходим!⟫Rückzug!⟫Repli !⟫¡Retirada!⟫Recuar!
+Enemy spotted at {1}!⟫{1} に敵発見！⟫{1}에 적 발견!⟫Враг замечен в {1}!⟫Feind bei {1} gesichtet!⟫Ennemi repéré en {1} !⟫¡Enemigo avistado en {1}!⟫Inimigo avistado em {1}!
+Attack point {1}!⟫拠点 {1} を攻撃！⟫거점 {1} 공격!⟫Атаковать точку {1}!⟫Punkt {1} angreifen!⟫Attaquez le point {1} !⟫¡Atacad el punto {1}!⟫Ataquem o ponto {1}!
+Defend point {1}!⟫拠点 {1} を守れ！⟫거점 {1} 방어!⟫Оборонять точку {1}!⟫Punkt {1} verteidigen!⟫Défendez le point {1} !⟫¡Defended el punto {1}!⟫Defendam o ponto {1}!
+[Radio] {1}: {2}⟫［無線］{1}：{2}⟫[무전] {1}: {2}⟫[Радио] {1}: {2}⟫[Funk] {1}: {2}⟫[Radio] {1} : {2}⟫[Radio] {1}: {2}⟫[Rádio] {1}: {2}
+{1} marked {2}⟫{1} が {2} をマーク⟫{1}이(가) {2} 표시⟫{1} отметил {2}⟫{1} hat {2} markiert⟫{1} a marqué {2}⟫{1} marcó {2}⟫{1} marcou {2}
+Ammo loadout⟫弾薬構成⟫탄약 구성⟫Боекомплект⟫Munitionsbeladung⟫Chargement de munitions⟫Carga de munición⟫Carga de munição
+{1} / {2} rounds⟫{1} / {2} 発⟫{1} / {2}발⟫{1} / {2} снарядов⟫{1} / {2} Schuss⟫{1} / {2} obus⟫{1} / {2} proyectiles⟫{1} / {2} projéteis
+ready rack {1}⟫即応弾架 {1}⟫즉용탄 {1}⟫первая очередь {1}⟫Bereitschaftsmagazin {1}⟫râtelier prêt {1}⟫portaproyectiles listo {1}⟫rack pronto {1}
+fewer rounds: less ammo detonation⟫弾を減らす：誘爆しにくくなる⟫탄을 줄이면 유폭이 덜함⟫меньше снарядов — меньше риск детонации⟫weniger Granaten: weniger Munitionsexplosionen⟫moins d'obus : moins de risque de détonation⟫menos proyectiles: menos detonaciones⟫menos projéteis: menos detonações
+not researched⟫未研究⟫미연구⟫не исследовано⟫nicht erforscht⟫non recherché⟫no investigado⟫não pesquisado
+Default⟫初期設定⟫기본값⟫По умолчанию⟫Standard⟫Par défaut⟫Predeterminado⟫Padrão
+Half⟫半分⟫절반⟫Половина⟫Hälfte⟫Moitié⟫Mitad⟫Metade
+Done⟫完了⟫완료⟫Готово⟫Fertig⟫Terminé⟫Listo⟫Pronto
+No shells to configure⟫設定できる砲弾がない⟫설정할 포탄이 없음⟫Нет снарядов для настройки⟫Keine Granaten einstellbar⟫Aucun obus à configurer⟫No hay proyectiles que configurar⟫Sem projéteis para configurar
+Ready {1}/{2}⟫即応 {1}/{2}⟫즉용 {1}/{2}⟫Первая очередь {1}/{2}⟫Bereit {1}/{2}⟫Prêts {1}/{2}⟫Listos {1}/{2}⟫Prontos {1}/{2}
+Ready rack empty⟫即応弾架が空⟫즉용탄 소진⟫Первая очередь пуста⟫Bereitschaftsmagazin leer⟫Râtelier prêt vide⟫Portaproyectiles listo vacío⟫Rack pronto vazio
+Resupply: ammo +1⟫拠点補給：弾薬 +1⟫거점 보급: 탄약 +1⟫Пополнение: снаряды +1⟫Nachschub: Munition +1⟫Ravitaillement : munitions +1⟫Reabastecimiento: munición +1⟫Reabastecimento: munição +1
+Crew replenished: {1}⟫乗員補充：{1}⟫승무원 보충: {1}⟫Экипаж пополнен: {1}⟫Besatzung aufgefüllt: {1}⟫Équipage complété : {1}⟫Tripulación repuesta: {1}⟫Tripulação reposta: {1}
+Your lineup is full ({1} vehicle types per battle): only lineup vehicles can spawn⟫出撃編成が満杯（1 戦闘 {1} 種まで）：編成内の車両のみ出撃可能⟫출격 편성이 가득 참(전투당 {1}종): 편성 안의 차량만 출격 가능⟫Состав заполнен ({1} типа техники на бой): можно выводить только машины из состава⟫Deine Aufstellung ist voll ({1} Fahrzeugtypen pro Gefecht): nur Fahrzeuge der Aufstellung können spawnen⟫Votre équipe est complète ({1} types de véhicules par bataille) : seuls ses véhicules peuvent apparaître⟫Tu alineación está llena ({1} tipos de vehículo por batalla): solo pueden aparecer los de la alineación⟫Sua escalação está cheia ({1} tipos de veículo por batalha): só os veículos dela podem surgir
+{1} has already spawned {2} times this battle — no backups left⟫{1} はこの戦闘ですでに {2} 回出撃 — 予備なし⟫{1}은(는) 이번 전투에서 이미 {2}회 출격 — 예비 없음⟫{1} уже выходил в бой {2} раз(а) — запасных нет⟫{1} wurde in diesem Gefecht schon {2}-mal gespawnt — keine Reserven mehr⟫{1} est déjà apparu {2} fois dans cette bataille — plus de réserve⟫{1} ya apareció {2} veces en esta batalla: no quedan reservas⟫{1} já surgiu {2} vezes nesta batalha: sem reservas
+Not enough SP: this costs {1}, you have {2} — kills and captures earn SP⟫SP 不足：これは {1} 必要、あなたは {2} — 撃破と占領で SP を獲得⟫SP 부족: 이것은 {1} 필요, 현재 {2} — 격파와 점령으로 SP 획득⟫Не хватает ОВ: нужно {1}, у вас {2} — уничтожения и захваты дают ОВ⟫Nicht genug SP: kostet {1}, du hast {2} — Abschüsse und Einnahmen bringen SP⟫Pas assez de PA : coût {1}, vous avez {2} — éliminations et captures rapportent des PA⟫SP insuficientes: cuesta {1}, tienes {2}; las bajas y capturas dan SP⟫SP insuficientes: custa {1}, você tem {2}; abates e capturas dão SP
+Crew⟫乗員⟫승무원⟫Экипаж⟫Besatzung⟫Équipage⟫Tripulación⟫Tripulação
+Ammo⟫弾薬⟫탄약⟫Боеприпасы⟫Munition⟫Munitions⟫Munición⟫Munição
+ERA⟫ERA⟫ERA⟫ДЗ⟫⟫⟫⟫
+Other⟫その他⟫기타⟫Прочее⟫Sonstiges⟫Autre⟫Otros⟫Outros
+Damaged⟫損傷⟫손상⟫Повреждено⟫Beschädigt⟫Endommagé⟫Dañado⟫Danificado
+Destroyed / KIA⟫破壊 / 戦死⟫파괴 / 전사⟫Уничтожено / убит⟫Zerstört / gefallen⟫Détruit / mort⟫Destruido / muerto⟫Destruído / morto
+Tracks / wheels⟫履帯 / 車輪⟫궤도 / 바퀴⟫Гусеницы / колёса⟫Ketten / Räder⟫Chenilles / roues⟫Cadenas / ruedas⟫Lagartas / rodas
+Troop bay⟫兵員室⟫병력실⟫Десантное отделение⟫Truppenraum⟫Compartiment des troupes⟫Compartimento de tropa⟫Compartimento de tropas
+Destroyed⟫破壊⟫파괴⟫Уничтожено⟫Zerstört⟫Détruit⟫Destruido⟫Destruído
+On fire⟫火災⟫화재⟫Горит⟫In Brand⟫En feu⟫En llamas⟫Em chamas
+Intact⟫健全⟫온전⟫Цел⟫Intakt⟫Intact⟫Intacto⟫Intacto
+Wounded⟫負傷⟫부상⟫Ранен⟫Verwundet⟫Blessé⟫Herido⟫Ferido
+Killed⟫戦死⟫전사⟫Убит⟫Gefallen⟫Mort⟫Muerto⟫Morto
+Gas turbine⟫ガスタービン⟫가스 터빈⟫Газовая турбина⟫Gasturbine⟫Turbine à gaz⟫Turbina de gas⟫Turbina a gás
+Diesel engine⟫ディーゼルエンジン⟫디젤 엔진⟫Дизельный двигатель⟫Dieselmotor⟫Moteur diesel⟫Motor diésel⟫Motor a diesel
+Carousel autoloader⟫カルーセル式自動装填装置⟫회전식 자동장전장치⟫Карусельный автомат заряжания⟫Karussell-Ladeautomat⟫Chargeur automatique carrousel⟫Cargador automático de carrusel⟫Carregador automático de carrossel
+Turret bustle⟫砲塔後部バスル⟫포탑 후부 버슬⟫Кормовая ниша башни⟫Turmheck⟫Nuque de tourelle⟫Nicho de la torreta⟫Nicho da torre
+Hull rack⟫車体弾架⟫차체 탄약대⟫Укладка в корпусе⟫Wannenmagazin⟫Râtelier de caisse⟫Portaproyectiles del casco⟫Rack do casco
+Ammo boxes⟫弾薬箱⟫탄약통⟫Патронные ящики⟫Munitionskästen⟫Caisses de munitions⟫Cajas de munición⟫Caixas de munição
+{1} / {2} rds⟫{1} / {2} 発⟫{1} / {2}발⟫{1} / {2} патр.⟫{1} / {2} Schuss⟫{1} / {2} coups⟫{1} / {2} disparos⟫{1} / {2} tiros
+{1} mm⟫{1} mm⟫{1} mm⟫{1} мм⟫⟫⟫⟫
+Commander's sight⟫車長用照準器⟫전차장 조준경⟫Прицел командира⟫Kommandantenvisier⟫Viseur du chef de char⟫Mira del comandante⟫Mira do comandante
+Commander's thermal viewer⟫車長用熱線映像装置⟫전차장 열상 장비⟫Тепловизор командира⟫Wärmebildgerät des Kommandanten⟫Caméra thermique du chef de char⟫Visor térmico del comandante⟫Visor térmico do comandante
+ATGM launcher⟫対戦車ミサイル発射機⟫대전차 미사일 발사기⟫Пусковая установка ПТУР⟫Lenkwaffen-Starter⟫Lanceur de missiles antichars⟫Lanzador de misiles antitanque⟫Lançador de mísseis antitanque
+Your first vehicle must be a ground vehicle — earn SP before spawning aircraft⟫最初の車両は地上車両でなければならない — 航空機の前に SP を稼ごう⟫첫 차량은 지상 차량이어야 함 — 항공기 전에 SP를 모아라⟫Первая машина должна быть наземной — заработайте ОВ, прежде чем вызывать авиацию⟫Dein erstes Fahrzeug muss ein Bodenfahrzeug sein — verdiene SP, bevor du Flugzeuge spawnst⟫Votre premier véhicule doit être terrestre — gagnez des PA avant de faire apparaître un aéronef⟫Tu primer vehículo debe ser terrestre: gana SP antes de sacar aeronaves⟫Seu primeiro veículo precisa ser terrestre: ganhe SP antes de gerar aeronaves
+SP {1}⟫SP {1}⟫SP {1}⟫ОВ {1}⟫⟫PA {1}⟫⟫
+Lineup {1} / {2}⟫出撃編成 {1} / {2}⟫출격 편성 {1} / {2}⟫Состав {1} / {2}⟫Aufstellung {1} / {2}⟫Équipe {1} / {2}⟫Alineación {1} / {2}⟫Escalação {1} / {2}
+first vehicle free⟫最初の 1 両は無料⟫첫 차량 무료⟫первая машина бесплатно⟫erstes Fahrzeug gratis⟫premier véhicule gratuit⟫primer vehículo gratis⟫primeiro veículo grátis
+FREE⟫無料⟫무료⟫БЕСПЛАТНО⟫GRATIS⟫GRATUIT⟫GRATIS⟫GRÁTIS
+Lineup full⟫編成満杯⟫편성 가득 참⟫Состав заполнен⟫Aufstellung voll⟫Équipe complète⟫Alineación llena⟫Escalação cheia
+No backups⟫予備なし⟫예비 없음⟫Нет запасных⟫Keine Reserven⟫Plus de réserve⟫Sin reservas⟫Sem reservas
+backup⟫予備⟫예비⟫запасной⟫Reserve⟫réserve⟫reserva⟫reserva
++{1} SP⟫+{1} SP⟫+{1} SP⟫+{1} ОВ⟫⟫+{1} PA⟫⟫
+MISSION ACCOMPLISHED⟫任務完了⟫임무 완료⟫ЗАДАЧА ВЫПОЛНЕНА⟫MISSION ERFÜLLT⟫MISSION ACCOMPLIE⟫MISIÓN CUMPLIDA⟫MISSÃO CUMPRIDA
+MISSION FAILED⟫任務失敗⟫임무 실패⟫ЗАДАЧА ПРОВАЛЕНА⟫MISSION GESCHEITERT⟫MISSION ÉCHOUÉE⟫MISIÓN FALLIDA⟫MISSÃO FRACASSADA
+Player⟫プレイヤー⟫플레이어⟫Игрок⟫Spieler⟫Joueur⟫Jugador⟫Jogador
+Ground⟫地上⟫지상⟫Наземные⟫Boden⟫Sol⟫Tierra⟫Terra
+Air⟫航空⟫공중⟫Воздушные⟫Luft⟫Air⟫Aire⟫Ar

@@ -681,13 +681,31 @@ function Weapons.init(G)
     G.spotFrom(P, e.root.Parent or e.root, { Position = from }, aim, W)
   end
 
+  -- 载具里标记敌人（用户 11-27「如果发现了敌载具可以进行全队标记 你仿照战雷就行」）：开车 / 开飞机 / 开船时按中键（WtComms.lua），
+  --   准星方向一个窄锥里、看得见的敌人标给全队（屏幕上红菱形跟着它、小地图上红点）。原点在自己的车 / 飞机上（服务器算，不用客户端给的），
+  --   地面车 / 船 Config.VehMark（2 公里），飞机 / 直升机 Config.VehMarkAir（6 公里）；试驾时也能标训练场的靶子
+  G.ACT.vmark = function(P, aim)
+    if typeof(aim) ~= "Vector3" or aim.X ~= aim.X then return end
+    local e = P.remote or P.vehicle
+    if not P.alive or not e or not e.alive or not e.root then return end
+    if not G.round or (G.round.phase ~= "battle" and not e.testDrive) then return end
+    local W = (e.air and Config.VehMarkAir) or Config.VehMark or { range = 5600, cone = 3, spotTime = 15, cd = 2 }
+    local t = now()
+    P.cd = P.cd or {}
+    if t < (P.cd.vmark or 0) then return end
+    P.cd.vmark = t + W.cd
+    local o = e.root.Position + Vector3.new(0, ((e.def and e.def.H) or 4) * 0.5, 0)
+    local n = G.spotFrom(P, e.model or e.root, { Position = o }, aim, W)
+    if n == 0 then G.msg(P.pl, "bad", "ui.markNone") end
+  end
+
   -- 每半秒把还在标记期里的敌人位置发给那一队
   task.spawn(function()
     while true do
       task.wait(0.5)
       local t = now()
       for team, S in pairs(spotted) do
-        local out = {}
+        local out, ids = {}, {}   -- ids[i]：第 i 个是哪个实体（客户端把红菱形挂在那辆车上跟着走；人是 false）
         for key, till in pairs(S) do
           if till < t then
             S[key] = nil
@@ -701,11 +719,14 @@ function Weapons.init(G)
               local e = G.entById[key]
               if e and e.alive then pos = e.root.CFrame.Position end
             end
-            if pos then table.insert(out, pos) else S[key] = nil end
+            if pos then
+              table.insert(out, pos)
+              ids[#out] = (string.sub(key, 1, 1) ~= "p") and key or false
+            else S[key] = nil end
           end
         end
         for pl, Q in pairs(G.P) do
-          if Q.team == team then G.R.Fx:FireClient(pl, { { k = "spots", list = out } }) end
+          if Q.team == team then G.R.Fx:FireClient(pl, { { k = "spots", list = out, ids = ids } }) end
         end
       end
     end
@@ -732,8 +753,10 @@ function Weapons.init(G)
     local rw = P and G.rewindShot and G.rewindShot(P, from, dir, w.range or 500, res)
     local hit = (rw and rw.pos) or (res and res.Position) or (from + dir * (w.range or 500))
     local B = srcInfo and srcInfo.bot
+    -- s：车上、工事上机枪的声音类别（VehDefs 的 snd，客户端 Fx.lua G.gunSnd 接成连发）；by：真人开的车上的机枪（srcInfo.own，Armor.lua）——
+    --   他自己的客户端开火那一刻已经本地画了曳光、放了声音（Drive.lua），回来的这一发跳过（原来又在枪口响一遍）
     G.fx({ k = "gun", w = w.fx or "rifle", a = from, b = hit, t = srcInfo and srcInfo.team, ent = B and B.e and B.e.id or nil,   -- ent：哪个小兵开的（客户端画后坐、枪口焰）
-      h = surfOf(rw, res) })
+      h = surfOf(rw, res), s = w.snd, by = (srcInfo and srcInfo.own and P and P.pl) and P.pl.UserId or nil })
     if G.treeRay then G.treeRay(from, hit, w) end   -- 钢城：车上的机枪、工事打在树干上（Trees.lua）
     if rw then
       G.hitRewound(rw, w, w.dmg, srcInfo, w.head or 1)

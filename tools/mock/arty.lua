@@ -139,20 +139,21 @@ for k in pairs(cats) do cl[#cl + 1] = k end
 table.sort(cl)
 check(C.ownXrayOn() and grp >= 5 and hls >= grp, "按住 X：按类别分组上色（" .. table.concat(cl, " ") .. "），每组一个 Highlight")
 check(cats.X_crew and cats.X_engine and cats.X_ammo, "乘员、发动机、弹药都有")
-check(R.services.Players.LocalPlayer.PlayerGui:FindFirstChild("OwnXrayLegend") ~= nil, "屏幕上有图例")
+check(me.PlayerGui:FindFirstChild("OwnXrayLegend") ~= nil, "屏幕上有图例")   -- 测试脚本不在客户端跑：Players.LocalPlayer 是 nil，用进服的那个玩家
 T.key(T.Enum.KeyCode.X, false)
 R.run(0.2)
 check(not C.ownXrayOn() and R.workspace:FindFirstChild("OwnXray") == nil, "松开 X 恢复原样")
-R.as("client", function() C.driveToggleSight() end)
+-- 直瞄的瞄准镜（自行火炮选着榴弹炮时 Shift 是进炮兵视角，不是开镜：直接开镜）
+R.as("client", function() C.driveSetSight(true) end)
 R.run(0.3)
 local inSight = C.drive and C.drive.sight
 T.key(T.Enum.KeyCode.X, true)
 R.run(0.3)
-check(inSight and C.ownXrayOn() and not C.drive.sight, "瞄准镜里按住 X：退到车外看得见")
+check(inSight and C.ownXrayOn() and not C.drive.sight and not C.artyOn(), "瞄准镜里按住 X：退到车外看得见（没进炮兵视角）")
 T.key(T.Enum.KeyCode.X, false)
 R.run(0.3)
-check(C.drive and C.drive.sight, "松开回到瞄准镜里")
-R.as("client", function() C.driveToggleSight() end)
+check(C.drive and C.drive.sight and not C.artyOn(), "松开回到瞄准镜里")
+R.as("client", function() C.driveSetSight(false) end)
 R.run(0.3)
 R.as("client", function() C.wtMapToggle(true) end)
 R.run(0.3)
@@ -169,7 +170,8 @@ for _, it in pairs(TT.byKey) do
   local g = WM.fcsGen(it)
   if g then
     okGen = okGen + 1
-    if it.year < 1965 then check(g == 0, it.key .. " 1965 年以前没有火控计算机") end
+    -- WtMods.GEN_FIX 照真车改过的不算（11-27：M60 / M60A1 有 M17 合像测距仪 + 机械弹道计算机——M60A1 是 M16，一说 M19E1；M13 是 M48 的——第 1 代）
+    if it.year < 1965 and not WM.GEN_FIX[it.key] then check(g == 0, it.key .. " 1965 年以前没有火控计算机") end
   end
 end
 check(okGen >= 10, "有坦克炮的车都定了火控是哪一代（" .. okGen .. " 辆）")

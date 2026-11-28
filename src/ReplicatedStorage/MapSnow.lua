@@ -38,6 +38,12 @@ Map.SEA_FAR_COLOR = Color3.fromRGB(24, 58, 72)  -- 客户端远处那圈海面�
 Map.SHELF = 0
 Map.MAXH = 4500        -- 最高的地形（Map.rayGround 只在这以下一步步找落点）：两座角峰四千三
 Map.RES = 4
+-- 后台还没写到的起伏块先垫的那层薄底（World.lua terrainDesert 的 underlay）：按这一块最低的地面往下 3 格、用雪铺（原来一律在平地往下 8 格铺沙——
+--   这张图的「沙」是黑沙滩的深灰，没写到的一块块成了深灰的大坑，用户 11-28 晚截图「雪山图这一块一直加载不」）
+Map.UNDERLAY_FOLLOW = true
+-- 地形版本（World.bake 烘焙地形 / World.terrain 开服对版本）：这张图的地形算法、参数（高度、材质、壳、河、路、铁路、弹坑战壕……）一改就换一个——
+--   烘焙过的地点文件开服时对不上就清掉现写，Output 里提示再烘焙一次
+Map.TERRAIN_VER = "1128a"
 Map.CEIL = 7200        -- 飞机最高飞到多高（Fly.lua、Air.lua：钢城、沙海 2600；这里角峰四千多格，上面还要留两三千格飞）
 Map.HALF = 12000
 local PLAIN = 12       -- 谷底平地（4 的倍数：FillBlock 铺出来和逐列写的一样高）
@@ -565,8 +571,18 @@ do
   poly({ { -900, 2200 }, { 600, 2300 }, { 1900, 1900 }, { 2300, 700 }, { 2120, -450 }, { 2300, -900 } }, 22, "side")
   -- 山口往西去雷达站背后
   poly({ { 900, -3400 }, { -400, -2900 }, { -1700, -1500 }, { -2250, -200 }, { -2000, 900 } }, 20, "side")
+  -- 铁路（用户 11-28「剩下你自己设计参考战雷地图冰风谷」：照冰封山口——两军争一个山口，西南有一条铁路穿山）：谷的西边南北一条单线，
+  --   南头在南基地西边、北头在北基地西边；坡不超过 3.5%（火车爬不了陡坡），遇到小山挖路堑、遇到洼地填路堤（坦克的掩体：堤后面藏车、堑里走车）；
+  --   挖得深的几段（北基地门前那道梁、锯木厂西南的小山包、南基地西北的坡）盖混凝土防雪棚（坦克能从棚里穿过去，就是图上那条「隧道」，SnowBuild.lua 建）；
+  --   山村西边一个车站（三股道的站场：Map.RAIL_YARD，停着废弃的车皮、机车）；山村西南过河一座钢桁架桥；和两条支路平交（道口）
+  --   11-28 晚：北段原来从西边几座 150 格高的山包上翻（x -2400 一线），3.5% 的坡跟不上，路堤填到 46 格还不够、坡度破了上限——
+  --   改走东边那条低谷（x -1700 一线，自然地面 30～75 格），只在北边那道东西向的梁（z 4400）和锯木厂西边的小山包上挖路堑
+  poly({ { -2700, 7400 }, { -2650, 6300 }, { -2350, 5400 }, { -1850, 4500 }, { -1700, 3700 }, { -1580, 3000 }, { -1700, 2300 }, { -1750, 1700 }, { -1380, 920 }, { -1180, 380 } }, 18, "rail")
+  poly({ { -1180, 380 }, { -1150, -260 } }, 62, "yard")
+  poly({ { -1150, -260 }, { -1150, -700 }, { -1250, -1500 }, { -1300, -2450 }, { -880, -3300 }, { -900, -4300 }, { -1550, -5250 }, { -2550, -6200 }, { -2800, -7400 } }, 18, "rail")
 end
 Map.SEGS = SEGS
+Map.RAIL_YARD = { ax = -1180, az = 380, bx = -1150, bz = -260, tracks = { -20, 0, 20 } }   -- 站场：三股道（离中线的偏移，格）
 local RCELL = 64
 local rgrid = {}
 local function rkey(gx, gz) return (gx + 2048) * 4096 + gz + 2048 end
@@ -643,8 +659,9 @@ do
       elseif d >= RIVER_W + RIVER_BANK * 0.6 and inside then
         inside = false
         local tm = (t0 + t) / 2
+        local Ls = sqrt((s[3] - s[1]) ^ 2 + (s[4] - s[2]) ^ 2)
         table.insert(Map.BRIDGES, { x = s[1] + (s[3] - s[1]) * tm, z = s[2] + (s[4] - s[2]) * tm, ax = s[1] + (s[3] - s[1]) * t0, az = s[2] + (s[4] - s[2]) * t0,
-          bx = s[1] + (s[3] - s[1]) * t, bz = s[2] + (s[4] - s[2]) * t, w = s[5] + 8, k = s[6] })
+          bx = s[1] + (s[3] - s[1]) * t, bz = s[2] + (s[4] - s[2]) * t, w = s[5] + 8, k = s[6], P = s[7], m0 = s[8] + t0 * Ls, m1 = s[8] + t * Ls })
       end
     end
   end
@@ -685,13 +702,46 @@ do
     return nil
   end
   local function mOf(P, n, q) return (q == n) and P.L or (q - 1) * PSTEP end
-  for _, P in ipairs(POLYS) do
+  -- 铁路（rail、站场 yard）：坡不超过 3.5%、平均的窗口大一倍；挖填先按 70 格收（路堑、路堤），收完再按坡度扫一遍（坡度说了算）
+  --   11-28 晚：铁路先算、公路后算——道口是路迁就铁路（路面钉成轨面的高，路的坡 15% 接得上）；原来反过来钉铁路，
+  --   站场南头离道口、河太近，一步落差二十格（坡 123%）。铁路过河不落到河滩：河上架高桥（Map.BRIDGES 的 y0 / y1，SnowBuild 立高墩）
+  local RAILP = { maxg = 0.035 * PSTEP, win = 14, passes = 3, cut = 70 }
+  local ROADP = { maxg = MAXG, win = 7, passes = 2, cut = 20 }
+  local function isRail(Q) return Q.k == "rail" or Q.k == "yard" end
+  local function crossAt(x, z, self)   -- 离已经算好的铁路多近：返回那里的轨面高（公路在道口钉成这个高）
+    for _, Q in ipairs(POLYS) do
+      if Q ~= self and Q.h and isRail(Q) then
+        local pts, acc = Q.pts, 0
+        for i = 1, #pts - 1 do
+          local ax, az, bx, bz = pts[i][1], pts[i][2], pts[i + 1][1], pts[i + 1][2]
+          local dx, dz = bx - ax, bz - az
+          local L = sqrt(dx * dx + dz * dz)
+          local t = (L > 0) and clamp(((x - ax) * dx + (z - az) * dz) / (L * L), 0, 1) or 0
+          if (ax + dx * t - x) ^ 2 + (az + dz * t - z) ^ 2 < (Q.w * 0.5 + 6) ^ 2 then return profAt(Q, acc + t * L) end
+          acc += L
+        end
+      end
+    end
+    return nil
+  end
+  local ORDER = {}
+  for _, P in ipairs(POLYS) do if isRail(P) then table.insert(ORDER, P) end end
+  for _, P in ipairs(POLYS) do if not isRail(P) then table.insert(ORDER, P) end end
+  for _, P in ipairs(ORDER) do
+    local rail = isRail(P)
+    local PP = rail and RAILP or ROADP
     local n = floor(P.L / PSTEP) + 2
     local H, pin = table.create(n), table.create(n, false)
     for q = 1, n do
       local x, z = locate(P, mOf(P, n, q))
       H[q] = natH(x, z)
-      if riverDist(x, z) < RIVER_W + RIVER_BANK + 40 then pin[q], H[q] = true, PLAIN end
+      if not rail then
+        if riverDist(x, z) < RIVER_W + RIVER_BANK + 40 then pin[q], H[q] = true, PLAIN end
+        if not pin[q] then   -- 道口：路面和轨面一样高
+          local y = crossAt(x, z, P)
+          if y then pin[q], H[q] = true, y end
+        end
+      end
     end
     for _, e in ipairs({ 1, n }) do
       local x, z = locate(P, mOf(P, n, e))
@@ -704,8 +754,8 @@ do
       if y then pin[e], H[e] = true, y end
     end
     -- 平均两遍（钉住的不动）：前后各约 110 格——路贴着地形起伏，只抹掉小坎（原来 ±200 格、坡 11%，有的地方挖出二十多米深的路堑）
-    for _ = 1, 2 do
-      local R2, N2 = table.create(n), 7
+    for _ = 1, PP.passes do
+      local R2, N2 = table.create(n), PP.win
       for q = 1, n do
         if pin[q] then R2[q] = H[q]
         else
@@ -717,24 +767,80 @@ do
       H = R2
     end
     -- 坡不超过 15%：前后各扫一遍（钉住的不动）
-    for q = 2, n do if not pin[q] then H[q] = clamp(H[q], H[q - 1] - MAXG, H[q - 1] + MAXG) end end
-    for q = n - 1, 1, -1 do if not pin[q] then H[q] = clamp(H[q], H[q + 1] - MAXG, H[q + 1] + MAXG) end end
-    -- 挖、填都不超过 20 格（7 米）：翻梁的地方路面跟着梁起来一点（短的一段陡一些），不挖二十多米深的沟
+    for q = 2, n do if not pin[q] then H[q] = clamp(H[q], H[q - 1] - PP.maxg, H[q - 1] + PP.maxg) end end
+    for q = n - 1, 1, -1 do if not pin[q] then H[q] = clamp(H[q], H[q + 1] - PP.maxg, H[q + 1] + PP.maxg) end end
+    -- 挖、填都不超过 20 格（7 米）：翻梁的地方路面跟着梁起来一点（短的一段陡一些），不挖二十多米深的沟；铁路 70 格（深堑、高堤）
     for q = 1, n do
       if not pin[q] then
         local x, z = locate(P, mOf(P, n, q))
         local nh = natH(x, z)
-        H[q] = clamp(H[q], nh - 20, nh + 20)
+        H[q] = clamp(H[q], nh - PP.cut, nh + PP.cut)
       end
     end
+    if rail then   -- 铁路：收完挖填再扫一遍坡（火车爬不了陡坡：坡度说了算，个别地方挖得更深）
+      for q = 2, n do if not pin[q] then H[q] = clamp(H[q], H[q - 1] - PP.maxg, H[q - 1] + PP.maxg) end end
+      for q = n - 1, 1, -1 do if not pin[q] then H[q] = clamp(H[q], H[q + 1] - PP.maxg, H[q + 1] + PP.maxg) end end
+    end
     P.h = H
+    -- 铁路：挖得深的地方（自然地面比轨面高 16 格以上、连着 140 格以上）记下来盖防雪棚（SnowBuild.lua）；P.cutDepth[q] 记每一点挖了多深
+    if rail then
+      P.cutD = table.create(n)
+      for q = 1, n do
+        local x, z = locate(P, mOf(P, n, q))
+        P.cutD[q] = natH(x, z) - H[q]
+      end
+    end
   end
   for _, sg in ipairs(SEGS) do
     local L = sqrt((sg[3] - sg[1]) ^ 2 + (sg[4] - sg[2]) ^ 2)
     table.insert(Map.ROADS, { name = sg[6], w = sg[5], x = { sg[1], sg[3] }, z = { sg[2], sg[4] }, y = { profAt(sg[7], sg[8]), profAt(sg[7], sg[8] + L) } })
   end
+  -- 桥面两头的高（公路桥就是河滩的高；铁路桥照轨面，高出河滩一截，SnowBuild 立高墩）
+  for _, B in ipairs(Map.BRIDGES) do
+    if B.P then B.y0, B.y1 = profAt(B.P, B.m0), profAt(B.P, B.m1) end
+    B.P = nil
+  end
 end
 Map.POLYS = POLYS
+-- 折线 P 在里程 m 处的点和方向（单位向量）
+local function polyPoint(P, m)
+  local pts = P.pts
+  local acc = 0
+  for i = 1, #pts - 1 do
+    local dx, dz = pts[i + 1][1] - pts[i][1], pts[i + 1][2] - pts[i][2]
+    local L = sqrt(dx * dx + dz * dz)
+    if m <= acc + L or i == #pts - 1 then
+      local t = (L > 0) and clamp((m - acc) / L, 0, 1) or 0
+      return pts[i][1] + dx * t, pts[i][2] + dz * t, dx / max(L, 1e-6), dz / max(L, 1e-6)
+    end
+    acc += L
+  end
+  return pts[#pts][1], pts[#pts][2], 0, -1
+end
+Map.polyPoint = polyPoint
+Map.profAt = profAt
+-- 防雪棚：铁路挖得深的几段（自然地面比轨面高 16 格以上、连着 140 格以上；挑最长的三段）——{ P 那条铁路, m0, m1 里程, deep 最深挖了多少 }
+Map.GALLERIES = {}
+for _, P in ipairs(POLYS) do
+  if P.k == "rail" and P.cutD then
+    local n = #P.cutD
+    local run0, deep = nil, 0
+    for q = 1, n + 1 do
+      local d = (q <= n) and P.cutD[q] or 0
+      -- 11-28 晚改线以后路堑浅了（最深二三十格、一百来格长）：挖下去 12 格以上、连着 96 格以上就盖（原来 16 格、140 格）
+      if d > 12 then
+        if not run0 then run0, deep = q, 0 end
+        deep = max(deep, d)
+      elseif run0 then
+        local m0, m1 = (run0 - 1) * PSTEP, (q - 2) * PSTEP
+        if m1 - m0 >= 96 and deep > 16 then table.insert(Map.GALLERIES, { P = P, m0 = max(0, m0 - 20), m1 = min(P.L, m1 + 20), deep = deep }) end
+        run0 = nil
+      end
+    end
+  end
+end
+table.sort(Map.GALLERIES, function(a2, b2) return (a2.m1 - a2.m0) > (b2.m1 - b2.m0) end)
+while #Map.GALLERIES > 4 do table.remove(Map.GALLERIES) end
 
 ---------------------------------------------------------------- 谷外的山体（Sketchfab 的山体模型拼的：tools/snow，数据在 ReplicatedStorage.SnowPeaks）
 --   用户 11-26 晚：「坦克交战区外你就用这几个拿去拼」「让这个地图望不到头」——一百七十来座山体（6 个 CC-BY 模型转着摆、外圈自动铺到四万多格），
@@ -983,7 +1089,8 @@ do
   modelB(-185, -105, "house_old", 1, 1.1)
   modelB(190, -120, "ruin_hall", 1, 0.9)                    -- 镇公所（炸毁的会堂）
   modelB(-20, 230, "house_ab1", 2, 1.0)
-  for i = 1, 40 do
+  -- 用户 11-28「多搞一些房子」：山村再密一些（原来 40 户的名额）
+  for i = 1, 64 do
     for _ = 1, 40 do
       local a = R() * math.pi * 2
       local r = 270 + R() * 620
@@ -994,8 +1101,10 @@ do
     end
   end
   -- 几个小村落（谷里散着，每个四五户，有的炸了）：给坦克一路上的掩体、步兵的据守点
-  for hi, c in ipairs({ { -2700, -2500 }, { 2500, 3700 }, { -2300, 4700 }, { 2300, -4600 }, { -3000, 1900 }, { 1500, -2200 } }) do
-    local n = 4 + floor(R() * 3)
+  --   11-28 多七个（南边主路旁、东边、雷达北丘下、山口前、东北、北门前、东南）
+  for hi, c in ipairs({ { -2700, -2500 }, { 2500, 3700 }, { -2300, 4700 }, { 2300, -4600 }, { -3000, 1900 }, { 1500, -2200 },
+    { -350, 4750 }, { 2950, 1650 }, { -1750, -950 }, { 450, -2750 }, { 2800, -3600 }, { -650, -5250 }, { 1350, 5500 } }) do
+    local n = 4 + floor(R() * 4)
     for _ = 1, n do
       for _ = 1, 30 do
         local a, r = R() * math.pi * 2, 40 + R() * 260
@@ -1022,9 +1131,36 @@ do
   addB(P_E.x - 120, P_E.z + 40, 56, 24, 16, "hut")
   addB(P_E.x + 120, P_E.z - 30, 40, 26, 18, "hut")
   modelB(P_E.x - 40, P_E.z + 210, "cabin_log", 0, 1.1)
-  -- 路边零星的农庄：住房 + 谷仓（有的被炸了）
+  -- 车站（铁路站场 Map.RAIL_YARD 东边）：石砌的二层站房，正面朝着股道
+  do
+    local Y = Map.RAIL_YARD
+    local cx, cz = (Y.ax + Y.bx) / 2 + 84, (Y.az + Y.bz) / 2 - 40
+    local w, d = dims("house_ww2")
+    if freeAt(cx, cz, d * 1.1, w * 1.1, 6) then Map.STATION = modelB(cx, cz, "house_ww2", 1, 1.1) end
+  end
+  -- 主路边一户户人家（用户 11-28「多搞一些房子」）：每四百多格一户，两边轮着，离路中线六七十格；有的炸了，有的边上一间棚子
+  do
+    local side = 1
+    for _, sg in ipairs(SEGS) do
+      if sg[6] == "main" then
+        local ax, az, bx, bz = sg[1], sg[2], sg[3], sg[4]
+        local L = sqrt((bx - ax) ^ 2 + (bz - az) ^ 2)
+        local ux, uz = (bx - ax) / L, (bz - az) / L
+        for t = 150, L - 100, 430 do
+          side = -side
+          local off = 62 + R() * 30
+          local x, z = ax + ux * t - uz * off * side, az + uz * t + ux * off * side
+          local key = (R() < 0.3) and pick(POOL.ruin) or pick(POOL.home)
+          local b = tryModel(x, z, key, 0.95 + R() * 0.15, ax + ux * t, az + uz * t, 18)
+          if b and R() < 0.45 then tryModel(x + ux * 46, z + uz * 46, pick(POOL.hut), 0.9, ax + ux * t, az + uz * t, 10) end
+        end
+      end
+    end
+  end
+  -- 路边零星的农庄：住房 + 谷仓（有的被炸了）；11-28 多八处
   for _, p in ipairs({ { -1900, 4200 }, { 1500, 4300 }, { 2100, 2700 }, { -2400, 2500 }, { -1500, -2700 }, { 1900, -2600 }, { -800, -4200 },
-    { -3300, -800 }, { 3300, 900 }, { -900, 5600 }, { 800, -5600 } }) do
+    { -3300, -800 }, { 3300, 900 }, { -900, 5600 }, { 800, -5600 },
+    { 600, 4900 }, { -2900, 3300 }, { 1100, 1500 }, { 3200, -1900 }, { -2900, -1700 }, { 1700, -4000 }, { -1600, -4600 }, { 2400, 5300 } }) do
     local home = (R() < 0.3) and pick(POOL.ruin) or pick(POOL.home)
     if tryModel(p[1], p[2], home, 1.0, p[1] + 200, p[2], 20) then
       tryModel(p[1] + 70, p[2] + 24, pick(POOL.barn), 1.0, p[1], p[2], 16)
@@ -1055,7 +1191,8 @@ local function bldAt(x, z, pad)
   return nil
 end
 Map.bldAt = bldAt
-function Map.navBlocked(x, z) return bldAt(x, z, 12) ~= nil end
+local civAtF = nil   -- 废弃的车（下面 Map.CIV 摆好以后才有）：寻路也绕开
+function Map.navBlocked(x, z) return bldAt(x, z, 12) ~= nil or (civAtF ~= nil and civAtF(x, z, 6) ~= nil) end
 function Map.segBlocked(ax, az, bx, bz, pad)
   local dx, dz = bx - ax, bz - az
   local L = sqrt(dx * dx + dz * dz)
@@ -1063,6 +1200,7 @@ function Map.segBlocked(ax, az, bx, bz, pad)
   for q = 0, n do
     local t = q / n
     if bldAt(ax + dx * t, az + dz * t, pad or 10) then return true end
+    if civAtF and civAtF(ax + dx * t, az + dz * t, (pad or 10) * 0.5) then return true end
   end
   return false
 end
@@ -1409,12 +1547,253 @@ do
   end
 end
 
+---------------------------------------------------------------- 废弃的车（用户 11-28「多搞一些房子 废弃的各种车等等让这个地图丰富起来」）
+--   Map.CIV：民用车、卡车、客车、拖拉机、铁路车皮、机车、飞机残骸（models/bld/wrecks.glb 的 wk_*，WreckMeta；SnowBuild.lua 盖：
+--   导入了摆原模型 + 看不见的碰撞盒，没导入按同样的大小用零件拼一辆）——{ x, z, a 车身长边（模型 X 轴）朝哪（弧度）, k 模型键, r 侧翻角, p 前后倾, s 缩放, y 抬高 }
+--   Map.PROPS.wreck 加几簇打坏的军车（真车模型烧黑，客户端 SnowLook.lua 画）：车队挨了伏击、坦克坟场、防空阵地
+local CIV = {}
+Map.CIV = CIV
+local CIVD = {   -- 各模型的长（X）、宽（Z）、高（格；照 WreckMeta 抄的：摆法服务器、客户端要算得一样，不等 WreckMeta）
+  wk_bmw = { 12.12, 4.93, 3.63 }, wk_fiat = { 12.29, 4.71, 3.68 }, wk_hatch = { 10.92, 5.59, 3.71 }, wk_suv = { 12.88, 8.67, 4.93 },
+  wk_uaz = { 11.28, 4.99, 5.88 }, wk_gaz66 = { 15.85, 6.25, 7.13 }, wk_ural = { 20.64, 8.34, 8.93 }, wk_kamaz = { 21.28, 8.81, 10.07 },
+  wk_bus = { 29.4, 9.25, 9.78 }, wk_tractor = { 11.0, 4.89, 6.92 }, wk_boxcar = { 49.66, 12.15, 11.76 }, wk_hopper = { 39.8, 10.52, 10.36 },
+  wk_loco = { 49.14, 9.23, 13.52 }, wk_plane = { 33.37, 9.33, 8.16 },
+}
+Map.CIV_DIMS = CIVD
+local CG2, CG2C = {}, 64
+local function civKey(gx, gz) return (gx + 4096) * 8192 + gz + 4096 end
+local function civAt(x, z, pad)
+  local l = CG2[civKey(x // CG2C, z // CG2C)]
+  if not l then return nil end
+  pad = pad or 0
+  for _, c in ipairs(l) do
+    local dx, dz = x - c.x, z - c.z
+    local along = dx * c.ux + dz * c.uz
+    local side = -dx * c.uz + dz * c.ux
+    if abs(along) <= c.hl + pad and abs(side) <= c.hw + pad then return c end
+  end
+  return nil
+end
+Map.civAt = civAt
+civAtF = civAt
+local function addCiv(x, z, a, k, o)
+  local D = CIVD[k]
+  if not D then return nil end
+  o = o or {}
+  local sc = o.s or 1
+  local c = { x = x, z = z, a = a, k = k, r = o.r or 0, p = o.p or 0, s = sc, y = o.y or 0, ux = cos(a), uz = -sin(a), hl = D[1] * sc / 2, hw = D[2] * sc / 2 }
+  if abs(c.r) > 0.6 then c.hw = max(c.hw, D[3] * sc / 2) end   -- 侧翻的：车顶着地，宽按车高算
+  c.id = #CIV + 1
+  table.insert(CIV, c)
+  local R0 = c.hl + c.hw
+  for gx = floor((x - R0) / CG2C), floor((x + R0) / CG2C) do
+    for gz = floor((z - R0) / CG2C), floor((z + R0) / CG2C) do
+      local key = civKey(gx, gz)
+      CG2[key] = CG2[key] or {}
+      table.insert(CG2[key], c)
+    end
+  end
+  return c
+end
+-- 放得下吗：不压房子、别的车、河、湖、基地；onRail 给 true 的是铁路车皮（本来就在轨上）
+local function civFree(x, z, k, a, onRail)
+  local D = CIVD[k]
+  local r = max(D[1], D[2]) * 0.5
+  if valleyD(x, z) > 0.95 or inBase(x, z, 120) then return false end
+  if bldAt(x, z, r * 0.7 + 4) then return false end
+  if civAt(x, z, r * 0.7 + 3) then return false end
+  if riverDist(x, z) < RIVER_W + RIVER_BANK + r then return false end
+  if lakeD(x, z) < 1.35 then return false end
+  if not onRail then
+    local d, _, w, rk = roadNear(x, z)
+    if d and d < w * 0.5 + 2 + D[2] * 0.5 and (rk == "rail" or rk == "yard") then return false end
+    -- 公路：车身中心不落在路面上（歪在路边可以，车尾压一点路肩也行；挪一挪再试的时候原来会挪到路中间去）
+    if d and d < w * 0.5 + 1 and rk ~= "rail" and rk ~= "yard" then return false end
+  end
+  local _, rock = featH(x, z)
+  if rock then return false end
+  return true
+end
+Map.civFree = civFree
+do
+  local R = rng(66071)
+  local function pick(list) return list[1 + floor(R() * #list)] end
+  local CARS = { "wk_bmw", "wk_fiat", "wk_hatch", "wk_suv", "wk_uaz", "wk_bmw", "wk_fiat" }
+  local TRUCKS = { "wk_ural", "wk_kamaz", "wk_gaz66", "wk_uaz", "wk_ural" }
+  local function along(sg, t, off)   -- 路段 sg 上 t（0～1）处、往右偏 off 格的点，和路的方向角（模型 X 轴顺着路）
+    local ax, az, bx, bz = sg[1], sg[2], sg[3], sg[4]
+    local L = sqrt((bx - ax) ^ 2 + (bz - az) ^ 2)
+    local ux, uz = (bx - ax) / L, (bz - az) / L
+    return ax + (bx - ax) * t - uz * off, az + (bz - az) * t + ux * off, math.atan2(-uz, ux), L
+  end
+  local function tryAdd(x, z, a, k, o, onRail)
+    for _ = 1, 6 do
+      if civFree(x, z, k, a, onRail) then return addCiv(x, z, a, k, o) end
+      if onRail then return nil end
+      x, z = x + (R() - 0.5) * 26, z + (R() - 0.5) * 26
+    end
+    return nil
+  end
+  -- ① 铁路站场：三股道上停着没人管的车皮（西股棚车、东股煤斗车），正线上一台 М62 机车拖着两节棚车；有一节出了轨、歪在路基边上
+  do
+    local Y = Map.RAIL_YARD
+    local dx, dz = Y.bx - Y.ax, Y.bz - Y.az
+    local L = sqrt(dx * dx + dz * dz)
+    local ux, uz = dx / L, dz / L
+    local a = math.atan2(-uz, ux)
+    local function onTrack(off, m, k, o)
+      local x, z = Y.ax + ux * m - uz * off, Y.az + uz * m + ux * off
+      return tryAdd(x, z, a, k, o, true)
+    end
+    for i = 0, 3 do onTrack(Y.tracks[1], 90 + i * 53, "wk_boxcar") end
+    for i = 0, 3 do onTrack(Y.tracks[3], 150 + i * 43, "wk_hopper") end
+    onTrack(Y.tracks[2], 330, "wk_loco")
+    onTrack(Y.tracks[2], 385, "wk_boxcar")
+    onTrack(Y.tracks[2], 438, "wk_boxcar", { r = 0.22, p = 0.03 })   -- 一头掉下轨道，歪着
+    -- 站台边：一辆客车、两辆小车（来接站的，扔下了）
+    local sx, sz = (Y.ax + Y.bx) / 2 + 54, (Y.az + Y.bz) / 2 + 60
+    tryAdd(sx, sz, a, "wk_bus")
+    tryAdd(sx + 18, sz - 70, a + 0.4, pick(CARS))
+    tryAdd(sx + 22, sz + 60, a - 0.3, pick(CARS))
+  end
+  -- ② 铁路正线：防雪棚口外一节翻倒的棚车、一节侧翻的煤斗车（出轨甩下路堤），路堤边几节被炸坏的车皮
+  for gi, Gq in ipairs(Map.GALLERIES) do
+    local m = (gi % 2 == 1) and (Gq.m0 - 70) or (Gq.m1 + 70)
+    local x, z, ux, uz = polyPoint(Gq.P, clamp(m, 0, Gq.P.L))
+    local nx, nz = -uz, ux
+    tryAdd(x + nx * 26, z + nz * 26, math.atan2(-uz, ux) + 0.35, (gi == 1) and "wk_boxcar" or "wk_hopper", { r = 1.45, y = -1.5 })
+  end
+  for _, P in ipairs(POLYS) do
+    if P.k == "rail" then
+      for m = 600, P.L - 600, 1900 do
+        local x, z, ux, uz = polyPoint(P, m)
+        local side = (R() < 0.5) and 1 or -1
+        tryAdd(x - uz * side * 22, z + ux * side * 22, math.atan2(-uz, ux) + (R() - 0.5) * 0.5, (R() < 0.5) and "wk_boxcar" or "wk_hopper", { r = side * (0.25 + R() * 0.3), y = -1 })
+      end
+    end
+  end
+  -- ③ 山村：街上、房前扔下的小车（有的烧了），广场边一辆客车（车站那辆之外）
+  for _ = 1, 26 do
+    local sg = SEGS[1 + floor(R() * #SEGS)]
+    if sg[6] ~= "rail" and sg[6] ~= "yard" then
+      local t = R()
+      local x, z, a = along(sg, t, (R() < 0.5 and -1 or 1) * (sg[5] * 0.5 + 6 + R() * 8))
+      if x * x + z * z < 950 * 950 then tryAdd(x, z, a + (R() - 0.5) * 0.4, pick(CARS)) end
+    end
+  end
+  tryAdd(-172, 352, 1.21, "wk_bus")   -- 主路西边的路肩上（顺着路；原来 (-150, 360) 正压在主路中线边上）
+  -- ④ 主路上被伏击的车队：两队卡车 / 吉普（山村—山口之间、锯木厂—山村之间），一辆接一辆歪在路边；车队前后的军车残骸在 PROPS.wreck 里
+  local convoys = { { "main", 0.37, 5 }, { "main", 0.68, 6 }, { "main", 0.16, 4 } }
+  for _, cv in ipairs(convoys) do
+    local P = nil
+    for _, Q in ipairs(POLYS) do if Q.k == cv[1] then P = Q break end end
+    if P then
+      local m0 = P.L * cv[2]
+      for i = 0, cv[3] - 1 do
+        local x, z, ux, uz = polyPoint(P, m0 + i * 34)
+        local side = (i % 2 == 0) and 1 or -1
+        local off = 22 + R() * 8
+        tryAdd(x - uz * side * off, z + ux * side * off, math.atan2(-uz, ux) + side * (0.15 + R() * 0.35), pick(TRUCKS), { r = (R() < 0.2) and side * 0.35 or 0 })
+      end
+    end
+  end
+  -- ⑤ 农庄：谷仓边一台拖拉机（有的翻在沟里），院子里一辆旧车
+  for _, b in ipairs(BLD) do
+    if b.model and string.sub(b.model, 1, 5) == "barn_" and R() < 0.75 then
+      tryAdd(b.x + b.w * 0.5 + 16, b.z + (R() - 0.5) * b.d, R() * math.pi * 2, "wk_tractor", { r = (R() < 0.15) and 0.4 or 0 })
+      if R() < 0.5 then tryAdd(b.x - b.w * 0.5 - 18, b.z + (R() - 0.5) * b.d, R() * math.pi * 2, pick(CARS)) end
+    end
+  end
+  -- ⑥ 小村落、路边人家门口：一两辆车
+  for _, b in ipairs(BLD) do
+    if b.model and not b.ruin and string.sub(b.model, 1, 5) ~= "barn_" and (b.x * b.x + b.z * b.z) > 950 * 950 and R() < 0.35 then
+      local a = R() * math.pi * 2
+      tryAdd(b.x + cos(a) * (b.w * 0.5 + 16), b.z + sin(a) * (b.d * 0.5 + 16), R() * math.pi * 2, pick(CARS))
+    end
+  end
+  -- ⑦ 田野里零星的：开到半路扔下的卡车、陷在雪里的吉普（坦克的小掩体）
+  for _ = 1, 30 do
+    local x, z = -2700 + R() * 5400, -5400 + R() * 10800
+    tryAdd(x, z, R() * math.pi * 2, (R() < 0.5) and pick(TRUCKS) or pick(CARS), { r = (R() < 0.15) and (R() - 0.5) * 1.2 or 0, y = -0.8 })
+  end
+  -- ⑧ 坠毁的飞机：东北丘的半坡上（机头朝下扎进雪里），雷达北丘的林子边
+  tryAdd(2420, -2560, 0.6, "wk_plane", { p = -0.14, r = 0.12, y = -1.4 })
+end
+
+-- 军车残骸再加几簇（Map.PROPS.wreck，样子是客户端画的真车模型烧黑）：车队挨伏击（山村—山口的主路边）、坦克坟场（南梁前）、
+--   山口前的防空阵地、水电站坝下的一排、雷达站台地下
+do
+  local R = rng(41593)
+  local W2 = PROPS.wreck
+  local function cluster(cx, cz, rad, keys)
+    for _, k in ipairs(keys) do
+      for _ = 1, 14 do
+        local a, d = R() * math.pi * 2, R() * rad
+        local x, z = cx + cos(a) * d, cz + sin(a) * d
+        if freeWar(x, z, 16) and not civAt(x, z, 14) then
+          local dup = false
+          for _, w in ipairs(W2) do if (w[1] - x) ^ 2 + (w[2] - z) ^ 2 < 30 * 30 then dup = true break end end
+          if not dup then
+            table.insert(W2, { x, z, R() * math.pi * 2, k, (R() - 0.5) * 2.4, (R() - 0.5) * 0.14 })
+            break
+          end
+        end
+      end
+    end
+  end
+  cluster(-1500, 4050, 380, { "m60a3", "leo1", "t64", "t72b3", "type59", "m60a3", "t64" })      -- 南梁前的坦克坟场
+  cluster(420, -1250, 300, { "bmp1", "brdm2", "bmp2", "t72b3" })                                 -- 山村—山口的主路边（卡车车队的前后）
+  cluster(-620, 2650, 280, { "m2a3", "hmmwv", "jltv", "m1a1i" })                                  -- 锯木厂—山村
+  cluster(900, -2950, 320, { "pantsir", "strela1", "t90m", "bmp2", "m109" })                     -- 山口前的阵地
+  cluster(1700, -800, 260, { "gepard", "m163", "leo2a6", "type74" })                             -- 水电站坝下
+  cluster(-1700, 1350, 260, { "t80u", "brdm2", "bmp1" })                                         -- 雷达站台地下
+  cluster(-200, -3900, 300, { "ztz96", "type59", "t64" })                                         -- 北门前
+  cluster(1900, 3600, 320, { "leo1", "m60a3", "m551", "type87rcv" })                             -- 东南
+end
+
 Map.flatK = function(x, z) return baseK(x, z) end
+-- 交战区的崎岖（用户 11-28「对抗的时候 地形不能是平的要多有不大不小的崎岖」，照战雷的图）：自然地形上再叠两层起伏——
+--   · 冰碛丘：谷底一个个土包（高 2～4 米、直径四五十米，冰川退下去留下的那种），一簇一簇、中间夹着平一点的洼地：坦克一路上到处有车体隐蔽的位置
+--   · 小坎：一米多的起伏（加上零点几米的碎坎），近处不是一块平板
+--   路、铁路两边、河岸、湖岸、基地照旧平整（越靠近越收），山村中心、据点中心收一半（还看得见彼此）；房子脚下的平台、弹坑、战壕在后面照旧盖上去
+local POINTS_C = Map.POINTS
+local function roughH(x, z, rdist, rw, bk)
+  local vd = valleyD(x, z)
+  if vd > 1.0 then return 0 end
+  local k = (1 - smooth(0.9, 1.0, vd)) * (1 - bk)
+  if rdist then k *= smooth(rw * 0.5 + 8, rw * 0.5 + 64, rdist) end
+  if k <= 0.001 then return 0 end
+  local rv = riverDist(x, z)
+  if rv < RIVER_W + RIVER_BANK + 90 then k *= smooth(RIVER_W + RIVER_BANK + 10, RIVER_W + RIVER_BANK + 90, rv) end
+  if x > LAKE.damX - 900 then
+    local ld = lakeD(x, z)
+    if ld < 1.9 then k *= smooth(1.3, 1.9, ld) end
+  end
+  local dc = x * x + z * z
+  if dc < 420 * 420 then k *= 0.45 + 0.55 * smooth(180, 420, sqrt(dc)) end
+  for _, pt in ipairs(POINTS_C) do
+    local dx, dz = x - pt.x, z - pt.z
+    local d2 = dx * dx + dz * dz
+    if d2 < 160 * 160 then k *= 0.55 + 0.45 * smooth(60, 160, sqrt(d2)) end
+  end
+  if k <= 0.001 then return 0 end
+  local wx = x + 70 * noise(x / 330, z / 330, 71.3)
+  local wz = z + 70 * noise(x / 330 + 9.1, z / 330, 33.7)
+  local mound = smooth(-0.05, 0.6, noise(wx / 115, wz / 115, 41.7))
+  local knoll = smooth(0.05, 0.65, noise(wx / 54, wz / 54, 19.3))
+  return k * (12 * mound + 4.5 * knoll + 1.8 * noise(x / 23, z / 23, 7.7) - 5.5)
+end
+Map.roughH = function(x, z)
+  local d, _, w = roadNear(x, z)
+  return roughH(x, z, d, w or 0, baseK(x, z))
+end
 local function floorH(x, z)
   local h = natH(x, z)
-  if baseK(x, z) >= 1 then return h end
+  local bk = baseK(x, z)
+  if bk >= 1 then return h end
   -- 路
   local d, ry, w = roadNear(x, z)
+  h += roughH(x, z, d, w or 0, bk)
   if d then
     local hw = w * 0.5 + 3
     if d <= hw then
@@ -1459,6 +1838,9 @@ local function heightAt(x, z)
 end
 function Map.height(x, z) return heightAt(x, z), 1e9 end
 function Map.ground(x, z) return heightAt(x, z) end
+-- 据点的高度（同沙海、钢城都有 p.y）：原来雪山没写——服务器数圈里的人（Round.countIn、Ents.countAt）、客户端判断「在不在点里」
+--   （Operation.lua）都拿 p.y 比高度，nil 一减就报错（开坦克时每帧一次，屏幕上方红字常亮）。据点都在谷底，按谷底高（不查山体，开局不去载山的高度图）
+for _, p in ipairs(Map.POINTS) do p.y = floorH(p.x, p.z) end
 -- 写一块地形时（World.lua writeChunk 前后 Map.colCache(true / false)）：每一列的谷底高、山体高只算一次（定高度、定材质、判断壳都要）
 local CCF, CCP = nil, nil
 local function colInfo(x, z)
@@ -1515,8 +1897,11 @@ function Map.material(x, z, y, slope)
   local rd = riverDist(x, z)
   if rd <= RIVER_W then return MAT.Glacier end
   if inLake(x, z) then return MAT.Glacier end
-  local on = onRoad(x, z, 0)
-  if on then return MAT.Ground end   -- 路（零件铺的压雪路，地形底下是压实的土）
+  local on, rk0 = onRoad(x, z, 0)
+  if on then   -- 路（压实的土）；铁路的路基是碎石道砟（Slate）
+    if rk0 == "rail" or rk0 == "yard" then return MAT.Slate end
+    return MAT.Ground
+  end
   -- 摆的岩石（硬掩体）、弹坑和战壕里露出来的泥
   local _, rk = featH(x, z)
   if rk then return (noise(x / 40, z / 40, 2.9) > -0.2) and MAT.Rock or MAT.Slate end
@@ -1631,6 +2016,7 @@ local function treeOk(x, z)
   if inBase(x, z, 160) then return false end
   if onRoad(x, z, 10) then return false end
   if bldAt(x, z, 14) then return false end
+  if civAt(x, z, 8) then return false end
   if riverDist(x, z) < RIVER_W + 24 or (x > LAKE.damX and lakeD(x, z) < 1.05) then return false end
   for _, p in ipairs(Map.POINTS) do
     local dx, dz = x - p.x, z - p.z

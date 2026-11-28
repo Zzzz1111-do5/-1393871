@@ -113,12 +113,28 @@ function Kit.init(G)
   ---------------------------------------------------------------- 激光告警、自动烟幕
 
   -- 激光制导的弹 s 冲着车 t 来（Air.lua guideMissile 每步问）：返回 true 就是导弹丢了目标
+  --   指令制导的反坦克弹（陶式、HOT、攻击……）也问：只有「窗帘-1」（TM.EW.shtora，irJam）的红外干扰灯管用——
+  --   发射架上的测角仪跟着弹尾的红外灯修正，干扰灯一晃就跟丢（这一发进到告警距离时掷一次）；激光告警看不到它（没有激光照射）
   function G.kitLaser(s, t, dt)
     local k = kitOf(t)
     if not k or not k.ew or not t.alive or not t.root then return false end
     local W = TM.EW[k.ew]
     if not W then return false end
     local tp = t.root.CFrame.Position
+    if s.w and s.w.guide == "cmd" then
+      if not W.irJam then return false end
+      if s.irJam == nil then
+        if (tp - s.pos).Magnitude > 2400 then return false end
+        s.irJam = math.random() < W.irJam
+        if s.irJam then
+          G.fx({ k = "dazzle", id = t.id })
+          local D = t.driver
+          if D and D.pl then G.msg(D.pl, "good", "kit.irJam") end
+          G.irJams = (G.irJams or 0) + 1   -- 测试用
+        end
+      end
+      return s.irJam == true
+    end
     if not s.lws then
       local d = (tp - s.pos).Magnitude
       if d > 2400 then return false end   -- 告警器看得到的距离（激光照射一开始就报，这里按导弹进到约 850 米）

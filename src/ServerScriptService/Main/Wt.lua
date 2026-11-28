@@ -28,6 +28,7 @@ function Wt.init(G)
   -- 科技树改装（WtMods，Tech.lua 出车时写的 e.wtFx）：工具箱修得快；没研究零件 / 灭火器修不了 / 灭不了
   local function fixTime(e) return FIX_T * ((e.wtFx and e.wtFx.repK) or 1) end
   local EXT_CD = 20       -- 灭火器冷却
+  local AMMO_FIRE = 8     -- 弹药架起火：几秒内不灭就殉爆（用户 11-28「弹药架起火如果不及时灭火修要爆炸」）
 
   local function baseOf(e) return e.root.CFrame * CF(0, -e.def.H / 2, 0) end
 
@@ -81,10 +82,14 @@ function Wt.init(G)
     local mob = seatOk(S, "drv") and ok(S, "engine") and ok(S, "trans") and ok(S, "trackL") and ok(S, "trackR")
     local gun = seatOk(S, "gnr") and ok(S, "breech") and ok(S, "barrel")
     if not S.seat.gnr then gun = ok(S, "breech") and ok(S, "barrel") and alive(S) > 0 end   -- 没有炮长位的车（轻型车）：剩人就能打
+    -- 方向机、高低机（用户 11-28「方向机也要能被打坏」）：照战雷历史模式——受损（橙、红）不影响，打坏（黑）就完全不动：
+    --   方向机坏了炮塔转不动（客户端、电脑开的车改成转车体瞄），高低机坏了炮管俯仰定住；修好就恢复。原来打坏了还能 1/4 速度转、受损也慢，打坏了像没坏
     local trav = 1
     local td = S.byK.tdrive
-    if td then trav = (td.hp <= 0) and 0.25 or ((modState(td) == 1) and 0.6 or 1) end
-    if not seatOk(S, "gnr") and S.seat.gnr then trav = math.min(trav, 0.5) end
+    if td and td.hp <= 0 then trav = 0 end
+    if trav > 0 and not seatOk(S, "gnr") and S.seat.gnr then trav = math.min(trav, 0.5) end
+    local ed = S.byK.edrive
+    S.elev = not (ed and ed.hp <= 0)
     local rel = 1
     if S.seat.ldr and not seatOk(S, "ldr") then rel = 1.6 end   -- 装填手没了：别人凑合装填
     if S.fixT then gun = false end                              -- 修车的时候不能开炮
@@ -105,9 +110,11 @@ function Wt.init(G)
     m:SetAttribute("WtM", table.concat(ms))
     m:SetAttribute("WtF", S.fireT ~= nil)
     m:SetAttribute("WtAF", S.ammoFireT ~= nil)   -- 弹药架起火（客户端 WtVfx：舱口喷火）
+    m:SetAttribute("WtAFLeft", S.ammoBoomT and math.max(0, math.ceil(S.ammoBoomT - now())) or nil)   -- 还有几秒殉爆（车里的人看倒计时）
     m:SetAttribute("WtMob", S.mob)
     m:SetAttribute("WtGun", S.gun)
     m:SetAttribute("WtTrav", S.trav)
+    m:SetAttribute("WtElev", S.elev ~= false)   -- 高低机好着（false：炮管俯仰定住）
     m:SetAttribute("WtFix", S.fixT and math.clamp((now() - S.fixT) / fixTime(e), 0, 1) or nil)
     -- 原来的血量（界面上的血条、名牌）：按活着的乘员算个比例
     if e.alive and e.wtMaxHp then
@@ -146,16 +153,12 @@ function Wt.init(G)
     e.wtWhy = why
     e.model:SetAttribute("WtWhy", why)   -- 客户端 View：殉爆才掀炮塔
     local base = baseOf(e)
-    if why == "ammo" then   -- 殉爆：一大团火（客户端 View / WreckFx 画残骸，这里多一声大的）
+    if why == "ammo" then   -- 殉爆：一大团火（客户端 View / WreckFx 画残骸、掀炮塔、炮管崩飞，这里多一声大的）
+      -- 用户 11-28 晚「坦克被穿透关键部位要直接爆 炮塔炮管子都要崩飞」：打中就炸（原来转盘车先烧两三秒再炸——11-26「要先着火再飞」那一版；
+      --   弹药架起火没灭的那条路照旧是先烧 8 秒再炸），哪种坦克都掀炮塔、炮管单独崩飞（View.lua）
       local tp = e.def.turret and e.def.turret.pivot or V(0, e.def.hullH or 4, 0)
       local at = (base * CF(tp)).Position
-      if W.CAROUSEL[e.def.id] and e.def.turret then   -- 弹在车体底下的：先烧几秒再炸、炮塔飞起来（客户端按 WtCook 同步）
-        local cook = W.cookSecs(e.id)
-        e.model:SetAttribute("WtCook", cook)
-        task.delay(cook, function() G.fx({ k = "boom", p = at, s = 4.6, c = "wreck" }) end)
-      else
-        G.fx({ k = "boom", p = at, s = 4.2, c = "wreck" })
-      end
+      G.fx({ k = "boom", p = at, s = 4.6, c = "wreck" })
     end
     e.wtLastDriver = e.driver   -- 车毁了以后车里的人就下车了：击杀信息、「你被击毁」那一发的 X 光要发给他们
     e.wtLastPass = e.pass and table.clone(e.pass) or nil
@@ -229,16 +232,18 @@ function Wt.init(G)
       return
     end
     -- 弹药架起火（11-26「弹药舱燃烧」）：发射药烧起来——带泄压板的尾舱照旧往上泄（人没事、这一架弹没了）；
-    --   别的：舱口往外喷火七到十秒（比普通起火凶：烧乘员快），烧完没灭（Y 灭火器）有四成会殉爆
+    --   别的：舱口往外喷火（比普通起火凶：烧乘员快），AMMO_FIRE 秒内不灭（Y 灭火器）就殉爆——用户 11-28「弹药架起火如果不及时灭火修要爆炸」
+    --   （原来烧完没灭只有四成会炸）。剩几秒写在车的 WtAFLeft 属性上（车里的人看倒计时，WtHud）
     if flags.ammoFire and not flags.ammo then
       local c = S.byK[flags.ammoFire]
       if c and c.it.blow then
         blowout(e, c, res)
-      else
+      elseif not S.ammoFireT then
         local t = now()
         S.fireT = S.fireT or t
         S.ammoFireT = t
-        S.fireUntil = math.max(S.fireUntil or 0, t + 7 + math.random() * 3)
+        S.ammoBoomT = t + AMMO_FIRE
+        S.fireUntil = math.max(S.fireUntil or 0, S.ammoBoomT + 1)
         res.fire, res.ammoFire = true, true
       end
     end
@@ -289,7 +294,10 @@ function Wt.init(G)
         local rl, rf = nil, nil
         if G.wtRackLeft then rl, rf = G.wtRackLeft(e, c.it.k) end   -- ④ 这一块弹架（待发 / 车体）现在有几发：空了打中也不炸
         if rl then frac = (rl <= 0) and 0 or math.clamp(rl / rf, 0.15, 1) end
-        if math.random() < k * frac then flags.ammo, flags.ammoK = true, c.it.k
+        -- 用户 11-28 晚「坦克被穿透关键部位要直接爆」：弹芯 / 射流直接钻进弹架（k ≥ 0.7 的那一下）——架上有弹就一定殉爆，不看少带弹
+        --   （原来按 0.7 × 带的弹多少：少带弹的车弹芯穿过弹架也常常只是起火）；破片、爆炸照旧按机会，没炸就起火（倒计时殉爆）
+        if k >= 0.7 * fx.amk - 1e-6 and frac > 0 then flags.ammo, flags.ammoK = true, c.it.k
+        elseif math.random() < k * frac then flags.ammo, flags.ammoK = true, c.it.k
         elseif frac > 0 and math.random() < k * frac * 0.9 then flags.ammoFire = flags.ammoFire or c.it.k end   -- 没炸：发射药烧起来（弹药架起火，11-26）
       end
       if (c.it.k == "engine" and math.random() < 0.28 * (k / 0.5) * fk) or ((c.it.k == "fuelL" or c.it.k == "fuelR") and math.random() < 0.4 * (k / 0.5) * fk) then
@@ -324,7 +332,7 @@ function Wt.init(G)
         if h then
           local c = S.byK[h.it.k]
           hurt(e, c, ((h.it.kind == "crew") and CREW_DMG.spall or MOD_DMG.spall) * fx.sd, out, src)
-          hitAmmo(c, 0.22)
+          hitAmmo(c, 0.4)   -- 破片打进弹架：11-28 晚 0.22 → 0.4（「打穿关键部位要直接爆」）
           if hits[2] and math.random() < 0.35 then   -- 有的破片穿过第一个还能伤后面一个
             local c2 = S.byK[hits[2].it.k]
             hurt(e, c2, ((hits[2].it.kind == "crew") and CREW_DMG.spall or MOD_DMG.spall) * 0.5 * fx.sd, out, src)
@@ -585,18 +593,19 @@ function Wt.init(G)
           end
           local eng = S.byK.engine
           if eng and eng.hp > 0 and not af then eng.hp = math.max(0, eng.hp - 4 * step) end
-          if t > (S.fireUntil or 0) then
-            S.fireT = nil
-            if af then
-              S.ammoFireT = nil
-              -- 烧完没灭：四成殉爆（弹架空了不炸）
-              local rl = G.wtRackLeft and select(1, G.wtRackLeft(e, "ammo"))
-              if (rl == nil or rl > 0) and math.random() < 0.4 then
-                destroy(e, e.lastHitBy, "ammo")
-                changed = false
-              end
+          if af and S.ammoBoomT and t >= S.ammoBoomT then
+            -- 弹药架起火没及时灭：殉爆（弹架打空了不炸，火照旧烧）
+            S.ammoFireT, S.ammoBoomT = nil, nil
+            local rl = G.wtRackLeft and select(1, G.wtRackLeft(e, "ammo"))
+            if rl == nil or rl > 0 then
+              destroy(e, e.lastHitBy, "ammo")
+              changed = false
             end
-            if e.alive then msgTo(e, { op = "wtFireOut" }) end
+          end
+          if e.alive and t > (S.fireUntil or 0) then
+            S.fireT = nil
+            S.ammoFireT, S.ammoBoomT = nil, nil
+            msgTo(e, { op = "wtFireOut" })
           end
           changed = true
           if e.alive and (alive(S) * 2 < S.total or alive(S) == 0) then destroy(e, e.lastHitBy, "fire") end
@@ -652,7 +661,7 @@ function Wt.init(G)
     if not S.fireT then return end
     if e.wtFx and not e.wtFx.ext then G.msg(P.pl, "bad", "wt.needFpe") return end   -- 原厂车：没研究「灭火器」只能等火烧完
     if now() < (S.extT or 0) then G.msg(P.pl, "bad", "wt.extCd", math.ceil(S.extT - now())) return end
-    S.fireT, S.ammoFireT = nil, nil
+    S.fireT, S.ammoFireT, S.ammoBoomT = nil, nil, nil
     S.extT = now() + EXT_CD
     msgTo(e, { op = "wtFireOut", ext = true })
     G.wtPush(e)
@@ -873,16 +882,19 @@ function Wt.init(G)
     end
     if gotAmmo or gotCrew then msgTo(e, { op = "wtSupply", ammo = gotAmmo or nil, crew = gotCrew }) end
   end
+  -- 据点补给只在开战以后；待发弹架回补（④）开战以后、还有试驾的车什么时候都补——真游戏开着匹配，机库里试驾时这一局还在「匹配中」，
+  --   原来试驾打空待发弹架（15 / 22 发）以后一直不回补，后面每一发都按从车体弹架拿的慢速装（试驾审查 3；同 a03a290 放开试驾开火那几处）
   task.spawn(function()
     while true do
       task.wait(1)
-      if G.round and G.round.phase == "battle" and G.points then
-        for _, e in ipairs(G.ents) do
-          if e.alive and e.wst and e.root and not e.air and not e.sea and (e.cat == "armor" or e.cat == "light") then
+      local battle = G.round and G.round.phase == "battle" and G.points
+      for _, e in ipairs(G.ents) do
+        if (battle or e.testDrive) and e.alive and e.wst and e.root and not e.air and not e.sea and (e.cat == "armor" or e.cat == "light") then
+          if battle then
             local okS, err = pcall(supplyStep, e)
             if not okS then warn("[战雷] 据点补给出错：" .. tostring(err)) end
-            pcall(rackStep, e)   -- ④ 不开炮的时候补待发弹架
           end
+          pcall(rackStep, e)   -- ④ 不开炮的时候补待发弹架
         end
       end
     end

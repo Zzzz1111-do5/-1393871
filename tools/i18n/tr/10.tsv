@@ -1,0 +1,110 @@
+Drag to rotate · scroll to zoom · pick a slot to swap parts⟫ドラッグで回転 · ホイールでズーム · 枠を選んでパーツ交換⟫드래그로 회전 · 휠로 줌 · 칸을 골라 부품 교체⟫Тяните для поворота · колесо — зум · выберите слот, чтобы сменить деталь⟫Ziehen zum Drehen · Rad zum Zoomen · Platz wählen zum Tauschen⟫Glissez pour tourner · molette pour zoomer · choisissez un emplacement pour changer de pièce⟫Arrastra para girar · rueda para zoom · elige una ranura para cambiar piezas⟫Arraste para girar · roda para zoom · escolha um espaço para trocar peças
+Lv.{1}⟫Lv.{1}⟫Lv.{1}⟫Ур. {1}⟫Lv. {1}⟫Niv. {1}⟫Nv. {1}⟫Nv. {1}
+MAX LEVEL⟫最大レベル⟫최대 레벨⟫МАКС. УРОВЕНЬ⟫MAX. STUFE⟫NIVEAU MAX⟫NIVEL MÁX.⟫NÍVEL MÁX.
+Unlocks at Lv.{1}⟫Lv.{1} で解放⟫Lv.{1}에 해금⟫Открывается на ур. {1}⟫Ab Lv. {1}⟫Débloqué au niv. {1}⟫Se desbloquea en nv. {1}⟫Libera no nv. {1}
+Studio test: all parts unlocked⟫Studio テスト：全パーツ解放⟫Studio 테스트: 모든 부품 해금⟫Тест в Studio: все детали открыты⟫Studio-Test: alle Teile freigeschaltet⟫Test Studio : toutes les pièces débloquées⟫Prueba en Studio: todas las piezas desbloqueadas⟫Teste no Studio: todas as peças liberadas
+All parts unlocked⟫全パーツ解放済み⟫모든 부품 해금됨⟫Все детали открыты⟫Alle Teile freigeschaltet⟫Toutes les pièces débloquées⟫Todas las piezas desbloqueadas⟫Todas as peças liberadas
+BUILD CODE⟫ビルドコード⟫빌드 코드⟫КОД СБОРКИ⟫BUILD-CODE⟫CODE DE CONFIG⟫CÓDIGO DE CONFIGURACIÓN⟫CÓDIGO DE CONFIGURAÇÃO
+Select to copy, or paste a code and apply⟫選択してコピー、または他人のコードを貼り付けて適用⟫선택해 복사하거나 다른 사람의 코드를 붙여 넣고 적용⟫Выделите, чтобы скопировать, или вставьте код и примените⟫Markieren zum Kopieren oder Code einfügen und anwenden⟫Sélectionnez pour copier, ou collez un code et appliquez⟫Selecciona para copiar, o pega un código y aplícalo⟫Selecione para copiar ou cole um código e aplique
+APPLY⟫適用⟫적용⟫ПРИМЕНИТЬ⟫ANWENDEN⟫APPLIQUER⟫APLICAR⟫APLICAR
+RESET⟫初期化⟫초기화⟫СБРОС⟫ZURÜCKSETZEN⟫RÉINITIALISER⟫RESTABLECER⟫REDEFINIR
+DONE⟫完了⟫완료⟫ГОТОВО⟫FERTIG⟫TERMINÉ⟫LISTO⟫PRONTO
+MY BUILDS⟫マイビルド⟫내 빌드⟫МОИ СБОРКИ⟫MEINE BUILDS⟫MES CONFIGS⟫MIS CONFIGURACIONES⟫MINHAS CONFIGURAÇÕES
+Save to slot {1}⟫スロット {1} に保存⟫슬롯 {1}에 저장⟫Сохранить в слот {1}⟫In Platz {1} speichern⟫Enregistrer dans l'emplacement {1}⟫Guardar en la ranura {1}⟫Salvar no espaço {1}
+Build {1}⟫ビルド {1}⟫빌드 {1}⟫Сборка {1}⟫Build {1}⟫Config {1}⟫Configuración {1}⟫Configuração {1}
+Saved to build {1}⟫ビルド {1} に保存した⟫빌드 {1}에 저장됨⟫Сохранено в сборку {1}⟫In Build {1} gespeichert⟫Enregistré dans la config {1}⟫Guardado en la configuración {1}⟫Salvo na configuração {1}
+Build code applied⟫ビルドコードを適用した⟫빌드 코드 적용됨⟫Код сборки применён⟫Build-Code angewendet⟫Code de config appliqué⟫Código aplicado⟫Código aplicado
+Not a valid build code⟫無効なビルドコード⟫잘못된 빌드 코드⟫Неверный код сборки⟫Kein gültiger Build-Code⟫Code de config invalide⟫Código no válido⟫Código inválido
+Build code has a typo⟫ビルドコードに入力ミスがある⟫빌드 코드에 오타가 있음⟫В коде сборки опечатка⟫Der Build-Code hat einen Tippfehler⟫Le code de config contient une faute⟫El código tiene una errata⟫O código tem um erro de digitação
+That code is for another weapon⟫このコードは別の武器用⟫이 코드는 다른 무기용⟫Этот код для другого оружия⟫Dieser Code ist für eine andere Waffe⟫Ce code est pour une autre arme⟫Ese código es de otra arma⟫Esse código é de outra arma
+{1} part(s) still locked — kept the defaults⟫{1} 個のパーツがまだ未解放 — 初期のまま⟫{1}개 부품이 아직 잠김 — 기본으로 유지⟫{1} дет. ещё закрыто — оставлены стандартные⟫{1} Teil(e) noch gesperrt — Standard behalten⟫{1} pièce(s) encore verrouillée(s) — valeurs par défaut gardées⟫{1} pieza(s) aún bloqueada(s): se mantienen las de serie⟫{1} peça(s) ainda bloqueada(s): mantido o padrão
+{1} reached Lv.{2}⟫{1} が Lv.{2} に到達⟫{1} Lv.{2} 달성⟫{1}: достигнут ур. {2}⟫{1} hat Lv. {2} erreicht⟫{1} atteint le niv. {2}⟫{1} alcanzó el nv. {2}⟫{1} chegou ao nv. {2}
+New parts: {1}⟫新パーツ：{1}⟫새 부품: {1}⟫Новые детали: {1}⟫Neue Teile: {1}⟫Nouvelles pièces : {1}⟫Piezas nuevas: {1}⟫Peças novas: {1}
+New parts: {1}, {2}⟫新パーツ：{1}、{2}⟫새 부품: {1}, {2}⟫Новые детали: {1}, {2}⟫Neue Teile: {1}, {2}⟫Nouvelles pièces : {1}, {2}⟫Piezas nuevas: {1}, {2}⟫Peças novas: {1}, {2}
+New parts: {1}, {2}, {3}⟫新パーツ：{1}、{2}、{3}⟫새 부품: {1}, {2}, {3}⟫Новые детали: {1}, {2}, {3}⟫Neue Teile: {1}, {2}, {3}⟫Nouvelles pièces : {1}, {2}, {3}⟫Piezas nuevas: {1}, {2}, {3}⟫Peças novas: {1}, {2}, {3}
+Applies on next deploy⟫次の出撃から反映⟫다음 출격부터 적용⟫Вступит в силу при следующем развёртывании⟫Gilt ab dem nächsten Einsatz⟫S'applique au prochain déploiement⟫Se aplica en el próximo despliegue⟫Vale a partir da próxima implantação
+SUPPRESSED⟫サプレッサー⟫소음⟫ГЛУШИТЕЛЬ⟫GEDÄMPFT⟫SILENCIEUX⟫SILENCIADO⟫SILENCIADO
+NORMAL⟫通常⟫일반⟫ОБЫЧНЫЙ⟫NORMAL⟫NORMAL⟫NORMAL⟫NORMAL
+{1} rds⟫{1} 発⟫{1}발⟫{1} патр.⟫{1} Schuss⟫{1} coups⟫{1} balas⟫{1} tiros
+STATS⟫性能⟫성능⟫ХАРАКТЕРИСТИКИ⟫WERTE⟫STATS⟫ESTADÍSTICAS⟫ATRIBUTOS
+{1} locked⟫{1} 個未解放⟫{1}개 잠김⟫Закрыто: {1}⟫{1} gesperrt⟫{1} verrouillée(s)⟫{1} bloqueada(s)⟫{1} bloqueada(s)
+Pick a slot on the weapon⟫武器の枠を選択⟫무기의 칸을 선택⟫Выберите слот на оружии⟫Wähle einen Platz an der Waffe⟫Choisissez un emplacement sur l'arme⟫Elige una ranura del arma⟫Escolha um espaço na arma
+STOCK⟫純正⟫순정⟫ШТАТНОЕ⟫SERIE⟫D'ORIGINE⟫DE SERIE⟫ORIGINAL
+V.Recoil⟫垂直反動⟫수직 반동⟫Верт. отдача⟫Vert. Rückstoß⟫Recul vert.⟫Retroceso vert.⟫Recuo vert.
+H.Recoil⟫水平反動⟫수평 반동⟫Гориз. отдача⟫Horiz. Rückstoß⟫Recul horiz.⟫Retroceso horiz.⟫Recuo horiz.
+Handling⟫取り回し⟫조작성⟫Управляемость⟫Handling⟫Maniabilité⟫Manejo⟫Manuseio
+Stability⟫安定性⟫안정성⟫Стабильность⟫Stabilität⟫Stabilité⟫Estabilidad⟫Estabilidade
+Hip-fire⟫腰だめ⟫지향 사격⟫От бедра⟫Hüftfeuer⟫Tir à la hanche⟫Desde la cadera⟫Do quadril
+Mobility⟫機動性⟫기동성⟫Мобильность⟫Mobilität⟫Mobilité⟫Movilidad⟫Mobilidade
+MUZZLE⟫マズル⟫총구⟫ДУЛО⟫MÜNDUNG⟫BOUCHE⟫BOCACHA⟫BOCAL
+OPTIC⟫光学サイト⟫조준기⟫ПРИЦЕЛ⟫OPTIK⟫VISEUR⟫ÓPTICA⟫MIRA
+FOREGRIP⟫フォアグリップ⟫포어그립⟫РУКОЯТКА⟫GRIFF⟫POIGNÉE⟫EMPUÑADURA⟫EMPUNHADURA
+MAGAZINE⟫マガジン⟫탄창⟫МАГАЗИН⟫MAGAZIN⟫CHARGEUR⟫CARGADOR⟫CARREGADOR
+TACTICAL⟫タクティカル⟫전술⟫ТАКТИКА⟫TAKTISCH⟫TACTIQUE⟫TÁCTICO⟫TÁTICO
+Vertical Recoil Control⟫垂直反動制御⟫수직 반동 제어⟫Контроль вертикальной отдачи⟫Vertikale Rückstoßkontrolle⟫Contrôle du recul vertical⟫Control de retroceso vertical⟫Controle de recuo vertical
+Horizontal Recoil Control⟫水平反動制御⟫수평 반동 제어⟫Контроль горизонтальной отдачи⟫Horizontale Rückstoßkontrolle⟫Contrôle du recul horizontal⟫Control de retroceso horizontal⟫Controle de recuo horizontal
+Handling Speed⟫取り回し速度⟫조작 속도⟫Скорость обращения⟫Handhabungstempo⟫Vitesse de maniement⟫Velocidad de manejo⟫Velocidade de manuseio
+Aim Stability⟫照準安定性⟫조준 안정성⟫Устойчивость прицеливания⟫Zielstabilität⟫Stabilité de visée⟫Estabilidad al apuntar⟫Estabilidade de mira
+Hip-fire Accuracy⟫腰だめ精度⟫지향 사격 정확도⟫Точность от бедра⟫Hüftfeuer-Präzision⟫Précision à la hanche⟫Precisión desde la cadera⟫Precisão do quadril
+Effective Range⟫有効射程⟫유효 사거리⟫Эффективная дальность⟫Effektive Reichweite⟫Portée efficace⟫Alcance efectivo⟫Alcance efetivo
+Damage⟫ダメージ⟫피해⟫Урон⟫Schaden⟫Dégâts⟫Daño⟫Dano
+Fire Rate⟫連射速度⟫연사 속도⟫Темп стрельбы⟫Kadenz⟫Cadence de tir⟫Cadencia⟫Cadência
+Magazine⟫装弾数⟫탄창 용량⟫Ёмкость магазина⟫Magazin⟫Chargeur⟫Cargador⟫Carregador
+Reload Time⟫リロード時間⟫재장전 시간⟫Время перезарядки⟫Nachladezeit⟫Temps de rechargement⟫Tiempo de recarga⟫Tempo de recarga
+Optic Zoom⟫サイト倍率⟫조준기 배율⟫Кратность прицела⟫Optik-Vergrößerung⟫Grossissement⟫Aumento de la óptica⟫Aumento da mira
+Report⟫銃声⟫총성⟫Звук выстрела⟫Knall⟫Détonation⟫Detonación⟫Estampido
+CQB Assault⟫CQB 突撃⟫CQB 돌격⟫Ближний бой⟫CQB-Sturm⟫Assaut CQB⟫Asalto CQB⟫Assalto CQB
+All-rounder⟫中距離万能⟫중거리 만능⟫Универсальная⟫Allrounder⟫Polyvalent⟫Todoterreno⟫Versátil
+Suppression⟫制圧射撃⟫제압 사격⟫Подавление⟫Niederhalten⟫Suppression⟫Supresión⟫Supressão
+Marksman⟫マークスマン⟫지정 사수⟫Пехотный снайпер⟫Präzisionsschütze⟫Tireur de précision⟫Tirador selecto⟫Atirador designado
+Standard⟫標準⟫표준⟫Стандарт⟫Standard⟫Standard⟫Estándar⟫Padrão
+Steady⟫安定速射⟫안정 속사⟫Стабильная⟫Ruhig⟫Stable⟫Estable⟫Estável
+A2 Flash Hider⟫A2 フラッシュハイダー⟫A2 소염기⟫Пламегаситель A2⟫A2-Mündungsfeuerdämpfer⟫Cache-flammes A2⟫Apagallamas A2⟫Quebra-chamas A2
+Stock Muzzle⟫純正マズル⟫순정 총구⟫Штатное дуло⟫Serienmündung⟫Bouche d'origine⟫Bocacha de serie⟫Bocal original
+Tactical Compensator⟫タクティカルコンペンセイター⟫전술 보정기⟫Тактический компенсатор⟫Taktischer Kompensator⟫Compensateur tactique⟫Compensador táctico⟫Compensador tático
+Muzzle Brake⟫マズルブレーキ⟫총구 제퇴기⟫Дульный тормоз⟫Mündungsbremse⟫Frein de bouche⟫Freno de boca⟫Freio de boca
+SOCOM Suppressor⟫SOCOM サプレッサー⟫SOCOM 소음기⟫Глушитель SOCOM⟫SOCOM-Schalldämpfer⟫Silencieux SOCOM⟫Silenciador SOCOM⟫Silenciador SOCOM
+Wrapped Suppressor⟫巻き布サプレッサー⟫감싼 소음기⟫Глушитель в чехле⟫Umwickelter Schalldämpfer⟫Silencieux gainé⟫Silenciador envuelto⟫Silenciador envolto
+SR8 Long Suppressor⟫SR8 ロングサプレッサー⟫SR8 롱 소음기⟫Длинный глушитель SR8⟫SR8-Langschalldämpfer⟫Silencieux long SR8⟫Silenciador largo SR8⟫Silenciador longo SR8
+Iron Sights⟫アイアンサイト⟫가늠자⟫Механический прицел⟫Kimme und Korn⟫Organes de visée⟫Miras de hierro⟫Miras mecânicas
+Romeo3 Reflex⟫Romeo3 リフレックスサイト⟫Romeo3 리플렉스⟫Коллиматор Romeo3⟫Romeo3-Reflexvisier⟫Viseur reflex Romeo3⟫Mira réflex Romeo3⟫Mira reflex Romeo3
+T1 Red Dot⟫T1 ドットサイト⟫T1 레드 도트⟫Коллиматор T1⟫T1-Rotpunkt⟫Point rouge T1⟫Punto rojo T1⟫Ponto vermelho T1
+EXPS3 Holographic⟫EXPS3 ホロサイト⟫EXPS3 홀로그래픽⟫Голографический EXPS3⟫EXPS3-Holovisier⟫Holographique EXPS3⟫Holográfica EXPS3⟫Holográfica EXPS3
+ACOG 3.5x Scope⟫ACOG 3.5× スコープ⟫ACOG 3.5× 스코프⟫Прицел ACOG 3,5×⟫ACOG-3,5×-Zielfernrohr⟫Lunette ACOG 3,5×⟫Visor ACOG 3,5×⟫Luneta ACOG 3,5×
+ACOG 6x48 Scope⟫ACOG 6×48 スコープ⟫ACOG 6×48 스코프⟫Прицел ACOG 6×48⟫ACOG-6×48-Zielfernrohr⟫Lunette ACOG 6×48⟫Visor ACOG 6×48⟫Luneta ACOG 6×48
+No Foregrip⟫グリップなし⟫그립 없음⟫Без рукоятки⟫Kein Griff⟫Sans poignée⟫Sin empuñadura⟫Sem empunhadura
+RVG Vertical Grip⟫RVG バーティカルグリップ⟫RVG 수직 그립⟫Вертикальная рукоятка RVG⟫RVG-Senkrechtgriff⟫Poignée verticale RVG⟫Empuñadura vertical RVG⟫Empunhadura vertical RVG
+AFG Angled Grip⟫AFG アングルグリップ⟫AFG 앵글 그립⟫Наклонная рукоятка AFG⟫AFG-Winkelgriff⟫Poignée inclinée AFG⟫Empuñadura angular AFG⟫Empunhadura angulada AFG
+30-rd Standard Mag⟫30 発標準マガジン⟫30발 표준 탄창⟫Стандартный магазин на 30⟫30-Schuss-Standardmagazin⟫Chargeur standard 30 coups⟫Cargador estándar de 30⟫Carregador padrão de 30
+PMAG 20-rd Mag⟫PMAG 20 発マガジン⟫PMAG 20발 탄창⟫Магазин PMAG на 20⟫PMAG-20-Schuss-Magazin⟫Chargeur PMAG 20 coups⟫Cargador PMAG de 20⟫Carregador PMAG de 20
+HEXMAG 30-rd Mag⟫HEXMAG 30 発マガジン⟫HEXMAG 30발 탄창⟫Магазин HEXMAG на 30⟫HEXMAG-30-Schuss-Magazin⟫Chargeur HEXMAG 30 coups⟫Cargador HEXMAG de 30⟫Carregador HEXMAG de 30
+PMAG 40-rd Mag⟫PMAG 40 発拡張マガジン⟫PMAG 40발 확장 탄창⟫Магазин PMAG на 40⟫PMAG-40-Schuss-Magazin⟫Chargeur PMAG 40 coups⟫Cargador PMAG de 40⟫Carregador PMAG de 40
+D-60 Drum Mag⟫D-60 ドラムマガジン⟫D-60 드럼 탄창⟫Барабанный магазин D-60⟫D-60-Trommelmagazin⟫Chargeur tambour D-60⟫Cargador de tambor D-60⟫Carregador de tambor D-60
+No Tactical⟫タクティカルなし⟫전술 부착물 없음⟫Без тактического⟫Kein Taktikzubehör⟫Sans accessoire tactique⟫Sin táctico⟫Sem tático
+M952V Weapon Light⟫M952V ウェポンライト⟫M952V 무기 조명⟫Фонарь M952V⟫M952V-Waffenlicht⟫Lampe M952V⟫Linterna M952V⟫Lanterna M952V
+PEQ-15 Aiming Laser⟫PEQ-15 照準レーザー⟫PEQ-15 조준 레이저⟫Лазерный целеуказатель PEQ-15⟫PEQ-15-Ziellaser⟫Laser de visée PEQ-15⟫Láser de puntería PEQ-15⟫Laser de mira PEQ-15
+The rifle's stock A2 flash hider⟫純正の A2 フラッシュハイダー⟫순정 A2 소염기⟫Штатный пламегаситель A2⟫Der serienmäßige A2-Mündungsfeuerdämpfer⟫Le cache-flammes A2 d'origine⟫El apagallamas A2 de serie⟫O quebra-chamas A2 original
+Stock muzzle⟫純正マズル⟫순정 총구⟫Штатное дуло⟫Serienmündung⟫Bouche d'origine⟫Bocacha de serie⟫Bocal original
+Vents gas upward: much less muzzle climb⟫ガスを上に逃がす：連射時の跳ね上がりが大きく減る⟫가스를 위로 배출: 연사 시 총구 들림이 크게 줄어듦⟫Отводит газы вверх: ствол гораздо меньше подбрасывает⟫Leitet Gas nach oben: deutlich weniger Hochschlagen⟫Évacue les gaz vers le haut : bien moins de relèvement⟫Expulsa gas hacia arriba: mucho menos encabritamiento⟫Expele gás para cima: muito menos subida do cano
+Side ports: less horizontal drift and kick⟫側面ポート：左右のブレと反動が少ない⟫측면 포트: 좌우 흔들림과 반동 감소⟫Боковые окна: меньше увод в сторону и отдача⟫Seitliche Öffnungen: weniger Seitwärtsdrift und Rückstoß⟫Évents latéraux : moins de dérive horizontale et de recul⟫Puertos laterales: menos deriva lateral y retroceso⟫Saídas laterais: menos desvio lateral e recuo
+Off enemy radar, no muzzle flash; heavier, slower to aim⟫敵のレーダーに映らず、発砲炎なし。重くなり構えが遅い⟫적 레이더에 안 잡히고 총구 화염 없음. 무거워져 조준이 느림⟫Не видно на радаре врага, нет вспышки; тяжелее, медленнее целиться⟫Nicht auf dem Feindradar, kein Mündungsfeuer; schwerer, langsamer im Anschlag⟫Invisible au radar ennemi, sans flamme ; plus lourd, plus lent à viser⟫No aparece en el radar enemigo, sin fogonazo; más pesado, más lento al apuntar⟫Fora do radar inimigo, sem clarão; mais pesado, mais lento para mirar
+Heat-wrapped suppressor: steadier sideways, shorter range⟫断熱布を巻いたサプレッサー：左右が安定、射程はやや短い⟫단열포를 감은 소음기: 좌우가 안정, 사거리는 약간 짧음⟫Глушитель в термочехле: устойчивее по горизонтали, дальность меньше⟫Hitzeummantelter Schalldämpfer: seitlich ruhiger, kürzere Reichweite⟫Silencieux gainé : plus stable latéralement, portée plus courte⟫Silenciador con funda térmica: más estable lateralmente, menos alcance⟫Silenciador com manta térmica: mais estável lateralmente, alcance menor
+Long suppressor: best range and recoil, but long and heavy⟫ロングサプレッサー：射程と反動は最良、ただし長く重い⟫롱 소음기: 사거리와 반동은 최고, 하지만 길고 무거움⟫Длинный глушитель: лучшая дальность и отдача, но длинный и тяжёлый⟫Langer Schalldämpfer: beste Reichweite und Rückstoß, aber lang und schwer⟫Silencieux long : meilleure portée et recul, mais long et lourd⟫Silenciador largo: el mejor alcance y retroceso, pero largo y pesado⟫Silenciador longo: melhor alcance e recuo, mas longo e pesado
+Front and rear sights: fastest to aim, no zoom⟫照門と照星：構えが最速、倍率なし⟫가늠자와 가늠쇠: 조준이 가장 빠름, 배율 없음⟫Целик и мушка: быстрее всего целиться, без увеличения⟫Kimme und Korn: am schnellsten im Anschlag, keine Vergrößerung⟫Hausse et guidon : visée la plus rapide, sans grossissement⟫Alza y punto de mira: lo más rápido al apuntar, sin aumento⟫Alça e massa: mais rápido para mirar, sem aumento
+Tiny reflex dot: barely slows aiming⟫小型リフレックスドット：構えがほとんど遅くならない⟫작은 리플렉스 도트: 조준이 거의 느려지지 않음⟫Маленький коллиматор: почти не замедляет прицеливание⟫Winziger Reflexpunkt: bremst das Zielen kaum⟫Petit point reflex : ralentit à peine la visée⟫Punto réflex diminuto: apenas frena al apuntar⟫Ponto reflex pequeno: quase não atrasa a mira
+T1 red dot: clear view, bright dot⟫T1 ドット：視界がクリアで点が明るい⟫T1 도트: 시야가 깨끗하고 점이 선명함⟫Коллиматор T1: чистый обзор, яркая точка⟫T1-Rotpunkt: klare Sicht, heller Punkt⟫Point rouge T1 : vue dégagée, point lumineux⟫Punto rojo T1: visión clara, punto brillante⟫Ponto vermelho T1: visão limpa, ponto brilhante
+Holo ring and dot: fastest close-range target pickup⟫ホロリングとドット：近距離での目標捕捉が最速⟫홀로 링과 도트: 근거리 목표 포착이 가장 빠름⟫Голографическое кольцо с точкой: быстрее всего ловит цели вблизи⟫Holo-Ring mit Punkt: schnellste Zielerfassung auf kurze Distanz⟫Anneau et point holographiques : acquisition la plus rapide de près⟫Anillo y punto holográficos: la adquisición más rápida a corta distancia⟫Anel e ponto holográficos: aquisição mais rápida a curta distância
+3.5x prism scope for mid-range⟫中距離用 3.5 倍プリズムスコープ⟫중거리용 3.5배 프리즘 스코프⟫Призматический прицел 3,5× для средней дистанции⟫3,5×-Prismenvisier für mittlere Distanz⟫Lunette à prisme 3,5× pour la moyenne portée⟫Visor de prisma 3,5× para media distancia⟫Luneta prismática 3,5× para média distância
+6x scope for long range; slowest to aim⟫長距離用 6 倍スコープ。構えが最も遅い⟫장거리용 6배 스코프, 조준이 가장 느림⟫Прицел 6× для дальних дистанций; дольше всего целиться⟫6×-Zielfernrohr für große Distanz; am langsamsten im Anschlag⟫Lunette 6× pour la longue portée ; la plus lente à viser⟫Visor 6× para larga distancia; el más lento al apuntar⟫Luneta 6× para longa distância; a mais lenta para mirar
+No foregrip⟫グリップなし⟫그립 없음⟫Без рукоятки⟫Kein Griff⟫Sans poignée⟫Sin empuñadura⟫Sem empunhadura
+Vertical grip: tames climb, steadier aim⟫バーティカルグリップ：跳ね上がりを抑え、構えが安定⟫수직 그립: 총구 들림을 잡아 조준이 안정⟫Вертикальная рукоятка: гасит подброс, прицел устойчивее⟫Senkrechtgriff: zähmt das Hochschlagen, ruhigeres Zielen⟫Poignée verticale : dompte le relèvement, visée plus stable⟫Empuñadura vertical: controla el encabritamiento, puntería más estable⟫Empunhadura vertical: controla a subida, mira mais estável
+Angled grip: quicker handling and aiming⟫アングルグリップ：取り回しと構えが速い⟫앵글 그립: 조작과 조준이 빠름⟫Наклонная рукоятка: быстрее обращение и прицеливание⟫Winkelgriff: schnelleres Handling und Zielen⟫Poignée inclinée : maniement et visée plus rapides⟫Empuñadura angular: manejo y puntería más rápidos⟫Empunhadura angulada: manuseio e mira mais rápidos
+Standard 30 rounds⟫標準 30 発⟫표준 30발⟫Стандарт, 30 патронов⟫Standard, 30 Schuss⟫Standard, 30 coups⟫Estándar, 30 balas⟫Padrão, 30 tiros
+20 rounds: light, fast reload⟫20 発：軽くリロードが速い⟫20발: 가볍고 재장전이 빠름⟫20 патронов: лёгкий, быстрая перезарядка⟫20 Schuss: leicht, schnelles Nachladen⟫20 coups : léger, rechargement rapide⟫20 balas: ligero, recarga rápida⟫20 tiros: leve, recarga rápida
+30 rounds, slightly faster reload⟫30 発、リロードが少し速い⟫30발, 재장전이 조금 빠름⟫30 патронов, чуть быстрее перезарядка⟫30 Schuss, etwas schnelleres Nachladen⟫30 coups, rechargement un peu plus rapide⟫30 balas, recarga algo más rápida⟫30 tiros, recarga um pouco mais rápida
+40 rounds: 10 more, slower reload⟫40 発：10 発多いがリロードが遅い⟫40발: 10발 더, 재장전은 느림⟫40 патронов: на 10 больше, перезарядка дольше⟫40 Schuss: 10 mehr, langsameres Nachladen⟫40 coups : 10 de plus, rechargement plus lent⟫40 balas: 10 más, recarga más lenta⟫40 tiros: 10 a mais, recarga mais lenta
+60-round drum: suppressing fire, heavy and slow⟫60 発ドラム：制圧射撃向けだが重く遅い⟫60발 드럼: 제압 사격용이지만 무겁고 느림⟫Барабан на 60: огонь на подавление, но тяжёлый и медленный⟫60-Schuss-Trommel: Niederhaltefeuer, schwer und langsam⟫Tambour de 60 coups : tir de suppression, lourd et lent⟫Tambor de 60 balas: fuego de supresión, pesado y lento⟫Tambor de 60 tiros: fogo de supressão, pesado e lento
+Weapon light: lights the way at night; steadier hip-fire⟫ウェポンライト：夜の前方を照らす。腰だめが少し安定⟫무기 조명: 밤에 앞을 밝힘, 지향 사격이 조금 안정⟫Фонарь: освещает путь ночью; стрельба от бедра устойчивее⟫Waffenlicht: leuchtet nachts den Weg aus; ruhigeres Hüftfeuer⟫Lampe : éclaire le chemin la nuit ; tir à la hanche plus stable⟫Linterna: ilumina el camino de noche; más estable desde la cadera⟫Lanterna: ilumina o caminho à noite; mais estável do quadril
+Visible laser: far better hip-fire, but enemies see the beam⟫可視レーザー：腰だめが大きく向上、ただし敵にも光が見える⟫가시광 레이저: 지향 사격이 크게 향상, 하지만 적도 빛을 봄⟫Видимый лазер: намного лучше от бедра, но враги видят луч⟫Sichtbarer Laser: viel besseres Hüftfeuer, aber Feinde sehen den Strahl⟫Laser visible : bien meilleur tir à la hanche, mais l'ennemi voit le faisceau⟫Láser visible: mucho mejor desde la cadera, pero el enemigo ve el haz⟫Laser visível: muito melhor do quadril, mas o inimigo vê o feixe
+STEEL CITY · URBAN ARMOR⟫スチールシティ · 市街機甲戦⟫강철 도시 · 시가 기갑전⟫СТАЛЬНОЙ ГОРОД · ГОРОДСКОЙ ТАНКОВЫЙ БОЙ⟫STAHLSTADT · STÄDTISCHER PANZERKAMPF⟫CITÉ D'ACIER · BLINDÉS EN VILLE⟫CIUDAD DE ACERO · BLINDADOS URBANOS⟫CIDADE DE AÇO · BLINDADOS URBANOS
+ATTACK  ·  PUSH IN FROM THE SOUTH⟫攻撃  ·  南から市内へ突入⟫공격  ·  남쪽에서 시내로 진입⟫АТАКА  ·  ВХОД В ГОРОД С ЮГА⟫ANGRIFF  ·  VON SÜDEN IN DIE STADT⟫ATTAQUE  ·  ENTREZ PAR LE SUD⟫ATAQUE  ·  ENTRA DESDE EL SUR⟫ATAQUE  ·  ENTRE PELO SUL

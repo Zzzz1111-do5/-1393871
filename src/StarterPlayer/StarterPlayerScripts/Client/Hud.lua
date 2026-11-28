@@ -76,25 +76,26 @@ function Hud.init(G)
   for _, sx in ipairs({ -1, 1 }) do
     local left = sx < 0
     local s = {}
-    s.name = txt(top, "", UDim2.fromOffset(70, 14), UDim2.new(0.5, sx * (BW / 2 - 18), 0, 17), 10, MUTE, Enum.Font.BuilderSansMedium, V2(left and 0 or 1, 0.5),
+    s.name = txt(top, "", UDim2.fromOffset(70, 14), UDim2.new(0.5, sx * (BW / 2 - 18), 0, 17), 10, MUTE, Enum.Font.BuilderSans, V2(left and 0 or 1, 0.5),
       left and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right)
     s.name.TextTruncate = Enum.TextTruncate.AtEnd
-    s.score = txt(top, "", UDim2.fromOffset(44, 26), UDim2.new(0.5, sx * (BW / 2 - (mobile and 84 or 96)), 0, 17), mobile and 20 or 24, WHITE, Enum.Font.BuilderSansBold, V2(0.5, 0.5))
+    s.score = txt(top, "", UDim2.fromOffset(44, 26), UDim2.new(0.5, sx * (BW / 2 - (mobile and 84 or 96)), 0, 17), mobile and 20 or 24, WHITE, Enum.Font.BuilderSansMedium, V2(0.5, 0.5))
     local lw = mobile and 70 or 120
     s.barBg = line(top, UDim2.fromOffset(lw, 1), UDim2.new(0.5, sx * (46 + lw / 2), 0, 17), WHITE, 0.82, V2(0.5, 0.5))
     s.bar = line(s.barBg, UDim2.new(0, 0, 0, 2), UDim2.fromScale(left and 1 or 0, 0.5), WHITE, 0, V2(left and 1 or 0, 0.5))   -- 从时间那头往外长
     sides[sx] = s
   end
-  local timer = txt(top, "", UDim2.fromOffset(84, 24), UDim2.new(0.5, 0, 0, 16), mobile and 17 or 20, WHITE, Enum.Font.BuilderSansBold, V2(0.5, 0.5))
-  local mode = txt(top, "", UDim2.fromOffset(170, 12), UDim2.new(0.5, 0, 0, 31), 9, MUTE, Enum.Font.BuilderSansMedium, V2(0.5, 0.5))
+  local timer = txt(top, "", UDim2.fromOffset(84, 24), UDim2.new(0.5, 0, 0, 16), mobile and 17 or 20, WHITE, Enum.Font.BuilderSansMedium, V2(0.5, 0.5))
+  local mode = txt(top, "", UDim2.fromOffset(170, 12), UDim2.new(0.5, 0, 0, 31), 9, MUTE, Enum.Font.BuilderSans, V2(0.5, 0.5))
   mode.TextTruncate = Enum.TextTruncate.AtEnd
   -- 比分条下面一行：现在该干什么（进攻 / 防守哪个据点，用户：玩法不够清晰）
-  local goal = txt(top, "", UDim2.fromOffset(BW, 18), UDim2.new(0.5, 0, 1, mobile and 4 or 8), mobile and 12 or 14, TEXT, Enum.Font.BuilderSansBold, V2(0.5, 0), nil, 0.5)
+  local goal = txt(top, "", UDim2.fromOffset(BW, 18), UDim2.new(0.5, 0, 1, mobile and 4 or 8), mobile and 12 or 14, TEXT, Enum.Font.BuilderSansMedium, V2(0.5, 0), nil, 0.5)
   goal.RichText = true
   goal.Size = UDim2.new(1, -8, 0, 18)
   goal.TextTruncate = Enum.TextTruncate.AtEnd
   -- A～E 小菱形（换地图时重摆：沙漠 A～G）
   local diamonds = {}
+  local hudS, hudKey = nil, {}   -- 比分条、计时、目标、菱形上次按哪一份战况（G.S）、哪种语言 / 排版 / 阵营写的（stepHud）
   local function buildDiamonds()
     for _, d in pairs(diamonds) do
       for _, k in ipairs({ "d", "l", "pb" }) do if d[k] then d[k]:Destroy() end end
@@ -105,11 +106,12 @@ function Hud.init(G)
       local d = ui.frame(top, UDim2.fromOffset(13, 13), UDim2.new(0.5, cx, 0, BH - 20), WHITE, 1, V2(0.5, 0.5))
       d.Rotation = 45
       local st = ui.stroke(d, WHITE, 1, 0.15)
-      local l = txt(top, p.id, UDim2.fromOffset(14, 14), UDim2.new(0.5, cx, 0, BH - 20), 8, WHITE, Enum.Font.BuilderSansBold, V2(0.5, 0.5), nil, 1)
+      local l = txt(top, p.id, UDim2.fromOffset(14, 14), UDim2.new(0.5, cx, 0, BH - 20), 8, WHITE, Enum.Font.BuilderSansMedium, V2(0.5, 0.5), nil, 1)
       local pb = line(top, UDim2.fromOffset(18, 1), UDim2.new(0.5, cx, 0, BH - 8), WHITE, 0.82, V2(0.5, 0))
       local pf = line(pb, UDim2.fromScale(0, 1), nil, WHITE, 0)
       diamonds[p.id] = { d = d, st = st, l = l, pb = pb, pf = pf }
     end
+    hudS = nil   -- 新摆的菱形：下一帧一定重写一遍
   end
   buildDiamonds()
 
@@ -139,8 +141,8 @@ function Hud.init(G)
     bb.Size = UDim2.fromOffset(80, 56)
     bb.ResetOnSpawn = false
     bb.Parent = pg
-    local verb = txt(bb, "", UDim2.fromOffset(80, 13), UDim2.fromScale(0.5, 0), 10, TEXT, Enum.Font.BuilderSansBold, V2(0.5, 0), nil, 0.5)   -- 进攻 / 防守
-    local l = txt(bb, p.id, UDim2.fromOffset(40, 24), UDim2.new(0.5, 0, 0, 13), 20, WHITE, Enum.Font.BuilderSansBold, V2(0.5, 0), nil, 0.55)
+    local verb = txt(bb, "", UDim2.fromOffset(80, 13), UDim2.fromScale(0.5, 0), 10, TEXT, Enum.Font.BuilderSansMedium, V2(0.5, 0), nil, 0.5)   -- 进攻 / 防守
+    local l = txt(bb, p.id, UDim2.fromOffset(40, 24), UDim2.new(0.5, 0, 0, 13), 20, WHITE, Enum.Font.BuilderSansMedium, V2(0.5, 0), nil, 0.55)
     local dist = txt(bb, "", UDim2.fromOffset(60, 14), UDim2.new(0.5, 0, 0, 37), 11, TEXT, NUM, V2(0.5, 0), nil, 0.55)
     marks[p.id] = { part = a, bb = bb, l = l, dist = dist, verb = verb, ok = p.y ~= nil, tries = 0, x = p.x, z = p.z }
   end
@@ -256,9 +258,9 @@ function Hud.init(G)
   end
   local blipLayer = ui.frame(box, UDim2.fromScale(1, 1), nil, WHITE, 1)
   blipLayer.ZIndex = 20
-  local arrow = txt(box, "▲", UDim2.fromOffset(14, 14), UDim2.fromScale(0.5, 0.5), 11, WHITE, Enum.Font.BuilderSansBold, V2(0.5, 0.5), nil, 0.3)
+  local arrow = txt(box, "▲", UDim2.fromOffset(14, 14), UDim2.fromScale(0.5, 0.5), 11, WHITE, Enum.Font.BuilderSansMedium, V2(0.5, 0.5), nil, 0.3)
   arrow.ZIndex = 22
-  local north = txt(box, "N", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 4), 10, LINE, Enum.Font.BuilderSansBold, V2(0.5, 0), nil, 0.5)
+  local north = txt(box, "N", UDim2.fromOffset(14, 14), UDim2.new(0.5, 0, 0, 4), 10, LINE, Enum.Font.BuilderSansMedium, V2(0.5, 0), nil, 0.5)
   north.ZIndex = 22
   local heading = txt(box, "", UDim2.fromOffset(44, 14), UDim2.new(0.5, 0, 1, -4), 11, LINE, NUM, V2(0.5, 1), nil, 0.4)
   heading.ZIndex = 22
@@ -386,17 +388,17 @@ function Hud.init(G)
   local squad = ui.frame(P.hud, UDim2.fromOffset(250, 150), UDim2.new(0, 22, 1, -18), RGB(0, 0, 0), 1, V2(0, 1))   -- 左下角（小地图搬到右上了）
   squad.Name = "Squad"
   squad.Visible = not mobile
-  local sqHead = txt(squad, "", UDim2.new(1, 0, 0, 16), UDim2.fromOffset(0, 0), 13, WHITE, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left, 0.6)
+  local sqHead = txt(squad, "", UDim2.new(1, 0, 0, 16), UDim2.fromOffset(0, 0), 13, WHITE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left, 0.6)
   local rows = {}
   for i = 1, 5 do
     local y = 24 + (i - 1) * 25
     local mark = ui.frame(squad, UDim2.fromOffset(6, 6), UDim2.fromOffset(4, y + 7), teamColor("atk"), 0, V2(0.5, 0.5))
     mark.Rotation = 45
-    local nm = txt(squad, "", UDim2.fromOffset(200, 16), UDim2.fromOffset(16, y), 13, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left, 0.7)
+    local nm = txt(squad, "", UDim2.fromOffset(200, 16), UDim2.fromOffset(16, y), 13, TEXT, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left, 0.7)
     nm.TextTruncate = Enum.TextTruncate.AtEnd
     local hb = line(squad, UDim2.fromOffset(170, 1), UDim2.fromOffset(16, y + 18), WHITE, 0.82)
     local hf = line(hb, UDim2.new(1, 0, 0, 2), UDim2.fromScale(0, 0.5), WHITE, 0, V2(0, 0.5))
-    local dead = txt(squad, "", UDim2.fromOffset(60, 16), UDim2.fromOffset(196, y), 11, RGB(230, 96, 84), Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left, 0.7)
+    local dead = txt(squad, "", UDim2.fromOffset(60, 16), UDim2.fromOffset(196, y), 11, RGB(230, 96, 84), Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left, 0.7)
     rows[i] = { mark = mark, nm = nm, hb = hb, hf = hf, dead = dead }
   end
 
@@ -414,14 +416,14 @@ function Hud.init(G)
   local tip = ui.frame(P.hud, UDim2.fromOffset(tipW, 168), UDim2.new(mobile and 0.42 or 0.5, 0, 0, BH + (mobile and 10 or 24)), RGB(8, 10, 12), 0.12, V2(0.5, 0))   -- 手机：让开右边的按钮
   tip.Name = "Tips"
   tip.Visible = false
-  local tipTitle = txt(tip, "", UDim2.new(1, -120, 0, 20), UDim2.fromOffset(20, 16), 16, WHITE, Enum.Font.BuilderSansBold, nil, Enum.TextXAlignment.Left, 1)
-  local tipPage = txt(tip, "", UDim2.fromOffset(80, 16), UDim2.new(1, -20, 0, 18), 11, MUTE, Enum.Font.BuilderSansMedium, V2(1, 0), Enum.TextXAlignment.Right, 1)
+  local tipTitle = txt(tip, "", UDim2.new(1, -120, 0, 20), UDim2.fromOffset(20, 16), 16, WHITE, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left, 1)
+  local tipPage = txt(tip, "", UDim2.fromOffset(80, 16), UDim2.new(1, -20, 0, 18), 11, MUTE, Enum.Font.BuilderSans, V2(1, 0), Enum.TextXAlignment.Right, 1)
   local NT = 4
   local segs = {}
   for k = 1, NT do
     segs[k] = line(tip, UDim2.new(1 / NT, -3, 0, 2), UDim2.new((k - 1) / NT, 0, 0, 48), WHITE, 0.8)
   end
-  local tipBody = ui.label(tip, "", UDim2.new(1, -40, 0, 54), UDim2.fromOffset(20, 60), 13, TEXT, Enum.Font.BuilderSansMedium, nil, Enum.TextXAlignment.Left)
+  local tipBody = ui.label(tip, "", UDim2.new(1, -40, 0, 54), UDim2.fromOffset(20, 60), 13, TEXT, Enum.Font.BuilderSans, nil, Enum.TextXAlignment.Left)
   tipBody.TextYAlignment = Enum.TextYAlignment.Top
   line(tip, UDim2.new(1, -40, 0, 1), UDim2.new(0, 20, 1, -46), WHITE, 0.88)
   local function keyChip(parent, x, anchorX)
@@ -433,8 +435,8 @@ function Hud.init(G)
     b.Text = ""
     b.Parent = parent
     local k = ui.frame(b, UDim2.fromOffset(46, 20), UDim2.new(anchorX, 0, 0.5, 0), RGB(40, 44, 48), 0.2, V2(anchorX, 0.5))
-    local kl = txt(k, "", UDim2.fromScale(1, 1), nil, 9, TEXT, Enum.Font.BuilderSansBold, nil, nil, 1)
-    local wl = txt(b, "", UDim2.fromOffset(66, 20), UDim2.new(anchorX, (anchorX == 0) and 54 or -54, 0.5, 0), 12, TEXT, Enum.Font.BuilderSansMedium, V2(anchorX, 0.5),
+    local kl = txt(k, "", UDim2.fromScale(1, 1), nil, 9, TEXT, Enum.Font.BuilderSansMedium, nil, nil, 1)
+    local wl = txt(b, "", UDim2.fromOffset(66, 20), UDim2.new(anchorX, (anchorX == 0) and 54 or -54, 0.5, 0), 12, TEXT, Enum.Font.BuilderSans, V2(anchorX, 0.5),
       (anchorX == 0) and Enum.TextXAlignment.Left or Enum.TextXAlignment.Right, 1)
     return b, kl, wl
   end
@@ -516,76 +518,87 @@ function Hud.init(G)
     local mine = S.team or "atk"
     local foe = other(mine)
     local pts = S.points or {}
-    -- 比分：手里的据点数
-    local held = { atk = 0, def = 0 }
-    for _, s in ipairs(pts) do held[s.owner] = (held[s.owner] or 0) + 1 end
-    local n = math.max(1, #pts)
-    -- 分阶段突破：攻方那头是兵力（剩多少、细线按开局的比例），守方那头还是手里的据点数
-    local tk = S.tickets
     local conq = S.mode == "conquest"
-    for sx, t in pairs({ [-1] = mine, [1] = foe }) do
-      local s = sides[sx]
-      local c = teamColor(t)
-      if conq then   -- 征服：两边都是兵力
-        local v = (t == "atk") and (S.tickets or 0) or (S.ticketsDef or 0)
-        s.name.Text = T("hud." .. t) .. " · " .. T("hud.tickets")
-        s.score.Text = tostring(v)
-        s.bar.Size = UDim2.new(math.clamp(v / math.max(S.ticketsMax or v, 1), 0, 1), 0, 0, 2)
-        s.score.TextColor3 = v <= 60 and RGB(255, 119, 105) or c:Lerp(WHITE, 0.15)
-      elseif t == "atk" and tk then
-        s.name.Text = T("hud.atk") .. " · " .. T("hud.tickets")
-        s.score.Text = tostring(tk)
-        s.bar.Size = UDim2.new(math.clamp(tk / math.max(S.ticketsMax or tk, 1), 0, 1), 0, 0, 2)
-        s.score.TextColor3 = tk <= 30 and RGB(255, 119, 105) or c:Lerp(WHITE, 0.15)
-      else
-        s.name.Text = T("hud." .. t)
-        s.score.Text = tostring(held[t] or 0)
-        s.bar.Size = UDim2.new((held[t] or 0) / n, 0, 0, 2)
-        s.score.TextColor3 = c:Lerp(WHITE, 0.15)
+    -- 比分条、计时、目标、据点菱形只跟服务器推的战况（G.S，一秒两次）有关：没来新的就不每帧重算、重写
+    --   （11-27 M3 丝滑：原来每帧建表、拼富文本、写几十个界面属性）；在争的据点那圈闪烁照旧每帧
+    local side = me:GetAttribute("Side")
+    local fresh = S ~= hudS or G.lang ~= hudKey[1] or compactScore ~= hudKey[2] or side ~= hudKey[3]
+    hudS, hudKey[1], hudKey[2], hudKey[3] = S, G.lang, compactScore, side
+    if fresh then
+      -- 比分：手里的据点数
+      local held = { atk = 0, def = 0 }
+      for _, s in ipairs(pts) do held[s.owner] = (held[s.owner] or 0) + 1 end
+      local n = math.max(1, #pts)
+      -- 分阶段突破：攻方那头是兵力（剩多少、细线按开局的比例），守方那头还是手里的据点数
+      local tk = S.tickets
+      for sx, t in pairs({ [-1] = mine, [1] = foe }) do
+        local s = sides[sx]
+        local c = teamColor(t)
+        if conq then   -- 征服：两边都是兵力
+          local v = (t == "atk") and (S.tickets or 0) or (S.ticketsDef or 0)
+          s.name.Text = T("hud." .. t) .. " · " .. T("hud.tickets")
+          s.score.Text = tostring(v)
+          s.bar.Size = UDim2.new(math.clamp(v / math.max(S.ticketsMax or v, 1), 0, 1), 0, 0, 2)
+          s.score.TextColor3 = v <= 60 and RGB(255, 119, 105) or c:Lerp(WHITE, 0.15)
+        elseif t == "atk" and tk then
+          s.name.Text = T("hud.atk") .. " · " .. T("hud.tickets")
+          s.score.Text = tostring(tk)
+          s.bar.Size = UDim2.new(math.clamp(tk / math.max(S.ticketsMax or tk, 1), 0, 1), 0, 0, 2)
+          s.score.TextColor3 = tk <= 30 and RGB(255, 119, 105) or c:Lerp(WHITE, 0.15)
+        else
+          s.name.Text = T("hud." .. t)
+          s.score.Text = tostring(held[t] or 0)
+          s.bar.Size = UDim2.new((held[t] or 0) / n, 0, 0, 2)
+          s.score.TextColor3 = c:Lerp(WHITE, 0.15)
+        end
+        s.bar.BackgroundColor3 = c
       end
-      s.bar.BackgroundColor3 = c
-    end
-    local stg = S.stageId and (T("hud.stage", S.stage or 1, S.stages or 3) .. " · " .. T("stage." .. S.stageId .. ".short")) or T("hud.mode")
-    if S.phase == "prep" then
-      timer.Text = fmtTime(S.left)
-      mode.Text = compactScore and T("hud.prep") or (T("hud.prep") .. " · " .. stg)
-    elseif S.ot then timer.Text = fmtTime(S.ot) mode.Text = T("hud.ot")
-    else timer.Text = fmtTime(S.left) mode.Text = stg end
-    -- 现在的目标：当前阶段开放的据点（侧翼另写）
-    local main, flank = {}, {}
-    for _, s in ipairs(pts) do
-      if s.act and not s.locked then table.insert(s.flank and flank or main, compactScore and s.id or T("point." .. s.id)) end
-    end
-    local gtext = ""
-    if #main > 0 then
-      local col = hex(teamColor(mine):Lerp(WHITE, 0.25))
-      gtext = '<font color="' .. col .. '">' .. T((mine == "atk") and "hud.goalAtk" or "hud.goalDef") .. "</font>  " .. table.concat(main, "  ·  ")
-      if #flank > 0 then gtext ..= '   <font color="#9aa0a6">' .. T("hud.goalFlank", table.concat(flank, "  ·  ")) .. "</font>" end
-    end
-    goal.Text = gtext
+      local stg = S.stageId and (T("hud.stage", S.stage or 1, S.stages or 3) .. " · " .. T("stage." .. S.stageId .. ".short")) or T("hud.mode")
+      if S.phase == "prep" then
+        timer.Text = fmtTime(S.left)
+        mode.Text = compactScore and T("hud.prep") or (T("hud.prep") .. " · " .. stg)
+      elseif S.ot then timer.Text = fmtTime(S.ot) mode.Text = T("hud.ot")
+      else timer.Text = fmtTime(S.left) mode.Text = stg end
+      -- 现在的目标：当前阶段开放的据点（侧翼另写）
+      local main, flank = {}, {}
+      for _, s in ipairs(pts) do
+        if s.act and not s.locked then table.insert(s.flank and flank or main, compactScore and s.id or T("point." .. s.id)) end
+      end
+      local gtext = ""
+      if #main > 0 then
+        local col = hex(teamColor(mine):Lerp(WHITE, 0.25))
+        gtext = '<font color="' .. col .. '">' .. T((mine == "atk") and "hud.goalAtk" or "hud.goalDef") .. "</font>  " .. table.concat(main, "  ·  ")
+        if #flank > 0 then gtext ..= '   <font color="#9aa0a6">' .. T("hud.goalFlank", table.concat(flank, "  ·  ")) .. "</font>" end
+      end
+      goal.Text = gtext
+    end   -- fresh
     local t = os.clock()
     for _, s in ipairs(pts) do
       local d = diamonds[s.id]
       if d then
-        local ours = s.owner == mine
         local idle = s.act == false and not s.locked   -- 还没轮到的阶段
-        d.d.BackgroundColor3 = teamColor(s.owner)
-        d.d.BackgroundTransparency = (ours or idle) and 1 or (s.locked and 0.45 or 0.05)
         local fight = (s.atk or 0) > 0 and (s.def or 0) > 0
-        d.st.Transparency = fight and (reducedMotion and 0.12 or (0.4 + 0.3 * math.sin(t * 8))) or ((s.locked or idle) and 0.7 or 0.15)
-        d.st.Color = ours and WHITE or teamColor(s.owner):Lerp(WHITE, 0.3)
-        d.l.TextTransparency = (s.locked or idle) and 0.55 or 0
-        local pr = (not s.locked and s.owner == "def") and (s.prog or 0) or 0
-        local pc = teamColor("atk")
-        if conq then   -- 征服：往哪边推、推了几成（推满就是那边的了）
-          local c = s.cap or 0
-          pr = (s.owner == "none" or (s.owner == "atk" and c < 1) or (s.owner == "def" and c > -1)) and math.abs(c) or 0
-          pc = teamColor((c >= 0) and "atk" or "def")
-          if s.owner == "none" then d.d.BackgroundColor3 = NEUTRAL d.d.BackgroundTransparency = 0.6 end
+        if fight or fresh then
+          d.st.Transparency = fight and (reducedMotion and 0.12 or (0.4 + 0.3 * math.sin(t * 8))) or ((s.locked or idle) and 0.7 or 0.15)
         end
-        d.pb.Visible = pr > 0
-        d.pf.Size = UDim2.fromScale(pr, 1)
-        d.pf.BackgroundColor3 = pc
+        if fresh then
+          local ours = s.owner == mine
+          d.d.BackgroundColor3 = teamColor(s.owner)
+          d.d.BackgroundTransparency = (ours or idle) and 1 or (s.locked and 0.45 or 0.05)
+          d.st.Color = ours and WHITE or teamColor(s.owner):Lerp(WHITE, 0.3)
+          d.l.TextTransparency = (s.locked or idle) and 0.55 or 0
+          local pr = (not s.locked and s.owner == "def") and (s.prog or 0) or 0
+          local pc = teamColor("atk")
+          if conq then   -- 征服：往哪边推、推了几成（推满就是那边的了）
+            local c = s.cap or 0
+            pr = (s.owner == "none" or (s.owner == "atk" and c < 1) or (s.owner == "def" and c > -1)) and math.abs(c) or 0
+            pc = teamColor((c >= 0) and "atk" or "def")
+            if s.owner == "none" then d.d.BackgroundColor3 = NEUTRAL d.d.BackgroundTransparency = 0.6 end
+          end
+          d.pb.Visible = pr > 0
+          d.pf.Size = UDim2.fromScale(pr, 1)
+          d.pf.BackgroundColor3 = pc
+        end
       end
     end
     if not P.hud.Visible or not cam then return end
@@ -672,7 +685,7 @@ function Hud.init(G)
         for mdl in pairs(seenT) do if not mdl.Parent then seenT[mdl] = nil end end
         for mdl in pairs(losT) do if not mdl.Parent then losT[mdl] = nil end end
       end
-      local strictM = workspace:GetAttribute("WtMode") == "rb" or workspace:GetAttribute("WtMode") == "sb"
+      local strictM = true   -- 只有历史（11-27）：车、飞机也要自己看得见才画
       for _, c in ipairs(contacts) do
         if c.team ~= mine and (c.kind == "inf" or strictM) and c.model and now >= (losT[c.model] or 0) then   -- 历史 / 全真：车、飞机也要自己看得见
           losT[c.model] = now + 0.3
@@ -687,8 +700,7 @@ function Hud.init(G)
       b.f.Position = UDim2.new(0.5, (wpos.X - pos.X) * px, 0.5, (wpos.Z - pos.Z) * px)
     end
     local pulse = 0.08 + 0.14 * (0.5 + 0.5 * math.sin(now * 5))   -- 敌人的亮点轻轻地一明一暗（不靠扫描线也一眼看得到）
-    local wm = workspace:GetAttribute("WtMode")
-    local strict = wm == "rb" or wm == "sb"
+    local strict = true   -- 只有历史（11-27）
     for _, c in ipairs(contacts) do
       local enemy = c.team ~= mine
       local seenMe = c.model and now - (seenT[c.model] or -99) < 2
@@ -739,7 +751,7 @@ function Hud.init(G)
           local alive = hum ~= nil and hum.Health > 0
           r.nm.Text = string.upper(pl.DisplayName)
           r.nm.TextColor3 = (pl == me) and WHITE or TEXT
-          r.nm.Font = (pl == me) and Enum.Font.BuilderSansBold or Enum.Font.BuilderSansMedium
+          r.nm.Font = (pl == me) and Enum.Font.BuilderSansMedium or Enum.Font.BuilderSans
           r.mark.BackgroundColor3 = tc
           r.hb.Visible = alive
           r.hf.Size = UDim2.new(k, 0, 0, 2)
@@ -811,7 +823,7 @@ function Hud.init(G)
   local holdT2 = Instance.new("TextLabel")
   holdT2.BackgroundTransparency = 1
   holdT2.Size = UDim2.fromScale(1, 1)
-  holdT2.Font = TH.F and TH.F.bold or Enum.Font.BuilderSansBold
+  holdT2.Font = TH.F and TH.F.bold or Enum.Font.BuilderSansMedium
   holdT2.TextSize = 14
   holdT2.TextColor3 = TEXT
   holdT2.Text = T("ui.holdHangar")
@@ -890,7 +902,7 @@ function Hud.init(G)
     if kind == "killNow" then kind = "kill" end
     -- 统一外观：击杀白、跳弹琥珀、被跳弹灰、其他绿（不用蓝）
     local col = (kind == "kill") and TEXT or (kind == "ric") and TH.C.WARN or (kind == "ricIn") and MUTE or TH.C.GOOD
-    local l = txt(G.gui, text, UDim2.fromOffset(420, 22), UDim2.fromScale(0.5, 0.6), mobile and 15 or 17, col, Enum.Font.BuilderSansBold, V2(0.5, 0.5), nil, 0.45)
+    local l = txt(G.gui, text, UDim2.fromOffset(420, 22), UDim2.fromScale(0.5, 0.6), mobile and 15 or 17, col, Enum.Font.BuilderSansMedium, V2(0.5, 0.5), nil, 0.45)
     l.ZIndex = 25
     table.insert(pops, 1, l)
     for i, x in ipairs(pops) do

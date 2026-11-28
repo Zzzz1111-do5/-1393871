@@ -19,15 +19,23 @@ function Settings.init(G)
   local me = Players.LocalPlayer
   local TH = G.Theme
   local UD2, V2 = UDim2.new, Vector2.new
-  local zh = G.lang ~= "en"
-  local function L(a, b) return zh and a or b end
+  local zh = G.isZh()
+  local function L(a, b) return G.L(a, b) end   -- 中英对照：按现在的语言（G.L，多语言查译文包）
   local function act(...)
     local args = table.pack(...)
     pcall(function() G.R.Act:FireServer(table.unpack(args, 1, args.n)) end)
   end
 
   ---------------------------------------------------------------- 设置项和默认值
-  local DEF = { sens = 1, aim = 1, invY = false, fov = 70, fovAir = 70, shake = true, vol = 1, voice = true, ui = 1, gamma = 0, lang = "" }
+  -- airAim 固定翼操纵（mouse 战雷鼠标瞄准 / kb 纯键盘）、camRoll 纯键盘时镜头跟着机身滚转几成（0 地平线水平）
+  --   用户 11-28「默认飞机不要准心控制吧 就键盘控制」：默认纯键盘（设置里、飞行中按 M 照样能换成鼠标瞄准）
+  -- pv 设置的版本：老存档（没有 pv）里的 airAim 是当时的默认（鼠标瞄准），读的时候不认，换成现在的默认；存一次就带上 pv
+  local DEF = { sens = 1, aim = 1, invY = false, fov = 70, fovAir = 70, shake = true, vol = 1, voice = true, ui = 1, gamma = 0, lang = "",
+    airAim = "kb", camRoll = 0, autoGear = true, sensAir = 1, sensVeh = 1, pv = 2, gfx = "auto" }
+  -- 画质（用户 11-28「设置里增加一个画质调整」）：auto 按帧率自己调（Fx.lua 的自动画质，G.perfK 0.55～1.2）；别的几档把 G.perfK 定死——
+  --   树林石头画多远（Scenery）、爆炸烟火的粒子数（VfxLib.perfK）、士兵画多远、远处景深 / 太阳光束（低于 0.7 关）、特效阴影（低于 0.8 关）、
+  --   飞机尾焰的细节（AirModels）都跟着它；「低」另外关掉整个场景的阴影（Lighting.GlobalShadows，只在本机）
+  local GFX_K = { low = 0.55, mid = 0.8, high = 1.0, ultra = 1.2 }
   local P = {}
   for k, v in pairs(DEF) do P[k] = v end
 
@@ -72,6 +80,31 @@ function Settings.init(G)
     blur.Enabled = false
     blur.Parent = Lighting
   end)
+  -- 模糊淡进淡出（11-27「动画做出丝滑感」：原来一下子 0 → 14）：开 0.22 秒、关 0.18 秒（Theme.T.ui / out、Quart Out，docs/style.md「动效」）；
+  --   关完了把效果关掉。系统开了「减少动态效果」就直接开关
+  local TweenService = game:GetService("TweenService")
+  local MT = (TH and type(TH.T) == "table") and TH.T or {}
+  local BLUR_IN = TweenInfo.new(MT.ui or 0.22, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+  local BLUR_OUT = TweenInfo.new(MT.out or 0.18, Enum.EasingStyle.Quart, Enum.EasingDirection.Out)
+  local blurTok = 0
+  local function blurTo(on)
+    if not blur then return end
+    blurTok += 1
+    local still = G.reducedMotion and G.reducedMotion()
+    if on then
+      if not blur.Enabled then blur.Size = still and 14 or 0 end
+      blur.Enabled = true
+      if not still then TweenService:Create(blur, BLUR_IN, { Size = 14 }):Play() end
+    else
+      if not blur.Enabled then return end
+      if still then blur.Enabled = false return end
+      local tok = blurTok
+      TweenService:Create(blur, BLUR_OUT, { Size = 0 }):Play()
+      task.delay(BLUR_OUT.Time, function()
+        if blurTok == tok then blur.Enabled = false blur.Size = 14 end
+      end)
+    end
+  end
 
   G.uiRefit = G.uiRefit or {}   -- 界面比例变了要重新排的（TechUI 的机库、这一页）
   local function apply()
@@ -80,8 +113,20 @@ function Settings.init(G)
     G.noShake = P.shake == false
     G.voiceOff = P.voice == false
     if master then pcall(function() master.Volume = P.vol end) end
-    if gammaCC then pcall(function() gammaCC.Brightness = P.gamma gammaCC.Contrast = math.abs(P.gamma) * 0.4 end) end
-    if P.lang == "zh" or P.lang == "en" then G.lang = P.lang end
+    -- 灰度是 0（默认）就把这层调色关掉（11-27 M3 丝滑：亮度、对比都是 0 也开着是白画一遍全屏后期）
+    if gammaCC then pcall(function() gammaCC.Brightness = P.gamma gammaCC.Contrast = math.abs(P.gamma) * 0.4 gammaCC.Enabled = math.abs(P.gamma) > 1e-3 end) end
+    G.lang = (G.Lang.valid(P.lang) and P.lang) or G.langSys or G.lang   -- 「跟随系统」= 进游戏时按系统语言挑的那种
+    -- 空战：操纵方式、镜头滚转（Fly.lua 读；飞着的时候改了马上换）
+    G.airMouseAim, G.camRollK, G.autoGearOff = P.airAim ~= "kb", P.camRoll, P.autoGear == false
+    G.sensAirK, G.sensVehK = P.sensAir, P.sensVeh   -- 开飞机 / 开车时再乘一档（用户 11-28「玩家要能调灵敏度」）
+    if G.flyMouseAim then pcall(G.flyMouseAim, G.airMouseAim, true) end
+    -- 画质：定了档就把 G.perfK 钉在那一档（自动画质那段看 G.gfxK 就不调了）；「低」关场景阴影，别的档开回来
+    G.gfx, G.gfxK = P.gfx, GFX_K[P.gfx]
+    if G.gfxK then G.perfK = G.gfxK end
+    pcall(function()
+      local want = P.gfx ~= "low"
+      if Lighting.GlobalShadows ~= want then Lighting.GlobalShadows = want end
+    end)
     if G.uiScaleK ~= P.ui then
       G.uiScaleK = P.ui
       for _, f in ipairs(G.uiRefit) do pcall(f) end
@@ -92,25 +137,34 @@ function Settings.init(G)
   function G.mouseDelta(aim)
     local d = UIS:GetMouseDelta()
     local k = (G.sensK or 1) * (aim and (G.aimSensK or 1) or 1)
+    if G.fly then k = k * (G.sensAirK or 1) elseif G.drive then k = k * (G.sensVehK or 1) end   -- 开飞机 / 开车各自再乘一档
     return V2(d.X * k, d.Y * k * (G.invertY and -1 or 1))
   end
 
+  local sendAt = nil   -- 设置改了：到这个时候发一次给服务器存（拖滑块时 0.4 秒没再动才发）
   local function readPrefs()
     local s = me:GetAttribute("Prefs")
     if type(s) ~= "string" then return end
     local ok, t = pcall(function() return Http:JSONDecode(s) end)
     if not ok or type(t) ~= "table" then return end
+    local old = (type(t.pv) == "number" and t.pv or 1) < DEF.pv
     for k, v in pairs(DEF) do
-      if type(t[k]) == type(v) then P[k] = t[k] end
+      if type(t[k]) == type(v) and not (old and (k == "airAim" or k == "pv")) then P[k] = t[k] end
     end
     apply()
+    if old then sendAt = os.clock() + 1 end   -- 老存档：换成新默认以后存一次（带上 pv，下次照存的读）
   end
   readPrefs()
 
-  local sendAt = nil
   local function changed()
     apply()
     sendAt = os.clock() + 0.4
+  end
+  -- 别处改设置（飞行中按 M 换操纵方式）：照设置页一样存到服务器
+  function G.setPref(k, v)
+    if DEF[k] == nil or type(v) ~= type(DEF[k]) or P[k] == v then return end
+    P[k] = v
+    changed()
   end
   task.spawn(function()
     while true do
@@ -247,19 +301,40 @@ function Settings.init(G)
   local function deg(v) return string.format("%d°", v) end
   local ITEMS = {
     { cat = "main", key = "lang", kind = "drop", zh = "语言（Language）", en = "Language",
-      opts = { { "", L("跟随系统", "System") }, { "zh", "简体中文" }, { "en", "English" } },
+      opts = (function()   -- 11-28 多语言：跟随系统 + Lang.LIST 的十种（每种用它自己的写法）
+        local o = { { "", L("跟随系统", "System") } }
+        for _, l in ipairs(G.Lang.LIST) do o[#o + 1] = { l.code, l.name } end
+        return o
+      end)(),
       note = L("多数界面重新进入游戏后才换", "Most screens switch after rejoining") },
     { cat = "main", key = "ui", kind = "drop", zh = "界面比例", en = "Interface scale",
       opts = { { 0.85, L("紧凑（85%）", "Compact (85%)") }, { 1, L("标准（100%）", "Standard (100%)") }, { 1.15, L("大（115%）", "Large (115%)") }, { 1.3, L("特大（130%）", "Extra large (130%)") } },
       note = L("机库、科技树、设置整体放大，字更清楚", "Scales the hangar, tech tree and settings") },
     { cat = "main", key = "gamma", kind = "slider", zh = "灰度校正", en = "Brightness", lo = -0.1, hi = 0.1, step = 0.01, fmt = function(v) return string.format("%+.2f", v) end },
+    { cat = "main", key = "gfx", kind = "drop", zh = "画质", en = "Graphics quality",
+      opts = { { "auto", L("自动（按帧率调）", "Auto (follows frame rate)") }, { "low", L("低", "Low") }, { "mid", L("中", "Medium") }, { "high", L("高", "High") },
+        { "ultra", L("极高", "Ultra") } },
+      note = L("低：关阴影、景深、太阳光束，烟火粒子少一半，树和石头画得近；极高：画得更远、更细",
+        "Low: no shadows, depth of field or sun rays, half the particles, shorter scenery range; Ultra: draws farther and finer") },
     { cat = "ctl", key = "sens", kind = "slider", zh = "鼠标灵敏度", en = "Mouse sensitivity", lo = 0.25, hi = 2.5, step = 0.05, fmt = mult },
+    { cat = "ctl", key = "sensAir", kind = "slider", zh = "开飞机的鼠标灵敏度", en = "Aircraft mouse sensitivity", lo = 0.25, hi = 2.5, step = 0.05, fmt = mult,
+      note = L("鼠标瞄准时准星走多快（再乘上面的总灵敏度）", "How fast the mouse-aim reticle moves (times the overall setting)") },
+    { cat = "ctl", key = "sensVeh", kind = "slider", zh = "开车的鼠标灵敏度", en = "Vehicle mouse sensitivity", lo = 0.25, hi = 2.5, step = 0.05, fmt = mult,
+      note = L("坦克转炮塔、看四周（再乘上面的总灵敏度）", "Turret traverse and looking around (times the overall setting)") },
     { cat = "ctl", key = "aim", kind = "slider", zh = "开镜灵敏度", en = "Aim sensitivity", lo = 0.25, hi = 2, step = 0.05, fmt = mult,
       note = L("瞄准镜、光电吊舱里再乘一次", "Extra factor in sights and pods") },
     { cat = "ctl", key = "invY", kind = "check", zh = "反转鼠标上下", en = "Invert mouse Y" },
     { cat = "ground", key = "fov", kind = "slider", zh = "第三人称视野（载具）", en = "Chase camera FOV (vehicles)", lo = 60, hi = 90, step = 1, fmt = deg },
     { cat = "ground", key = "shake", kind = "check", zh = "镜头晃动", en = "Camera shake", note = L("爆炸、开炮、路面颠簸", "Explosions, gunfire, rough ground") },
     { cat = "air", key = "fovAir", kind = "slider", zh = "第三人称视野（飞机、直升机）", en = "Chase camera FOV (aircraft)", lo = 60, hi = 90, step = 1, fmt = deg },
+    { cat = "air", key = "airAim", kind = "drop", zh = "固定翼操纵", en = "Aircraft controls",
+      opts = { { "mouse", L("鼠标瞄准（战雷式）", "Mouse aim") }, { "kb", L("纯键盘", "Keyboard") } },
+      note = L("鼠标瞄准：准星随鼠标、飞机自己追过去，按 WASD 临时直接操纵；飞行中按 M 也能换", "Mouse aim: the plane follows the mouse, WASD overrides; M switches in flight") },
+    { cat = "air", key = "camRoll", kind = "drop", zh = "纯键盘时镜头跟着滚转", en = "Camera roll (keyboard)",
+      opts = { { 0, L("不跟（地平线水平）", "None (level horizon)") }, { 0.3, L("跟三成", "30%") }, { 1, L("完全跟着机身", "Full") } },
+      note = L("鼠标瞄准时地平线一直是平的", "With mouse aim the horizon always stays level") },
+    { cat = "air", key = "autoGear", kind = "check", zh = "起飞后自动收起落架", en = "Auto-retract landing gear after takeoff",
+      note = L("战雷里要自己按 G；襟翼照战雷自动", "War Thunder leaves gear to you (G); flaps are automatic") },
     { cat = "snd", key = "vol", kind = "slider", zh = "总音量", en = "Master volume", lo = 0, hi = 1, step = 0.05, fmt = pct },
     { cat = "snd", key = "voice", kind = "check", zh = "车组语音", en = "Crew voice", note = L("装填完毕、发现敌人、被击中……", "Loaded, enemy spotted, hit…") },
     { cat = "code", key = "code", kind = "code", zh = "兑换码", en = "Redeem code" },
@@ -497,7 +572,8 @@ function Settings.init(G)
     if q ~= "" then
       local y = 0
       for _, it in ipairs(ITEMS) do
-        if it.kind ~= "code" and (string.find(string.lower(it.zh), q, 1, true) or string.find(string.lower(it.en), q, 1, true)) then
+        if it.kind ~= "code" and (string.find(string.lower(it.zh), q, 1, true) or string.find(string.lower(it.en), q, 1, true)
+          or string.find(string.lower(L(it.zh, it.en)), q, 1, true)) then   -- 多语言（11-28）：当前语言的译文也能搜
           local f = buildRow(searchPg, y, it)
           table.insert(searchRefresh, f)
           f()
@@ -544,7 +620,7 @@ function Settings.init(G)
   local function close()
     if gui.Enabled then hideOthers(false) end
     gui.Enabled = false
-    if blur then blur.Enabled = false end
+    blurTo(false)
     if openDrop then openDrop:Destroy() openDrop = nil end
     if sendAt then sendAt = os.clock() end   -- 关的时候马上发（不用等 0.4 秒）
   end
@@ -569,7 +645,7 @@ function Settings.init(G)
     fit()
     if not gui.Enabled then hideOthers(true) end
     gui.Enabled = true
-    if blur then blur.Enabled = true end
+    blurTo(true)
   end
   G.closeSettings = close
   function G.settingsShown() return gui.Enabled end

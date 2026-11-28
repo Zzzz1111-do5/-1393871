@@ -1,7 +1,8 @@
 # 把 tools/mock/hudshot.lua 写出的界面元素（JSON）画成 1280×720 的图，看开车时屏幕上到底有什么、叠没叠
-#   python3 -I tools/mock/hud_render.py <hud.json> <输出.png> [背景图]
+#   python3 -I tools/mock/hud_render.py <hud.json> <输出.png> [背景图] [size=1920x1080]（hudshot 用 vp=1920x1080 排的版）
+#   WH=1280x640（环境变量）：画面不是 1280 × 720 时（手机横屏的截图，uidump 按镜头的 ViewportSize 排的）；和 size= 一样，给了 WH 以它为准
 #   近似：方框（转角度）、圆角、描边、透明度渐变（UIGradient）、裁剪（ClipsDescendants、CanvasGroup 的圆角）、
-#   CanvasGroup 的整体透明、字（文泉驿正黑，不转角度）；图片只画个框
+#   CanvasGroup 的整体透明、字（文泉驿正黑，不转角度）；图片只画个框（写实车图 PicName、弹种图 AmmoPic、HudIcons 的图标照游戏的解法还原）
 import json, math, sys
 from PIL import Image, ImageDraw, ImageFont, ImageChops
 
@@ -15,6 +16,135 @@ def font(sz):
     if k not in _fonts:
         _fonts[k] = ImageFont.truetype(FONT, k)
     return _fonts[k]
+
+
+# 照 Roblox 的字体挑字（uidump 记了 Font）：英文、数字用相近的字体（Builder Sans → Inter，RobotoMono → JetBrains Mono，RobotoCondensed → Inter 横着压到 0.86），
+#   中文一律退到文泉驿（同游戏：Roboto 系没有中文字形）；粗体的中文描一圈（stroke）模拟粗一档。没记字体的老 JSON 照原来的画法（全用文泉驿 + 阴影）
+_LAT = {
+    'mono': '/usr/share/fonts/truetype/jetbrains-mono/JetBrainsMono-Regular.ttf',
+    'body': '/usr/share/fonts/opentype/inter/Inter-Medium.otf',
+    'bold': '/usr/share/fonts/opentype/inter/Inter-Bold.otf',
+    'title': '/usr/share/fonts/opentype/inter/Inter-ExtraBold.otf',
+    'cond': '/usr/share/fonts/opentype/inter/Inter-Regular.otf',
+    'reg': '/usr/share/fonts/opentype/inter/Inter-Regular.otf',
+}
+_latf = {}
+
+
+def lat_font(kind, sz):
+    import os
+    k = (kind, max(6, int(round(sz))))
+    if k not in _latf:
+        path = _LAT.get(kind, _LAT['reg'])
+        _latf[k] = ImageFont.truetype(path, k[1]) if os.path.exists(path) else font(sz)
+    return _latf[k]
+
+
+def font_kind(name):
+    if not name:
+        return None
+    if 'Mono' in name or name == 'Code':
+        return 'mono'
+    if 'Condensed' in name:
+        return 'cond'
+    if 'ExtraBold' in name or 'Black' in name or 'Heavy' in name:
+        return 'title'
+    if 'Bold' in name:
+        return 'bold'
+    if 'Medium' in name or name in ('Gotham', 'BuilderSans', 'SourceSans', 'Roboto', 'Arial', 'Legacy'):
+        return 'body'
+    return 'reg'
+
+
+def is_cjk(ch):
+    return ord(ch) >= 0x2E80
+
+
+def parse_rich(t, col, sz, k):
+    """RichText：<font color= size= weight= family=>、<b>：拆成一段段 (字, 颜色, 字号, 粗)；k = 渲染字号 / 原本字号"""
+    import re, html
+    runs, stack, pos = [], [(col, sz, False)], 0
+    for m in re.finditer(r'<(/?)(\w+)([^>]*)>', t):
+        if m.start() > pos:
+            runs.append((html.unescape(t[pos:m.start()]),) + stack[-1])
+        pos = m.end()
+        closing, tag, attrs = m.group(1), m.group(2).lower(), m.group(3)
+        if closing:
+            if len(stack) > 1:
+                stack.pop()
+            continue
+        c0, s0, b0 = stack[-1]
+        if tag == 'font':
+            mc = re.search(r'color\s*=\s*"#([0-9a-fA-F]{6})"', attrs)
+            if mc:
+                c0 = tuple(int(mc.group(1)[i:i + 2], 16) for i in (0, 2, 4))
+            ms = re.search(r'size\s*=\s*"([\d.]+)"', attrs)
+            if ms:
+                s0 = float(ms.group(1)) * k
+            if re.search(r'weight\s*=\s*"(bold|heavy|extrabold|semibold|[6-9]00)"', attrs, re.I):
+                b0 = True
+        elif tag == 'b':
+            b0 = True
+        stack.append((c0, s0, b0))
+    if pos < len(t):
+        runs.append((html.unescape(t[pos:]),) + stack[-1])
+    return runs
+
+
+def text_runs(it, ts, base_col):
+    """一个字标签的字拆成能画的小段：[(字, PIL 字体, 横向压缩, 描边宽, 颜色)]"""
+    kind = font_kind(it.get('font'))
+    t = it.get('text') or ''
+    if it.get('rich'):
+        k = ts / max(1e-6, it.get('tsz') or ts)
+        runs = parse_rich(t, base_col, ts, k)
+    else:
+        runs = [(t, base_col, ts, False)]
+    out = []
+    for txt, col, sz, bold in runs:
+        cur, curC = '', None
+        for ch in txt + '\0':
+            c = is_cjk(ch) if ch != '\0' else None
+            if ch == '\0' or (cur and c != curC):
+                if cur:
+                    if curC:
+                        heavy = bold or kind in ('bold', 'title')
+                        out.append((cur, font(sz), 1.0, max(1, int(sz / 22 + 0.5)) if heavy else 0, col))
+                    else:
+                        kk = 'bold' if bold and kind not in ('title',) else kind
+                        out.append((cur, lat_font(kk, sz), 0.86 if kk == 'cond' else 1.0, 0, col))
+                cur, curC = '', c
+            if ch != '\0':
+                cur += ch
+                curC = c
+    return out
+
+
+def runs_width(d, runs):
+    return sum(d.textlength(r[0], font=r[1]) * r[2] for r in runs)
+
+
+def draw_runs(ov, runs, x, base, alpha, outline=None):
+    """一段段画到 ov 上（同一条基线）：横向压缩的先画到小图上再压"""
+    for txt, f, sx, stw, col in runs:
+        wpx = ImageDraw.Draw(ov).textlength(txt, font=f)
+        asc, desc = f.getmetrics()
+        pad = 3 + stw
+        im = Image.new('RGBA', (int(wpx + 2 * pad + 2), int(asc + desc + 2 * pad)), (0, 0, 0, 0))
+        dd = ImageDraw.Draw(im)
+        fill = tuple(int(v) for v in col) + (alpha,)
+        if outline:
+            dd.text((pad, pad + asc), txt, font=f, fill=outline, anchor='ls', stroke_width=max(1, stw) + 1, stroke_fill=outline)
+        dd.text((pad, pad + asc), txt, font=f, fill=fill, anchor='ls', stroke_width=stw, stroke_fill=fill)
+        if sx != 1.0:
+            im = im.resize((max(1, int(im.width * sx)), im.height), Image.LANCZOS)
+        ix, iy = int(round(x - pad * sx)), int(round(base - asc - pad))
+        # 贴上去（超出画面的裁掉）
+        x0, y0 = max(0, ix), max(0, iy)
+        x1, y1 = min(ov.width, ix + im.width), min(ov.height, iy + im.height)
+        if x1 > x0 and y1 > y0:
+            ov.alpha_composite(im.crop((x0 - ix, y0 - iy, x1 - ix, y1 - iy)), (x0, y0))
+        x += wpx * sx
 
 
 def rgb(c):
@@ -120,6 +250,55 @@ def pic_img(name):
     return Image.frombytes('RGBA', (w, h), bytes(px))
 
 
+_apics = None
+
+
+def apic_img(name, k=2):
+    """照 HudArt.lua picPixels 还原 src/ReplicatedStorage/AmmoPics.lua 的写实弹种图（每张自己的宽高；「#g」= 去色；k = 1 用 1 倍那套 pics1）：
+       调色板 RGBA（透明度 0 的颜色是透明边外扩的边缘色）+ 透明游程（0, 个数）+ 同色游程（f = "r"：255, 个数 = 上一个像素再重复几个）"""
+    global _apics
+    import base64, re, os
+    if _apics is None:
+        _apics = {1: {}, 2: {}}
+        p = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'src', 'ReplicatedStorage', 'AmmoPics.lua')
+        if os.path.exists(p):
+            txt = open(p, encoding='utf-8').read()
+            pat = r'(\w+) = \{ w = (\d+), h = (\d+), (?:f = "(\w+)", )?p = "([^"]*)", d = "([^"]*)" \}'
+            i1 = txt.find('\n  pics1 = {')
+            for kk, part in ((2, txt[:i1] if i1 >= 0 else txt), (1, txt[i1:] if i1 >= 0 else '')):
+                for nm, w, h, f, pal, d in re.findall(pat, part):
+                    _apics[kk][nm] = (int(w), int(h), f, pal, d)
+    gray = name.endswith('#g')
+    key = name[:-2] if gray else name
+    tb = _apics[1] if (k == 1 and key in _apics[1]) else _apics[2]
+    if key not in tb:
+        return None
+    w, h, f, pal, d = tb[key]
+    pal, raw = bytearray(base64.b64decode(pal)), base64.b64decode(d)
+    if gray:
+        for q in range(0, len(pal), 4):
+            l = int(pal[q] * 0.299 + pal[q + 1] * 0.587 + pal[q + 2] * 0.114 + 0.5)
+            pal[q], pal[q + 1], pal[q + 2] = l, l, l
+    px = bytearray(w * h * 4)
+    o, i = 0, 0
+    while i < len(raw) and o < w * h:
+        b = raw[i]
+        if b == 0:
+            o += raw[i + 1]; i += 2
+        elif f == 'r' and b == 255:
+            n = raw[i + 1]
+            last = px[(o - 1) * 4:o * 4]
+            for _ in range(n):
+                px[o * 4:o * 4 + 4] = last
+                o += 1
+            i += 2
+        else:
+            q = (b - 1) * 4
+            px[o * 4:o * 4 + 4] = pal[q:q + 4]
+            o += 1; i += 1
+    return Image.frombytes('RGBA', (w, h), bytes(px))
+
+
 VPIMG = {}   # 视口名 → 图片（命令行 vp:名字=图片.png）
 def quad_layer(it):
     """机头的全息标记：3D 的一块面（hudshot 导出了四个角在屏幕上的位置）——图按透视贴到这四个角上"""
@@ -143,13 +322,18 @@ def quad_layer(it):
 
 
 def main():
+    global W, H
     for a in sys.argv[4:]:
         if a.startswith('vp:') and '=' in a:
             k, v = a[3:].split('=', 1)
             VPIMG[k] = v
+        elif a.startswith('size='):   # size=1920x1080：hudshot 用 vp=1920x1080 排的版
+            W, H = (int(v) for v in a[5:].split('x'))
     items = json.load(open(sys.argv[1], encoding='utf-8'))
     # SS=2（环境变量）：按 2 倍大画再缩回来，圆、描边有抗锯齿（Roblox 画的界面本来就是抗锯齿的；不然一圈挨一圈的描边之间露出漏缝）
-    global W, H
+    wh = __import__('os').environ.get('WH')   # 环境变量 WH=宽x高（手机横屏的截图）
+    if wh and 'x' in wh:
+        W, H = (int(v) for v in wh.split('x', 1))
     ss = int(__import__('os').environ.get('SS', '1'))
     W0, H0 = W, H
     if ss > 1:
@@ -221,8 +405,8 @@ def main():
                 src.putalpha(ImageChops.multiply(src.getchannel('A'), mk))
             ov.alpha_composite(src, (int(round(x)), int(round(y))))
         pic_done = False
-        if it.get('pic') and (it.get('iT') or 0) < 0.99 and int(w) > 0 and int(h) > 0:   # 写实车图：按比例塞进框里（ScaleType Fit）
-            src = pic_img(it['pic'])
+        if (it.get('pic') or it.get('apic')) and (it.get('iT') or 0) < 0.99 and int(w) > 0 and int(h) > 0:   # 写实车图（ScaleType Fit 按比例塞进框里）/ 弹种图（铺满）
+            src = apic_img(it['apic'], it.get('apicK') or 2) if it.get('apic') else pic_img(it['pic'])
             if src is not None:
                 sw, sh = src.size
                 k = min(w / sw, h / sh) if it.get('fit') else None
@@ -235,6 +419,12 @@ def main():
                         im2 = Image.merge('RGBA', [r_.point(lambda v, c=tint[0]: v * c // 255), g_.point(lambda v, c=tint[1]: v * c // 255),
                                                    b_.point(lambda v, c=tint[2]: v * c // 255), a_])
                     a_ = im2.split()[3].point(lambda v: int(v * (1 - (it.get('iT') or 0)) * ga))
+                    g = it.get('grad')
+                    if g and g.get('en', True):   # 图上的 UIGradient（同 Roblox：渐变的颜色乘在图上、透明度也乘；弹种图左边「先压暗、后透明」）
+                        a_ = ImageChops.multiply(a_, grad_mask(tw, th, g))
+                        if g.get('ck'):
+                            cm = grad_fill((tw, th), (255, 255, 255), g).convert('RGB')
+                            im2 = Image.merge('RGBA', list(ImageChops.multiply(im2.convert('RGB'), cm).split()) + [a_])
                     im2.putalpha(a_)
                     ov.alpha_composite(im2, (int(round(x + (w - tw) / 2)), int(round(y + (h - th) / 2))))
                     pic_done = True
@@ -257,7 +447,7 @@ def main():
             a = int(160 * (1 - (it.get('iT') or 0)) * ga)
             d.rectangle(box, outline=rgb(it.get('ic')) + (a,), width=1)
         textGlow = None
-        if it.get('st') and (it.get('stT') or 0) < 0.99 and it.get('text'):
+        if it.get('st') and (it.get('stT') or 0) < 0.99 and it.get('text') and not it.get('stB'):
             # 字上的 UIStroke 在游戏里是贴着字形描一圈（这里当光晕画在字后面），不是方框
             textGlow = (rgb(it['st']), int(255 * (1 - (it.get('stT') or 0)) * ga), max(1, int(round(it.get('stW') or 1))))
         elif it.get('st') and (it.get('stT') or 0) < 0.99:
@@ -280,7 +470,53 @@ def main():
                 sl.putalpha(ImageChops.multiply(sl.getchannel('A'), full))
                 ov.alpha_composite(sl)
         t = it.get('text')
-        if t and (it.get('tT') or 0) < 0.99:
+        if t and (it.get('tT') or 0) < 0.99 and it.get('font'):
+            ts = it.get('ts') or 14
+            if it.get('scaled'):
+                ts = max(8, min(h * 0.8, 40))
+            a = int(255 * (1 - (it.get('tT') or 0)) * ga)
+            runs_all = text_runs(it, ts, rgb(it.get('tc')))
+            # 按行拆（\n）
+            lines, cur = [], []
+            for r in runs_all:
+                parts = r[0].split('\n')
+                for k, part in enumerate(parts):
+                    if k > 0:
+                        lines.append(cur)
+                        cur = []
+                    if part:
+                        cur.append((part,) + r[1:])
+            lines.append(cur)
+            lh = ts * 1.15
+            # 放不下截掉（TextTruncate.AtEnd：末尾「…」）
+            if it.get('trunc') and len(lines) == 1 and lines[0] and runs_width(d, lines[0]) > w + 0.5:
+                ln = [list(r) for r in lines[0]]
+                ell = '…'
+                while ln and runs_width(d, [tuple(r) for r in ln]) + d.textlength(ell, font=font(ts)) > w:
+                    ln[-1][0] = ln[-1][0][:-1]
+                    if not ln[-1][0]:
+                        ln.pop()
+                lines = [[tuple(r) for r in ln] + [(ell, font(ts), 1.0, 0, rgb(it.get('tc')))]]
+            widths = [runs_width(d, ln) for ln in lines]
+            th = lh * len(lines)
+            ya = it.get('ya') or ''
+            ty = y if 'Top' in ya else (y + h - th if 'Bottom' in ya else y + (h - th) / 2)
+            outline = None
+            if (it.get('tsT') if it.get('tsT') is not None else 1) < 0.99:
+                outline = (0, 0, 0, int(255 * (1 - it.get('tsT')) * ga))
+            for k, ln in enumerate(lines):
+                xa = it.get('xa') or ''
+                tw = widths[k]
+                if 'Left' in xa:
+                    tx = x
+                elif 'Right' in xa:
+                    tx = x + w - tw
+                else:
+                    tx = x + (w - tw) / 2
+                am, dm = font(ts).getmetrics()
+                base = ty + k * lh + (lh - (am + dm)) / 2 + am
+                draw_runs(ov, ln, tx, base, a, outline)
+        elif t and (it.get('tT') or 0) < 0.99:
             ts = it.get('ts') or 14
             if it.get('scaled'):
                 ts = max(8, min(h * 0.8, 40))

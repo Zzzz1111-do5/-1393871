@@ -18,12 +18,12 @@ function AaFcs.init(G)
   local V = Vector3.new
   local UD2 = UDim2.new
   local function T(k, ...) return G.T and G.T(k, ...) or k end
-  local function L(cn, en) return (G.lang == "en") and en or cn end
+  local function L(cn, en) return G.L(cn, en) end   -- 多语言（11-28）
   local AD = nil
   pcall(function() AD = require(RS:WaitForChild("AirDefs", 5)) end)
 
   local HOST, AMBER, LOCKC, GOOD, INK = RGB(255, 84, 70), RGB(255, 196, 60), RGB(255, 60, 60), RGB(110, 255, 140), RGB(230, 236, 232)
-  local FONT, FONTB = Enum.Font.RobotoMono, Enum.Font.BuilderSansBold
+  local FONT, FONTB = Enum.Font.RobotoMono, Enum.Font.BuilderSansMedium
 
   local gui = Instance.new("ScreenGui")
   gui.Name = "AaFcs"
@@ -150,14 +150,13 @@ function AaFcs.init(G)
           local id = m:GetAttribute("EntId") or m.Name
           local p = r.Position
           local tr = track[id]
-          if tr and now > tr.t + 1e-3 then
-            local v = (p - tr.p) / (now - tr.t)
-            if v.Magnitude < 1500 then tr.v = tr.v:Lerp(v, 0.3) end
-            tr.p, tr.t = p, now
-          elseif not tr then
-            tr = { p = p, t = now, v = V() }
+          if not tr then
+            tr = {}
             track[id] = tr
           end
+          -- 速度：只在服务器真挪了它时按两次挪之间的时间算、按时间平滑（View.lua G.velTrack；原来每帧差分 × 0.3，锁定圈一跳一跳）
+          if G.velTrack then G.velTrack(tr, p, now, 1500)
+          else tr.p, tr.t, tr.v = p, now, tr.v or V() end
           tr.seen = now
           table.insert(list, { id = id, m = m, p = p, v = tr.v, model = m:GetAttribute("Model") })
         end

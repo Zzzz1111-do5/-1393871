@@ -1,6 +1,6 @@
 -- Roblox全面大战场（客户端）——载具内饰：车里按真实布局拼出来的乘员舱，坐在乘员位上看（对标 Steel Beasts），也能拿来拍电影
 --   用户 11-21：所有载具一比一还原内饰和里面所有功能性的东西（屏幕等），全部看 Steel Beasts，每个坦克现实中的内部结构；要拿去拍电影
---   按键（开坦克时）：C 进出车内（车外 → 上次的乘员位 → 车外）；F2 驾驶员、F3 炮长、F4 车长、F5 装填手；炮长位上 Shift 进主瞄准镜；
+--   按键（开坦克时）：F2 驾驶员、F3 炮长、F4 车长、F5 装填手（车外按就进车内那个位）；车里 C 换下一个乘员位、最后回车外（11-27 起车外的 C 是望远镜）；炮长位上 Shift 进主瞄准镜；
 --     B 导演镜头（跟着车走的自由镜头：方向键前后左右、PageUp / PageDown 上下、Ctrl 慢、鼠标转、滚轮变焦）；L 车内灯（白 → 蓝绿 → 红 → 关）；
 --     U 藏起全部界面（拍片）；滚轮在乘员位上是变焦
 --   · 内饰零件只在镜头在车里时才放进场景、每帧按车体 / 炮塔 / 炮的姿态一次 BulkMoveTo（View.lua 算好的 v.hullF、v.tF）
@@ -31,7 +31,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   local cam = workspace.CurrentCamera
   local function clamp(x, a, b) return x < a and a or (x > b and b or x) end
   local function sm(t) t = clamp(t, 0, 1) return t * t * (3 - 2 * t) end
-  local function T(zh, en) return (G.lang == "en") and en or zh end
+  local function T(zh, en) return G.L(zh, en) end   -- 多语言（11-28）
 
   -- 真模型部件（Sketchfab CC-BY 原模型，Optics.lua：导入的 GLB 或开局后台现生成的网格）：电台、灭火瓶、120 / 125 毫米弹、乘员头盔
   Kit.props = function(key) return G.opticParts and G.opticParts(key) or nil end
@@ -83,7 +83,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   hint.BackgroundTransparency = 1
   hint.TextColor3 = RGB(230, 236, 230)
   hint.TextStrokeTransparency = 0.4
-  hint.Font = Enum.Font.BuilderSansMedium
+  hint.Font = Enum.Font.BuilderSans
   hint.TextSize = 14
   hint.Visible = false
   hint.Parent = gui
@@ -94,7 +94,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   title.BackgroundTransparency = 1
   title.TextColor3 = RGB(255, 236, 190)
   title.TextStrokeTransparency = 0.4
-  title.Font = Enum.Font.BuilderSansBold
+  title.Font = Enum.Font.BuilderSansMedium
   title.TextSize = 18
   title.Visible = false
   title.Parent = gui
@@ -189,17 +189,21 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   end
 
   -- 第一人称只给白名单里的型号（Config.FirstPerson.only：用户 11-25 只留 M1A1、M1A2；nil = 全开）
+  --   11-27：拆出来的同族变型（VehDefs 的 like：M1、IPM1、科技树的 M1A1、M1A1 HC → m1a1，M1A2、SEP、SEPv3 → m1a2）同一个模型、同一套车内，
+  --   白名单查不到自己的就看 like 那一型（拆之前它们借的就是 m1a1 / m1a2，能按 F2～F5 进车里、按 T 进车长镜；拆开以后这 7 项的车内整个没了）
   local function fpAllowed(id)
     local FP = G.Config.FirstPerson
     local only = FP and FP.only
     if not only then return true end
-    return only[id] == true
+    if only[id] == true then return true end
+    local d = VD.get(id or "")
+    return d ~= nil and d.like ~= nil and only[d.like] == true
   end
   G.interiorAllowed = fpAllowed
 
   local function build(st, v)
     if not fpAllowed(v.def.id) then return nil end
-    local key = ALIAS[v.def.id] or v.def.id
+    local key = ALIAS[v.def.id] or ALIAS[v.def.like or ""] or v.def.id   -- 同族变型退到 like 那一型的车内（同上）
     local fn = Defs[key]
     if not fn then return nil end
     local m = Instance.new("Model")
@@ -985,7 +989,13 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       if G.driveApplySight then G.driveApplySight() end
     end
     function A.zoomSet() A.zoom() end
-    function A.ammoIdx(i) A.ammo(AMMO4[(i or 0) + 1] or "SABOT") end
+    -- 弹种旋钮转一档：这一档没有弹（M1 一族的 105 / M829 系的炮没有 MPAT、CAN）就接着往下跳到有的那一档（不然卡在原地转不过去）
+    function A.ammoIdx(i)
+      i = i or 0
+      for j = 0, #AMMO4 - 1 do
+        if A.ammo(AMMO4[(i + j) % #AMMO4 + 1]) then return end
+      end
+    end
     function A.fcsSet(i) A.fcsMode((i or 0) + 1) end
     function A.battlesight() if G.driveBattlesight then G.driveBattlesight() end end
     function A.mrs()
@@ -1053,14 +1063,19 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       if G.sfx then pcall(G.sfx, on and "gearShift" or "dry") end
     end
     function A.lampTest() c.lampT = os.clock() + 3 end
+    -- 返回换没换：这门炮现在没有这一类的弹（没研究、没带、本来就打不了）就不换、返回 false（AMMO 键、弹种旋钮拿它跳过）
     function A.ammo(kind)
-      c.ammoKind = kind
       -- 炮长控制面板选的弹种也是火控的弹种（Drive.lua：这门炮能打的才换，换了要重新装填）
+      --   在现在能打的弹里挑同一类的（Ballistics.panelAmmo：T-90M 借 99A 的面板；M1 一族各型的炮跟面板写死的 SEPv2 那几发不一样）
       local BAL = require(game:GetService("ReplicatedStorage"):WaitForChild("Ballistics"))
       local st = G.drive
       local wid = st and st.d and st.d.weapons and st.d.weapons[st.wi or 1]
-      local key = BAL.panelAmmo and BAL.panelAmmo(kind, wid) or BAL.PANEL[kind]   -- 这门炮没有这种就挑同一类的（T-90M 借 99A 的面板）
-      if G.driveAmmo and key then G.driveAmmo(key) end
+      local list = G.driveAmmoList and G.driveAmmoList() or nil
+      local key = BAL.panelAmmo(kind, wid, list, st and st.fcs and st.fcs.am)
+      if not key then return false end
+      c.ammoKind = kind
+      if G.driveAmmo then G.driveAmmo(key) end
+      return true
     end
     function A.citvFov(f) c.citvFov = f end
     function A.citvSector(side, deg)   -- 自动扫描扇区的左（1）/ 右（2）边：相对炮塔的度数（右正）
@@ -1262,7 +1277,7 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   tip.BackgroundTransparency = 1
   tip.TextColor3 = RGB(255, 226, 150)
   tip.TextStrokeTransparency = 0.3
-  tip.Font = Enum.Font.BuilderSansMedium
+  tip.Font = Enum.Font.BuilderSans
   tip.TextSize = 14
   tip.TextWrapped = true
   tip.Visible = false
@@ -1369,14 +1384,6 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   ---------------------------------------------------------------- 每帧
 
   G.interiorOn = function() return mode ~= nil and cur ~= nil and cur.model ~= nil and cur.model.Parent ~= nil end
-  -- 全真模式（TechUI.lua 每半秒查一次）：车外的时候直接坐进这辆车的第一个乘员位；这辆车没有内饰返回 false（调用的改开瞄准镜）
-  G.interiorEnterSeat = function()
-    if mode ~= nil then return true end
-    if not cur then return false end
-    mode = "seat"
-    enterStation(cur, lastStation[cur.key] or cur.spec.order[1])
-    return true
-  end
   G.interiorState = function() return { mode = mode, station = station, cur = cur } end   -- 测试用
 
   function G.stepInterior(dt)
@@ -1550,7 +1557,9 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
   black.BorderSizePixel = 0
   black.Parent = sfx
   local holes = {}
-  for i = 1, 5 do   -- 一个透明的圆，外面一圈极粗的黑描边盖住圆外面；里面几圈细的半透明描边做出渐暗的边
+  -- 用户 11-27「光学渐变也有些生硬」：原来 4 圈 10 像素、一档一档的暗边（看得出一道道环）——改成 16 圈挨着的细环、外暗内淡，渐暗连成一片
+  local NRING = 16
+  for i = 1, NRING do   -- 一个透明的圆，外面一圈极粗的黑描边盖住圆外面；里面一圈圈细的半透明描边做出渐暗的边
     local h = Instance.new("Frame")
     h.AnchorPoint = Vector2.new(0.5, 0.5)
     h.BackgroundTransparency = 1
@@ -1560,10 +1569,10 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
     cr.Parent = h
     local sk = Instance.new("UIStroke")
     sk.Color = RGB(0, 0, 0)
-    sk.Thickness = (i == 1) and 4000 or 10
-    sk.Transparency = (i == 1) and 0 or (0.25 + i * 0.13)
+    sk.Thickness = (i == 1) and 4000 or 9
+    sk.Transparency = (i == 1) and 0 or (0.8 + 0.19 * (i - 2) / (NRING - 2))
     sk.Parent = h
-    holes[i] = { f = h, k = 1 - (i - 1) * 0.035 }
+    holes[i] = { f = h, k = 1 - (i - 1) * 0.012, sk = sk }
   end
   local scope = { phase = nil, t = 0, cb = nil, iris = nil, off = Vector2.new(), on = false }
   scopePhase = function() return scope.phase ~= nil end
@@ -1654,6 +1663,22 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       if not inSight then scope.iris = nil sfx.Enabled = false end
       return
     end
+    -- 用户 11-27（照战雷的开镜截图）：车外的炮长瞄准镜是全屏的——开镜那一下（先黑、亮圆滑进来变大）照旧放，放完就把边上那几圈暗角撤掉；
+    --   车里的观瞄设备（optic：车长热像仪、备用镜……）照旧有目镜的效果
+    if optic == nil then
+      -- 车外的炮长瞄准镜（全屏，照战雷）：开镜只从黑平滑淡入 0.2 秒，不放亮圆、不留暗边（用户 11-27「光学渐变也有些生硬」）
+      if scope.iris then
+        scope.iris += dt
+        black.BackgroundTransparency = math.clamp(scope.iris / 0.2, 0, 1)
+        for _, h in ipairs(holes) do if h.f.Visible then h.f.Visible = false end end
+        sfx.Enabled = true
+        if scope.iris >= 0.2 then scope.iris = nil end
+      elseif sfx.Enabled then
+        sfx.Enabled = false
+      end
+      return
+    end
+    for _, h in ipairs(holes) do if not h.f.Visible then h.f.Visible = true end end   -- 车里的观瞄设备：目镜的圆和暗边
     local vp = cam.ViewportSize
     local R = math.sqrt(vp.X * vp.X + vp.Y * vp.Y) / 2 * 1.02
     local md = UIS:GetMouseDelta()
@@ -2766,16 +2791,15 @@ local Cav = require(script.Parent:WaitForChild("InteriorCav"))   -- 从原车挖
       end
     elseif k == Enum.KeyCode.C then
       if mode == nil then
-        mode = "seat"
-        if cur then enterStation(cur, lastStation[cur.key] or cur.spec.order[1]) end
+        -- 11-27：车外的 C 归车长望远镜（Drive.lua / GunSight.lua，用户「再做一个望远镜」）——进车内用 F2～F5（直接坐到那个乘员位）或 T（车长主观瞄）；
+        --   车里面 C 照旧是换下一个乘员位、最后回车外
+        return
       elseif mode == "seat" and cur then
         -- 依次换到下一个乘员位，最后一个之后回车外
         local order = cur.spec.order
         local idx = 0
         for i, s in ipairs(order) do if s == station then idx = i end end
-        if idx >= #order and workspace:GetAttribute("WtMode") == "sb" and not (G.inTestDrive and G.inTestDrive()) then   -- 全真模式（战雷）：只能第一人称，转一圈回第一个乘员位，不回车外（试驾不管）
-          enterStation(cur, order[1])
-        elseif idx >= #order then
+        if idx >= #order then
           mode = nil
           if cur.model.Parent then cur.model.Parent = nil end
           cam.FieldOfView = 70
