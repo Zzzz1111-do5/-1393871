@@ -82,10 +82,14 @@ function Wt.init(G)
     local mob = seatOk(S, "drv") and ok(S, "engine") and ok(S, "trans") and ok(S, "trackL") and ok(S, "trackR")
     local gun = seatOk(S, "gnr") and ok(S, "breech") and ok(S, "barrel")
     if not S.seat.gnr then gun = ok(S, "breech") and ok(S, "barrel") and alive(S) > 0 end   -- 没有炮长位的车（轻型车）：剩人就能打
+    -- 方向机、高低机（用户 11-28「方向机也要能被打坏」）：照战雷历史模式——受损（橙、红）不影响，打坏（黑）就完全不动：
+    --   方向机坏了炮塔转不动（客户端、电脑开的车改成转车体瞄），高低机坏了炮管俯仰定住；修好就恢复。原来打坏了还能 1/4 速度转、受损也慢，打坏了像没坏
     local trav = 1
     local td = S.byK.tdrive
-    if td then trav = (td.hp <= 0) and 0.25 or ((modState(td) == 1) and 0.6 or 1) end
-    if not seatOk(S, "gnr") and S.seat.gnr then trav = math.min(trav, 0.5) end
+    if td and td.hp <= 0 then trav = 0 end
+    if trav > 0 and not seatOk(S, "gnr") and S.seat.gnr then trav = math.min(trav, 0.5) end
+    local ed = S.byK.edrive
+    S.elev = not (ed and ed.hp <= 0)
     local rel = 1
     if S.seat.ldr and not seatOk(S, "ldr") then rel = 1.6 end   -- 装填手没了：别人凑合装填
     if S.fixT then gun = false end                              -- 修车的时候不能开炮
@@ -110,6 +114,7 @@ function Wt.init(G)
     m:SetAttribute("WtMob", S.mob)
     m:SetAttribute("WtGun", S.gun)
     m:SetAttribute("WtTrav", S.trav)
+    m:SetAttribute("WtElev", S.elev ~= false)   -- 高低机好着（false：炮管俯仰定住）
     m:SetAttribute("WtFix", S.fixT and math.clamp((now() - S.fixT) / fixTime(e), 0, 1) or nil)
     -- 原来的血量（界面上的血条、名牌）：按活着的乘员算个比例
     if e.alive and e.wtMaxHp then

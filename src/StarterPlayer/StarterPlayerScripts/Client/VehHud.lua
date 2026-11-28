@@ -1574,6 +1574,7 @@ function VehHud.init(G)
     end
     wtMode = showTank and not compact and G.wtTankStep ~= nil
     mwtOn = showTank and not compact and not wtMode
+    camAim.Visible = not wtMode   -- 战雷那套：镜头瞄的地方是 WtTank 的大圈（用户 11-28「较大那个环改成鼠标光标的位置」），这个小圈收起
     G.tankHudActive = showTank and not compact   -- 屏幕上只留这一套（Coach 的三步卡、Hud 的提示让开）
     MW.root.Visible = mwtOn
     compGroup.Visible = not compact and not showTank and (compassSide or not (G.operationHudVisible and G.operationHudVisible()))

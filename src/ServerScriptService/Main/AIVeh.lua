@@ -466,7 +466,7 @@ function AIVeh.init(G)
       if a then   -- 坦克炮：真实初速、重力、空气阻力（Ballistics.lua），带曳光
         local v0, drag, gs = BAL.launchArgs(a)
         G.launch({ kind = "shell", pos = mz.Position, vel = dir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, cls = a.cls, w = ww, src = S, ignore = { e.model },
-          life = 60 })   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
+          life = 60, sab = BAL.sabotOf and BAL.sabotOf(a) or nil })   -- sab：脱壳弹（客户端画弹托飞开、细的弹芯）   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = dir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model },
           life = math.max(w.range / w.speed + 0.5, 4000 * BAL.S / w.speed) })   -- 没有弹道表的炮（机关炮、73 毫米）：也飞 4 公里（原来射程 ÷ 初速，一公里多就没了）
@@ -519,9 +519,18 @@ function AIVeh.init(G)
     end
     local el = d.turret.elev or { -6, 18 }
     local wantPitch = math.clamp(math.deg(math.atan2(l.Y + drop, math.max(horiz, 1)) + se), el[1], el[2])
-    e.ty = VD.arcYaw(d, (approach(0, angDiff(wantYaw, e.ty), (d.turret.trav or 40) * dt) + e.ty) % 360)
-    e.ai.arcOver = d.turret.arc and VD.arcOver(d, wantYaw) or nil   -- 没有炮塔的车：目标在射界外面，think 里先原地转车头（pivot）
-    e.gp = approach(e.gp, wantPitch, 22 * dt)
+    -- 方向机打坏（Wt.lua trav = 0，用户 11-28「方向机也要能被打坏」）：炮塔不转了，同没有炮塔的车一样原地转车头去瞄；高低机打坏：炮管俯仰定住
+    local travK = (e.wt and e.wt.trav) or 1
+    e.ty = VD.arcYaw(d, (approach(0, angDiff(wantYaw, e.ty), (d.turret.trav or 40) * travK * dt) + e.ty) % 360)
+    if d.turret.arc then
+      e.ai.arcOver = VD.arcOver(d, wantYaw)   -- 没有炮塔的车：目标在射界外面，think 里先原地转车头（pivot）
+    elseif travK <= 0 then
+      local o = angDiff(wantYaw, e.ty)
+      e.ai.arcOver = (math.abs(o) > 0.8) and o or 0
+    else
+      e.ai.arcOver = nil
+    end
+    if not (e.wt and e.wt.elev == false) then e.gp = approach(e.gp, wantPitch, 22 * dt) end
     e.model:SetAttribute("Ty", math.floor(e.ty * 2 + 0.5) / 2)
     e.model:SetAttribute("Gp", math.floor(e.gp * 2 + 0.5) / 2)
     local tol = (w.kind == "shell") and 1.2 or 4

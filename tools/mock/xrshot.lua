@@ -81,4 +81,8 @@ shoot("leo_apfsds", { op = "wtHit", id = 0, veh = "leo2a6", r = "pen", kill = fa
   parts = { { k = "drv", kind = "crew", s = 0 }, { k = "engine", kind = "mod", s = 1 } },
   pen = 560, arm = 80, dist = 1200,
   xr = { p = { 4.6, 3.0, 1.0 }, d = { -1, -0.08, 0.15 }, ty = 25, seed = 777, half = 22, n = 26, core = 6.0, sub = "ap" } }, { 1.2, 3.5 })
+-- 跳弹（不放慢放、静止的回放）：99A 车体侧面，看没事的弹药（洋红）、发动机（电光蓝）的标识色（用户 11-28「给弹药 发动机都搞一下特殊颜色的标识吧」）
+shoot("ztz_ric", { op = "wtHit", id = 0, veh = "ztz99a", r = "ric", kill = false, why = nil, parts = {},
+  pen = 450, arm = 520, dist = 650,
+  xr = { p = { 4.4, 2.6, 2.0 }, d = { -1, -0.1, -0.2 }, ty = 0, seed = 99, half = 18, n = 0, core = 0, sub = "fs" } }, { 1.0 })
 T.summary()

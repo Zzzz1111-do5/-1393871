@@ -358,7 +358,12 @@ function W.layout(d)
     local len = d.gun.len or 8
     add("barrel", "mod", V(gp.X - cal, gp.Y - cal, gp.Z - len), V(gp.X + cal, gp.Y + cal, gp.Z - 1.2), { tur = true, ext = true })
     add("breech", "mod", V(gp.X - 0.7, gp.Y - 0.65, gp.Z - 0.4), V(gp.X + 0.7, gp.Y + 0.55, gp.Z + 2.6), { tur = true })
-    add("tdrive", "mod", V(-1.4, -0.9, -1.6), V(-0.4, 0.1, -0.6), { tur = true })   -- 炮塔驱动（座圈前左）
+    -- 方向机（用户 11-28「方向机也要能被打坏」）：座圈前面、炮长那一侧（西方坦克炮长在右，苏式、步战车在左），
+    --   电机 + 减速箱约 0.5 米见方，下半截在座圈以下（原来只有 1 格见方 ≈ 0.36 米，几乎打不着）
+    local sd = (lay == "w4") and 1 or -1
+    local rr = math.clamp(math.min(ts.X, ts.Z) * 0.36, 1.2, Wd * 0.36)
+    local tc = V(sd * rr * 0.62, -0.35, -rr * 0.74)
+    add("tdrive", "mod", tc - V(0.7, 0.65, 0.7), tc + V(0.7, 0.65, 0.7), { tur = true })
   end
   local engFront = (lay == "ifv" or lay == "apc" or lay == "light")   -- 发动机在前面的
   if engFront then
@@ -414,6 +419,13 @@ function W.layout(d)
   if T and d.sight then
     local sp = d.sight
     add("optics", "mod", V(sp.X - 0.75, sp.Y - 0.45, sp.Z - 0.8), V(sp.X + 0.75, sp.Y + 0.8, sp.Z + 0.8), { tur = true, ext = true })
+  end
+  -- 高低机（同上，战雷的「垂直驱动」）：炮耳后面、炮闩旁边炮长那一侧；打坏了炮管抬不起也压不下。放在模块表最后（WtM 原来那些位不挪）
+  if d.gun and T then
+    local gp = d.gun.pivot
+    local sd = (lay == "w4") and 1 or -1
+    local x0, x1 = gp.X + sd * 0.78, gp.X + sd * 1.8
+    add("edrive", "mod", V(math.min(x0, x1), gp.Y - 1.0, gp.Z + 0.15), V(math.max(x0, x1), gp.Y - 0.05, gp.Z + 1.45), { tur = true })
   end
   hit = { list = list, nCrew = nCrew, prof = P, hH = hH, tp = tp, ts = ts }
   cache[d] = hit
@@ -583,6 +595,6 @@ function W.cone(axis, half, n, seed)
 end
 
 -- 名字（客户端界面）：模块 / 乘员的中文名用 Lang 的 wt.<k>
-W.MODS = { "engine", "trans", "trackL", "trackR", "barrel", "breech", "tdrive", "ammo", "ammoH", "fuelL", "fuelR", "troops", "optics" }
+W.MODS = { "engine", "trans", "trackL", "trackR", "barrel", "breech", "tdrive", "ammo", "ammoH", "fuelL", "fuelR", "troops", "optics", "edrive" }
 W.M = M
 return W

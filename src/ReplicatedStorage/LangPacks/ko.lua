@@ -1,4 +1,4 @@
--- 自动生成（tools/i18n/build.py），别手改：ko 的译文（2273 / 2349 条）
+-- 自动生成（tools/i18n/build.py），别手改：ko 的译文（2274 / 2350 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -1694,11 +1694,12 @@ return {
     ["wt.m.ammoH"] = "차체 탄약",
     ["wt.m.barrel"] = "포신",
     ["wt.m.breech"] = "포미",
+    ["wt.m.edrive"] = "고저 장치",
     ["wt.m.engine"] = "엔진",
     ["wt.m.fuelL"] = "좌측 연료탱크",
     ["wt.m.fuelR"] = "연료탱크",
     ["wt.m.optics"] = "광학 장비",
-    ["wt.m.tdrive"] = "포탑 구동",
+    ["wt.m.tdrive"] = "선회 장치",
     ["wt.m.trackL"] = "좌측 궤도",
     ["wt.m.trackR"] = "우측 궤도",
     ["wt.m.trans"] = "변속기",
@@ -1708,9 +1709,10 @@ return {
     ["wt.ms.ammo"] = "탄",
     ["wt.ms.barrel"] = "신",
     ["wt.ms.breech"] = "미",
+    ["wt.ms.edrive"] = "고",
     ["wt.ms.engine"] = "엔",
     ["wt.ms.fuel"] = "연",
-    ["wt.ms.tdrive"] = "구",
+    ["wt.ms.tdrive"] = "선",
     ["wt.ms.track"] = "궤",
     ["wt.ms.trans"] = "변",
     ["wt.mslAct"] = "미사일 탐색기 작동",
@@ -1779,8 +1781,6 @@ return {
     ["wt.xrBurst"] = "연속 관통 ×{1}",
     ["wt.xrJet"] = "성형작약 제트 · 관통 {1} / 등가 {2} mm",
     ["wt.xrJetB"] = "금속 제트 · 관통 {1} / 등가 {2} mm",
-    ["wt.xrSlow"] = "슬로 모션 ×0.01",
-    ["wt.xrTitle"] = "명중 카메라 · {1} · {2} m",
     ["wt.youFire"] = "불길 확산",
     ["wt.youHit"] = "폭발에 맞음",
     ["wt.youNp"] = "장갑이 막아냄",
@@ -1902,6 +1902,8 @@ return {
     ["xr.d.rounds"] = "{1} / {2}발",
     ["xr.d.turbine"] = "가스 터빈",
     ["xr.dead"] = "파괴 / 전사",
+    ["xr.drives"] = "선회 / 고저 장치",
+    ["xr.edrive"] = "고저 장치",
     ["xr.engine"] = "엔진",
     ["xr.era"] = "ERA",
     ["xr.fire"] = "화재",
@@ -1920,7 +1922,7 @@ return {
     ["xr.s.kia"] = "전사",
     ["xr.s.ok"] = "온전",
     ["xr.s.wounded"] = "부상",
-    ["xr.tdrive"] = "포탑 구동",
+    ["xr.tdrive"] = "선회 장치",
     ["xr.track"] = "궤도 / 바퀴",
     ["xr.trans"] = "변속기",
     ["xr.troops"] = "병력실",

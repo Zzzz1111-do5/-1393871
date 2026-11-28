@@ -23,7 +23,32 @@ vimg = Image.open(VPNG).convert('RGBA').resize((w, h), Image.LANCZOS)
 under = base.crop((x, y, x + w, y + h))
 bgl = Image.new('RGBA', (w, h), bgc[:3] + (int(round(255 * (1 - bgt))),))
 under = Image.alpha_composite(under, bgl)
+ui0 = base.copy()
 base.paste(Image.alpha_composite(under, vimg), (x, y))
+# 盖在 3D 上面的字（ZIndex 高：上面正中的结果字 XrTitle、左下的字幕 XrInfo）：界面图里这块是「窗口底色 + 字」，
+#   按跟底色差多少当不透明度把字抠出来贴回 3D 上面（字的黑描边跟底色分不开，只贴字本身）
+for it in items:
+    if it.get('name') not in ('XrTitle', 'XrInfo') or str(it.get('gui', '')).split('#')[0] != 'WtHud':
+        continue
+    tx, ty, tw, th = [int(round(it[k] * SS)) for k in ('x', 'y', 'w', 'h')]
+    tx0, ty0, tx1, ty1 = max(tx, x), max(ty, y), min(tx + tw, x + w), min(ty + th, y + h)
+    if tx1 <= tx0 or ty1 <= ty0:
+        continue
+    crop = ui0.crop((tx0, ty0, tx1, ty1)).convert('RGB')
+    px = crop.load()
+    mask = Image.new('L', crop.size, 0)
+    mk = mask.load()
+    for j in range(crop.size[1]):
+        for i in range(crop.size[0]):
+            r, g, b = px[i, j]
+            d = abs(r - bgc[0]) + abs(g - bgc[1]) + abs(b - bgc[2])
+            mk[i, j] = max(0, min(255, int((d - 30) * 2.2)))
+    shadow = Image.new('RGBA', crop.size, (0, 0, 0, 0))
+    shadow.putalpha(mask.point(lambda v: int(v * 0.75)))
+    base.alpha_composite(shadow, (tx0 + max(1, int(SS)), ty0 + max(1, int(SS))))
+    txt = crop.convert('RGBA')
+    txt.putalpha(mask)
+    base.alpha_composite(txt, (tx0, ty0))
 if panel:
     m = int(8 * SS)
     px, py, pw, ph = [int(round(panel[k] * SS)) for k in ('x', 'y', 'w', 'h')]

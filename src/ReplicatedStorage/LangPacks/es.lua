@@ -1,4 +1,4 @@
--- 自动生成（tools/i18n/build.py），别手改：es 的译文（2194 / 2349 条）
+-- 自动生成（tools/i18n/build.py），别手改：es 的译文（2195 / 2350 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -1624,11 +1624,12 @@ return {
     ["wt.m.ammoH"] = "Munición del casco",
     ["wt.m.barrel"] = "Tubo",
     ["wt.m.breech"] = "Recámara",
+    ["wt.m.edrive"] = "Mecanismo de elevación",
     ["wt.m.engine"] = "Motor",
     ["wt.m.fuelL"] = "Depósito izquierdo",
     ["wt.m.fuelR"] = "Depósito de combustible",
     ["wt.m.optics"] = "Óptica",
-    ["wt.m.tdrive"] = "Accionamiento de torreta",
+    ["wt.m.tdrive"] = "Mecanismo de giro de la torreta",
     ["wt.m.trackL"] = "Cadena izquierda",
     ["wt.m.trackR"] = "Cadena derecha",
     ["wt.m.trans"] = "Transmisión",
@@ -1638,9 +1639,10 @@ return {
     ["wt.ms.ammo"] = "MUN",
     ["wt.ms.barrel"] = "TUB",
     ["wt.ms.breech"] = "REC",
+    ["wt.ms.edrive"] = "ELV",
     ["wt.ms.engine"] = "MOT",
     ["wt.ms.fuel"] = "COM",
-    ["wt.ms.tdrive"] = "ACC",
+    ["wt.ms.tdrive"] = "GIR",
     ["wt.ms.track"] = "CAD",
     ["wt.ms.trans"] = "TRN",
     ["wt.mslAct"] = "Buscador del misil activo",
@@ -1709,8 +1711,6 @@ return {
     ["wt.xrBurst"] = "Penetraciones en ráfaga ×{1}",
     ["wt.xrJet"] = "CHORRO DE CARGA HUECA · pen. {1} / ef. {2} mm",
     ["wt.xrJetB"] = "CHORRO METÁLICO · pen. {1} / ef. {2} mm",
-    ["wt.xrSlow"] = "CÁMARA LENTA ×0,01",
-    ["wt.xrTitle"] = "CÁMARA DE IMPACTO · {1} · {2} m",
     ["wt.youFire"] = "El fuego se extiende",
     ["wt.youHit"] = "Alcanzado por la onda expansiva",
     ["wt.youNp"] = "El blindaje aguantó",
@@ -1828,6 +1828,8 @@ return {
     ["xr.d.rounds"] = "{1} / {2} disparos",
     ["xr.d.turbine"] = "Turbina de gas",
     ["xr.dead"] = "Destruido / muerto",
+    ["xr.drives"] = "Giro / elevación",
+    ["xr.edrive"] = "Mecanismo de elevación",
     ["xr.engine"] = "Motor",
     ["xr.fire"] = "En llamas",
     ["xr.fuel"] = "Combustible",
@@ -1845,7 +1847,7 @@ return {
     ["xr.s.kia"] = "Muerto",
     ["xr.s.ok"] = "Intacto",
     ["xr.s.wounded"] = "Herido",
-    ["xr.tdrive"] = "Accionamiento de torreta",
+    ["xr.tdrive"] = "Mecanismo de giro de la torreta",
     ["xr.track"] = "Cadenas / ruedas",
     ["xr.trans"] = "Transmisión",
     ["xr.troops"] = "Compartimento de tropa",

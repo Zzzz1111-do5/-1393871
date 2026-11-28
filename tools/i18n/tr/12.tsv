@@ -1,7 +1,7 @@
 TRK⟫履⟫궤⟫ГУС⟫KET⟫CHE⟫CAD⟫LAG
 BRL⟫身⟫신⟫СТВ⟫ROHR⟫TUBE⟫TUB⟫TUB
 BRC⟫尾⟫미⟫ЗАТ⟫VER⟫CUL⟫REC⟫CUL
-TRV⟫駆⟫구⟫ПРИВ⟫TRB⟫ENT⟫ACC⟫ACI
+TRV⟫旋⟫선⟫ГН⟫SEI⟫ROT⟫GIR⟫GIR
 AMO⟫弾⟫탄⟫БК⟫MUN⟫MUN⟫MUN⟫MUN
 FUL⟫燃⟫연⟫ТОП⟫KST⟫CAR⟫COM⟫COM
  KO⟫戦死⟫ 전사⟫ выбит⟫ ausgefallen⟫ HS⟫ KO⟫ KO
@@ -15,7 +15,6 @@ Destroyed — ammo detonation⟫撃破 — 弾薬誘爆⟫격파 — 탄약 유�
 DESTROYED — BURNED OUT⟫撃破 — 全焼⟫격파 — 전소⟫УНИЧТОЖЕН — СГОРЕЛ⟫ZERSTÖRT — AUSGEBRANNT⟫DÉTRUIT — CALCINÉ⟫DESTRUIDO: CALCINADO⟫DESTRUÍDO: INCENDIADO
 NON-PENETRATION⟫非貫通⟫비관통⟫НЕПРОБИТИЕ⟫KEIN DURCHSCHLAG⟫NON-PÉNÉTRATION⟫NO PENETRÓ⟫SEM PENETRAÇÃO
 armour {1} mm / penetration {2} mm⟫装甲 {1} mm / 貫徹 {2} mm⟫장갑 {1} mm / 관통 {2} mm⟫броня {1} мм / пробитие {2} мм⟫Panzerung {1} mm / Durchschlag {2} mm⟫blindage {1} mm / pénétration {2} mm⟫blindaje {1} mm / penetración {2} mm⟫blindagem {1} mm / penetração {2} mm
-HIT CAMERA · {1} · {2} m⟫命中カメラ · {1} · {2} m⟫명중 카메라 · {1} · {2} m⟫КАМЕРА ПОПАДАНИЯ · {1} · {2} м⟫TREFFERKAMERA · {1} · {2} m⟫CAMÉRA D'IMPACT · {1} · {2} m⟫CÁMARA DE IMPACTO · {1} · {2} m⟫CÂMERA DE IMPACTO · {1} · {2} m
 METAL JET · pen {1} / eff {2} mm⟫金属噴流 · 貫徹 {1} / 等価 {2} mm⟫금속 제트 · 관통 {1} / 등가 {2} mm⟫МЕТАЛЛИЧЕСКАЯ СТРУЯ · пробитие {1} / экв. {2} мм⟫METALLSTRAHL · Durchschlag {1} / eff. {2} mm⟫JET MÉTALLIQUE · pén. {1} / eff. {2} mm⟫CHORRO METÁLICO · pen. {1} / ef. {2} mm⟫JATO METÁLICO · pen. {1} / ef. {2} mm
 SHAPED-CHARGE JET · pen {1} / eff {2} mm⟫成形炸薬噴流 · 貫徹 {1} / 等価 {2} mm⟫성형작약 제트 · 관통 {1} / 등가 {2} mm⟫КУМУЛЯТИВНАЯ СТРУЯ · пробитие {1} / экв. {2} мм⟫HOHLLADUNGSSTRAHL · Durchschlag {1} / eff. {2} mm⟫JET DE CHARGE CREUSE · pén. {1} / eff. {2} mm⟫CHORRO DE CARGA HUECA · pen. {1} / ef. {2} mm⟫JATO DE CARGA OCA · pen. {1} / ef. {2} mm
 APFSDS · rod erodes, goes deep · pen {1} / eff {2} mm⟫APFSDS · 弾芯が削れながら深く侵徹 · 貫徹 {1} / 等価 {2} mm⟫APFSDS · 관통자가 깎이며 깊이 파고듦 · 관통 {1} / 등가 {2} mm⟫БОПС · сердечник срабатывается и уходит глубоко · пробитие {1} / экв. {2} мм⟫APFSDS · Penetrator erodiert, dringt tief ein · Durchschlag {1} / eff. {2} mm⟫APFSDS · la flèche s'érode et s'enfonce · pén. {1} / eff. {2} mm⟫APFSDS · el penetrador se erosiona y entra hondo · pen. {1} / ef. {2} mm⟫APFSDS · o penetrador se desgasta e entra fundo · pen. {1} / ef. {2} mm
@@ -26,7 +25,7 @@ AUTOCANNON AP · pen {1} / eff {2} mm⟫機関砲徹甲弾 · 貫徹 {1} / 等�
 HE · bursts outside · pen {1} / eff {2} mm⟫榴弾 · 車外で炸裂 · 貫徹 {1} / 等価 {2} mm⟫고폭탄 · 차량 밖에서 폭발 · 관통 {1} / 등가 {2} mm⟫ОФС · разрыв снаружи · пробитие {1} / экв. {2} мм⟫HE · detoniert außen · Durchschlag {1} / eff. {2} mm⟫HE · explose à l'extérieur · pén. {1} / eff. {2} mm⟫HE · explota fuera · pen. {1} / ef. {2} mm⟫HE · explode do lado de fora · pen. {1} / ef. {2} mm
 HESH · no hole, inner wall spalls · eq {1} / eff {2} mm⟫粘着榴弾 · 貫通せず内壁が剥離 · 等価量 {1} / 等価 {2} mm⟫점착 유탄 · 관통 없이 내벽이 박리 · 당량 {1} / 등가 {2} mm⟫БРОНЕБОЙНО-ФУГАСНЫЙ · без пробоя, откол с внутренней стенки · экв. {1} / {2} мм⟫HESH · kein Loch, Innenwand platzt ab · Äquiv. {1} / eff. {2} mm⟫HESH · pas de trou, écaillage intérieur · éq. {1} / eff. {2} mm⟫HESH · sin agujero, la pared interior se desconcha · eq. {1} / ef. {2} mm⟫HESH · sem furo, a parede interna lasca · eq. {1} / ef. {2} mm
 TANDEM HEAT · precursor first · pen {1} / eff {2} mm⟫タンデム HEAT · 前段が先に起爆 · 貫徹 {1} / 等価 {2} mm⟫탠덤 HEAT · 선행 탄두 먼저 기폭 · 관통 {1} / 등가 {2} mm⟫ТАНДЕМНЫЙ КУМУЛЯТИВНЫЙ · сначала лидирующий заряд · пробитие {1} / экв. {2} мм⟫TANDEM-HEAT · Vorladung zuerst · Durchschlag {1} / eff. {2} mm⟫HEAT TANDEM · précharge d'abord · pén. {1} / eff. {2} mm⟫HEAT TÁNDEM · primero la precarga · pen. {1} / ef. {2} mm⟫HEAT TANDEM · pré-carga primeiro · pen. {1} / ef. {2} mm
-SLOW-MO ×0.01⟫スロー ×0.01⟫슬로 모션 ×0.01⟫ЗАМЕДЛЕНИЕ ×0,01⟫ZEITLUPE ×0,01⟫RALENTI ×0,01⟫CÁMARA LENTA ×0,01⟫CÂMERA LENTA ×0,01
+ELV⟫俯⟫고⟫ВН⟫HÖH⟫ÉLÉ⟫ELV⟫ELV
 ON FIRE. Press Y to extinguish⟫火災発生。Y で消火⟫화재 발생. Y로 소화⟫ПОЖАР. Нажмите Y, чтобы потушить⟫BRAND. Y zum Löschen⟫EN FEU. Appuyez sur Y pour éteindre⟫EN LLAMAS. Pulsa Y para apagar⟫EM CHAMAS. Aperte Y para apagar
 Repairing {1}% (Y to cancel)⟫修理中 {1}%（Y で中止）⟫수리 중 {1}%(Y로 취소)⟫Ремонт {1}% (Y — отмена)⟫Reparatur {1} % (Y bricht ab)⟫Réparation {1} % (Y pour annuler)⟫Reparando {1}% (Y para cancelar)⟫Reparando {1}% (Y para cancelar)
 Parts damaged: press Y to repair⟫部品が損傷：Y で修理⟫부품 손상: Y로 수리⟫Есть повреждения: Y — ремонт⟫Teile beschädigt: Y zum Reparieren⟫Pièces endommagées : Y pour réparer⟫Piezas dañadas: pulsa Y para reparar⟫Peças danificadas: aperte Y para reparar

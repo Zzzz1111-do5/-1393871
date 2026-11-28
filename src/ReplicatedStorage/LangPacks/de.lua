@@ -1,4 +1,4 @@
--- 自动生成（tools/i18n/build.py），别手改：de 的译文（2177 / 2349 条）
+-- 自动生成（tools/i18n/build.py），别手改：de 的译文（2178 / 2350 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -1599,11 +1599,12 @@ return {
     ["wt.m.ammoH"] = "Wannenmunition",
     ["wt.m.barrel"] = "Rohr",
     ["wt.m.breech"] = "Verschluss",
+    ["wt.m.edrive"] = "Höhenrichtantrieb",
     ["wt.m.engine"] = "Motor",
     ["wt.m.fuelL"] = "Linker Tank",
     ["wt.m.fuelR"] = "Kraftstofftank",
     ["wt.m.optics"] = "Optik",
-    ["wt.m.tdrive"] = "Turmantrieb",
+    ["wt.m.tdrive"] = "Seitenrichtantrieb",
     ["wt.m.trackL"] = "Linke Kette",
     ["wt.m.trackR"] = "Rechte Kette",
     ["wt.m.trans"] = "Getriebe",
@@ -1613,9 +1614,10 @@ return {
     ["wt.ms.ammo"] = "MUN",
     ["wt.ms.barrel"] = "ROHR",
     ["wt.ms.breech"] = "VER",
+    ["wt.ms.edrive"] = "HÖH",
     ["wt.ms.engine"] = "MOT",
     ["wt.ms.fuel"] = "KST",
-    ["wt.ms.tdrive"] = "TRB",
+    ["wt.ms.tdrive"] = "SEI",
     ["wt.ms.track"] = "KET",
     ["wt.ms.trans"] = "GTR",
     ["wt.mslAct"] = "Raketensuchkopf aktiv",
@@ -1684,8 +1686,6 @@ return {
     ["wt.xrBurst"] = "Serien-Durchschläge ×{1}",
     ["wt.xrJet"] = "HOHLLADUNGSSTRAHL · Durchschlag {1} / eff. {2} mm",
     ["wt.xrJetB"] = "METALLSTRAHL · Durchschlag {1} / eff. {2} mm",
-    ["wt.xrSlow"] = "ZEITLUPE ×0,01",
-    ["wt.xrTitle"] = "TREFFERKAMERA · {1} · {2} m",
     ["wt.youFire"] = "Feuer breitet sich aus",
     ["wt.youHit"] = "Von der Druckwelle getroffen",
     ["wt.youNp"] = "Panzerung hat gehalten",
@@ -1803,6 +1803,8 @@ return {
     ["xr.d.rounds"] = "{1} / {2} Schuss",
     ["xr.d.turbine"] = "Gasturbine",
     ["xr.dead"] = "Zerstört / gefallen",
+    ["xr.drives"] = "Seiten- / Höhenrichtantrieb",
+    ["xr.edrive"] = "Höhenrichtantrieb",
     ["xr.engine"] = "Motor",
     ["xr.fire"] = "In Brand",
     ["xr.fuel"] = "Kraftstoff",
@@ -1820,7 +1822,7 @@ return {
     ["xr.s.kia"] = "Gefallen",
     ["xr.s.ok"] = "Intakt",
     ["xr.s.wounded"] = "Verwundet",
-    ["xr.tdrive"] = "Turmantrieb",
+    ["xr.tdrive"] = "Seitenrichtantrieb",
     ["xr.track"] = "Ketten / Räder",
     ["xr.trans"] = "Getriebe",
     ["xr.troops"] = "Truppenraum",

@@ -47,6 +47,10 @@ for _, sx in ipairs({ -1, 1 }) do for _, sy in ipairs({ -1, 1 }) do for _, sz in
 -- 自己一组 Highlight 的子件（颜色跟大类不一样、要一眼分得出的）：弹头、发动机的深色件（排气、风扇、缸盖）、炮闩 / 炮管的鼓包和箍、观瞄的玻璃
 local SUBOK = { engine_dk = true, breech_dk = true, barrel_dk = true, ammo_tip = true, optics_gl = true }
 XrayOwn.SUBOK = SUBOK
+-- 标识色（用户 11-28「给弹药 发动机都搞一下特殊颜色的标识吧 我自己x透视自己也要能看这个」「这个颜色你可以做的和战雷有些区别」）：
+--   弹药洋红、发动机电光蓝——一眼就跳出来，也不是战雷那套橙 / 绿；跟状态色（受损黄、打坏红 / 黑、阵亡红、起火橙）一个都不撞。
+--   按 X 的自己车透视、打别人的命中回放（WtHud.lua）用同一套
+XrayOwn.MARK = { ammo = Color3.fromRGB(236, 62, 196), engine = Color3.fromRGB(46, 156, 255) }
 
 local mods = {}
 local function req(name)
@@ -579,6 +583,25 @@ local function tdriveItem(x, ctx)
   x.specs = L
 end
 
+-- 高低机（炮塔系，用户 11-28「方向机也要能被打坏」加的）：炮耳后下方跟炮一起转的一段齿弧 + 减速箱 + 手轮
+local function edriveItem(x, ctx)
+  local it, d = x.it, ctx.d
+  local lo, hi = it.lo, it.hi
+  local c = (lo + hi) / 2
+  local gp = (d.gun and d.gun.pivot) or c
+  local L = {}
+  local R = 0.95
+  local N = 6
+  for i = 0, N - 1 do
+    local t0, t1 = math.rad(20 + i * 10), math.rad(20 + (i + 1) * 10)
+    bar(L, V3(c.X, gp.Y - math.sin(t0) * R, gp.Z + math.cos(t0) * R), V3(c.X, gp.Y - math.sin(t1) * R, gp.Z + math.cos(t1) * R), 0.16, 0.14)   -- 齿弧
+  end
+  blk(L, V3(0.52, 0.44, 0.6), c + V3(0, -0.12, 0.12))                     -- 减速箱
+  local sx = (c.X >= gp.X) and 1 or -1
+  disc(L, c + V3(sx * 0.34, 0.02, 0.32), 0.4, 0.07, "dk")                 -- 手轮
+  x.specs = L
+end
+
 -- 炮长瞄准镜（炮塔系）：镜头（装甲罩 + 窗口）、镜筒穿过炮塔顶一直到炮长眼前、目镜
 local function opticsItem(x, ctx)
   local d = ctx.d
@@ -895,13 +918,14 @@ local function catOf(it)
   if it.kind == "crew" then return "crew" end
   local k = it.k or ""
   if k == "engine" or k == "trans" or k == "breech" or k == "barrel" or k == "tdrive" or k == "optics" or k == "troops" then return k end
+  if k == "edrive" then return "tdrive" end   -- 高低机：同方向机一类（颜色、图例）
   if string.sub(k, 1, 4) == "fuel" then return "fuel" end
   if string.sub(k, 1, 4) == "ammo" then return "ammo" end
   if string.sub(k, 1, 5) == "track" then return "track" end
   return "other"
 end
 local BUILD = { engine = engineItem, trans = transItem, trackL = trackItem, trackR = trackItem, breech = breechItem, barrel = barrelItem,
-  tdrive = tdriveItem, optics = opticsItem, fuelL = fuelItem, fuelR = fuelItem, troops = troopsItem }
+  tdrive = tdriveItem, edrive = edriveItem, optics = opticsItem, fuelL = fuelItem, fuelR = fuelItem, troops = troopsItem }
 
 -- opts：{ M = VehModels 的模型信息（爆反块）、live = 弹的现况、limit = 零件上限（默认 LIMIT；命中回放的小窗用得少一点）}；返回 { items = { { k, cat, frame = hull / tur / gun, specs, ci / mi（WtC / WtM 第几位）… } }, total, A, R, lay }
 function XrayOwn.plan(d, opts)
@@ -1072,11 +1096,13 @@ function XrayOwn.init(G)
     if s and s ~= k then return s end
     return fb or k
   end
-  -- 类别的颜色——11-28（用户「目前x光效果还是不如战雷」）改成按真东西的质感、沉着一点（同 WtHud 命中回放的 XC）：
-  --   弹药黄铜、油箱橄榄、发动机钢灰、传动蓝灰、炮闩炮管炮钢、观瞄青色玻璃、乘员浅橄榄绿；原来紫的发动机、粉的弹药、青的油箱像卡通
+  -- 类别的颜色——11-28（用户「目前x光效果还是不如战雷」）改成按真东西的质感、沉着一点：
+  --   油箱橄榄、传动蓝灰、炮闩炮管炮钢、观瞄青色玻璃、乘员浅橄榄绿；弹药、发动机是醒目的标识色（XrayOwn.MARK：洋红、电光蓝，
+  --   用户 11-28「给弹药 发动机都搞一下特殊颜色的标识吧」）——别的都沉着，一眼先看到这两样
   --   （完好 / 受损 / 打坏的意思同 Theme：琥珀、红；阵亡近黑）
+  local MARK = XrayOwn.MARK
   local PAL = {
-    crew = RGB(160, 188, 136), engine = RGB(140, 148, 158), trans = RGB(122, 134, 150), fuel = RGB(114, 130, 98), ammo = RGB(206, 170, 102),
+    crew = RGB(160, 188, 136), engine = MARK.engine, trans = RGB(122, 134, 150), fuel = RGB(114, 130, 98), ammo = MARK.ammo,
     breech = RGB(124, 130, 138), barrel = RGB(114, 120, 128), tdrive = RGB(128, 136, 148), optics = RGB(96, 170, 180),
     era = RGB(186, 168, 126), track = RGB(94, 98, 104), troops = RGB(160, 188, 136), other = RGB(130, 138, 148),
   }
@@ -1096,7 +1122,7 @@ function XrayOwn.init(G)
   -- 图例：类别一行、状态一行
   local ORDER = { "crew", "engine", "trans", "fuel", "ammo", "breech", "barrel", "tdrive", "optics", "era", "track", "troops" }
   local LEG = { crew = { "xr.crew", "乘员" }, engine = { "xr.engine", "发动机" }, trans = { "xr.trans", "传动" }, fuel = { "xr.fuel", "油箱" },
-    ammo = { "xr.ammo", "弹药" }, breech = { "xr.breech", "炮闩" }, barrel = { "xr.barrel", "炮管" }, tdrive = { "xr.tdrive", "炮塔驱动" },
+    ammo = { "xr.ammo", "弹药" }, breech = { "xr.breech", "炮闩" }, barrel = { "xr.barrel", "炮管" }, tdrive = { "xr.drives", "方向机 / 高低机" },
     optics = { "xr.optics", "观瞄" }, era = { "xr.era", "爆反" }, track = { "xr.track", "履带 / 车轮" }, troops = { "xr.troops", "载员舱" },
     hurt = { "xr.hurt", "受损" }, broken = { "xr.broken", "打坏" }, kia = { "xr.kia", "阵亡" }, fire = { "xr.fire", "起火" } }
 
@@ -1135,6 +1161,8 @@ function XrayOwn.init(G)
     if key == "hurt" then return c, c:Lerp(WHITE, 0.3), 0.45, 0.1 end
     if key == "fire" then return c, RGB(255, 220, 140), 0.25, 0 end
     if key == "hover" then return c, WHITE, 0.4, 0 end
+    local mk = MARK[string.match(key, "^(%a+)") or ""]
+    if mk then return c, mk:Lerp(WHITE, 0.3), 0.45, 0 end   -- 弹药、发动机：上色重、描边实（标识色）；弹头那一组还是钢色，只描边是洋红
     return c, c:Lerp(WHITE, 0.45), 0.72, 0.3
   end
   local function group(c, key)

@@ -99,27 +99,27 @@ function WtTank.init(G)
     return o
   end
 
-  ---------------------------------------------------------------- 准星（炮指的地方）
+  ---------------------------------------------------------------- 准星（照战雷：大圈 = 鼠标 / 镜头瞄的地方，小圈 = 炮这一刻开火真打到的地方）
+  --   用户 11-28「坦克准心不是有两个圈吗 中间还有个小十字去掉 然后 较大那个环改成鼠标光标的位置 跟战雷一样 中间那个小的是坦克炮口实际会打到的位置吧」：
+  --   大圈钉在鼠标那点（屏幕正中、镜头瞄的地方），装填弧、测距、装填秒数跟着它；小圈跟着炮管（炮塔还没转过来时在外面，转到位滑进大圈里），
+  --   小圈的颜色 = 打不打得穿，炮口被挡时小圈上画红叉。原来反着画：大圈在炮的落点、镜头那里一个小圈（VehHud 的 CamAim，战雷界面里收起）；
+  --   大圈左右下三道刻度、中心那一点去掉
   local AIM = {}
   AIM.root = frame(gui, UD2(0, 90, 0, 90), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))
   AIM.root.Name = "WtGunAim"
   AIM.scale = Instance.new("UIScale")
   AIM.scale.Parent = AIM.root
   -- 黑色的底：每一道白线后面垫一道半透明黑（亮沙地上白线会看不见）
-  stroke(round(frame(AIM.root, UD2(0, 25, 0, 25), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), INK, 3.4, 0.62)
-  AIM.ring = round(frame(AIM.root, UD2(0, 25, 0, 25), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5)))
+  stroke(round(frame(AIM.root, UD2(0, 28, 0, 28), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), INK, 3.4, 0.62)
+  AIM.ring = round(frame(AIM.root, UD2(0, 28, 0, 28), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5)))
   AIM.ringS = stroke(AIM.ring, WHITE, 1.6, 0.02)
-  AIM.ticks = {}
-  for _, e in ipairs({ { -1, 0 }, { 1, 0 }, { 0, 1 } }) do   -- 左、右、下三道刻度
-    local hz = e[1] ~= 0
-    local pos = UD2(0.5, e[1] * 21, 0.5, e[2] * 21)
-    frame(AIM.root, hz and UD2(0, 10, 0, 4) or UD2(0, 4, 0, 10), pos, INK, 0.62, V2(0.5, 0.5))
-    table.insert(AIM.ticks, frame(AIM.root, hz and UD2(0, 8, 0, 2) or UD2(0, 2, 0, 8), pos, WHITE, 0.02, V2(0.5, 0.5)))
-  end
-  stroke(round(frame(AIM.root, UD2(0, 3, 0, 3), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), INK, 1, 0.5)
-  AIM.dot = round(frame(AIM.root, UD2(0, 3, 0, 3), UD2(0.5, 0, 0.5, 0), WHITE, 0, V2(0.5, 0.5)))
-  -- 炮口被挡（用户 11-27「坦克准心对标战雷」）：炮塔转到位了，这一发却会打在前面的坡 / 墙上——圈里画一个叉（Drive gunImpact 判的）
-  AIM.block = frame(AIM.root, UD2(0, 20, 0, 20), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))
+  -- 小圈：炮真打到的地方（Drive gunImpact 的落点），颜色 = 打不打得穿
+  AIM.gun = frame(gui, UD2(0, 24, 0, 24), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))
+  AIM.gun.Name = "WtGunMark"
+  stroke(round(frame(AIM.gun, UD2(0, 11, 0, 11), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), INK, 3.8, 0.55)
+  AIM.gunS = stroke(round(frame(AIM.gun, UD2(0, 11, 0, 11), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))), WHITE, 2, 0.02)
+  -- 炮口被挡（用户 11-27「坦克准心对标战雷」）：炮塔转到位了，这一发却会打在前面的坡 / 墙上——小圈上画一个红叉（Drive gunImpact 判的）
+  AIM.block = frame(AIM.gun, UD2(0, 20, 0, 20), UD2(0.5, 0, 0.5, 0), WHITE, 1, V2(0.5, 0.5))
   AIM.block.Name = "WtGunBlocked"
   AIM.block.Visible = false
   for _, r in ipairs({ 45, -45 }) do
@@ -1185,9 +1185,14 @@ function WtTank.init(G)
     gui.Enabled = true
     local t = os.clock()
     if I and I.p then
+      -- 大圈：鼠标 / 镜头瞄的那点（第三人称鼠标锁在屏幕正中，镜头的瞄准射线就从这里出去）
+      local vp = cam.ViewportSize
+      AIM.root.Visible = true
+      AIM.root.Position = UD2(0, vp.X / 2, 0, vp.Y / 2)
+      -- 小圈：炮这一刻开火真打到的地方
       local sp, on = cam:WorldToViewportPoint(I.p)
-      AIM.root.Visible = on
-      AIM.root.Position = UD2(0, sp.X, 0, sp.Y)
+      AIM.gun.Visible = on
+      AIM.gun.Position = UD2(0, sp.X, 0, sp.Y)
       local col = WHITE
       AIM.block.Visible = on and I.blocked == true
       if I.blocked then
@@ -1196,8 +1201,7 @@ function WtTank.init(G)
         local ok, c = pcall(penColor, st, I)
         if ok and c then col = c end
       end
-      AIM.ringS.Color, AIM.dot.BackgroundColor3 = col, col
-      for _, tk in ipairs(AIM.ticks) do tk.BackgroundColor3 = col end
+      AIM.gunS.Color = col
       -- 装填：弧走着（琥珀），装好那一下圈涨一下
       local ready = I.ready ~= false
       if ready and not wasReady then
@@ -1223,7 +1227,7 @@ function WtTank.init(G)
         else AIM.rng.Text = T("wtt.rkey") end
       end
     else
-      AIM.root.Visible = false
+      AIM.root.Visible, AIM.gun.Visible = false, false
     end
     local ok, err = pcall(stepBar, st, I)
     if not ok and G.showError then G.showError("战雷弹药栏：" .. tostring(err)) end

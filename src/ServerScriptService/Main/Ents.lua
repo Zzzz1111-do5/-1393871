@@ -298,7 +298,7 @@ function Ents.init(G)
     s.id = shotN
     table.insert(shots, s)
     G.fx({ k = "shot", id = s.id, p = s.pos, v = s.vel, kind = s.kind, g = s.grav and true or false, gs = s.gscale, tg = s.tgId or (s.target and s.target.id) or nil,
-      f = s.w and s.w.fx or nil, w = s.w and s.w.id or nil, by = s.byEnt, dr = s.drag, tr = s.tracer, ej = s.ejT })   -- dr 空气阻力、tr 曳光（坦克炮弹，Ballistics.lua）；ej 抛射：几秒后才点火
+      f = s.w and s.w.fx or nil, w = s.w and s.w.id or nil, by = s.byEnt, dr = s.drag, tr = s.tracer, ej = s.ejT, sb = s.sab })   -- sb 脱壳弹（fs 钢针 / ds）   -- dr 空气阻力、tr 曳光（坦克炮弹，Ballistics.lua）；ej 抛射：几秒后才点火
     return s
   end
 

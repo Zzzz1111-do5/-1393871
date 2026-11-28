@@ -1148,7 +1148,7 @@ function Drive.init(G)
     if G.interiorEngineOff then thr = 0 end   -- 驾驶员显示器上按了熄火（Interior.lua）：再按起动才走得了
     -- 没有炮塔的车（SU-100 这类，VehDefs turret.arc）：自己不打方向、瞄的地方在炮的射界外面——车体自己转过去对准（同战雷歼击车），
     --   超出 6° 以上满舵；按住 A / D 照常自己转
-    if str == 0 and st.arcPull and st.arcPull ~= 0 and d.turret and d.turret.arc then
+    if str == 0 and st.arcPull and st.arcPull ~= 0 and d.turret and (d.turret.arc or st.travDead) then
       str = math.clamp(st.arcPull / 6, -1, 1)
       st.arcSteerT = os.clock()   -- 这一下车体是自己转的：没有稳定器时瞄准线也不跟着车体转（下面镜头那里），不然越转瞄得越偏、转个不停
     end
@@ -1655,18 +1655,26 @@ function Drive.init(G)
     end
     -- 手动方式：炮塔动力关了，手摇方向机、高低机（每秒十来度、几度）
     local manual = f.mode == 3
-    local trav = d.turret.trav * (manual and 0.22 or 1) * ((st.em and st.em:GetAttribute("WtTrav")) or 1)   -- 炮塔驱动坏了 / 炮长没了：转得慢（Wt.lua）
+    local wtTrav = (st.em and st.em:GetAttribute("WtTrav")) or 1   -- 方向机打坏（0）/ 炮长没了（0.5）（Wt.lua）
+    local trav = d.turret.trav * (manual and 0.22 or 1) * wtTrav
       * ((st.em and st.em:GetAttribute("ModTrav")) or 1)   -- 研究了改装「炮塔驱动」：转得快（WtMods）
     st.ty = (st.ty + math.clamp(angDiff(st.ty, wantYaw), -trav * dt, trav * dt)) % 360
     -- 没有炮塔的车（SU-100 这类）：炮只在射界里转（VD.arcYaw）；瞄的地方在射界外面，记下超出多少（physics 里车体自己转过去）。
     --   正后方附近（超出 150° 以上）左右来回跳的时候保持原来那边，不然车体左右抽
-    if d.turret.arc then
-      st.ty = VD.arcYaw(d, st.ty)
-      local over = VD.arcOver(d, wantYaw)
+    --   方向机打坏（用户 11-28「方向机也要能被打坏」）：炮塔定在那儿不转，同没有炮塔的车一样车体自己转过去对准（自己按 A / D 照常）
+    st.travDead = wtTrav <= 0
+    if d.turret.arc or st.travDead then
+      if d.turret.arc then st.ty = VD.arcYaw(d, st.ty) end
+      local over = d.turret.arc and VD.arcOver(d, wantYaw) or angDiff(st.ty, wantYaw)
+      if st.travDead and math.abs(over) < 0.8 then over = 0 end
       if st.arcPull and math.abs(over) > 150 and math.sign(over) ~= math.sign(st.arcPull) and st.arcPull ~= 0 then over = -over end
       st.arcPull = over
+    else
+      st.arcPull = nil
     end
-    st.gp = approach(st.gp, math.clamp(wantPitch, d.turret.elev[1], d.turret.elev[2]), (manual and 6 or 35) * dt)
+    -- 高低机打坏：炮管俯仰定住（Wt.lua WtElev）
+    local elevOk = not (st.em and st.em:GetAttribute("WtElev") == false)
+    if elevOk then st.gp = approach(st.gp, math.clamp(wantPitch, d.turret.elev[1], d.turret.elev[2]), (manual and 6 or 35) * dt) end
     -- 遥控武器站（M1A2 的 CROWS）：自己转向准心、M2 自己俯仰（用户：机枪也要能转动），比炮塔快
     --   车长单独操纵它的时候（车里看 CROWS 屏：Interior.lua 给 st.rwsPt）朝车长瞄的那一点，炮塔还归炮长的准星
     if d.rws then

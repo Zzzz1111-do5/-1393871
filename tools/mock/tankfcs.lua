@@ -38,7 +38,7 @@ G.pushOne(P)
 R.run(1)
 local C = T.C
 if C.menuShown and C.menuShown() then C.menuEnter() end
-T.actAs(me, "deploy", "rifle", "camp")
+T.actAs(me, "deploy", "rifle", "base")   -- 11-28：「camp」现在的默认图上没有（人没出生、上不了车），同 ammofire 用两边的基地
 R.run(1.5)
 local RS = R.services.ReplicatedStorage
 local VD = R.require(RS:FindFirstChild("VehDefs"))
@@ -204,6 +204,12 @@ print("③ 测了距开炮（穿甲弹）")
 tgt.hp = 1e6   -- 靶车打不坏（几发都打同一辆）
 check(st.fcs.am == BAL.GUN.gun120[1] or VEH ~= "m1a2", "默认弹种 " .. tostring(st.fcs.am))
 local hit, v0 = shoot()
+-- 钢针（用户 11-28「钢针打出去的效果跟尾烟要有区别」）：M829A3 打出去炮口外面弹托三瓣飞开、弹芯细（不冒烟）
+local sab = G.shots[#G.shots] and G.shots[#G.shots].sab
+check(sab == "fs", "服务器认得这是钢针（尾翼稳定脱壳穿甲弹，sab = " .. tostring(sab) .. "）")
+check(C.fxSabotSeen ~= nil and C.fxSabotSeen >= 3, "炮口外面弹托三瓣飞开（" .. tostring(C.fxSabotSeen) .. " 瓣）")
+-- 用户 11-28「然后钢针打出去的尾烟也改成战雷那样的」：后面拖一道细的淡白烟线（Trail），不是导弹那样一团团的烟
+check(C.fxDartTrails ~= nil and C.fxDartTrails >= 1, "钢针后面拖一道细的淡白尾迹（" .. tostring(C.fxDartTrails) .. " 条）")
 check(math.abs(v0 - BAL.AMMO[st.fcs.am].v0) < 30, string.format("服务器打出去 %.0f 米 / 秒（%s 初速 %d）", v0, BAL.AMMO[st.fcs.am].name, BAL.AMMO[st.fcs.am].v0))
 check(hit, "打中了靶车（剩 " .. math.floor(tgt.hp) .. "）")
 local midAp = report("穿甲弹")

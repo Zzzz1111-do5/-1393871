@@ -1,4 +1,4 @@
--- 自动生成（tools/i18n/build.py），别手改：fr 的译文（2192 / 2349 条）
+-- 自动生成（tools/i18n/build.py），别手改：fr 的译文（2193 / 2350 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -1619,11 +1619,12 @@ return {
     ["wt.m.ammoH"] = "Munitions de caisse",
     ["wt.m.barrel"] = "Tube",
     ["wt.m.breech"] = "Culasse",
+    ["wt.m.edrive"] = "Mécanisme de pointage en hauteur",
     ["wt.m.engine"] = "Moteur",
     ["wt.m.fuelL"] = "Réservoir gauche",
     ["wt.m.fuelR"] = "Réservoir",
     ["wt.m.optics"] = "Optique",
-    ["wt.m.tdrive"] = "Entraînement de tourelle",
+    ["wt.m.tdrive"] = "Mécanisme de rotation de tourelle",
     ["wt.m.trackL"] = "Chenille gauche",
     ["wt.m.trackR"] = "Chenille droite",
     ["wt.m.trans"] = "Transmission",
@@ -1633,9 +1634,10 @@ return {
     ["wt.ms.ammo"] = "MUN",
     ["wt.ms.barrel"] = "TUBE",
     ["wt.ms.breech"] = "CUL",
+    ["wt.ms.edrive"] = "ÉLÉ",
     ["wt.ms.engine"] = "MOT",
     ["wt.ms.fuel"] = "CAR",
-    ["wt.ms.tdrive"] = "ENT",
+    ["wt.ms.tdrive"] = "ROT",
     ["wt.ms.track"] = "CHE",
     ["wt.ms.trans"] = "TRN",
     ["wt.mslAct"] = "Autodirecteur du missile actif",
@@ -1704,8 +1706,6 @@ return {
     ["wt.xrBurst"] = "Pénétrations en rafale ×{1}",
     ["wt.xrJet"] = "JET DE CHARGE CREUSE · pén. {1} / eff. {2} mm",
     ["wt.xrJetB"] = "JET MÉTALLIQUE · pén. {1} / eff. {2} mm",
-    ["wt.xrSlow"] = "RALENTI ×0,01",
-    ["wt.xrTitle"] = "CAMÉRA D'IMPACT · {1} · {2} m",
     ["wt.youFire"] = "L'incendie se propage",
     ["wt.youHit"] = "Touché par le souffle",
     ["wt.youNp"] = "Le blindage a tenu",
@@ -1826,6 +1826,8 @@ return {
     ["xr.d.rounds"] = "{1} / {2} coups",
     ["xr.d.turbine"] = "Turbine à gaz",
     ["xr.dead"] = "Détruit / mort",
+    ["xr.drives"] = "Rotation / pointage en hauteur",
+    ["xr.edrive"] = "Mécanisme de pointage en hauteur",
     ["xr.engine"] = "Moteur",
     ["xr.fire"] = "En feu",
     ["xr.fuel"] = "Carburant",
@@ -1843,7 +1845,7 @@ return {
     ["xr.s.kia"] = "Mort",
     ["xr.s.ok"] = "Intact",
     ["xr.s.wounded"] = "Blessé",
-    ["xr.tdrive"] = "Entraînement de tourelle",
+    ["xr.tdrive"] = "Mécanisme de rotation de tourelle",
     ["xr.track"] = "Chenilles / roues",
     ["xr.trans"] = "Transmission",
     ["xr.troops"] = "Compartiment des troupes",

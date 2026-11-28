@@ -46,6 +46,17 @@ function Fx.init(G)
   local vlMod = script.Parent:WaitForChild("VfxLib", 10)
   if not vlMod then error("缺少 Client.VfxLib（脚本没换全？）") end
   local VL = require(vlMod).new(G, FXF)
+  -- 导弹 / 火箭弹的尾焰、尾烟（MslSmoke.lua，用户 11-28「然后导弹尾烟不够真实」）：连着的烟带 + 往外胀、顺风飘的烟团、喷口一截火舌；
+  --   没有这个模块（脚本没换全）退回原来一颗颗的烟球
+  local MS = nil
+  do
+    local msMod = script.Parent:FindFirstChild("MslSmoke")
+    if msMod then
+      local ok, r = pcall(require, msMod)
+      if ok and type(r) == "table" and r.new then MS = r.new(G, FXF, VL) end
+    end
+  end
+  G.mslSmoke = MS   -- 测试用
   G.vfx = VL
   -- 夜战：一闪的光（枪口焰、炮口、爆炸）——VfxLib 的 8 盏灯轮着用（挂在 Attachment 上，亮度按 Quad Out 降到 0），不每次新建零件、灯、补间；
   --   一卡一卡（用户 11-18）：同时最多 8 盏、投影子的只 1 盏（要了 o.shadow 才给），离镜头太远（光照范围外再 400 格）的不点；Range 最大 120
@@ -1721,6 +1732,44 @@ function Fx.init(G)
     med = { gap = 0.04, s0 = 1.3, s1 = 5.5, tr = 0.32, life = 2.4, col = RGB(222, 222, 218) },
     heavy = { gap = 0.022, s0 = 2.0, s1 = 9.0, tr = 0.12, life = 4.5, col = RGB(214, 212, 206) },
   }
+  -- 脱壳（钢针 / 脱壳穿甲弹打出去那一下）：弹托几瓣（钢针三瓣、旋转稳定的两瓣）出了炮口往外张开、翻着跟头飞开，
+  --   阻力大，二三十米就慢下来往下掉，一秒多淡掉；同时最多 36 瓣在飞
+  local petals = {}
+  local function sabot(p, v, sb)
+    if #petals > 36 then return end
+    local dir = v.Unit
+    local r1 = dir:Cross((math.abs(dir.Y) < 0.9) and V(0, 1, 0) or V(1, 0, 0)).Unit
+    local r2 = dir:Cross(r1).Unit
+    local n = (sb == "ds") and 2 or 3
+    G.fxSabotSeen = (G.fxSabotSeen or 0) + n   -- 测试用：一共飞出去过几瓣
+    local a0 = math.random() * math.pi * 2
+    local fwd = math.min(v.Magnitude * 0.05, 260)
+    for i = 1, n do
+      local a = a0 + (i - 1) * (2 * math.pi / n)
+      local rad = r1 * math.cos(a) + r2 * math.sin(a)
+      local p0 = p + dir * 2.2 + rad * 0.2
+      local q = part(nil, V(0.3, 0.16, 0.8), CFrame.lookAt(p0, p0 + dir), RGB(112, 116, 112), Enum.Material.Metal, 0)
+      q.Name = "Sabot"
+      table.insert(petals, { p = q, pos = p0, v = dir * fwd + rad * (60 + math.random() * 50), rot = CFrame.lookAt(V(), dir) * CFrame.Angles(0, 0, a),
+        spin = V(8 + math.random() * 14, (math.random() - 0.5) * 6, (math.random() - 0.5) * 6), t = 0, life = 1.2 + math.random() * 0.4 })
+    end
+  end
+  G.fxSabots = petals   -- 测试用
+  local function stepPetals(dt)
+    for i = #petals, 1, -1 do
+      local P = petals[i]
+      P.t += dt
+      P.v = P.v * math.exp(-3.5 * dt) + V(0, -27.5 * 2.2, 0) * dt
+      P.pos += P.v * dt
+      P.rot = P.rot * CFrame.Angles(P.spin.X * dt, P.spin.Y * dt, P.spin.Z * dt)
+      P.p.CFrame = CFrame.new(P.pos) * P.rot
+      if P.t > P.life - 0.3 then P.p.Transparency = math.clamp((P.t - (P.life - 0.3)) / 0.3, 0, 1) end
+      if P.t > P.life then
+        P.p:Destroy()
+        table.remove(petals, i)
+      end
+    end
+  end
   -- 抛射的弹点火（服务器 shotIgn，或者时候到了还没收到）：发动机声、尾焰从这里开始，发动机的时间（双脉冲、助推段）从这里算
   local function ejIgnite(s)
     if not s.ejUntil then return end
@@ -1778,13 +1827,19 @@ function Fx.init(G)
     local body
     if kind == "shell" then   -- 炮弹：一道亮的曳光
       local big = e.f == "tank"
-      body = part(CYL, big and V(5, 0.45, 0.45) or V(2.6, 0.22, 0.22), CFrame.new(e.p), big and RGB(255, 236, 190) or RGB(255, 200, 120), Enum.Material.Neon, 0)
-      if big then glowOn(body, RGB(255, 220, 170), 10, 2) end
+      -- 钢针（尾翼稳定脱壳穿甲弹的长杆，用户 11-28「钢针打出去的效果跟尾烟要有区别」）/ 旋转稳定的脱壳弹：弹芯又细又快，
+      --   只看得见尾巴上一点红的曳光（不冒烟——冒烟的是导弹、火箭弹，MslSmoke.lua）；炮口外面弹托几瓣飞开（sabot 下面）
+      local dart = big and (e.sb == "fs" or e.sb == "ds")
+      body = part(CYL, dart and V(6, 0.12, 0.12) or (big and V(5, 0.45, 0.45) or V(2.6, 0.22, 0.22)), CFrame.new(e.p),
+        dart and RGB(255, 246, 228) or (big and RGB(255, 236, 190) or RGB(255, 200, 120)), Enum.Material.Neon, 0)
+      if dart then glowOn(body, RGB(255, 150, 110), 6, 1.2)
+      elseif big then glowOn(body, RGB(255, 220, 170), 10, 2) end
+      if dart and typeof(e.v) == "Vector3" and e.v.Magnitude > 1 then sabot(e.p, e.v, e.sb) end
       -- 坦克炮弹的曳光管（用户 11-22 晚：开镜开炮看得见炮弹从左上方落下去）：一两公里外弹体不到一个像素，
       --   曳光管是一个一直这么大的亮点（屏幕上几个像素，越远越看得见光点、看不出大小），被地形、车挡住就看不见；飞两三秒烧完
       if big and e.tr then
         local bb = Instance.new("BillboardGui")
-        bb.Size = UDim2.fromOffset(9, 9)
+        bb.Size = dart and UDim2.fromOffset(6, 6) or UDim2.fromOffset(9, 9)   -- 钢针的曳光小一点、偏红
         bb.LightInfluence = 0
         bb.AlwaysOnTop = false
         bb.MaxDistance = 20000
@@ -1794,7 +1849,7 @@ function Fx.init(G)
         dotF.AnchorPoint = Vector2.new(0.5, 0.5)
         dotF.Position = UDim2.fromScale(0.5, 0.5)
         dotF.Size = UDim2.fromScale(1, 1)
-        dotF.BackgroundColor3 = RGB(255, 132, 70)
+        dotF.BackgroundColor3 = dart and RGB(255, 78, 50) or RGB(255, 132, 70)
         dotF.BorderSizePixel = 0
         local cr = Instance.new("UICorner")
         cr.CornerRadius = UDim.new(0.5, 0)
@@ -1807,6 +1862,28 @@ function Fx.init(G)
         bb.Parent = body
       end
       flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, gs = e.gs or 1, dr = e.dr, t = 0, kind = kind, trailT = 0, tracer = big and e.tr or nil }
+      -- 钢针的尾迹（用户 11-28「然后钢针打出去的尾烟也改成战雷那样的」）：战雷里钢针飞过去，曳光剂烧出一道又细又直的淡白烟线，
+      --   一两秒里慢慢变宽、淡掉、留在弹道上（打中了也不马上没）——不像导弹那样一团团往外翻、拖很久（MslSmoke.lua）。
+      --   一条 Trail（引擎画的面向镜头的带子，一发一个），挂在一个跟着弹走的空零件上：弹没了带子停下来自己淡完；曳光管烧完（3 秒多）不再拖
+      if dart and e.tr then
+        local tc = part(nil, V(0.2, 0.2, 0.2), body.CFrame, RGB(255, 255, 255), Enum.Material.SmoothPlastic, 1)
+        tc.Name = "DartTrail"
+        local a0, a1 = Instance.new("Attachment"), Instance.new("Attachment")
+        a0.Position, a1.Position = V(0, 0.16, 0), V(0, -0.16, 0)
+        a0.Parent, a1.Parent = tc, tc
+        local tr = Instance.new("Trail")
+        tr.Attachment0, tr.Attachment1 = a0, a1
+        tr.FaceCamera = true
+        tr.Lifetime = 1.6
+        tr.MinLength = 0.2
+        tr.Color = ColorSequence.new(RGB(236, 236, 232))
+        tr.Transparency = NumberSequence.new({ NumberSequenceKeypoint.new(0, 0.42), NumberSequenceKeypoint.new(0.2, 0.55), NumberSequenceKeypoint.new(1, 1) })
+        tr.WidthScale = NumberSequence.new({ NumberSequenceKeypoint.new(0, 1), NumberSequenceKeypoint.new(1, 3.8) })
+        tr.LightEmission, tr.LightInfluence = 0.15, 0.7
+        tr.Parent = tc
+        flying[e.id].trailP, flying[e.id].trail = tc, tr
+        G.fxDartTrails = (G.fxDartTrails or 0) + 1   -- 测试用
+      end
       if G.onTankShot and big then pcall(G.onTankShot, e, flying[e.id]) end   -- 测试用：火控测试看曳光弹在镜里怎么走
       return
     elseif kind == "grenade" then
@@ -1823,7 +1900,7 @@ function Fx.init(G)
       glow.Name = "Glow"
       glow.Parent = body
     end
-    flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, t = 0, kind = kind, trailT = 0, half = body.Size.X / 2 + 0.1 }
+    flying[e.id] = { body = body, p = e.p, v = e.v, g = e.g, t = 0, kind = kind, trailT = 0, half = body.Size.X / 2 + 0.1, w = e.w }
     if (kind == "rocket" or kind == "missile") and not mine(e) then
       G.sfx((kind == "missile" and (e.w == "asm" or e.w == "sam")) and "msl" or "rkt", e.p, { vol = aw and 1 or 0.85 })
     end
@@ -1838,9 +1915,14 @@ function Fx.init(G)
     if s and G.onShotEnd then G.onShotEnd(id, s) end
     if s then
       stopRoar(s)
+      if MS and s.sm then MS.stop(s) end   -- 尾烟留到散完
       if s.body then s.body:Destroy() end
       if s.wm then for _, p in ipairs(s.wm.parts) do p:Destroy() end end
       if s.glow then s.glow:Destroy() end
+      if s.trailP then   -- 钢针的尾迹：停在打中的地方，带子自己淡完再收
+        s.trail.Enabled = false
+        Debris:AddItem(s.trailP, (s.trail.Lifetime or 1.6) + 0.2)
+      end
       flying[id] = nil
     end
   end
@@ -1901,6 +1983,16 @@ function Fx.init(G)
             s.plasma = true
             for _, q in ipairs(s.wm.parts) do q.Color = q.Color:Lerp(RGB(255, 140, 70), 0.55) q.Material = Enum.Material.Neon end
           end
+        elseif s.kind == "missile" and MS then
+          -- 尾烟按型号（MslSmoke.lua）：助推 + 续航的发动机前 35% 是助推段（浓、火舌长），续航段细、淡；双脉冲第二次点火另起一条
+          local aw = s.aw
+          local ph = 1
+          if aw and not aw.cruise then
+            local b = aw.burn or s.burn or 3
+            if tm >= b then ph = "p2"
+            elseif aw.mt == "bs" then ph = (tm < b * 0.35) and "boost" or "sus" end
+          end
+          MS.step(s, cf, s.half + 0.4, dt, burning, AD.smokeOf(aw, tm), ph, aw and aw.shape and aw.shape.d)
         elseif s.kind == "missile" and burning then
           -- 尾烟按型号（AirDefs 的 smoke；用户 11-24 夜：「不同导弹尾烟……都是不一样的」）：低烟发动机细、淡、散得快（AIM-120、AIM-9X、霹雳-15），
           --   老式发动机、助推器又粗又浓、挂在天上很久（AIM-54、57E6 的助推段、巡航弹起飞那一下）；发动机一关就不冒烟（只靠惯性滑翔）
@@ -1918,10 +2010,12 @@ function Fx.init(G)
         s.body.CFrame = CFrame.new(s.p)
       elseif s.kind == "shell" or s.kind == "bomb" then
         s.body.CFrame = CFrame.lookAt(s.p, s.p + s.v) * CFrame.Angles(0, math.pi / 2, 0)
+        if s.trailP then s.trailP.CFrame = s.body.CFrame end
         if s.tracer and not s.burnt and s.t > 3.2 then   -- 曳光管烧完了（约 3 秒、四五公里）
           s.burnt = true
           local g = s.body:FindFirstChildOfClass("BillboardGui")
           if g then g.Enabled = false end
+          if s.trail then s.trail.Enabled = false end   -- 钢针的尾迹也不再拖
         end
       elseif s.kind == "smoke" then   -- 烟幕弹：小罐子，后面拖一点白烟
         s.body.CFrame = CFrame.new(s.p)
@@ -1939,13 +2033,26 @@ function Fx.init(G)
         local g = s.body:FindFirstChild("Glow")
         local back = s.half or 1.2
         if g then g.CFrame = CFrame.new(s.p - s.v.Unit * back) end
-        s.trailT += dt
-        if s.trailT > 0.04 then   -- 尾烟（舰艇导弹的粗一些）
-          s.trailT = 0
-          local k = math.max(1, back / 1.6)
-          local sm = part(BALL, V(1, 1, 1) * k, CFrame.new(s.p - s.v.Unit * (back + 0.3)), RGB(200, 200, 200), Enum.Material.SmoothPlastic, 0.3)
-          tween(sm, 1.2 * k, { Size = V(3.5, 3.5, 3.5) * k, Transparency = 1 })
-          Debris:AddItem(sm, 1.25 * k)
+        if MS and (s.kind == "missile" or s.kind == "rocket") then
+          -- 尾烟（MslSmoke.lua）：火箭弹的发动机烧一秒多就灭（后面靠惯性飞、不冒烟）；舰艇导弹先是助推器的浓烟，然后续航
+          local ship = s.w == "asm" or s.w == "sam"
+          local on = (s.kind ~= "rocket") or s.t < 1.2
+          local cls, ph = "med", 1
+          if ship then
+            cls = (s.t < 2.5) and "heavy" or ((s.w == "asm") and "low" or "med")
+            ph = (s.t < 2.5) and "boost" or "sus"
+          end
+          MS.step(s, cf * CFrame.Angles(0, -math.pi / 2, 0), back + 0.3, dt, on, cls, ph, back * 0.4)
+          if g then g.Transparency = on and 0 or 1 end
+        else
+          s.trailT += dt
+          if s.trailT > 0.04 then   -- 尾烟（舰艇导弹的粗一些）
+            s.trailT = 0
+            local k = math.max(1, back / 1.6)
+            local sm = part(BALL, V(1, 1, 1) * k, CFrame.new(s.p - s.v.Unit * (back + 0.3)), RGB(200, 200, 200), Enum.Material.SmoothPlastic, 0.3)
+            tween(sm, 1.2 * k, { Size = V(3.5, 3.5, 3.5) * k, Transparency = 1 })
+            Debris:AddItem(sm, 1.25 * k)
+          end
         end
       end
       if s.t > ((s.kind == "bomb") and 40 or (s.hyper and 95 or ((s.kind == "shell") and 65 or 15))) then endShot(id) end   -- 炮弹：等服务器的 shotEnd（11-26 原来 15 秒就删，远的弹半路没了）
@@ -2706,6 +2813,7 @@ function Fx.init(G)
     stepGuns()
     stepGunSnd()
     if #drops > 0 then stepDrops(dt or 1 / 60) end
+    if #petals > 0 then stepPetals(dt or 1 / 60) end
   end
 end
 

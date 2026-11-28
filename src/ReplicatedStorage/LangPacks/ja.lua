@@ -1,4 +1,4 @@
--- 自动生成（tools/i18n/build.py），别手改：ja 的译文（2273 / 2349 条）
+-- 自动生成（tools/i18n/build.py），别手改：ja 的译文（2274 / 2350 条）
 --   k：Lang.lua 的键 → 译文；p：代码里的中英对照（G.L）→ 译文（繁中按简体原文查，别的语言按英文原文查）；缺的游戏里退回英文 / 简体
 return {
   k = {
@@ -1694,11 +1694,12 @@ return {
     ["wt.m.ammoH"] = "車体弾薬",
     ["wt.m.barrel"] = "砲身",
     ["wt.m.breech"] = "砲尾",
+    ["wt.m.edrive"] = "俯仰装置",
     ["wt.m.engine"] = "エンジン",
     ["wt.m.fuelL"] = "左燃料タンク",
     ["wt.m.fuelR"] = "燃料タンク",
     ["wt.m.optics"] = "光学装置",
-    ["wt.m.tdrive"] = "砲塔駆動",
+    ["wt.m.tdrive"] = "旋回装置",
     ["wt.m.trackL"] = "左履帯",
     ["wt.m.trackR"] = "右履帯",
     ["wt.m.trans"] = "変速機",
@@ -1708,9 +1709,10 @@ return {
     ["wt.ms.ammo"] = "弾",
     ["wt.ms.barrel"] = "身",
     ["wt.ms.breech"] = "尾",
+    ["wt.ms.edrive"] = "俯",
     ["wt.ms.engine"] = "エ",
     ["wt.ms.fuel"] = "燃",
-    ["wt.ms.tdrive"] = "駆",
+    ["wt.ms.tdrive"] = "旋",
     ["wt.ms.track"] = "履",
     ["wt.ms.trans"] = "変",
     ["wt.mslAct"] = "ミサイルのシーカー作動",
@@ -1779,8 +1781,6 @@ return {
     ["wt.xrBurst"] = "連続貫通 ×{1}",
     ["wt.xrJet"] = "成形炸薬噴流 · 貫徹 {1} / 等価 {2} mm",
     ["wt.xrJetB"] = "金属噴流 · 貫徹 {1} / 等価 {2} mm",
-    ["wt.xrSlow"] = "スロー ×0.01",
-    ["wt.xrTitle"] = "命中カメラ · {1} · {2} m",
     ["wt.youFire"] = "延焼中",
     ["wt.youHit"] = "爆風を受けた",
     ["wt.youNp"] = "装甲が防いだ",
@@ -1902,6 +1902,8 @@ return {
     ["xr.d.rounds"] = "{1} / {2} 発",
     ["xr.d.turbine"] = "ガスタービン",
     ["xr.dead"] = "破壊 / 戦死",
+    ["xr.drives"] = "旋回装置 / 俯仰装置",
+    ["xr.edrive"] = "俯仰装置",
     ["xr.engine"] = "エンジン",
     ["xr.era"] = "ERA",
     ["xr.fire"] = "火災",
@@ -1920,7 +1922,7 @@ return {
     ["xr.s.kia"] = "戦死",
     ["xr.s.ok"] = "健全",
     ["xr.s.wounded"] = "負傷",
-    ["xr.tdrive"] = "砲塔駆動",
+    ["xr.tdrive"] = "旋回装置",
     ["xr.track"] = "履帯 / 車輪",
     ["xr.trans"] = "変速機",
     ["xr.troops"] = "兵員室",

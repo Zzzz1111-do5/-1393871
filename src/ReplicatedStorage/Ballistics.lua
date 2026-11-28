@@ -217,6 +217,16 @@ function B.superElev(a, xm, los)
 end
 
 -- 游戏里用的：初速（格 / 秒）、阻力系数（每格）、重力倍数（Ents / Fx 的 GRAV = workspace.Gravity × 0.55 乘 gscale）
+-- 脱壳弹（打出去炮口外面弹托几瓣飞开；用户 11-28「钢针打出去的效果跟尾烟要有区别」：钢针 = 尾翼稳定脱壳穿甲弹的长杆）：
+--   fs 尾翼稳定脱壳穿甲弹（长杆，初速一千三百米以上）/ ds 旋转稳定的脱壳穿甲弹（APDS：豹 1 的 DM13、M60A1 的 M392）；全口径、次口径的没有
+function B.sabotOf(a)
+  if type(a) ~= "table" or a.cls ~= "ap" then return nil end
+  if a.sub == "fs" or a.sub == "ds" then return a.sub end
+  if string.find(a.name or "", "APDS", 1, true) then return "ds" end
+  if (a.v0 or 0) >= 1300 then return "fs" end
+  return nil
+end
+
 function B.launchArgs(a)
   return a.v0 * S, a.k / S, B.G / (workspace.Gravity * 0.55)
 end

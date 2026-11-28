@@ -615,7 +615,7 @@ function Armor.init(G)
       elseif a then
         local v0, drag, gs = BAL.launchArgs(a)
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * v0, grav = true, gscale = gs, drag = drag, tracer = a.tr, cls = a.cls, w = ww, src = S, ignore = { e.model, P.char },
-          life = 60 })   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
+          life = 60, sab = BAL.sabotOf and BAL.sabotOf(a) or nil })   -- sab：脱壳弹（客户端画弹托飞开、细的弹芯）   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
       else
         G.launch({ kind = "shell", pos = mz.Position, vel = gdir * w.speed, grav = true, gscale = w.drop / 0.55, w = w, src = S, ignore = { e.model, P.char },
           life = 60 })   -- 用户 11-26「炮弹飞久了会消失」：飞到落地 / 打中 / 出地图才收（Ents.lua），60 秒保底
