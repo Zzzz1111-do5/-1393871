@@ -1826,7 +1826,7 @@ return {
 local Config = {}
 
 Config.Version = "1.0-alpha"
-Config.Build = "11-28 17:37 26759ae"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
+Config.Build = "11-28 18:08 e50a1d9"   -- tools/build.luau 生成地图文件 / 只换脚本的更新包时换成「构建日期 提交号」：主菜单右下、开服时的输出窗口都写着，一看就知道新脚本换没换上
 Config.SaveKey = "IslandAssault_v1"   -- DataStore 名字（改了就是新存档；游戏改过名（暗剑：登岛战 → Roblox全面大战场 → 全面大战场 / Island Assault）照旧用这个，玩家的军衔、经验不丢）
 -- 存档怎么写（Store.lua，用户 11-26「账号的载具解锁要能保留」）：gap 同一个人两次写至少隔几秒（Roblox 同一个键 6 秒才能写一次，多的排队）、
 --   auto 每隔几秒看一次存档变没变（变了就存）、closeWait 关服时最多等几秒把还没写完的写完（Roblox 给 BindToClose 30 秒）
@@ -35202,6 +35202,9 @@ Map.SEA_FAR_COLOR = Color3.fromRGB(24, 58, 72)  -- 客户端远处那圈海面�
 Map.SHELF = 0
 Map.MAXH = 4500        -- 最高的地形（Map.rayGround 只在这以下一步步找落点）：两座角峰四千三
 Map.RES = 4
+-- 后台还没写到的起伏块先垫的那层薄底（World.lua terrainDesert 的 underlay）：按这一块最低的地面往下 3 格、用雪铺（原来一律在平地往下 8 格铺沙——
+--   这张图的「沙」是黑沙滩的深灰，没写到的一块块成了深灰的大坑，用户 11-28 晚截图「雪山图这一块一直加载不」）
+Map.UNDERLAY_FOLLOW = true
 Map.CEIL = 7200        -- 飞机最高飞到多高（Fly.lua、Air.lua：钢城、沙海 2600；这里角峰四千多格，上面还要留两三千格飞）
 Map.HALF = 12000
 local PLAIN = 12       -- 谷底平地（4 的倍数：FillBlock 铺出来和逐列写的一样高）
@@ -41340,6 +41343,39 @@ return {
 		src = "Red Bear Community：88mm_cannon_body_EXT_、76mm_Cannon_Body_EXT_01" },
 	tankGunIn = { ids = { 18221692752, 18221699254 }, vol = 1.6, s = { 0.82, 0.9 }, len = 4,
 		src = "Red Bear Community：88mm_cannon_body_INT_04、88mm_cannon_body_INT" },
+	-- 坦克炮分层（用户 11-28 晚「坦克开炮声音 炮弹击中地面的声音和效果没有还原战雷」，Fx.lua tankGunSnd）：上面那条炮声本体以外再叠——
+	--   都是 ProSoundEffects（描述按 economy 接口查过）；reg：每条录音截哪一段（秒，下载 Ogg 按包络、频谱挑的：起爆前一点点到下一个声音之前）
+	--   炸裂 gunCrack：迫击炮爆炸——开头 50 毫秒一下尖的（1.6～4 千赫），紧跟一记很沉的低频（四五十赫兹，0.4～0.8 秒散完），当炮口那一下
+	--     （Mortar Explosion 4 后面又炸一下、6 跟 5 是同一条，不用）
+	gunCrack = { ids = { 9116973350, 9116973348, 9116973611, 9116973607 }, vol = 1.5, s = { 0.86, 0.94 }, len = 1.2,
+		src = "ProSoundEffects：Mortar Explosion 1、2、3、5" },
+	--   低频冲击 gunSub：压力波那一记「咚」——Big Low-End Impacts 4（0.2 秒起爆、三四十赫兹、两秒散完）、Deep Hits Big Reverberant Booms（开头那一记）
+	gunSub = { ids = { 9113436063, 9125484367 }, vol = 1.2, s = { 0.96, 1.02 }, len = 2.2,
+		reg = { [9113436063] = { 0.17, 2.3 }, [9125484367] = { 0, 1.6 } },
+		src = "ProSoundEffects：Big Low-End Impacts 4、Deep Hits Big Reverberant Booms Rumbling Tail" },
+	--   回声 gunTail：炮声撞到山、楼上滚回来的一长串低沉轰隆——Thunder Distant Boom Thud Rapid Hits 13（0.5～3 秒、八九十赫兹）、
+	--     Thunder Cracks Big Rumbling Blasts Booming 2（0.25 秒起、一秒以后剩低沉的滚动）
+	gunTail = { ids = { 9120017668, 9120016021 }, vol = 1.3, s = { 0.92, 1.04 }, len = 3.4,
+		reg = { [9120017668] = { 0.4, 3.6 }, [9120016021] = { 0.2, 3.8 } },
+		src = "ProSoundEffects：Thunder Distant Boom Thud Rapid Hits 13、Thunder Cracks Big Rumbling Blasts Booming 2" },
+	--   远处 gunFar：一两公里外听到的一记闷闷的「咚」——Artillery Distant 2 最后那一记（1.25 秒起、七八十赫兹、三秒多散完）、Artillery Distant 3 第一记
+	gunFar = { ids = { 9113169432, 9113169435 }, vol = 1.8, s = { 0.95, 1.05 }, len = 3.4,
+		reg = { [9113169432] = { 1.18, 4.6 }, [9113169435] = { 0.82, 1.36 } },
+		src = "ProSoundEffects：Artillery Distant 2、Artillery Distant 3（Deep Booms, Fire and Deep Explosions）" },
+	--   车里的炮闩、抛壳 gunMech：自行火炮车里装弹的金属咔嗒（Howitzer Tank 12、9：Interior, Loading Shell, Large Metal Clunks, Springy Ring Off）
+	gunMech = { ids = { 9114842503, 9114842256 }, vol = 3, s = { 0.9, 1 }, len = 1.4,
+		reg = { [9114842503] = { 0.02, 1.15 }, [9114842256] = { 0, 1.6 } },
+		src = "ProSoundEffects：Howitzer Tank 12、Howitzer Tank 9" },
+	-- 炮弹打在地上（Fx.lua kineticHit、boomSound）：
+	--   dirtHit 穿甲弹、钢针扎进土里：一下脆的「砰」+ 掀起来的土噼里啪啦落下（Dirt Explosion：Sharp Bang, Fallout；短的这三条）
+	dirtHit = { ids = { 9114086657, 9114086949, 9114086583 }, vol = 1.4, s = { 0.98, 1.1 }, len = 1.9,
+		src = "ProSoundEffects：Dirt Explosion 1、1、4（Sharp Bang, Blast, Fallout）" },
+	--   dirtBlast 榴弹、炸弹炸在土里：爆炸声底下叠一层土被掀起来、砸下来的声音（Dirt Explosion 长的这三条）
+	dirtBlast = { ids = { 9114086405, 9114086424, 9114087096 }, vol = 1.3, s = { 0.88, 0.98 }, len = 3.6,
+		src = "ProSoundEffects：Dirt Explosion 1、2、3（Sharp Bang, Blast, Fallout）" },
+	--   debrisRain 近处炸完半秒，碎土、石子哗啦啦落一地（Debris Rain：Short Gravel and Dirt Falls）
+	debrisRain = { ids = { 9114034406, 9114034463, 9114034537 }, vol = 0.9, s = { 0.95, 1.05 }, len = 3.8,
+		src = "ProSoundEffects：Debris Rain 1–3（Short Gravel and Dirt Falls）" },
 	-- 爆炸：大（航弹、导弹）、中（坦克炮弹、火箭弹）、小（手雷、迫击炮、小口径）
 	boomL = { ids = { 18245339193, 9117876720 }, vol = 2, s = { 0.92, 1.02 }, len = 7,
 		src = "Red Bear Community：500lb_bomb_explosion_close_03；ProSoundEffects：Power Explosions Big Heavy Searing Boom 1" },
@@ -64888,6 +64924,29 @@ local function terrainDesert(T, onProgress, G)
     end
     return v
   end
+  -- 起伏小块写全之前垫的那层薄底（后台写到它之前这里不是个窟窿：车、人不会掉下去，天上看不到洞）：原来一律在平地往下 8 格铺沙——
+  --   雪山图的「沙」染成了黑沙滩的深灰，没写到的一块块成了深灰的大坑，车、树、靶车悬在半空（用户 11-28 晚截图「雪山图这一块一直加载不」）。
+  --   图上开了 Map.UNDERLAY_FOLLOW（雪山）：按这一块 3 × 3 个点里最低的地面往下 3 格铺、用这一块中间的地面材质（雪），
+  --   后台写全之前看着是一块略低一点的雪地，写的时候整块盖掉
+  local function underlay(x0, z0)
+    local yTop, mat = PH, MAT.Sand
+    if Map.UNDERLAY_FOLLOW then
+      local hf = Map.voxelHeight or Map.height
+      local lo = math.huge
+      for i = 0, 2 do
+        for k = 0, 2 do
+          local h = hf(x0 + 16 + i * 112, z0 + 16 + k * 112)
+          if h < lo then lo = h end
+        end
+      end
+      if lo > 2 and lo < 1e6 then
+        yTop = math.floor((lo - 3) / 4) * 4
+        mat = Map.material(x0 + CH / 2, z0 + CH / 2, lo, 0)
+        if mat == MAT.Water or mat == MAT.Air then mat = MAT.Snow end
+      end
+    end
+    T:FillBlock(CF(x0 + CH / 2, yTop - 2, z0 + CH / 2), V(CH, 4, CH), mat)
+  end
   local function tileFlat(ix, iz, onRelief)
     local tk = ix * 4096 + iz
     if tileDone[tk] then return false end
@@ -64897,6 +64956,7 @@ local function terrainDesert(T, onProgress, G)
     for i = 0, 7 do
       for k = 0, 7 do
         K[i * 8 + k + 1] = kindAt(tx + i * CH, tz + k * CH)
+        if bg and k % 2 == 1 then step() end   -- 后台：一块要打 81 个点，64 块一口气算完要几十毫秒（服务器顿一下）
       end
     end
     local used = {}
@@ -64923,7 +64983,7 @@ local function terrainDesert(T, onProgress, G)
           local x0, z0 = tx + i * CH, tz + k * CH
           -- onRelief 返回 true：这块马上就写全，不用垫；否则先垫一层薄底——后台写到它之前这里不是个窟窿（车、人不会掉下去，天上看不到洞）
           if not reliefDone[ckey(x0, z0)] and not (onRelief and onRelief(x0, z0)) then
-            T:FillBlock(CF(x0 + CH / 2, PH - 2, z0 + CH / 2), V(CH, 4, CH), MAT.Sand)
+            underlay(x0, z0)
             diag.fills += 1
             if bg then step() else pace() end
           end
@@ -65006,37 +65066,65 @@ local function terrainDesert(T, onProgress, G)
     local bgT0, bgSay = os.clock(), os.clock() + 30
     local urgentTiles, urgentRelief = {}, {}
     local seen = {}
-    local function want(p)   -- 这一点身边 ±6 个小块：还没铺的大块、还没写的起伏块排进插队
+    -- 这一点身边 ±6 个小块：还没铺的大块、还没写的起伏块排进插队。pri 0：真人（和他开的车、试驾的靶子）——先写；
+    --   pri 1：电脑开的车、机器人（开车按 Map.height 算，不用看画面）——真人身边的都写完了再写。用户 11-28 晚截图「雪山图这一块一直加载不」：
+    --   原来真人和十几辆电脑车身边的块混在一起按离各自多远排，真人身边那几块要跟两千多块抢
+    local function want(p, pri, rad)
+      pri, rad = pri or 0, rad or 6
       local cx0, cz0 = math.floor(p.X / CH), math.floor(p.Z / CH)
-      local here = ckey(cx0, cz0)
+      local here = ckey(cx0, cz0) * 2 + pri
       if seen[here] then return end   -- 好几个人挤在同一块：看一次就够
       seen[here] = true
-      for dx = -6, 6 do
-        for dz = -6, 6 do
+      for dx = -rad, rad do
+        for dz = -rad, rad do
           local x0, z0 = (cx0 + dx) * CH, (cz0 + dz) * CH
           if math.abs(x0 + CH / 2) < SR and math.abs(z0 + CH / 2) < SR then
             local ix, iz = tileOf(x0 + 1, z0 + 1)
             if not tileDone[ix * 4096 + iz] then urgentTiles[ix * 4096 + iz] = { ix, iz } end
             local k = ckey(x0, z0)
             if kindOf[k] == nil then step() end   -- 这块的地貌还没算过（要打 81 个点）：算之前看一眼预算，扫描不再一口气算几千个点
-            if not reliefDone[k] and not urgentRelief[k] and kindAt(x0, z0) == false then urgentRelief[k] = { x0, z0, (dx * dx + dz * dz) } end
+            if not reliefDone[k] and kindAt(x0, z0) == false then
+              local sc = dx * dx + dz * dz + pri * 1000
+              local u = urgentRelief[k]
+              if not u then urgentRelief[k] = { x0, z0, sc } elseif sc < u[3] then u[3] = sc end
+            end
           end
         end
       end
     end
+    -- 每帧给后台多少：真人身边还有没写的块——8 毫秒（先把他身边写出来）；一个真人都没在场上（都在机库、主菜单）——12 毫秒（趁没人在打多写点）；
+    --   别的时候照旧 4 毫秒（开打以后服务器不卡）
+    local function setBudget()
+      local mine = false
+      for _, c in pairs(urgentRelief) do if c[3] < 1000 then mine = true break end end
+      local anyAlive = false
+      for _, Q in pairs(G and G.P or {}) do if Q.alive then anyAlive = true break end end
+      budget = (mine and 0.008) or ((not anyAlive) and 0.012) or BG_BUDGET
+      if G then G.terrainBudget, G.terrainMinePending = budget, mine end
+    end
     local function scan()
       table.clear(seen)
+      -- 真人（和他开的车、试驾的靶子）先扫、先定预算：身边 ±6 块（一千五百格）。原来十几辆电脑车也一样 ±6 块、按实体的顺序扫——
+      --   头一回扫到一块要打 81 个点定地貌，十辆车两千来块，扫完才轮到真人
       for _, pl in ipairs(Players:GetPlayers()) do
         local ch = pl.Character
         local hrp = ch and ch:FindFirstChild("HumanoidRootPart")
-        if hrp then want(hrp.CFrame.Position) end
+        if hrp then want(hrp.CFrame.Position, 0) end
       end
+      local others = {}
       for _, e in ipairs(G and G.ents or {}) do   -- 机器人、车、飞机（飞得高的不管：底下没铺好看着是远景，不会掉下去）
         if e.alive and e.root and e.root.Parent then
           local p = e.root.CFrame.Position
-          if not e.air or p.Y < (Map.PLAIN or 12) + 600 then want(p) end
+          if not e.air or p.Y < (Map.PLAIN or 12) + 600 then
+            if (e.driver ~= nil and e.driver.pl ~= nil) or e.testDummy == true or e.testDrive == true then want(p, 0)
+            else others[#others + 1] = p end
+          end
         end
       end
+      setBudget()
+      -- 电脑开的车、机器人：身边 ±3 块（开车按 Map.height 算、不用看画面；炮弹打到它们附近的地面要有地形）
+      for _, p in ipairs(others) do want(p, 1, 3) end
+      setBudget()
     end
     local function urgentStep()
       for k, t in pairs(urgentTiles) do
@@ -65057,6 +65145,9 @@ local function terrainDesert(T, onProgress, G)
       return false
     end
     local scanAt, ti, ri, sorted = 0, 1, 1, false
+    -- 据点一带的起伏块：铺大块时排进来、一块一块写（原来在铺大块那一下里一口气写全——一个大块里几十块、一块六十多毫秒，
+    --   按每帧 4 毫秒要十几秒，这期间不看真人在哪：用户 11-28 晚截图「雪山图这一块一直加载不」，真人身边那块一直排不上）
+    local hotQ, hi = {}, 1
     while true do
       if os.clock() >= scanAt then
         scanAt = os.clock() + 0.5
@@ -65064,16 +65155,23 @@ local function terrainDesert(T, onProgress, G)
         if not okS then warn("[地形] 插队扫描出错：" .. tostring(errS)) end
       end
       if not urgentStep() then
-        if ti <= #tilesLeft then
+        if hi <= #hotQ then
+          local c = hotQ[hi]
+          hi += 1
+          local k = ckey(c[1], c[2])
+          if not reliefDone[k] then
+            reliefDone[k] = true
+            reliefBg(c[1], c[2])
+          end
+        elseif ti <= #tilesLeft then
           -- ②③ 大块：据点一带的先（tilesLeft 按离据点的距离排好了）；据点圈里的起伏块跟着写全
           local t = tilesLeft[ti]
           ti += 1
           local hot = t[3] <= TILE
           local did = tileFlat(t[1], t[2], function(x0, z0)
             if hot and distTo(hots, x0 + CH / 2, z0 + CH / 2) <= 0 then
-              reliefDone[ckey(x0, z0)] = true
-              reliefBg(x0, z0)
-              return true
+              table.insert(hotQ, { x0, z0 })   -- 先垫底，紧接着一块一块写（上面 hotQ）
+              return false
             end
             queueRelief(x0, z0)
             return false
@@ -65099,7 +65197,7 @@ local function terrainDesert(T, onProgress, G)
         end
       end
       if G then
-        G.terrainRest = math.max(0, #tilesLeft - ti + 1) + math.max(0, #reliefQ - ri + 1)
+        G.terrainRest = math.max(0, #tilesLeft - ti + 1) + math.max(0, #reliefQ - ri + 1) + math.max(0, #hotQ - hi + 1)
         G.terrainTilesLeft = math.max(0, #tilesLeft - ti + 1)   -- 还没铺的大块（只减不增；terrainRest 里的起伏块是铺大块时才排进来的）
       end
       if os.clock() >= bgSay then   -- 每 30 秒说一声还剩多少（卡不卡、是不是在铺地形，对照 Output 就知道）
@@ -67214,12 +67312,16 @@ end
 -- 开服时建整张地图；地形分块写（要好几秒），写完才让人出生
 -- 小零件不投影子（用户 11-28「现在感觉有点卡」）：雪山一张图三万多块零件、一万六千块投影子——阴影图每帧要把它们再画一遍；
 --   一两格大的木桩、铁丝网、沙袋、栏杆、碎块投下的影子几乎看不出来。最长边不到 3 格、或者体积不到 6 立方格的不投影子（房子、墙、车壳照旧投）
+--   11-28 晚（「这个图非常卡顿」）：量过还有一万块在投（两边基地的防爆墙一边一千二、营房六百、谷里的工事五百）——门槛放宽：
+--   最长边不到 8 格（约 3 米）、体积不到 60 立方格、或者薄板（最薄的一边不到半格、最长边不到 24 格：栅栏、木板、铁皮）都不投；
+--   房子的墙、屋顶、桥、大的掩体照旧投
 function World.trimShadows(root)
   local n = 0
   for _, d in ipairs(root:GetDescendants()) do
     if d:IsA("BasePart") and d.CastShadow then
       local s = d.Size
-      if math.max(s.X, s.Y, s.Z) < 3 or s.X * s.Y * s.Z < 6 then
+      local mx, mn = math.max(s.X, s.Y, s.Z), math.min(s.X, s.Y, s.Z)
+      if mx < 8 or s.X * s.Y * s.Z < 60 or (mn < 0.5 and mx < 24) then
         d.CastShadow = false
         n += 1
       end
@@ -84678,6 +84780,18 @@ function Fx.init(G)
     return { id = id, vol = (cfg.vol or 1) * (vol or 1), s = { cfg.s[1] * sp, cfg.s[2] * sp } }
   end
   G.realLayer = realLayer   -- 核爆（Nuke.lua）叠自己的声音用
+  -- 真录音的一层，带这条录音自己的截取段（SoundLib 的 reg[编号]：起爆前一点点到下一个声音之前）
+  local function realCut(key, sp, vol)
+    local id, cfg = real(key)
+    if not id then return nil end
+    sp = sp or 1
+    local L = { id = id, vol = (cfg.vol or 1) * (vol or 1), s = { cfg.s[1] * sp, cfg.s[2] * sp } }
+    local n = tonumber(string.match(id, "%d+$"))
+    local r = cfg.reg and n and cfg.reg[n]
+    if r then L.reg = { r[1], r[2] } end
+    return L
+  end
+  G.realCut = realCut
   G.sndIds = { EXP = EXP, TICK = TICK, WIND = WIND, THUD = THUD, WATER = WATER }
   -- 发动机之类的循环真录音（Drive / Sail / Fly 用）：没载上返回 nil（照旧用叠出来的）
   function G.realLoop(key, parent)
@@ -84783,8 +84897,8 @@ function Fx.init(G)
     snd.Volume = math.min(10, L.vol * (o.vol or 1)) * (1 - 0.55 * muf)
     local sp = (L.s[1] + (L.s[2] - L.s[1]) * math.random()) * (o.speed or 1)
     snd.PlaybackSpeed = sp
-    snd.RollOffMinDistance = o.rmin or 40
-    snd.RollOffMaxDistance = o.rmax or 1800
+    snd.RollOffMinDistance = L.rmin or o.rmin or 40   -- 一层自己的衰减距离（坦克炮：回声、远处那一记传得远）
+    snd.RollOffMaxDistance = L.rmax or o.rmax or 1800
     if L.reg or L.loop then
       snd.PlaybackRegionsEnabled = true
       if L.reg then snd.PlaybackRegion = NumberRange.new(L.reg[1], L.reg[2]) end
@@ -84793,7 +84907,7 @@ function Fx.init(G)
         snd.LoopRegion = NumberRange.new(L.loop[1], L.loop[2])
       end
     end
-    local hi = (L.eq and L.eq[3] or 0) + (o.hiCut or 0) - 34 * muf
+    local hi = (L.eq and L.eq[3] or 0) + (o.hiCut or 0) + (L.hc or 0) - 34 * muf   -- L.hc：这一层自己再吃掉多少高音
     if L.eq or hi ~= 0 then
       local e = Instance.new("EqualizerSoundEffect")
       e.LowGain, e.MidGain, e.HighGain = L.eq and L.eq[1] or 0, L.eq and L.eq[2] or 0, math.max(-80, hi)
@@ -84853,6 +84967,49 @@ function Fx.init(G)
     end
     if o.delay and o.delay > 0.03 then task.delay(o.delay, go) else go() end
   end
+
+  -- 坦克炮的声音（用户 11-28 晚「坦克开炮声音 炮弹击中地面的声音和效果没有还原战雷」；vfire 调）：原来只放一条二战 88 炮的车外录音。
+  --   现在照战雷那样几层叠（都是真录音，SoundLib.lua）：
+  --   ① 炸裂 gunCrack：一下尖的 + 一记沉的（炮口那一下；离得越远高音吃得越多，一两公里外听不见）
+  --   ② 炮声本体 tankGun：真坦克炮的车外录音
+  --   ③ 低频冲击 gunSub：压力波那一记「咚」，近处最重
+  --   ④ 回声 gunTail：撞到山、楼上滚回来的一长串低沉轰隆，比本体晚 0.15～0.4 秒，离得越远占得越多（雪山河谷两边是山）
+  --   ⑤ 两百米起渐渐换成远处的 gunFar，一千五百米外只剩一记闷的「咚」+ 回声
+  --   口径越小放得越快越脆、越轻（k：120 / 125 毫米 = 1，105 毫米 0.86，76 毫米 0.71，57 毫米 0.62）；都按声速晚到（每秒 960 格 = 343 米）
+  --   自己在车里 / 炮长镜里开炮（inside）：车内录音 tankGunIn + 更重的低频 + 压掉高音的炸裂 + 0.3 秒后炮闩、抛壳的咔嗒 + 一点闷的回声
+  --   真录音一条都没载上：照旧放 SFX.tankGun 叠出来的
+  local function tankGunSnd(M, dd, k, inside)
+    k = math.clamp(k or 1, 0.6, 1.15)
+    local sp = (1 / k) ^ 0.35
+    local vk = 0.65 + 0.35 * k
+    local far = math.clamp((dd - 600) / 3600, 0, 1)   -- 0 近（两百米内）→ 1 一千五百米外：一公里上下还听得见一点闷了的炸裂
+    local hc = -math.min(26, dd / 55)
+    local L = {}
+    local function add(x, o2)
+      if not x then return end
+      for kk, v in pairs(o2) do x[kk] = v end
+      L[#L + 1] = x
+    end
+    if inside then
+      add(realLayer("tankGunIn", sp, vk) or realLayer("tankGun", sp, 0.8 * vk), { hc = -10, rmin = 60, rmax = 600 })
+      add(realCut("gunSub", sp, 1.3 * vk), { rmin = 80, rmax = 600 })
+      add(realCut("gunCrack", sp, 0.55 * vk), { hc = -18, rmin = 60, rmax = 600 })
+      add(realCut("gunMech", 1, 1), { delay = 0.3 + math.random() * 0.08, rmin = 30, rmax = 200 })
+      add(realCut("gunTail", sp, 0.3), { hc = -12, delay = 0.25, rmin = 100, rmax = 800 })
+    else
+      if far < 1 then
+        add(realCut("gunCrack", sp, 0.85 * vk * (1 - far)), { hc = hc, rmin = 70, rmax = 3200 })
+        add(realLayer("tankGun", sp, 0.9 * vk * (1 - 0.7 * far)), { hc = hc * 0.7, rmin = 90, rmax = 4200 })
+        add(realCut("gunSub", sp, 0.9 * vk * (1 - 0.6 * far)), { rmin = 120, rmax = 3600 })
+      end
+      if far > 0 then add(realCut("gunFar", sp, 1.1 * far * vk), { hc = hc * 0.4, rmin = 400, rmax = 9000 }) end
+      add(realCut("gunTail", sp, (0.4 + 0.6 * far) * vk), { hc = hc * 0.5, delay = 0.15 + 0.25 * math.random() + dd / 6000, rmin = 260, rmax = 9000 })
+    end
+    if #L == 0 then L = SFX.tankGun end
+    G.lastTankGun = L   -- 测试用
+    G.sfx(L, M, { must = true, delay = dd / 960, rmax = 4000 })
+  end
+  G.tankGunSnd = tankGunSnd
 
   -- 航炮：每架开火的飞机一个循环声（自己开的在耳边，别人的在炮口那里）；循环的是爆炸声起爆那一小段，一圈 = 一发（射速）
   local guns = {}
@@ -85641,7 +85798,7 @@ function Fx.init(G)
   G.impact = impact   -- 测试用
 
   -- 爆炸声按大小：小的脆，大的低沉、带回声，炸弹再叠一层滚雷似的闷响；水里的加一声哗；远处的晚一点到（声速）、高音被吃掉
-  local function boomSound(p, r, c, d, water)
+  local function boomSound(p, r, c, d, water, ground)
     if c == "gun" and d > 900 then return end
     local L
     if c == "gun" then L = { { id = EXP, vol = 0.32, s = { 1.6, 1.9 }, reg = { 0.04, 0.55 } } }
@@ -85656,6 +85813,19 @@ function Fx.init(G)
     if c ~= "gun" then   -- 真录音的爆炸：按大小挑（水里照旧叠一层水声）
       local RL = realLayer((r < 13 and "boomS") or (r < 26 and "boomM") or "boomL", (c == "bomb") and 0.92 or 1, 1)
       if RL then L = water and { RL, { id = WATER, vol = 0.9, s = { 0.62, 0.72 }, delay = 0.06 } } or { RL } end
+      -- 炸在土里（不是钢甲上、半空、水里；用户 11-28 晚「炮弹击中地面的声音……没有还原战雷」）：爆炸声底下再叠一层土被掀起来、
+      --   砸下来的声音（dirtBlast）；三百格（一百米）内半秒后碎土、石子哗啦啦落一地（debrisRain）
+      if ground and not water and r >= 9 and c ~= "flak" then
+        local DB = realCut("dirtBlast", (r >= 26) and 0.85 or 0.95, math.clamp(r / 16, 0.6, 1.3))
+        if DB then L[#L + 1] = DB end
+        if d < 300 then
+          local DR = realCut("debrisRain", 1, math.clamp(r / 20, 0.4, 1) * (1 - d / 300))
+          if DR then
+            DR.delay = 0.45 + math.random() * 0.25
+            L[#L + 1] = DR
+          end
+        end
+      end
     end
     local far = math.clamp((d - 300) / 2500, 0, 1)
     G.sfx(L, p, { delay = math.max(0, d - 250) / 960, hiCut = -16 * far, rmin = 40 + r * 6, rmax = (c == "bomb") and 9000 or 4500, must = r >= 18 })
@@ -85930,7 +86100,7 @@ function Fx.init(G)
     local water = gy < 0.3 and p.Y < 5 and not metal   -- 打在船身上（吃水线附近）算打在钢甲上，不是水柱
     local surf = (gy < 0.3) and 0 or math.max(gy, 0)
     local air = c == "flak" or ((not metal) and (p.Y - surf) > math.max(6, r * 0.6))
-    boomSound(p, r, c, d, water and not air)
+    boomSound(p, r, c, d, water and not air, not (metal or air or water))
     if d > ((c == "gun") and 1600 or ((c == "bomb" or c == "wreck") and 9000 or 5000)) then return end
     if c ~= "gun" then   -- 离得近震一下
       local shR = r * 12 + 60
@@ -86058,8 +86228,9 @@ function Fx.init(G)
   --   水面一柱细高的水。s 口径（坦克炮 2 上下、航炮 1）；一处最多 70 颗
   VL.def("kFount", function(s, v)
     local P = GPAL[v] or GPAL.d
-    return { tex = TX.SMOKE, life = { 0.9 * P.life, 1.9 * P.life }, spd = { 16 * s, 34 * s }, spread = 14, drag = 1.5, acc = V(0, -36, 0), rot = 40,
-      size = nseq(0, 0.8 * s, 0.35, 2.4 * s, 1, 4 * s), tr = nseq(0, 0.1, 0.55, 0.35, 1, 1), col = cseq(P.dust, P.dust2), prio = 2 }
+    -- 11-28 晚（「炮弹击中地面的……效果没有还原战雷」）：大一圈、留久一点、起头更实（战雷里钢针扎进土里是一股又高又实的土）
+    return { tex = TX.SMOKE, life = { 1.1 * P.life, 2.4 * P.life }, spd = { 16 * s, 34 * s }, spread = 14, drag = 1.5, acc = V(0, -36, 0), rot = 40,
+      size = nseq(0, 1.0 * s, 0.35, 3.0 * s, 1, 5 * s), tr = nseq(0, 0.05, 0.55, 0.3, 1, 1), col = cseq(P.dust, P.dust2), prio = 2 }
   end)
   VL.def("kClod", function(s, v)
     local P = GPAL[v] or GPAL.d
@@ -86068,13 +86239,13 @@ function Fx.init(G)
   end)
   VL.def("kRing", function(s, v)
     local P = GPAL[v] or GPAL.d
-    return { tex = TX.SMOKE, life = { 1.2 * P.life, 2.4 * P.life }, spd = { 6 * s, 13 * s }, dir = NID.Front, spread = { 180, 6 }, drag = 2, acc = V(0, 1.2, 0),
-      wind = true, rot = 20, size = nseq(0, 1.1 * s, 1, 4.2 * s), tr = nseq(0, 0.35, 1, 1), col = cseq(P.dust2), sq = nseq(0, -0.5, 1, -0.5), prio = 2 }
+    return { tex = TX.SMOKE, life = { 1.2 * P.life, 2.6 * P.life }, spd = { 6 * s, 13 * s }, dir = NID.Front, spread = { 180, 6 }, drag = 2, acc = V(0, 1.2, 0),
+      wind = true, rot = 20, size = nseq(0, 1.3 * s, 1, 5 * s), tr = nseq(0, 0.3, 1, 1), col = cseq(P.dust2), sq = nseq(0, -0.5, 1, -0.5), prio = 2 }
   end)
   VL.def("kHang", function(s, v)
     local P = GPAL[v] or GPAL.d
     return { tex = TX.SMOKE, life = { 6 * P.life, 10 * P.life }, spd = { 1, 3 }, spread = 60, drag = 1, wind = true, rot = 10,
-      size = nseq(0, 2 * s, 1, 6 * s), tr = nseq(0, 0.55, 1, 1), col = cseq(P.dust2), prio = 2 }
+      size = nseq(0, 2.5 * s, 1, 7.5 * s), tr = nseq(0, 0.45, 1, 1), col = cseq(P.dust2), prio = 2 }
   end)
   VL.def("kFurrow", function(s, v)
     local P = GPAL[v] or GPAL.d
@@ -86102,11 +86273,35 @@ function Fx.init(G)
       size = nseq(0, 0.8 * s, 1, 3.2 * s), tr = nseq(0, 0.3, 1, 1), col = cseq(RGB(238, 244, 248)), prio = 2 }
   end)
   local kinT, kinN = 0, 0
+  -- 穿甲弹、钢针扎进地里的声音（用户 11-28 晚「炮弹击中地面的声音和效果没有还原战雷」）：一下脆的「砰」+ 掀起来的土噼里啪啦落下
+  --   （真录音 dirtHit，口径大的沉一点；雪地闷一点），五十多米内再落一阵碎土（debrisRain）；石头上一声跳弹、冰面叮一声；
+  --   一公里内都听得见，远的按声速晚到、吃掉高音——原来只是 Roblox 自带的爆炸声截一小段拉快（又薄又尖），250 米外就没声了。
+  --   跟画面分开：远处画面只剩一小团土（LOD），声音照样放
+  local function kinSound(p, d, s, code, P)
+    if d > 2800 then return end
+    local L
+    local a = realCut("dirtHit", 1.12 - 0.06 * s, 0.55 + 0.2 * s)
+    if a then
+      a.hc = P.snow and -5 or 0
+      L = { a }
+      if d < 160 then
+        local b = realCut("debrisRain", 1, 0.25 + 0.1 * s)
+        if b then
+          b.delay = 0.25 + math.random() * 0.15
+          L[2] = b
+        end
+      end
+    else
+      L = { { id = EXP, vol = 0.5, s = { 1.45, 1.7 }, reg = { 0.03, 0.5 } } }
+    end
+    G.sfx(L, p, { rmin = 25 + 8 * s, rmax = 3000, delay = d / 960, hiCut = -math.min(22, d / 80) })
+    if P.spark and d < 300 then G.sfx("shellRic", p, { vol = 0.8, rmax = 500 })
+    elseif P.ice and d < 300 then G.sfx("ping", p, { vol = 0.7, rmax = 400 }) end
+  end
   local function kineticHit(p, nrm, dv, hs, s)
     if typeof(p) ~= "Vector3" then return end
     s = math.clamp(tonumber(s) or 2, 1, 3)
     local tl, d, de = VL.lod(p)
-    if de > 3500 then return end
     local t = os.clock()
     if t - kinT > 0.25 then kinT, kinN = t, 0 end
     kinN += 1
@@ -86114,6 +86309,8 @@ function Fx.init(G)
     nrm = (typeof(nrm) == "Vector3" and nrm.Magnitude > 0.5) and nrm.Unit or UP
     local du = (typeof(dv) == "Vector3" and dv.Magnitude > 0.5) and dv.Unit or -nrm
     local code = (hs == "w") and "w" or codeOf(hs)
+    if code ~= "w" then kinSound(p, d, s, code, GPAL[code] or GPAL.d) end
+    if de > 3500 then return end
     if tl >= 3 then   -- 远：一小团土（开镜看得见打在哪）
       if tl == 3 then
         if code == "w" then VL.emit("kWCol", s, upCF(p, UP), 2) else VL.emit("kFount", s, upCF(p + nrm * 0.2, nrm), 2, code) end
@@ -86175,12 +86372,11 @@ function Fx.init(G)
     -- 弹芯跳起来接着飞（擦着地打的多；硬地、冰面更多）
     local ricP = ((hard and 0.75) or (P.ice and 0.6) or 0.35) * (1 - cosI)
     if d < 900 and math.random() < ricP then ricochet(p + nrm * 0.3, refl, s * 1.3, d) end
-    -- ⑥ 一声闷响（远的晚一点到），打在石头上还有一声跳弹、冰面叮的一声；离得近震一下
-    if d < 700 then
-      G.sfx({ { id = EXP, vol = 0.5, s = { 1.45, 1.7 }, reg = { 0.03, 0.5 } } }, p, { rmin = 15, rmax = 700, delay = d / 960 })
-      if hard and d < 300 then G.sfx("shellRic", p, { vol = 0.8, rmax = 500 })
-      elseif P.ice and d < 300 then G.sfx("ping", p, { vol = 0.7, rmax = 400 }) end
+    -- ⑥ 一个小弹坑（翻出来的土；雪地是底下的冻土，冰面上只是一小块）：同榴弹的焦痕，60 秒后淡掉（声音在上面 kinSound）
+    if tl <= 2 then
+      VL.scorch(p + nrm * 0.02, (2.4 + 0.8 * s) * (P.ice and 0.6 or 1), P.soot, math.min(0.8, P.scorch + 0.12), nrm)
     end
+    -- 离得近震一下
     if d < 45 then G.shake(0.12 * (1 - d / 45)) end
   end
   G.kineticHit = kineticHit
@@ -86910,8 +87106,8 @@ function Fx.init(G)
       VL.emit("mHang", k, look, 2)
       muzzleDust(M, dir, k, false, tl, false, false, pk)
     end
-    -- L11 声音：脆响 + 低沉的轰隆 + 回声（远处的晚一点到、高音被吃掉）；车体后坐、离得近震屏
-    G.sfx("tankGun", M, { must = true, rmax = 2600, delay = dd / 1100, hiCut = -math.min(18, dd / 80) })
+    -- L11 声音（tankGunSnd）：炸裂 + 本体 + 低频冲击 + 回声，远了换成一记闷响；自己在车里 / 炮长镜里是车内的；车体后坐、离得近震屏
+    tankGunSnd(M, dd, k, mine and (sight or (G.interiorOn ~= nil and G.interiorOn() == true)))
     if G.vehRecoil and e.id then G.vehRecoil(e.id, e.g) end
     if dd < 200 then G.shake(0.38 * (1 - dd / 200)) end
   end
