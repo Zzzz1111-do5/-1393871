@@ -54,14 +54,8 @@ local function level(v)
   G.moveEnt(jet, st.cf)
   jet.vel = st.vel
   jet.syncT, jet.syncSlack = os.clock(), 400
-  R.run(0.6, DT)
-  -- 摆回水平、速度放回去（跑 0.6 秒稳下来时掉了一点高度、速度）
-  local p2 = V3(0, Y, 0)
-  st.cf = CFr.lookAt(p2, p2 + look)
-  st.vel = look * v
-  st.spd = v
-  G.moveEnt(jet, st.cf)
-  R.run(0.15, DT)
+  -- 松杆飞 1.5 秒，等飞控把它稳在 1 g 平飞（刚摆好时迎角是 0、升力不够，过载在 1 g 以下——原来只等 0.15 秒，量出来的头几下偏小）
+  R.run(1.5, DT)
 end
 local function bank()
   local r, u = st.cf.RightVector, st.cf.UpVector

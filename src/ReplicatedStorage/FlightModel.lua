@@ -266,8 +266,10 @@ function FM.get(id, treeKey)
     if v ~= nil then D[f] = v end
   end
   -- 前置滤波按操纵方式给默认：电传脆、增稳次之、机械（教官飞的时候）最慢
-  D.tn = D.tn or ((D.fcs == "fbw") and 0.16 or ((D.fcs == "cas") and 0.22 or 0.3))
-  D.tp = D.tp or ((D.fcs == "fbw") and 0.12 or ((D.fcs == "cas") and 0.16 or 0.22))
+  -- 11-28 用户「有时候不该灵敏的时候过于灵敏 该灵敏的时候又有点迟钝」：原来 0.16 / 0.12 秒（电传）、0.22 / 0.16（增稳）、0.3 / 0.22（机械）——
+  --   加上键盘推杆、低速时跟得慢的增益，按住半秒才拉起一两个 g；收快三四成（kbfeel.lua 量的）
+  D.tn = D.tn or ((D.fcs == "fbw") and 0.1 or ((D.fcs == "cas") and 0.14 or 0.2))
+  D.tp = D.tp or ((D.fcs == "fbw") and 0.08 or ((D.fcs == "cas") and 0.11 or 0.15))
   if D.prop and not D.Tm then D.Tm = D.prop.Tst end
   D.Ta = D.Ta or D.Tm
   D.vne = D.vne or 400
@@ -660,7 +662,9 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     end
     local nAch = (CLof(D, ac, fl) * liftK) * qS / (m * G0)
     local qk = smooth(4000, 16000, qb)
-    local ka = lerp(1.4, 3.6, qk) * bw
+    -- 跟随的增益按动压排：原来低速只有高速的四成（1.4 → 3.6、3.5 → 7、7 → 13），慢的时候拉杆、压杆反应得慢，快了又冲——
+    --   低速抬到高速的七成多（舵面真没劲的时候照样跟不上：舵偏、舵偏速率有限），高速不变
+    local ka = lerp(2.6, 3.6, qk) * bw
     local qc = clamp(ka * (ac - al) + G0 / Vn * (nAch - uY), -1.5, 1.5)
     -- 过失速机动（T 解除迎角限制；用户待办「飞控放开机动：大迎角、失速后、推力矢量、尾冲」）：杆直接要俯仰角速度，
     --   飞控不再管迎角、过载——拉满杆机头仰过 90° 再推回来是眼镜蛇，有推力矢量的低速一直拉着能翻一整圈（库尔比特）；
@@ -684,7 +688,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
       local qcap = gd + sqrt(2 * qdd * math.max(aMaxC - al, 0) * 0.6)
       if qc > qcap then qc = math.max(qcap, -1.5) end
     end
-    local kq = lerp(3.5, 7, qk) * bw
+    local kq = lerp(5.2, 7, qk) * bw
     local Mreq = Iyy * kq * (qc - q) - (Izz - Ixx) * p * r
     local M0 = qSc * (D.Cm0 + D.Cma * sin(al) + D.Cmq * qh + CmSt + (env.Mext or 0))
     local need = Mreq - M0
@@ -712,7 +716,7 @@ function FM.sub(F, D, h, inp, env, m, rho, sos)
     -- 前置滤波：压杆按型号的时间常数起来；松杆（往零收、反打）快三倍——滚得起来要时间，停住要干脆（用户 11-25「松手一两帧就收住」）
     local tpe = (abs(pc) < abs(F.pf) or pc * F.pf < 0) and D.tp * 0.35 or D.tp
     F.pf = F.pf + (pc - F.pf) * (1 - exp(-h / tpe))
-    local kp = lerp(7, 13, qk) * bw
+    local kp = lerp(10, 13, qk) * bw
     local Lreq = Ixx * kp * (F.pf - p) - (Iyy - Izz) * q * r
     -- 飞控不知道哪边翼尖先失速（掉翼是扰动，只靠角速度反馈去顶；失速时副翼也不灵了，顶不住）
     local L0 = qSb * (D.Clb * sbe + Clp * ph + D.Clr * rh + (env.Lext or 0))
